@@ -6,9 +6,9 @@
         xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
 
   <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.0" desktopVersion="2.8.29751">
-    <Name>PRZTools</Name>   
+    <Name>PRZ Tools</Name>   
     <Description>NCC Prioritization Toolset</Description>
-    <Image>Images\AddinDesktop32.png</Image>
+    <Image>Images\PRZTools32.png</Image>
     <Author>JC Laurence</Author>
     <Company>NCC</Company>
     <Date>6/8/2021 10:29:56 AM</Date>

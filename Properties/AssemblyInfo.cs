@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("NCC Prioritization Toolset")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NCC")]
-[assembly: AssemblyProduct("PRZTools")]
+[assembly: AssemblyProduct("PRZ Tools")]
 [assembly: AssemblyCopyright("Copyright © NCC 2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
