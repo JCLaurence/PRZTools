@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ArcGIS defaultAssembly="PRZTools.dll"
+        defaultNamespace="NCC.PRZTools"
+        xmlns="http://schemas.esri.com/DADF/Registry"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+
+  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.0" desktopVersion="2.8.29751">
+    <Name>PRZTools</Name>   
+    <Description>NCC Prioritization Toolset</Description>
+    <Image>Images\AddinDesktop32.png</Image>
+    <Author>JC Laurence</Author>
+    <Company>NCC</Company>
+    <Date>6/8/2021 10:29:56 AM</Date>
+    <Subject>Framework</Subject>
+    <!-- Note subject can be one or more of these topics:
+                    Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
+  </AddInInfo>
+
+  <modules>
+    <insertModule id="PRZ_modMain" className="modMain" autoLoad="false" caption="Module Caption Here">
+      <tabs>
+        <tab id="PRZ_Tab1" caption="Tab1" keytip="z">
+          <group refID="PRZ_Group1"/>
+        </tab>
+      </tabs>
+              
+      <groups>
+        <group id="PRZ_Group1" caption="Group 1 Caption" keytip="z">
+
+		</group>
+      </groups>
+      
+      <controls>
+        <!-- add your controls here -->
+      </controls> 
+      
+    </insertModule>
+  </modules>
+</ArcGIS>

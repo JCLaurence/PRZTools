@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31321.278
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRZTools", "PRZTools.csproj", "{DA31F65D-D421-4389-8904-1EBF0789E957}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DA31F65D-D421-4389-8904-1EBF0789E957}.Debug|x64.ActiveCfg = Debug|x64
+		{DA31F65D-D421-4389-8904-1EBF0789E957}.Debug|x64.Build.0 = Debug|x64
+		{DA31F65D-D421-4389-8904-1EBF0789E957}.Release|x64.ActiveCfg = Release|x64
+		{DA31F65D-D421-4389-8904-1EBF0789E957}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {802C93D2-29DF-4E74-9066-1C248AF716FC}
+	EndGlobalSection
+EndGlobal
