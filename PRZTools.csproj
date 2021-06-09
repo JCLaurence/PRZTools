@@ -145,12 +145,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="DarkImages\PRZTools16.png" />
-    <Resource Include="DarkImages\PRZTools32.png" />
+    <AddInContent Include="DarkImages\PRZTools16.png" />
+    <AddInContent Include="DarkImages\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Images\PRZTools16.png" />
-    <Resource Include="Images\PRZTools32.png" />
+    <AddInContent Include="Images\PRZTools16.png" />
+    <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

@@ -20,7 +20,7 @@
   <modules>
     <insertModule id="PRZ_modMain" className="modMain" autoLoad="false" caption="Module Caption Here">
       <tabs>
-        <tab id="PRZ_Tab1" caption="Tab1" keytip="z">
+        <tab id="PRZ_tabMain" caption="" keytip="z">
           <group refID="PRZ_Group1"/>
         </tab>
       </tabs>
