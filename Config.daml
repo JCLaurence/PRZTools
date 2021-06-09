@@ -1,12 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<ArcGIS defaultAssembly="PRZTools.dll"
-        defaultNamespace="NCC.PRZTools"
-        xmlns="http://schemas.esri.com/DADF/Registry"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-
+﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.0" desktopVersion="2.8.29751">
-    <Name>PRZ Tools</Name>   
+    <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset</Description>
     <Image>Images\PRZTools32.png</Image>
     <Author>JC Laurence</Author>
@@ -16,25 +10,28 @@
     <!-- Note subject can be one or more of these topics:
                     Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
   </AddInInfo>
-
   <modules>
     <insertModule id="PRZ_modMain" className="modMain" autoLoad="false" caption="Module Caption Here">
       <tabs>
-        <tab id="PRZ_tabMain" caption="" keytip="z">
-          <group refID="PRZ_Group1"/>
+        <tab id="PRZ_tabMain" caption="PRZ Tools" keytip="z">
+          <group refID="PRZ_grpMain" />
         </tab>
       </tabs>
-              
       <groups>
-        <group id="PRZ_Group1" caption="Group 1 Caption" keytip="z">
-
-		</group>
+        <group id="PRZ_grpMain" caption="Main Group" keytip="z">
+          <button refID="NCC_PRZTools_Dockpane1_ShowButton" size="large" />
+        </group>
       </groups>
-      
       <controls>
-        <!-- add your controls here -->
-      </controls> 
-      
+        <button id="NCC_PRZTools_Dockpane1_ShowButton" caption="Show Dockpane 1" className="Dockpane1_ShowButton" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
+          <tooltip heading="Show Dockpane">Show Dockpane<disabledText /></tooltip>
+        </button>
+      </controls>
+      <dockPanes>
+        <dockPane id="NCC_PRZTools_Dockpane1" caption="Dockpane1 Caption" className="Dockpane1ViewModel" dock="group" dockWith="esri_core_projectDockPane">
+          <content className="Dockpane1View" />
+        </dockPane>
+      </dockPanes>
     </insertModule>
   </modules>
 </ArcGIS>
