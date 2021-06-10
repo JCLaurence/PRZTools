@@ -31,7 +31,7 @@
       </TextBlock>
         </DockPanel>
         <Button Content="Button" HorizontalAlignment="Left" Margin="102,74,0,0" Grid.Row="1" VerticalAlignment="Top" Width="75"/>
-        <Label Content="Label" HorizontalAlignment="Left" Margin="113,184,0,0" Grid.Row="1" VerticalAlignment="Top"/>
+        <Label x:Name="lblTest" Content="{Binding JCSetting}" HorizontalAlignment="Left" Margin="113,184,0,0" Grid.Row="1" VerticalAlignment="Top"/>
         <TextBox HorizontalAlignment="Left" Height="38" Margin="177,127,0,0" Grid.Row="1" TextWrapping="Wrap" Text="TextBox" VerticalAlignment="Top" Width="79"/>
     </Grid>
 </UserControl>

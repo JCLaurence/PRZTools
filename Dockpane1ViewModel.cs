@@ -38,6 +38,17 @@ namespace NCC.PRZTools
             pane.Activate();
         }
 
+        // Settings Test
+        private string _jcsetting = Properties.Settings.Default.JC;
+        public string JCSetting
+        {
+            get { return _jcsetting; }
+            set
+            {
+                SetProperty(ref _jcsetting, value, () => JCSetting);
+            }
+        }
+
         /// <summary>
         /// Text shown near the top of the DockPane.
         /// </summary>

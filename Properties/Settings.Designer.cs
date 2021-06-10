@@ -22,5 +22,17 @@ namespace NCC.PRZTools.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("This is a test")]
+        public string JC {
+            get {
+                return ((string)(this["JC"]));
+            }
+            set {
+                this["JC"] = value;
+            }
+        }
     }
 }
