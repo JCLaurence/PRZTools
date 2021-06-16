@@ -20,39 +20,23 @@
       <groups>
         <group id="PRZ_grpMain" caption="Main Group" keytip="z">
           <button refID="NCC_PRZTools_prowinProject" size="large" />
+          <button refID="NCC_PRZTools_dockWorkspace_ShowButton" size="large" />
         </group>
       </groups>
-      
-		  <controls>
+      <controls>
         <button id="NCC_PRZTools_prowinProject" caption="Project Settings" className="btnProjectSettings" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
-			    <tooltip heading="Tooltip Heading">
-				    Tooltip text<disabledText />
-			    </tooltip>
-		    </button>
-
-
-		    <!--<button id="NCC_PRZTools_Dockpane1_ShowButton" caption="Show Dockpane 1" className="Dockpane1_ShowButton" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
+          <tooltip heading="Tooltip Heading">
+				    Tooltip text<disabledText /></tooltip>
+        </button>
+        <button id="NCC_PRZTools_dockWorkspace_ShowButton" caption="Workspace Settings" className="dockWorkspace_ShowButton" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
           <tooltip heading="Show Dockpane">Show Dockpane<disabledText /></tooltip>
         </button>
-        <button id="NCC_PRZTools_Pane1_OpenButton" caption="Open Pane 1" className="Pane1_OpenButton" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png">
-          <tooltip heading="Open Pane">Open Pane<disabledText /></tooltip>
-        </button>-->
-
-		
-	    </controls>
-      
-      <!--<dockPanes>
-        <dockPane id="NCC_PRZTools_Dockpane1" caption="Dockpane1 Caption" className="Dockpane1ViewModel" dock="group" dockWith="esri_core_projectDockPane">
-          <content className="Dockpane1View" />
+      </controls>
+      <dockPanes>
+        <dockPane id="NCC_PRZTools_dockWorkspace" caption="PRZ Tools - Workspace" className="dockWorkspaceViewModel" dock="group" dockWith="esri_core_projectDockPane" hasHelp="true">
+          <content className="dockWorkspaceView" />
         </dockPane>
       </dockPanes>
-
-      <panes>
-        <pane id="NCC_PRZTools_Pane1" caption="Pane 1" className="Pane1ViewModel" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" defaultTab="esri_mapping_homeTab" defaultTool="esri_mapping_navigateTool">
-          <content className="Pane1View" />
-        </pane>
-      </panes>-->
-
     </insertModule>
   </modules>
 </ArcGIS>

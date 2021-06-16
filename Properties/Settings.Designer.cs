@@ -25,13 +25,25 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("This is a test")]
-        public string JC {
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\temp\\jcfolder")]
+        public string PROJECT_FOLDER_PATH {
             get {
-                return ((string)(this["JC"]));
+                return ((string)(this["PROJECT_FOLDER_PATH"]));
             }
             set {
-                this["JC"] = value;
+                this["PROJECT_FOLDER_PATH"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("GDB")]
+        public string PROJECT_CONTENT_TYPE {
+            get {
+                return ((string)(this["PROJECT_CONTENT_TYPE"]));
+            }
+            set {
+                this["PROJECT_CONTENT_TYPE"] = value;
             }
         }
     }

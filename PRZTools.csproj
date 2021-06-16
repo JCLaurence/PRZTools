@@ -119,6 +119,11 @@
     <AddInContent Include="Config.daml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PRZConstants.cs" />
+    <Compile Include="dockWorkspace.xaml.cs">
+      <DependentUpon>dockWorkspace.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="dockWorkspaceViewModel.cs" />
     <Compile Include="modMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -135,6 +140,8 @@
       <DependentUpon>prowinProject.xaml</DependentUpon>
     </Compile>
     <Compile Include="btnProjectSettings.cs" />
+    <Compile Include="PRZHelper.cs" />
+    <Compile Include="PRZMethods.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -158,6 +165,10 @@
     <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="dockWorkspace.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="prowinProject.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -170,12 +181,6 @@
   <ItemGroup>
     <Resource Include="Images\PRZTools16.ico" />
     <Resource Include="Images\PRZTools32.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="PRZTools32.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="PRZTools16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

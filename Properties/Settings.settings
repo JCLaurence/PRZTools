@@ -2,8 +2,11 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="NCC.PRZTools.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="JC" Type="System.String" Scope="User">
-      <Value Profile="(Default)">This is a test</Value>
+    <Setting Name="PROJECT_FOLDER_PATH" Type="System.String" Scope="User">
+      <Value Profile="(Default)">c:\temp\jcfolder</Value>
+    </Setting>
+    <Setting Name="PROJECT_CONTENT_TYPE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">GDB</Value>
     </Setting>
   </Settings>
 </SettingsFile>
