@@ -33,6 +33,7 @@
         <Button Content="Refresh" IsEnabled="{Binding RefreshEnabled}" Command="{Binding RefreshCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Height="25" Margin="127,77,0,0" Grid.Row="1" VerticalAlignment="Top" Width="65"/>
         <Button Content="Reset" IsEnabled="{Binding ResetEnabled}" Command="{Binding ResetCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Height="25" Margin="206,77,0,0" Grid.Row="1" VerticalAlignment="Top" Width="59"/>
         <Button Content="Initialize" IsEnabled="{Binding InitializeEnabled}" Command="{Binding InitializeCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Margin="36,77,0,0" Grid.Row="1" VerticalAlignment="Top" Width="75" Height="25"/>
+        <TextBlock Text="{Binding FolderStatus}" HorizontalAlignment="Left" Height="30" Margin="233,131,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="279"/>
 
     </Grid>
 </UserControl>

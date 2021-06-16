@@ -30,6 +30,9 @@ namespace NCC.PRZTools
         {
             _testCommand = new RelayCommand(() => CommandMethod(), () => true);
             _openDialogCommand = new RelayCommand(() => OpenDialogger(), () => true);
+            _initializeCommand = new RelayCommand(() => InitializeFolder(), () => true);
+            _refreshCommand = new RelayCommand(() => MessageBox.Show("Refresh Command"), () => true);
+            _resetCommand = new RelayCommand(() => MessageBox.Show("Reset Command"), () => true);
         }
 
         #region Properties
@@ -62,6 +65,16 @@ namespace NCC.PRZTools
             {
                 SetProperty(ref _showLogContent, value, () => ShowLogContent);
                 DrawContent();
+            }
+        }
+
+        private string _folderStatus;
+        public string FolderStatus
+        {
+            get { return _folderStatus; }
+            set
+            {
+                SetProperty(ref _folderStatus, value, () => FolderStatus);
             }
         }
 
@@ -185,7 +198,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private void OpenDialogger()
+        private async void OpenDialogger()
         {
             try
             {
@@ -215,7 +228,12 @@ namespace NCC.PRZTools
                     Item i = selitems.First();
 
                     if (i != null)
+                    {
                         this.FolderPath = i.Path;
+                        this.FolderStatus = await GetFolderStatus(this.FolderPath);
+
+
+                    }
                 }
             }
             catch (Exception ex)
@@ -236,14 +254,13 @@ namespace NCC.PRZTools
             pane.Activate();
         }
 
-        protected override Task InitializeAsync()
+        protected override async Task InitializeAsync()
         {
             try
             {
                 // Put one-time initialization code here that can be done asynchronously
 
                 string pct = Properties.Settings.Default.PROJECT_CONTENT_TYPE;
-
                 switch (pct)
                 {
                     case "FOLDER":
@@ -262,13 +279,137 @@ namespace NCC.PRZTools
 
                 this.RefreshEnabled = ok;
                 this.ResetEnabled = ok;
+                this.InitializeEnabled = ok;
 
-                return Task.FromResult(0);
+                this.FolderStatus = await GetFolderStatus(pf);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                return Task.FromResult(1);
+            }
+        }
+
+        private async Task InitializeFolder()
+        {
+            try
+            {
+                // This method does the following tasks:
+                // 1. If INPUT folder not found, add it.  Else, do nothing
+                // 2. If OUTPUT folder not found, add it.  Else, do nothing
+                // 3. If PRZ.log file not found, add it.  Else, do nothing
+                // 4. If PRZ.gdb geodatabase not found, add it.  Else, do nothing
+                // 5. Add line in PRZ.log file saying we just initialized the folder
+                // 6. somehow trigger the ContentListing value recalculation
+
+                // This method will use the value currently in _folderPath field
+
+                string fp = _folderPath;
+
+                // Ensure that main Folder Path exists
+                if (!Directory.Exists(_folderPath))
+                {
+                    MessageBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + _folderPath + " does not exist");
+                    return;
+                }
+
+                // Create the INPUT and OUTPUT directories and the PRZ.log file if missing.
+                string pathInputFolder = Path.Combine(_folderPath, "INPUT");
+                string pathOutputFolder = Path.Combine(_folderPath, "OUTPUT");
+                string pathLogFile = Path.Combine(_folderPath, "PRZ.log");
+
+                if (!Directory.Exists(pathInputFolder))
+                    Directory.CreateDirectory(pathInputFolder);
+
+                if (!Directory.Exists(pathOutputFolder))
+                    Directory.CreateDirectory(pathOutputFolder);
+
+                if (!File.Exists(pathLogFile))
+                    File.Create(pathLogFile);
+
+                // Create the File Geodatabase if missing
+                string pathGDB = Path.Combine(_folderPath, "PRZ.gdb");
+
+                // I'm here!!!
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+
+        private async Task<string> GetFolderStatus(string folderPath)
+        {
+            try
+            {
+                // Project Folder should have the following elements:
+                // INPUT folder
+                // OUTPUT folder
+                // PRZ.gdb geodatabase
+                // PRZ.log log file (?)
+
+                if (!Directory.Exists(folderPath))
+                {
+                    return "Directory does not exist!";
+                }
+
+                // look for INPUT and OUTPUT subdirectories
+                bool hasInputFolder = false;
+                bool hasOutputFolder = false;
+                bool hasLogFile = false;
+
+                string response = "";
+
+                string inputDir = Path.Combine(folderPath, "INPUT");
+                string outputDir = Path.Combine(folderPath, "OUTPUT");
+                string logFile = Path.Combine(folderPath, "PRZ.log");
+
+                if (Directory.Exists(inputDir))
+                {
+                    hasInputFolder = true;
+                    response += " Has Input Folder ";
+                }
+
+                if (Directory.Exists(outputDir))
+                {
+                    hasOutputFolder = true;
+                    response += " Has Output Folder ";
+                }
+
+                if (File.Exists(logFile))
+                {
+                    hasLogFile = true;
+                    response += " Has Log File ";
+                }
+
+                // Check for existence of geodatabase here...
+                string gdb = Path.Combine(folderPath, "PRZ.gdb");
+
+                Geodatabase fgdb;
+                Uri uri = new Uri(gdb);
+                FileGeodatabaseConnectionPath gdbpath = new FileGeodatabaseConnectionPath(uri);
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        fgdb = new Geodatabase(gdbpath);
+                        response += " Has PRZ.gdb ";
+                        fgdb.Dispose();
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException ex2)
+                {
+                    response += " NO PRZ.gdb ";
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return "";
             }
         }
 
