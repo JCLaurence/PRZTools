@@ -26,7 +26,7 @@
         <TextBox IsReadOnly="True" HorizontalAlignment="Left" Height="23" Margin="10,166,0,0" Grid.Row="1" TextWrapping="Wrap" Text="{Binding FolderPath}" VerticalAlignment="Top" Width="470" Background="{DynamicResource Esri_BackgroundPressedBrush}" Foreground="{DynamicResource Esri_TextStyleDefaultBrush}"/>
         <Button Content="Select Project Folder"  Style="{DynamicResource Esri_Button}" Command="{Binding OpenDialogCommand}" HorizontalAlignment="Left" Margin="27,21,0,0" Grid.Row="1" VerticalAlignment="Top" Width="177" Height="28"/>
         <TextBlock HorizontalAlignment="Left" Height="20" Margin="27,141,0,0" Grid.Row="1" TextWrapping="Wrap" Text="Project Folder Path" VerticalAlignment="Top" Width="177"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,228,0,0" Grid.Row="1" TextWrapping="Wrap" Text="{Binding ContentListing}" VerticalAlignment="Top" Width="525" FontFamily="Courier New" FontSize="10" Height="261"/>
+        <TextBlock HorizontalAlignment="Left" Background="Beige" Margin="10,228,0,0" Grid.Row="1" TextWrapping="Wrap" Text="{Binding ContentListing}" VerticalAlignment="Top" Width="525" FontFamily="Courier New" Height="261"/>
         <RadioButton IsChecked="{Binding ShowFolderContent}" GroupName="ContentType" Content="Folder Contents" HorizontalAlignment="Left" Margin="36,209,0,0" Grid.Row="1" VerticalAlignment="Top"/>
         <RadioButton IsChecked="{Binding ShowGDBContent}" GroupName="ContentType" Content="Geodatabase Contents" HorizontalAlignment="Left" Margin="157,209,0,0" Grid.Row="1" VerticalAlignment="Top"/>
         <RadioButton IsChecked="{Binding ShowLogContent}" GroupName="ContentType" Content="Log File" HorizontalAlignment="Left" Margin="313,209,0,0" Grid.Row="1" VerticalAlignment="Top"/>
@@ -34,6 +34,7 @@
         <Button Content="Reset" IsEnabled="{Binding ResetEnabled}" Command="{Binding ResetCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Height="25" Margin="206,77,0,0" Grid.Row="1" VerticalAlignment="Top" Width="59"/>
         <Button Content="Initialize" IsEnabled="{Binding InitializeEnabled}" Command="{Binding InitializeCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Margin="36,77,0,0" Grid.Row="1" VerticalAlignment="Top" Width="75" Height="25"/>
         <TextBlock Text="{Binding FolderStatus}" HorizontalAlignment="Left" Height="30" Margin="233,131,0,0" Grid.Row="1" TextWrapping="Wrap" VerticalAlignment="Top" Width="279"/>
+        <Button Content="Open Project Folder" Command="{Binding OpenFolderCommand}" Style="{DynamicResource Esri_Button}" HorizontalAlignment="Left" Margin="329,102,0,0" Grid.Row="1" VerticalAlignment="Top" Width="123"/>
 
     </Grid>
 </UserControl>

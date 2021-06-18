@@ -37,7 +37,7 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("GDB")]
+        [global::System.Configuration.DefaultSettingValueAttribute("DIR")]
         public string PROJECT_CONTENT_TYPE {
             get {
                 return ((string)(this["PROJECT_CONTENT_TYPE"]));

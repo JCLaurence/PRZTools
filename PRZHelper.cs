@@ -1,19 +1,20 @@
 ﻿//#define ARCMAP
 
-
-
-//using ESRI.ArcGIS.ADF;
-//using ESRI.ArcGIS.ADF.CATIDs;
-//using ESRI.ArcGIS.ADF.COMSupport;
-//using ESRI.ArcGIS.ArcMapUI;
-//using ESRI.ArcGIS.Carto;
-//using ESRI.ArcGIS.Display;
-//using ESRI.ArcGIS.esriSystem;
-//using ESRI.ArcGIS.Framework;
-//using ESRI.ArcGIS.Geodatabase;
-//using ESRI.ArcGIS.Geometry;
-//using ESRI.ArcGIS.Geoprocessor;
-//using stdole;
+using ArcGIS.Core.CIM;
+using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.DDL;
+using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Catalog;
+using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Editing;
+using ArcGIS.Desktop.Extensions;
+using ArcGIS.Desktop.Framework;
+using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Dialogs;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.GeoProcessing;
+using ArcGIS.Desktop.Layouts;
+using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -34,6 +35,86 @@ namespace NCC.PRZTools
 
     internal static class PRZHelper
     {
+
+        #region LOGGING
+
+        internal static bool WriteLog(string message)
+        {
+            try
+            {
+                string parentpath = GetProjectWorkspaceDirectory();
+                if (parentpath == string.Empty) return false;
+
+                string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
+                if (!File.Exists(logfile))
+                {
+                    using(FileStream fs = File.Create(logfile)){}
+                }
+
+                using (StreamWriter w = File.AppendText(logfile))
+                {
+                    w.WriteLine("***************************************");
+                    w.WriteLine(DateTime.Now.ToString());
+                    w.WriteLine(message);
+                    w.WriteLine("");
+                    w.Flush();
+                    w.Close();
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Unable to log message");
+                return false;
+            }
+        }
+
+        #endregion LOGGING
+
+        internal static string GetUserWorkspaceDirectory()
+        {
+            try
+            {
+                string local_app_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string parent_path = SysPath.Combine(local_app_path, PRZC.c_USER_PROFILE_WORKDIR);
+
+                if (!Directory.Exists(parent_path))
+                {
+                    Directory.CreateDirectory(parent_path);
+                }
+
+                return parent_path;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                return string.Empty;
+            }
+        }
+
+        internal static string GetProjectWorkspaceDirectory()
+        {
+            try
+            {
+                string project_workspace = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+
+                if (!Directory.Exists(project_workspace))
+                {
+                    return string.Empty;
+                }
+
+                return project_workspace;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                return string.Empty;
+            }
+        }
+
+
+
 #if ARCMAP
 
         #region RETRIEVE ARCMAP OBJECTS

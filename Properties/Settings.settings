@@ -6,7 +6,7 @@
       <Value Profile="(Default)">c:\temp\jcfolder</Value>
     </Setting>
     <Setting Name="PROJECT_CONTENT_TYPE" Type="System.String" Scope="User">
-      <Value Profile="(Default)">GDB</Value>
+      <Value Profile="(Default)">DIR</Value>
     </Setting>
   </Settings>
 </SettingsFile>

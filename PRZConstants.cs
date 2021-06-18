@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace NCC.PRZTools
+﻿namespace NCC.PRZTools
 {
 
     internal static class PRZConstants
@@ -154,9 +152,9 @@ namespace NCC.PRZTools
         public const int c_ADJACENTFEATURECOUNT_SQUARE = 4;     //number of features adjacent to a completely encirled square or diamond feature
 
 
-        // MISC
-        public const string c_GP_LOGFILE = "GT_GPLOG.txt";
-        public const string c_USER_PROFILE_WORKDIR = "NCC_Shmarxan";
+        // LOGGING & DIRECTORIES
+        public const string c_PRZ_LOGFILE = "PRZ.log";
+        public const string c_USER_PROFILE_WORKDIR = "PRZTools";
 
 
     }
