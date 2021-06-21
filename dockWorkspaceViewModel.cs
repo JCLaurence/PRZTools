@@ -771,16 +771,6 @@ namespace NCC.PRZTools
 
     }
 
-    /// <summary>
-    /// Button implementation to show the DockPane.
-    /// </summary>
-    internal class dockWorkspace_ShowButton : Button
-    {
-        protected override void OnClick()
-        {
-            dockWorkspaceViewModel.Show();
-        }
-    }
 }
 
 

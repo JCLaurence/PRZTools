@@ -1,20 +1,33 @@
 ﻿//#define ARCMAP
 
-//using ESRI.ArcGIS.ADF;
-//using ESRI.ArcGIS.ArcMapUI;
-//using ESRI.ArcGIS.Carto;
-//using ESRI.ArcGIS.DataSourcesGDB;
-//using ESRI.ArcGIS.Display;
-//using ESRI.ArcGIS.esriSystem;
-//using ESRI.ArcGIS.Geodatabase;
-//using ESRI.ArcGIS.Geometry;
+using ArcGIS.Core.CIM;
+using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.DDL;
+using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Catalog;
+using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Editing;
+using ArcGIS.Desktop.Extensions;
+using ArcGIS.Desktop.Framework;
+using ArcGIS.Desktop.Framework.Contracts;
+using ArcGIS.Desktop.Framework.Dialogs;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.GeoProcessing;
+using ArcGIS.Desktop.Layouts;
+using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Reflection;
 using System.Runtime.InteropServices;
-//using System.Windows.Forms;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
 
@@ -27,8 +40,296 @@ namespace NCC.PRZTools
         FeaturePoly
     }
 
-    public static class ShmarxanMethods
+    internal static class PRZMethods
     {
+
+        internal static async Task<bool> ValidatePRZGroupLayers()
+        {
+            Geodatabase FGDB = null;
+
+            try
+            {
+                // Verify that Project Folder exists
+                string pathFolder = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                if (!Directory.Exists(pathFolder))
+                {
+                    MessageBox.Show("Project Folder does not exist at this path:" +
+                                     Environment.NewLine + Environment.NewLine +
+                                     pathFolder + Environment.NewLine + Environment.NewLine +
+                                     "Please verify Project Settings");
+                    return false;
+                }
+
+                // Verify that Project GDB exists
+                string pathFGDB = Path.Combine(pathFolder, PRZC.c_PRZ_PROJECT_FGDB);
+                if (!Directory.Exists(pathFGDB))
+                {
+                    MessageBox.Show("Project File Geodatabase does not exist at this path:" +
+                                     Environment.NewLine + Environment.NewLine +
+                                     pathFGDB + Environment.NewLine + Environment.NewLine +
+                                     "Please verify Project Settings");
+                    return false;
+                }
+
+                // Get the MapView information
+                MapView mv = MapView.Active;
+                if (mv is null) return false;   // no active map
+                if (!mv.IsReady) return false;  // active map is busy
+                if (mv.ViewingMode != MapViewingMode.Map) return false; // we want regular old 2D map, no 3D stuff or 2D stereo stuff
+
+                // Get the Map owning the active mapview
+                Map map = mv.Map;
+
+                if (map.MapType.ToString() != "Map") return false;  // has to be a plain old Map
+
+                // Get the Geodatabase
+                FGDB = await GetProjectFGDB(pathFolder);
+                if (FGDB is null)
+                {
+                    MessageBox.Show("Unable to open Project File GDB at this path:" + Environment.NewLine + Environment.NewLine
+                                    + pathFGDB + Environment.NewLine + Environment.NewLine +
+                                    "Please verify Project Settings");
+                    return false;
+                }
+
+                // determine if Planning Unit FC exists
+                var puFCExists = await FCExists(FGDB, PRZC.c_FC_PLANNING_UNITS);
+
+                if (!puFCExists)
+                {
+                    MessageBox.Show("Planning Unit Feature Class doesn't exist in your Project File Geodatabase.  You may not have built it yet...");
+                }
+
+                // Remove any instances of Planning Unit Feature Layer in the map
+                var puFCs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+
+                foreach (FeatureLayer fl in puFCs)
+                {
+                    bool isPUFL = false;
+                    
+
+                    await QueuedTask.Run(() =>
+                    {
+                        FeatureClass fc = fl.GetFeatureClass();
+                        MessageBox.Show("Absolute Path: " + fc.GetPath().AbsolutePath);
+
+
+                        //Table tab = fl.GetTable();
+
+                        //Datastore fcds = fc.GetDatastore();
+                        //Datastore tabds = tab.GetDatastore();
+
+                        //if (fcds is Geodatabase)
+                        //{
+                        //    MessageBox.Show("FCDS is a geodatabase");
+                        //}
+                        //else
+                        //{
+                        //    MessageBox.Show("FCDS is not a geodatabase");
+                        //}
+
+                        //if (tabds is Geodatabase)
+                        //{
+                        //    MessageBox.Show("TABDS is a geodatabase");
+                        //}
+                        //else
+                        //{
+                        //    MessageBox.Show("TABDS is not a geodatabase");
+                        //}
+
+                        //MessageBox.Show("FCDS Connection String: " + fcds.GetConnectionString());
+                        //MessageBox.Show("PRZ FGDB Connection String: " + FGDB.GetConnectionString());
+
+
+                    });
+
+                }
+
+
+
+
+                // 1. check that folder workspace is valid
+                //      if not, return
+                // 2. check that folder GDB exists
+                //      if not, return
+                // 3. Retrieve Grid FC
+                // 4. Change Map TOC mode to List by Order
+                // 5. If Grid FC doesn't exist, notify user
+                //      Else, set up Grid FL (name, legend, etc)
+                // 6. Remove any existing Grid FL from the active MapView
+                // 7. Create all empty group layers
+                // 8. If Grid FL was created, add it to the main group layer
+
+                // 9. If MapView TOC doesn't have any Group layers...
+                //      - add main group layer
+                //      - return
+                // 10. If MapView TOC doesn't include the main group layer (name match)...
+                //      - add main group layer
+                //      - return
+                // 11. If MapView TOC includes the main group layer (name match) MORE THAN ONCE...
+                //      - Notify user that only one main group layer should exist
+                //      - return
+                // 12. If MapView TOC includes the main group layer ONCE...
+                //      - Retain reference to the group layer
+
+                // NOTE: At this point, Main group layer exists but contents not validated
+
+                // 13. Count the instances of the COST, STATUS, and CF group layers, and Grid FL within the main group layer
+                //      - any group layers in main other than COST, STATUS, or CF are deleted!
+                //      - any FL in main other than Grid FL are deleted!
+
+                // 14. If COST group layer not found, add the premade one
+                // 14. If COST count>1, notify user and return
+                // 14. If COST count=1, retain reference to COST group layer
+
+                // 15. If STATUS group layer not found, add the premade one
+                // 15. If STATUS count>1, notify user and return
+                // 15. If STATUS count=1, retain reference to STATUS group layer
+
+                // 16. If CF group layer not found, add the premade one
+                // 16. If CF count>1, notify user and return
+                // 16. If CF count=1, retain reference to CF group layer
+
+                // 17. If new Grid FL exists, add it to main group layer
+
+                // 18. (re)order the top level group layers
+
+                // 19. Count instances of INCLUDE and EXCLUDE group layers
+                //      - any group layers in STATUS other than INCLUDE or EXCLUDE are deleted!
+                //      - any FL in STATUS are deleted!
+
+                // 20. If INCLUDE group layer not found, add the premade one
+                // 20. If INCLUDE count>1, notify user and return
+                // 20. If INCLUDE count=1, retain reference to INCLUDE group layer
+
+                // 21. If EXCLUDE group layer not found, add the premade one
+                // 21. If EXCLUDE count>1, notify user and return
+                // 21. If EXCLUDE count=1, retain reference to EXCLUDE group layer
+
+                // 22. (re)order the 2 Group Layers in STATUS
+
+                // 23. If COST group layer contains any group layers, delete them!
+                // 24. If INCLUDE group layer contains any group layers, delete them!
+                // 25. If EXCLUDE group layer contains any group layers, delete them!
+                // 26. If CF group layer contains any group layers, delete them!
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+            finally
+            {
+                // Any clean-up regardless of errors caught above goes here
+                if (FGDB != null)
+                    FGDB.Dispose();
+            }
+        }
+
+
+
+
+
+        #region GENERIC DATA METHODS
+
+        /// <summary>
+        /// ASYNC returns PRZ
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        internal static async Task<Geodatabase> GetProjectFGDB(string path)
+        {
+            try
+            {
+                string pathFolder = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                string pathGDB = Path.Combine(pathFolder, PRZC.c_PRZ_PROJECT_FGDB);
+
+                Uri uri = new Uri(pathGDB);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+                Geodatabase FGDB = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        FGDB = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException ex)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return FGDB;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// ASYNC Does a Feature Class of the supplied name exist within the supplied geodatabase?  Returns True or False.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="FCName"></param>
+        /// <returns>bool</returns>
+        internal static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    FeatureClassDefinition fcdef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName);
+                    fcdef.Dispose();
+                });
+
+                return true;
+            }
+            catch
+            {
+                // Exception thrown if definition doesn't exist, meaning a FC of that name doesn't exist in GDB
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// ASYNC Does a Table of the supplied name exist within the supplied geodatabase?  Returns True or False.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="TabName"></param>
+        /// <returns>bool</returns>
+        internal static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName);
+                    tabdef.Dispose();
+                });
+
+                return true;
+            }
+            catch
+            {
+                // Exception thrown if definition doesn't exist, meaning a Table of that name doesn't exist in GDB
+                return false;
+            }
+        }
+
+
+        #endregion GENERIC DATA METHODS
+
+
+
+
 #if ARCMAP
 
         public static string GetWorkingFileGDBPath()

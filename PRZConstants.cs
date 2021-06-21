@@ -4,17 +4,16 @@
     internal static class PRZConstants
     {
         // LAYER NAMES
-        public const string c_GROUPLAYER_SHMARXAN = "SHMARXAN";
+        public const string c_GROUPLAYER_PRZ = "PRZ";
         public const string c_GROUPLAYER_COST = "COST";
         public const string c_GROUPLAYER_STATUS = "STATUS";
         public const string c_GROUPLAYER_STATUS_INCLUDE = "LOCKED IN";
         public const string c_GROUPLAYER_STATUS_EXCLUDE = "LOCKED OUT";
-        public const string c_GROUPLAYER_STATUS_PREFER = "PREFERRED";
         public const string c_GROUPLAYER_CF = "CONSERVATION FEATURES";
-        public const string c_LAYER_PLANNING_UNIT_GRID = "Planning Unit Grid";
+        public const string c_LAYER_PLANNING_UNITS = "Planning Units";
 
         // MAJOR OBJECTS
-        public const string c_TEMP_FILEGDB_NAME = "ShmarxanTemp.gdb";
+        public const string c_TEMP_FILEGDB_NAME = "PRZTemp.gdb";
         public const string c_FILENAME_MARXAN = "Marxan.exe";
         public const string c_FILENAME_MARXAN32 = "Marxan_v243_x32.exe";
         public const string c_FILENAME_MARXAN64 = "Marxan_v243_x64.exe";
@@ -26,15 +25,14 @@
         public const string c_FILENAME_OUTPUT_RUNSUMMARY = "_sum.txt";
         public const string c_FILENAME_OUTPUT_MISSINGVALUES = "_mvbest.txt";
 
-
-        // EXPORT TO MARXAN FILE NAMES
+        // EXPORT TO FILE NAMES
         public const string c_FILENAME_EXPORT_PU = "pu.dat";
         public const string c_FILENAME_EXPORT_CF = "cf.dat";
         public const string c_FILENAME_EXPORT_PUVCF = "puvscf.dat";
         public const string c_FILENAME_EXPORT_BL = "bound.dat";
 
         // FEATURE CLASSES
-        public const string c_FCNAME_PLANNING_UNIT_GRID = "PU_Grid";
+        public const string c_FC_PLANNING_UNITS = "PU";
 
         public const string c_PREFIX_PUCOMP = "pucf_tmp";
         public const string c_SUFFIX_PUCOMP_INT = "_Int";
@@ -154,6 +152,7 @@
 
         // LOGGING & DIRECTORIES
         public const string c_PRZ_LOGFILE = "PRZ.log";
+        public const string c_PRZ_PROJECT_FGDB = "PRZ.gdb";
         public const string c_USER_PROFILE_WORKDIR = "PRZTools";
 
 

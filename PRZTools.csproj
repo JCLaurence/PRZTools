@@ -119,6 +119,8 @@
     <AddInContent Include="Config.daml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="dockWorkspace_ShowButton.cs" />
+    <Compile Include="LoadPRZLayers.cs" />
     <Compile Include="PRZConstants.cs" />
     <Compile Include="dockWorkspace.xaml.cs">
       <DependentUpon>dockWorkspace.xaml</DependentUpon>

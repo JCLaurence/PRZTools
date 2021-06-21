@@ -19,17 +19,17 @@
       </tabs>
       <groups>
         <group id="PRZ_grpMain" caption="Main Group" keytip="z">
-          <button refID="NCC_PRZTools_prowinProject" size="large" />
           <button refID="NCC_PRZTools_dockWorkspace_ShowButton" size="large" />
+          <button refID="NCC_PRZTools_LoadPRZLayers" size="large" />
         </group>
       </groups>
       <controls>
-        <button id="NCC_PRZTools_prowinProject" caption="Project Settings" className="btnProjectSettings" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
-          <tooltip heading="Tooltip Heading">
-				    Tooltip text<disabledText /></tooltip>
-        </button>
         <button id="NCC_PRZTools_dockWorkspace_ShowButton" caption="Workspace Settings" className="dockWorkspace_ShowButton" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
-          <tooltip heading="Show Dockpane">Show Dockpane<disabledText /></tooltip>
+          <tooltip heading="Workspace Settings">Open the Workspace Settings Pane<disabledText /></tooltip>
+        </button>
+        <button id="NCC_PRZTools_LoadPRZLayers" caption="PRZ Layers" className="LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonBlue16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonBlue32.png" condition="esri_mapping_mapPane" >
+          <tooltip heading="PRZ Layers">Load the PRZ Group Layers<disabledText>No map panes are open</disabledText>
+        </tooltip>
         </button>
       </controls>
       <dockPanes>
