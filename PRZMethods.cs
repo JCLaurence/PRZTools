@@ -71,6 +71,8 @@ namespace NCC.PRZTools
                     return false;
                 }
 
+                string pathPUFC = Path.Combine(pathFGDB, PRZC.c_FC_PLANNING_UNITS);
+
                 // Get the MapView information
                 MapView mv = MapView.Active;
                 if (mv is null) return false;   // no active map
@@ -101,82 +103,296 @@ namespace NCC.PRZTools
                 }
 
                 // Remove any instances of Planning Unit Feature Layer in the map
-                var puFCs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                List<Layer> LayersToDelete = new List<Layer>();
 
-                foreach (FeatureLayer fl in puFCs)
+                foreach (FeatureLayer flyr in flyrs)
                 {
-                    bool isPUFL = false;
-                    
-
                     await QueuedTask.Run(() =>
                     {
-                        FeatureClass fc = fl.GetFeatureClass();
-                        MessageBox.Show("Absolute Path: " + fc.GetPath().AbsolutePath);
+                        FeatureClass fc = flyr.GetFeatureClass();
+                        string fcpath = fc.GetPath().AbsolutePath;
 
-
-                        //Table tab = fl.GetTable();
-
-                        //Datastore fcds = fc.GetDatastore();
-                        //Datastore tabds = tab.GetDatastore();
-
-                        //if (fcds is Geodatabase)
-                        //{
-                        //    MessageBox.Show("FCDS is a geodatabase");
-                        //}
-                        //else
-                        //{
-                        //    MessageBox.Show("FCDS is not a geodatabase");
-                        //}
-
-                        //if (tabds is Geodatabase)
-                        //{
-                        //    MessageBox.Show("TABDS is a geodatabase");
-                        //}
-                        //else
-                        //{
-                        //    MessageBox.Show("TABDS is not a geodatabase");
-                        //}
-
-                        //MessageBox.Show("FCDS Connection String: " + fcds.GetConnectionString());
-                        //MessageBox.Show("PRZ FGDB Connection String: " + FGDB.GetConnectionString());
-
-
+                        if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                        {
+                            LayersToDelete.Add(flyr);
+                        }
                     });
-
                 }
 
+                await QueuedTask.Run(() =>
+                {
+                    map.RemoveLayers(LayersToDelete);
+                });
+
+                // *** PRZ GROUP LAYER *******************************************
+
+                // Insert or Retrieve Main PRZ group layer at top-level in map
+                GroupLayer GL_PRZ = null;
+
+                var glyrs = map.FindLayers(PRZC.c_GROUPLAYER_PRZ, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Main GL not found at top level - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_PRZ = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_PRZ);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_PRZ + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_PRZ = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        map.MoveLayer(GL_PRZ, 0);
+                    });
+                }
+
+                // Insert or retrieve Status Group Layer in PRZ Group Layer
+                GroupLayer GL_STATUS = null;
+
+                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_STATUS, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Status GL not found in PRZ GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 0, PRZC.c_GROUPLAYER_STATUS);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_STATUS = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_PRZ.MoveLayer(GL_STATUS, 0);
+                    });
+                }
+
+                // Insert or retrieve Cost Group Layer in PRZ Group Layer
+                GroupLayer GL_COST = null;
+
+                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_COST, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Cost GL not found in PRZ GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 1, PRZC.c_GROUPLAYER_COST);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_COST + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_COST = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_PRZ.MoveLayer(GL_COST, 1);
+                    });
+                }
+
+                // Insert or retrieve CF Group Layer in PRZ Group Layer
+                GroupLayer GL_CF = null;
+
+                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_CF, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // CF GL not found in PRZ GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_CF = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 2, PRZC.c_GROUPLAYER_CF);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_CF + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_CF = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_PRZ.MoveLayer(GL_CF, 2);
+                    });
+                }
+
+                // Finally (at top level), remove all layers from PRZ Group Layer that are not one of the 3 child group layers
+                LayersToDelete.Clear();
+                var lyrs = GL_PRZ.Layers;
+                foreach (var lyr in lyrs)
+                {
+                    if (lyr is GroupLayer)
+                    {
+                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_CF)
+                        {
+                            LayersToDelete.Add(lyr);
+                        }
+                    }
+                    else
+                    {
+                        LayersToDelete.Add(lyr);
+                    }
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    GL_PRZ.RemoveLayers(LayersToDelete);
+                });
+
+                // ADD THE PU FEATURE LAYER HERE WITH NICE PRETTY LEGEND ONCE I HAVE IT CREATED!!!
+                if (puFCExists)
+                {
+                    Uri uri = new Uri(pathPUFC);
+                    await QueuedTask.Run(() =>
+                    {
+                        LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, 3, PRZC.c_LAYER_PLANNING_UNITS);
+                    });
+                }
+
+                // ***************************************************************
+
+                // *** STATUS GROUP LAYER ****************************************
+
+                // Status Exclude Group Layer
+                GroupLayer GL_STATUS_EXCLUDE = null;
+
+                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_EXCLUDE, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Status Exclude GL not found in Status GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 0, PRZC.c_GROUPLAYER_STATUS_EXCLUDE);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_EXCLUDE + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_STATUS_EXCLUDE = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS.MoveLayer(GL_STATUS_EXCLUDE, 0);
+                    });
+                }
+
+                // Status Include Group Layer
+                GroupLayer GL_STATUS_INCLUDE = null;
+
+                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_INCLUDE, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Status Include GL not found in Status GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 1, PRZC.c_GROUPLAYER_STATUS_INCLUDE);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_INCLUDE + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_STATUS_INCLUDE = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS.MoveLayer(GL_STATUS_INCLUDE, 1);
+                    });
+                }
+
+                // Finally, remove all layers from Status Group Layer that are not one of the 2 child group layers
+                LayersToDelete.Clear();
+                lyrs = GL_STATUS.Layers;
+
+                foreach (var lyr in lyrs)
+                {
+                    if (lyr is GroupLayer)
+                    {
+                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS_EXCLUDE && lyr.Name != PRZC.c_GROUPLAYER_STATUS_INCLUDE)
+                        {
+                            LayersToDelete.Add(lyr);
+                        }
+                    }
+                    else
+                    {
+                        LayersToDelete.Add(lyr);
+                    }
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    GL_STATUS.RemoveLayers(LayersToDelete);
+                });
+
+                // ***************************************************************
+
+                // *** STATUS EXCLUDE GROUP LAYER ****************************************
+
+                // Remove all non-eligible layers from Status Exclude Group Layer
+                LayersToDelete.Clear();
+                lyrs = GL_STATUS_EXCLUDE.Layers;
+
+                foreach (var lyr in lyrs)
+                {
+                    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    {
+                        LayersToDelete.Add(lyr);                        
+                    }
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    GL_STATUS_EXCLUDE.RemoveLayers(LayersToDelete);
+                });
+
+                // ***************************************************************
+
+                // *** STATUS INCLUDE GROUP LAYER ****************************************
+
+                // Remove all non-eligible layers from Status Include Group Layer
+                LayersToDelete.Clear();
+                lyrs = GL_STATUS_INCLUDE.Layers;
+
+                foreach (var lyr in lyrs)
+                {
+                    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    {
+                        LayersToDelete.Add(lyr);
+                    }
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    GL_STATUS_INCLUDE.RemoveLayers(LayersToDelete);
+                });
+
+                // ***************************************************************
 
 
-
-                // 1. check that folder workspace is valid
-                //      if not, return
-                // 2. check that folder GDB exists
-                //      if not, return
-                // 3. Retrieve Grid FC
                 // 4. Change Map TOC mode to List by Order
-                // 5. If Grid FC doesn't exist, notify user
-                //      Else, set up Grid FL (name, legend, etc)
-                // 6. Remove any existing Grid FL from the active MapView
-                // 7. Create all empty group layers
-                // 8. If Grid FL was created, add it to the main group layer
-
-                // 9. If MapView TOC doesn't have any Group layers...
-                //      - add main group layer
-                //      - return
-                // 10. If MapView TOC doesn't include the main group layer (name match)...
-                //      - add main group layer
-                //      - return
-                // 11. If MapView TOC includes the main group layer (name match) MORE THAN ONCE...
-                //      - Notify user that only one main group layer should exist
-                //      - return
-                // 12. If MapView TOC includes the main group layer ONCE...
-                //      - Retain reference to the group layer
-
-                // NOTE: At this point, Main group layer exists but contents not validated
-
                 // 13. Count the instances of the COST, STATUS, and CF group layers, and Grid FL within the main group layer
                 //      - any group layers in main other than COST, STATUS, or CF are deleted!
-                //      - any FL in main other than Grid FL are deleted!
+                //      - any non-group layer layers in main other than Grid FL are deleted!
 
                 // 14. If COST group layer not found, add the premade one
                 // 14. If COST count>1, notify user and return
