@@ -12,23 +12,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using proDlg = ArcGIS.Desktop.Framework.Dialogs;
 
 namespace NCC.PRZTools
 {
     /// <summary>
-    /// Interaction logic for ProWindow1.xaml
+    /// Interaction logic for WorkspaceSettings.xaml
     /// </summary>
-    public partial class prowinProject : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class WorkspaceSettingsDialog : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        public prowinProject()
+        public WorkspaceSettingsDialog()
         {
             InitializeComponent();
-        }
-
-        private void btnTest_Click(object sender, RoutedEventArgs e)
-        {
-            proDlg.MessageBox.Show("message", "title", MessageBoxButton.OKCancel, MessageBoxImage.Information);
         }
     }
 }

@@ -346,7 +346,7 @@ namespace NCC.PRZTools
 
                 // ***************************************************************
 
-                // *** STATUS EXCLUDE GROUP LAYER ****************************************
+                // *** STATUS EXCLUDE GROUP LAYER ********************************
 
                 // Remove all non-eligible layers from Status Exclude Group Layer
                 LayersToDelete.Clear();
@@ -367,7 +367,7 @@ namespace NCC.PRZTools
 
                 // ***************************************************************
 
-                // *** STATUS INCLUDE GROUP LAYER ****************************************
+                // *** STATUS INCLUDE GROUP LAYER ********************************
 
                 // Remove all non-eligible layers from Status Include Group Layer
                 LayersToDelete.Clear();
@@ -388,47 +388,62 @@ namespace NCC.PRZTools
 
                 // ***************************************************************
 
+                // *** COST GROUP LAYER ******************************************
 
-                // 4. Change Map TOC mode to List by Order
-                // 13. Count the instances of the COST, STATUS, and CF group layers, and Grid FL within the main group layer
-                //      - any group layers in main other than COST, STATUS, or CF are deleted!
-                //      - any non-group layer layers in main other than Grid FL are deleted!
+                // Remove all non-eligible layers from Cost Group Layer
+                LayersToDelete.Clear();
+                lyrs = GL_COST.Layers;
 
-                // 14. If COST group layer not found, add the premade one
-                // 14. If COST count>1, notify user and return
-                // 14. If COST count=1, retain reference to COST group layer
+                foreach (var lyr in lyrs)
+                {
+                    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    {
+                        LayersToDelete.Add(lyr);
+                    }
+                }
 
-                // 15. If STATUS group layer not found, add the premade one
-                // 15. If STATUS count>1, notify user and return
-                // 15. If STATUS count=1, retain reference to STATUS group layer
+                await QueuedTask.Run(() =>
+                {
+                    GL_COST.RemoveLayers(LayersToDelete);
+                });
 
-                // 16. If CF group layer not found, add the premade one
-                // 16. If CF count>1, notify user and return
-                // 16. If CF count=1, retain reference to CF group layer
+                // ***************************************************************
 
-                // 17. If new Grid FL exists, add it to main group layer
+                // *** CF GROUP LAYER ******************************************
 
-                // 18. (re)order the top level group layers
+                // Remove all non-eligible layers from CF Group Layer
+                LayersToDelete.Clear();
+                lyrs = GL_CF.Layers;
 
-                // 19. Count instances of INCLUDE and EXCLUDE group layers
-                //      - any group layers in STATUS other than INCLUDE or EXCLUDE are deleted!
-                //      - any FL in STATUS are deleted!
+                foreach (var lyr in lyrs)
+                {
+                    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    {
+                        LayersToDelete.Add(lyr);
+                    }
+                }
 
-                // 20. If INCLUDE group layer not found, add the premade one
-                // 20. If INCLUDE count>1, notify user and return
-                // 20. If INCLUDE count=1, retain reference to INCLUDE group layer
+                await QueuedTask.Run(() =>
+                {
+                    GL_CF.RemoveLayers(LayersToDelete);
+                });
 
-                // 21. If EXCLUDE group layer not found, add the premade one
-                // 21. If EXCLUDE count>1, notify user and return
-                // 21. If EXCLUDE count=1, retain reference to EXCLUDE group layer
+                // ***************************************************************
 
-                // 22. (re)order the 2 Group Layers in STATUS
 
-                // 23. If COST group layer contains any group layers, delete them!
-                // 24. If INCLUDE group layer contains any group layers, delete them!
-                // 25. If EXCLUDE group layer contains any group layers, delete them!
-                // 26. If CF group layer contains any group layers, delete them!
+                // *** Set Contents to Drawing Order Mode
+                IPlugInWrapper wrapper = FrameworkApplication.GetPlugInWrapper("esri_mapping_showDrawingOrderTOC");
+                var command = wrapper as ICommand; // tool and command(Button) supports this
 
+                if ((command != null) && command.CanExecute(null))
+                {
+                    command.Execute(null);
+                }
+
+                // *** I still need to somehow enable/active/refresh the buttons on the Contents Pane
+                //     since the above command execution doesn't refresh the pane UI.
+
+                //var pane = FrameworkApplication.DockPaneManager.Find("esri_core_contentsDockPane");
 
                 return true;
             }

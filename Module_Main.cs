@@ -20,18 +20,18 @@ using System.Windows.Input;
 
 namespace NCC.PRZTools
 {
-    internal class modMain : Module
+    internal class Module_Main : Module
     {
-        private static modMain _this = null;
+        private static Module_Main _this = null;
 
         /// <summary>
         /// Retrieve the singleton instance to this module here
         /// </summary>
-        public static modMain Current
+        public static Module_Main Current
         {
             get
             {
-                return _this ?? (_this = (modMain)FrameworkApplication.FindModule("PRZ_modMain"));
+                return _this ?? (_this = (Module_Main)FrameworkApplication.FindModule("prz_module_main"));
             }
         }
 

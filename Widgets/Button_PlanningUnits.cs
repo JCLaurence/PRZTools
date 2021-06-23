@@ -17,31 +17,36 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using PRZM = NCC.PRZTools.PRZMethods;
-using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
-    internal class LoadPRZLayers : Button
+    internal class Button_PlanningUnits : Button
     {
-        protected override async void OnClick()
+
+        protected override void OnClick()
         {
             try
             {
-                var loaded = await PRZM.ValidatePRZGroupLayers();
-
-                if (!loaded)
+                PlanningUnitsDialog puDlg = new PlanningUnitsDialog();
+                puDlg.Owner = FrameworkApplication.Current.MainWindow;
+                puDlg.Closed += (o, e) =>
                 {
-                    MessageBox.Show("Unable to Validate PRZ Layers");
-                    return;
-                }
+                    // Event Handler for Dialog close in case I need to do things...
+                    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+                };
 
-                MessageBox.Show("Success!");
+                var result = puDlg.ShowDialog();
+
+                //MessageBox.Show(result.ToString());
+
+                // Take whatever action required here once the dialog is close (true or false)
+                // do stuff here!
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
+
     }
 }
