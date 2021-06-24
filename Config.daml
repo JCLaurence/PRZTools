@@ -25,13 +25,13 @@
         </group>
       </groups>
       <controls>
-        <button id="prz_button_workspacesettings" caption="Workspace Settings" className="Button_WorkspaceSettings" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
+        <button id="prz_button_workspacesettings" caption="Workspace Settings" className="Button_WorkspaceSettings" keytip="z" loadOnClick="true" smallImage="Images\WorkspaceSettings16.png" largeImage="Images\WorkspaceSettings32.png">
           <tooltip heading="Workspace Settings">Specify the PRZ Tools Workspace Folder, and other neat stuff.<disabledText /></tooltip>
         </button>
-        <button id="prz_button_loadprzlayers" caption="PRZ Layers" className="Button_LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonBlue16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonBlue32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_loadprzlayers" caption="PRZ Layers" className="Button_LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="Images\LoadPRZLayers16.png" largeImage="Images\LoadPRZLayers32.png" condition="esri_mapping_mapPane">
           <tooltip heading="PRZ Layers">Load the PRZ Group Layers<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
-        <button id="prz_button_planningunits" caption="Planning Units" className="Button_PlanningUnits" keytip="z" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_planningunits" caption="Planning Units" className="Button_PlanningUnits" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Generator">Tools to generate a Planning Unit Feature Class, based on a grid definition or an existing Polygon Feature Class.<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
       </controls>

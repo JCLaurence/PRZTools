@@ -16,12 +16,13 @@ using System.Windows.Input;
 using PRZH = NCC.PRZTools.PRZHelper;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZM = NCC.PRZTools.PRZMethods;
+using MessageBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 
 namespace NCC.PRZTools
 {
-    public class PlanningUnitsDialogVM : PropertyChangedBase
+    public class WorkspaceSettingsVM : PropertyChangedBase
     {
-        public PlanningUnitsDialogVM()
+        public WorkspaceSettingsVM()
         {
         }
 
@@ -64,5 +65,11 @@ namespace NCC.PRZTools
         }, () => true);
 
         #endregion
+
+        #region Event Handlers
+
+
+        #endregion
+
     }
 }

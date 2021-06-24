@@ -44,6 +44,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -120,10 +121,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Daml.cs" />
-    <Compile Include="ViewModels\PlanningUnitsDialogVM.cs" />
+    <Compile Include="ViewModels\PlanningUnitsVM.cs" />
     <Compile Include="Widgets\Button_WorkspaceSettings.cs" />
-    <Compile Include="Views\PlanningUnitsDialog.xaml.cs">
-      <DependentUpon>PlanningUnitsDialog.xaml</DependentUpon>
+    <Compile Include="Views\PlanningUnits.xaml.cs">
+      <DependentUpon>PlanningUnits.xaml</DependentUpon>
     </Compile>
     <Compile Include="Widgets\Button_PlanningUnits.cs" />
     <Compile Include="Views\dockPlanningUnit.xaml.cs">
@@ -150,9 +151,10 @@
     </Compile>
     <Compile Include="PRZHelper.cs" />
     <Compile Include="PRZMethods.cs" />
-    <Compile Include="Views\WorkspaceSettingsDialog.xaml.cs">
-      <DependentUpon>WorkspaceSettingsDialog.xaml</DependentUpon>
+    <Compile Include="Views\WorkspaceSettings.xaml.cs">
+      <DependentUpon>WorkspaceSettings.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ViewModels\WorkspaceSettingsVM.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -176,7 +178,7 @@
     <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Views\PlanningUnitsDialog.xaml">
+    <Page Include="Views\PlanningUnits.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -188,7 +190,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\WorkspaceSettingsDialog.xaml">
+    <Page Include="Views\WorkspaceSettings.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -201,7 +203,56 @@
     <Resource Include="Images\PRZTools16.ico" />
     <Resource Include="Images\PRZTools32.ico" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <AddInContent Include="Images\PlanningUnits32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PlanningUnits32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PlanningUnits16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\PlanningUnits16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\PlanningUnits16.png" />
+    <Resource Include="ImagesWPF\PlanningUnits32.png" />
+    <Resource Include="ImagesWPF\PRZTools16.ico" />
+    <Resource Include="ImagesWPF\PRZTools16.png" />
+    <Resource Include="ImagesWPF\PRZTools32.ico" />
+    <Resource Include="ImagesWPF\PRZTools32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\WorkspaceSettings16.png" />
+    <Resource Include="ImagesWPF\WorkspaceSettings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\WorkspaceSettings16.png" />
+    <AddInContent Include="Images\WorkspaceSettings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\WorkspaceSettings16.png" />
+    <AddInContent Include="DarkImages\WorkspaceSettings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\LoadPRZLayers32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\LoadPRZLayers32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\LoadPRZLayers32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\LoadPRZLayers16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\LoadPRZLayers16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\LoadPRZLayers16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

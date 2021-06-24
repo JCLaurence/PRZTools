@@ -1,22 +1,8 @@
-﻿using ArcGIS.Core.CIM;
-using ArcGIS.Core.Data;
-using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Catalog;
-using ArcGIS.Desktop.Core;
-using ArcGIS.Desktop.Editing;
-using ArcGIS.Desktop.Extensions;
-using ArcGIS.Desktop.Framework;
+﻿using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Dialogs;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Layouts;
-using ArcGIS.Desktop.Mapping;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NCC.PRZTools
 {
@@ -27,17 +13,15 @@ namespace NCC.PRZTools
         {
             try
             {
-                PlanningUnitsDialog puDlg = new PlanningUnitsDialog();
-                puDlg.Owner = FrameworkApplication.Current.MainWindow;
-                puDlg.Closed += (o, e) =>
+                PlanningUnits dlg = new PlanningUnits();
+                dlg.Owner = FrameworkApplication.Current.MainWindow;
+                dlg.Closed += (o, e) =>
                 {
                     // Event Handler for Dialog close in case I need to do things...
                     // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
                 };
 
-                var result = puDlg.ShowDialog();
-
-                //MessageBox.Show(result.ToString());
+                var result = dlg.ShowDialog();
 
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!

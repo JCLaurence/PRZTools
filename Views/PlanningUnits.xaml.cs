@@ -16,13 +16,17 @@ using System.Windows.Shapes;
 namespace NCC.PRZTools
 {
     /// <summary>
-    /// Interaction logic for WorkspaceSettings.xaml
+    /// Interaction logic for PlanningUnitsDialog.xaml
     /// </summary>
-    public partial class WorkspaceSettingsDialog : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class PlanningUnits : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        public WorkspaceSettingsDialog()
+        internal PlanningUnitsVM puDlgVM = new PlanningUnitsVM();
+
+        public PlanningUnits()
         {
             InitializeComponent();
+            this.DataContext = puDlgVM;
         }
+
     }
 }
