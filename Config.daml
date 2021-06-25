@@ -35,9 +35,9 @@
         <button id="prz_button_workspacesettings" caption="Workspace Settings" className="Button_WorkspaceSettings" keytip="z" loadOnClick="true" smallImage="Images\WorkspaceSettings16.png" largeImage="Images\WorkspaceSettings32.png">
           <tooltip heading="Workspace Settings">Specify the PRZ Tools Workspace Folder, and other neat stuff.<disabledText /></tooltip>
         </button>
-        <button id="prz_button_loadprzlayers" caption="PRZ Layers" className="Button_LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="Images\LoadPRZLayers16.png" largeImage="Images\LoadPRZLayers32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="PRZ Layers">
-            Load the PRZ Group Layers<disabledText>Active Pane must be a Map</disabledText>
+        <button id="prz_button_loadprzlayers" caption="Load Layers" className="Button_LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="Images\LoadPRZLayers16.png" largeImage="Images\LoadPRZLayers32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Load Layers">
+            Loads or refreshes the Prioritization Group Layer and all child layers.<disabledText>Active Pane must be a Map</disabledText>
           </tooltip>
         </button>
         <button id="prz_button_planningunits" caption="Planning Units" className="Button_PlanningUnits" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
