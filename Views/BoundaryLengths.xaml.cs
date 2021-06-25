@@ -20,12 +20,12 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class BoundaryLengths : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal BoundaryLengthsVM blDlg = new BoundaryLengthsVM();
+        internal BoundaryLengthsVM vm = new BoundaryLengthsVM();
 
         public BoundaryLengths()
         {
             InitializeComponent();
-            this.DataContext = blDlg;
+            this.DataContext = vm;
         }
     }
 }

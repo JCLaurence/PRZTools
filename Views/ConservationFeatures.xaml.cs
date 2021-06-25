@@ -20,9 +20,11 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class ConservationFeatures : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
+        internal ConservationFeaturesVM vm = new ConservationFeaturesVM();
         public ConservationFeatures()
         {
             InitializeComponent();
+            this.DataContext = vm;
         }
     }
 }

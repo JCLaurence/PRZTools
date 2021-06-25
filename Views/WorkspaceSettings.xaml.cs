@@ -20,12 +20,12 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class WorkspaceSettings : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal WorkspaceSettingsVM wsDlgVM = new WorkspaceSettingsVM();
+        internal WorkspaceSettingsVM vm = new WorkspaceSettingsVM();
 
         public WorkspaceSettings()
         {
             InitializeComponent();
-            this.DataContext = wsDlgVM;
+            this.DataContext = vm;
         }
     }
 }

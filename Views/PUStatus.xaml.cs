@@ -20,12 +20,12 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class PUStatus : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal PUStatusVM puStatusDlg = new PUStatusVM();
+        internal PUStatusVM vm = new PUStatusVM();
 
         public PUStatus()
         {
             InitializeComponent();
-            this.DataContext = puStatusDlg;
+            this.DataContext = vm;
         }
     }
 }

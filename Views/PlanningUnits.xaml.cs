@@ -20,12 +20,12 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class PlanningUnits : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal PlanningUnitsVM puDlgVM = new PlanningUnitsVM();
+        internal PlanningUnitsVM vm = new PlanningUnitsVM();
 
         public PlanningUnits()
         {
             InitializeComponent();
-            this.DataContext = puDlgVM;
+            this.DataContext = vm;
         }
 
     }

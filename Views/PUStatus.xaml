@@ -10,7 +10,7 @@
     mc:Ignorable="d"
     Title="Planning Unit Status"
     Height="300" Width="300"
-    Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUStatus32.png" ShowIconOnTitleBar="True"
+    Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUStatus.ico" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="False"
     ShowMaxRestoreButton="False"

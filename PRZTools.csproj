@@ -122,6 +122,7 @@
   <ItemGroup>
     <Compile Include="Daml.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
+    <Compile Include="ViewModels\ConservationFeaturesVM.cs" />
     <Compile Include="ViewModels\PlanningUnitsVM.cs" />
     <Compile Include="ViewModels\PUCostVM.cs" />
     <Compile Include="ViewModels\PUStatusVM.cs" />
@@ -146,10 +147,6 @@
       <DependentUpon>PlanningUnits.xaml</DependentUpon>
     </Compile>
     <Compile Include="Widgets\Button_PlanningUnits.cs" />
-    <Compile Include="Views\dockPlanningUnit.xaml.cs">
-      <DependentUpon>dockPlanningUnit.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ViewModels\dockPlanningUnitViewModel.cs" />
     <Compile Include="Widgets\Button_LoadPRZLayers.cs" />
     <Compile Include="PRZConstants.cs" />
     <Compile Include="Views\dockWorkspace.xaml.cs">
@@ -206,10 +203,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\PlanningUnits.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\dockPlanningUnit.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -287,6 +280,59 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="ImagesWPF\LoadPRZLayers16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\BoundaryLengths32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\BoundaryLengths32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\BoundaryLengths32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\BoundaryLengths16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\BoundaryLengths16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\BoundaryLengths16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PUCost16.png" />
+    <AddInContent Include="DarkImages\PUCost32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\PUCost16.png" />
+    <AddInContent Include="Images\PUCost32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\PUCost16.png" />
+    <Resource Include="ImagesWPF\PUCost32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PUStatus16.png" />
+    <AddInContent Include="DarkImages\PUStatus32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\PUStatus16.png" />
+    <AddInContent Include="Images\PUStatus32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\PUStatus.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\ConservationFeatures16.png" />
+    <AddInContent Include="DarkImages\ConservationFeatures32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\ConservationFeatures16.png" />
+    <AddInContent Include="Images\ConservationFeatures32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\ConservationFeatures16.png" />
+    <Resource Include="ImagesWPF\ConservationFeatures32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

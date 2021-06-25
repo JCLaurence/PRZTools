@@ -20,12 +20,12 @@ namespace NCC.PRZTools
     /// </summary>
     public partial class PUCost : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal PUCostVM puCostDlg = new PUCostVM();
+        internal PUCostVM vm = new PUCostVM();
 
         public PUCost()
         {
             InitializeComponent();
-            this.DataContext = puCostDlg;
+            this.DataContext = vm;
         }
     }
 }

@@ -13,7 +13,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                PUCost dlg = new PUCost();
+                PUStatus dlg = new PUStatus();
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
                 dlg.Closed += (o, e) =>
                 {
