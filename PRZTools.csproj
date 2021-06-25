@@ -121,7 +121,26 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Daml.cs" />
+    <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\PlanningUnitsVM.cs" />
+    <Compile Include="ViewModels\PUCostVM.cs" />
+    <Compile Include="ViewModels\PUStatusVM.cs" />
+    <Compile Include="Views\BoundaryLengths.xaml.cs">
+      <DependentUpon>BoundaryLengths.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ConservationFeatures.xaml.cs">
+      <DependentUpon>ConservationFeatures.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\PUCost.xaml.cs">
+      <DependentUpon>PUCost.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\PUStatus.xaml.cs">
+      <DependentUpon>PUStatus.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Widgets\Button_ConservationFeatures.cs" />
+    <Compile Include="Widgets\Button_BoundaryLengths.cs" />
+    <Compile Include="Widgets\Button_PUStatus.cs" />
+    <Compile Include="Widgets\Button_PUCost.cs" />
     <Compile Include="Widgets\Button_WorkspaceSettings.cs" />
     <Compile Include="Views\PlanningUnits.xaml.cs">
       <DependentUpon>PlanningUnits.xaml</DependentUpon>
@@ -178,6 +197,14 @@
     <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Views\BoundaryLengths.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ConservationFeatures.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\PlanningUnits.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -187,6 +214,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\dockWorkspace.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\PUCost.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\PUStatus.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

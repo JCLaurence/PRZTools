@@ -6,14 +6,14 @@ using System.Reflection;
 
 namespace NCC.PRZTools
 {
-    internal class Button_WorkspaceSettings : Button
+    internal class Button_PUStatus : Button
     {
 
         protected override void OnClick()
         {
             try
             {
-                WorkspaceSettings dlg = new WorkspaceSettings();
+                PUCost dlg = new PUCost();
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
                 dlg.Closed += (o, e) =>
                 {
@@ -25,8 +25,6 @@ namespace NCC.PRZTools
 
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!
-
-                // MessageBox.Show(result.ToString());
             }
             catch (Exception ex)
             {
