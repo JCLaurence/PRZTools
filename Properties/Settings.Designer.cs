@@ -26,12 +26,12 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("c:\\temp\\jcfolder")]
-        public string PROJECT_FOLDER_PATH {
+        public string WORKSPACE_PATH {
             get {
-                return ((string)(this["PROJECT_FOLDER_PATH"]));
+                return ((string)(this["WORKSPACE_PATH"]));
             }
             set {
-                this["PROJECT_FOLDER_PATH"] = value;
+                this["WORKSPACE_PATH"] = value;
             }
         }
         

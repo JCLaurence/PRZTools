@@ -50,7 +50,7 @@ namespace NCC.PRZTools
             try
             {
                 // Verify that Project Folder exists
-                string pathFolder = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                string pathFolder = Properties.Settings.Default.WORKSPACE_PATH;
                 if (!Directory.Exists(pathFolder))
                 {
                     MessageBox.Show("Project Folder does not exist at this path:" +
@@ -475,7 +475,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                string pathFolder = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                string pathFolder = Properties.Settings.Default.WORKSPACE_PATH;
                 string pathGDB = Path.Combine(pathFolder, PRZC.c_PRZ_PROJECT_FGDB);
 
                 Uri uri = new Uri(pathGDB);

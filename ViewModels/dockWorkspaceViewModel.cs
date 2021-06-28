@@ -111,14 +111,14 @@ namespace NCC.PRZTools
             }
         }
 
-        private string _folderPath = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+        private string _folderPath = Properties.Settings.Default.WORKSPACE_PATH;
         public string FolderPath
         {
             get { return _folderPath; }
             set
             {
                 SetProperty(ref _folderPath, value, () => FolderPath);
-                Properties.Settings.Default.PROJECT_FOLDER_PATH = _folderPath;
+                Properties.Settings.Default.WORKSPACE_PATH = _folderPath;
                 Properties.Settings.Default.Save();
             }
         }
@@ -461,7 +461,7 @@ namespace NCC.PRZTools
                         break;
                 }
 
-                string pf = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                string pf = Properties.Settings.Default.WORKSPACE_PATH;
                 bool ok = Directory.Exists(pf);
 
                 this.ResetEnabled = ok;

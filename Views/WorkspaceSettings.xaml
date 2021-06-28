@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Workspace Settings"
-    Height="385" Width="406" MinHeight="350" MinWidth="350"
+    Height="500" Width="500" MinHeight="400" MinWidth="400"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner" 
     ShowMinButton="False" 
@@ -24,8 +24,56 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </controls:ProWindow.Resources>
-    <Border Margin="10" Padding="10" Background="LightBlue" BorderBrush="Black" BorderThickness="1" MinWidth="300" MinHeight="300">
-        <Grid  Background="DarkOrange">
+    <Border Margin="10" Padding="10" Background="LightGray" BorderBrush="Black" BorderThickness="3">
+        <Grid Background="White">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+
+            <DockPanel Grid.Row="0" Margin="10, 10, 10, 5" Background="LightGray" Height="Auto" >
+                <TextBlock DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockRegular}">Specify the Current Project Workspace</TextBlock>
+                <DockPanel Grid.Row="0" Background="PaleGoldenrod" DockPanel.Dock="Bottom" LastChildFill="True">
+                    <Button Margin="10" DockPanel.Dock="Left" Command="{Binding CmdSelectWorkspaceFolder}">
+                        <Image Margin="5" Source="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" Stretch="None" />
+                        <Button.ToolTip>
+                            <TextBlock>
+                                bla bla bla
+                                <LineBreak />
+                                ble ble ble ble
+                            </TextBlock>
+                        </Button.ToolTip>
+                    </Button>
+                    <TextBlock VerticalAlignment="Center" Text="{Binding CurrentWorkspacePath}" Style="{DynamicResource Esri_TextBlockRegular}"></TextBlock>
+                </DockPanel>
+            </DockPanel>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Background="LightGray" Margin="10, 5" Height="Auto">
+                <Button Command="{Binding CmdInitializeCurrentWorkspace}" Style="{DynamicResource Esri_Button}">Initialize</Button>
+                <Button Command="{Binding CmdResetCurrentWorkspace}" Style="{DynamicResource Esri_Button}">Reset</Button>
+                <Button Command="{Binding CmdOpenCurrentWorkspace}" Style="{DynamicResource Esri_Button}">Explorer</Button>
+            </StackPanel>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Background="LightGray" Margin="10, 5" Height="Auto">
+                <TextBlock VerticalAlignment="Center" Style="{DynamicResource Esri_TextBlockRegular}">Workspace Content Viewer</TextBlock>
+                <RadioButton GroupName="WSContents" Command="{Binding CmdDisplayContent}" CommandParameter="DIR" IsChecked="True" Margin="10, 5">Folder</RadioButton>
+                <RadioButton GroupName="WSContents" Command="{Binding CmdDisplayContent}" CommandParameter="GDB" Margin="10, 5">Geodatabase</RadioButton>
+                <RadioButton GroupName="WSContents" Command="{Binding CmdDisplayContent}" CommandParameter="LOG" Margin="10, 5">Log</RadioButton>
+            </StackPanel>
+            
+            <ScrollViewer Grid.Row="3" Margin="10, 5, 10, 10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DockPanel LastChildFill="True">
+                    <TextBlock Text="{Binding WorkspaceContents}" Background="PaleGoldenrod" FontFamily="Courier New">
+                    </TextBlock>
+                </DockPanel>
+            </ScrollViewer>
+            <!--<StackPanel Grid.Row="3" Orientation="Horizontal" Background="YellowGreen" Margin="10, 5, 10, 10">
+                <ScrollViewer HorizontalContentAlignment="Stretch">
+                    <TextBlock Margin="10" Background="LightBlue" HorizontalAlignment="Stretch">
+                        This is a scrolling test.
+                    </TextBlock>
+                </ScrollViewer>
+            </StackPanel>-->
 
         </Grid>
     </Border>
@@ -37,8 +85,8 @@
         </Grid.RowDefinitions>
         <TextBlock Padding="5" Height="200">The rain in Spain falls mainly on the play</TextBlock>
         <StackPanel Grid.Row="1" Orientation="Horizontal" MinWidth="200" Height="Auto">
-            <Button Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding cmdOK}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">OK</Button>
-            <Button IsDefault="True" Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding cmdCancel}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">CANCEL</Button>
+            <Button Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding CmdOK}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">OK</Button>
+            <Button IsDefault="True" Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding CmdCancel}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">CANCEL</Button>
         </StackPanel>
         <Border Grid.Row="2" BorderBrush="BlueViolet" BorderThickness="2">
 

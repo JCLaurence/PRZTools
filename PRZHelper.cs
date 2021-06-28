@@ -97,7 +97,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                string project_workspace = Properties.Settings.Default.PROJECT_FOLDER_PATH;
+                string project_workspace = Properties.Settings.Default.WORKSPACE_PATH;
 
                 if (!Directory.Exists(project_workspace))
                 {
