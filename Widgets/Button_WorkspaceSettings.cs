@@ -15,10 +15,18 @@ namespace NCC.PRZTools
             {
                 WorkspaceSettings dlg = new WorkspaceSettings();
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
-                dlg.Closed += (o, e) =>
+                dlg.Closed += (sender, e) =>
                 {
                     // Event Handler for Dialog close in case I need to do things...
                     // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+                };
+                dlg.Loaded += (sender, e) =>
+                {
+                    WorkspaceSettingsVM v = (WorkspaceSettingsVM)dlg.DataContext;
+                    if (v != null)
+                    {
+                        v.OnProWinLoaded();
+                    }
                 };
 
                 var result = dlg.ShowDialog();

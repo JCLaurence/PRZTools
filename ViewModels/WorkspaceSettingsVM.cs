@@ -57,6 +57,36 @@ namespace NCC.PRZTools
             }
         }
 
+        private bool _folderChecked;
+        private bool _geodatabaseChecked;
+        private bool _logChecked;
+
+        public bool FolderChecked
+        {
+            get { return _folderChecked; }
+            set
+            {
+                SetProperty(ref _folderChecked, value, () => FolderChecked);
+            }
+        }
+        public bool GeodatabaseChecked
+        {
+            get { return _geodatabaseChecked; }
+            set
+            {
+                SetProperty(ref _geodatabaseChecked, value, () => GeodatabaseChecked);
+            }
+        }
+        public bool LogChecked
+        {
+            get { return _logChecked; }
+            set
+            {
+                SetProperty(ref _logChecked, value, () => LogChecked);
+            }
+        }
+
+
         //private bool _folderContentIsSelected;
         //public bool FolderContentIsSelected
         //{
@@ -117,10 +147,6 @@ namespace NCC.PRZTools
             (paramProWin as ProWindow).Close();
         }, () => true);
 
-
-        /// <summary>
-        /// Button to Open the Folder Dialog
-        /// </summary>
         public ICommand CmdSelectWorkspaceFolder { get { return _cmdSelectWorkspaceFolder ?? (_cmdSelectWorkspaceFolder = new RelayCommand(() => SelectWorkspaceFolder(), () => true)); } }
 
         public ICommand CmdInitializeCurrentWorkspace { get { return _cmdInitializeCurrentWorkspace ?? (_cmdInitializeCurrentWorkspace = new RelayCommand(async () => await InitializeCurrentWorkspace(), () => true)); } }
@@ -129,12 +155,7 @@ namespace NCC.PRZTools
 
         public ICommand CmdOpenCurrentWorkspace { get { return _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspace(), () => true)); } }
 
-        public ICommand CmdDisplayContent { get { return _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand((paramType) =>
-        {
-            PopulateWorkspaceContents(paramType.ToString());
-
-        }, () => true)); } }
-
+        public ICommand CmdDisplayContent { get { return _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand(async (paramType) => await PopulateWorkspaceContents(paramType.ToString()), () => true)); } }
 
         #endregion
 
@@ -392,7 +413,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async void PopulateWorkspaceContents(string WSType)
+        private async Task PopulateWorkspaceContents(string WSType)
         {
             try
             {
@@ -400,7 +421,7 @@ namespace NCC.PRZTools
 
                 StringBuilder contents = new StringBuilder();
 
-                if (WSType == "DIR")
+                if (WSType == WorkspaceDisplayMode.DIR.ToString())
                 {
                     // Validate the Project Folder
 
@@ -506,7 +527,7 @@ namespace NCC.PRZTools
                         }
                     }
                 }
-                else if (WSType == "GDB")
+                else if (WSType == WorkspaceDisplayMode.GDB.ToString())
                 {
                     string gdbpath = Path.Combine(fp, "PRZ.gdb");
 
@@ -576,7 +597,7 @@ namespace NCC.PRZTools
                     contents.AppendLine();
 
                 }
-                else if (WSType == "LOG")
+                else if (WSType == WorkspaceDisplayMode.LOG.ToString())
                 {
                     contents.AppendLine("Loggy McLogface");
                 }
@@ -586,7 +607,7 @@ namespace NCC.PRZTools
                 }
 
                 this.WorkspaceContents = contents.ToString();
-                Properties.Settings.Default.PROJECT_CONTENT_TYPE = WSType;
+                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = WSType;
                 Properties.Settings.Default.Save();
 
             }
@@ -597,9 +618,43 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// This method runs when the ProWindow Loaded event occurs.
+        /// </summary>
+        internal async void OnProWinLoaded()
+        {
+            try
+            {
+                string wdm = Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
 
+                // enable the correct radio button
+                if (wdm == WorkspaceDisplayMode.DIR.ToString())
+                {
+                    this.FolderChecked = true;
+                }
+                else if (wdm == WorkspaceDisplayMode.GDB.ToString())
+                {
+                    this.GeodatabaseChecked = true;
+                }
+                else if (wdm == WorkspaceDisplayMode.LOG.ToString())
+                {
+                    this.LogChecked = true;
+                }
+                else
+                {
+
+                }
+
+                await PopulateWorkspaceContents(wdm);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
 
         #endregion
+
 
     }
 }

@@ -38,12 +38,12 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("DIR")]
-        public string PROJECT_CONTENT_TYPE {
+        public string WORKSPACE_DISPLAY_MODE {
             get {
-                return ((string)(this["PROJECT_CONTENT_TYPE"]));
+                return ((string)(this["WORKSPACE_DISPLAY_MODE"]));
             }
             set {
-                this["PROJECT_CONTENT_TYPE"] = value;
+                this["WORKSPACE_DISPLAY_MODE"] = value;
             }
         }
     }

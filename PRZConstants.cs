@@ -1,6 +1,13 @@
 ﻿namespace NCC.PRZTools
 {
 
+    internal enum WorkspaceDisplayMode
+    {
+        DIR,
+        GDB,
+        LOG
+    }
+
     internal static class PRZConstants
     {
         // LAYER NAMES

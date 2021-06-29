@@ -5,7 +5,7 @@
     <Setting Name="WORKSPACE_PATH" Type="System.String" Scope="User">
       <Value Profile="(Default)">c:\temp\jcfolder</Value>
     </Setting>
-    <Setting Name="PROJECT_CONTENT_TYPE" Type="System.String" Scope="User">
+    <Setting Name="WORKSPACE_DISPLAY_MODE" Type="System.String" Scope="User">
       <Value Profile="(Default)">DIR</Value>
     </Setting>
   </Settings>

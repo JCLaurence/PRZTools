@@ -29,7 +29,7 @@ namespace NCC.PRZTools
     internal class dockWorkspaceViewModel : DockPane
     {
         private const string _dockPaneID = "NCC_PRZTools_dockWorkspace";
-        private string _projectContentType = Properties.Settings.Default.PROJECT_CONTENT_TYPE;
+        private string _projectContentType = Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
 
         protected dockWorkspaceViewModel()
         {
@@ -345,7 +345,7 @@ namespace NCC.PRZTools
                 }
 
                 this.ContentListing = message.ToString();
-                Properties.Settings.Default.PROJECT_CONTENT_TYPE = pct;
+                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = pct;
                 Properties.Settings.Default.Save();
 
             }
@@ -447,7 +447,7 @@ namespace NCC.PRZTools
             {
                 // Put one-time initialization code here that can be done asynchronously
 
-                string pct = Properties.Settings.Default.PROJECT_CONTENT_TYPE;
+                string pct = Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
                 switch (pct)
                 {
                     case "DIR":
