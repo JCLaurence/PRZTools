@@ -149,10 +149,6 @@
     <Compile Include="Widgets\Button_PlanningUnits.cs" />
     <Compile Include="Widgets\Button_LoadPRZLayers.cs" />
     <Compile Include="PRZConstants.cs" />
-    <Compile Include="Views\dockWorkspace.xaml.cs">
-      <DependentUpon>dockWorkspace.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ViewModels\dockWorkspaceViewModel.cs" />
     <Compile Include="Module_Main.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -203,10 +199,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\PlanningUnits.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\dockWorkspace.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -333,6 +325,18 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\ConservationFeatures16.png" />
     <Resource Include="ImagesWPF\ConservationFeatures32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\CoordinateSystem16.png" />
+    <AddInContent Include="DarkImages\CoordinateSystem32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\CoordinateSystem16.png" />
+    <AddInContent Include="Images\CoordinateSystem32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\CoordinateSystem16.png" />
+    <Resource Include="ImagesWPF\CoordinateSystem32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

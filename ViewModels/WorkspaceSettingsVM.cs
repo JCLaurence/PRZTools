@@ -14,20 +14,16 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
-using MessageBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
+using MsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
+using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
     public class WorkspaceSettingsVM : PropertyChangedBase
     {
-        // 
-        private ICommand _cmdSelectWorkspaceFolder;
-        private ICommand _cmdInitializeCurrentWorkspace;
-        private ICommand _cmdResetCurrentWorkspace;
-        private ICommand _cmdOpenCurrentWorkspace;
-        private ICommand _cmdDisplayContent;
 
         public WorkspaceSettingsVM()
         {
@@ -58,9 +54,6 @@ namespace NCC.PRZTools
         }
 
         private bool _folderChecked;
-        private bool _geodatabaseChecked;
-        private bool _logChecked;
-
         public bool FolderChecked
         {
             get { return _folderChecked; }
@@ -69,6 +62,8 @@ namespace NCC.PRZTools
                 SetProperty(ref _folderChecked, value, () => FolderChecked);
             }
         }
+
+        private bool _geodatabaseChecked;
         public bool GeodatabaseChecked
         {
             get { return _geodatabaseChecked; }
@@ -77,6 +72,8 @@ namespace NCC.PRZTools
                 SetProperty(ref _geodatabaseChecked, value, () => GeodatabaseChecked);
             }
         }
+
+        private bool _logChecked;
         public bool LogChecked
         {
             get { return _logChecked; }
@@ -85,49 +82,6 @@ namespace NCC.PRZTools
                 SetProperty(ref _logChecked, value, () => LogChecked);
             }
         }
-
-
-        //private bool _folderContentIsSelected;
-        //public bool FolderContentIsSelected
-        //{
-        //    get { return _folderContentIsSelected; }
-        //    set
-        //    {
-        //        bool changed = SetProperty(ref _folderContentIsSelected, value, () => FolderContentIsSelected);
-        //        //if (changed && value)
-        //        //{
-        //        //    PopulateWorkspaceContents();
-        //        //}
-        //    }
-        //}
-
-        //private bool _geodatabaseContentIsSelected;
-        //public bool GeodatabaseContentIsSelected
-        //{
-        //    get { return _geodatabaseContentIsSelected; }
-        //    set
-        //    {
-        //        bool changed = SetProperty(ref _geodatabaseContentIsSelected, value, () => GeodatabaseContentIsSelected);
-        //        if (changed && value)
-        //        {
-        //            PopulateWorkspaceContents();
-        //        }
-        //    }
-        //}
-
-        //private bool _logContentIsSelected;
-        //public bool LogContentIsSelected
-        //{
-        //    get { return _logContentIsSelected; }
-        //    set
-        //    {
-        //        bool changed = SetProperty(ref _logContentIsSelected, value, () => LogContentIsSelected);
-        //        if (changed && value)
-        //        {
-        //            PopulateWorkspaceContents();
-        //        }
-        //    }
-        //}
 
         #endregion
 
@@ -147,20 +101,25 @@ namespace NCC.PRZTools
             (paramProWin as ProWindow).Close();
         }, () => true);
 
+
+        private ICommand _cmdSelectWorkspaceFolder;
         public ICommand CmdSelectWorkspaceFolder { get { return _cmdSelectWorkspaceFolder ?? (_cmdSelectWorkspaceFolder = new RelayCommand(() => SelectWorkspaceFolder(), () => true)); } }
 
+
+        private ICommand _cmdInitializeCurrentWorkspace;
         public ICommand CmdInitializeCurrentWorkspace { get { return _cmdInitializeCurrentWorkspace ?? (_cmdInitializeCurrentWorkspace = new RelayCommand(async () => await InitializeCurrentWorkspace(), () => true)); } }
 
+
+        private ICommand _cmdResetCurrentWorkspace;
         public ICommand CmdResetCurrentWorkspace { get { return _cmdResetCurrentWorkspace ?? (_cmdResetCurrentWorkspace = new RelayCommand(async () => await ResetCurrentWorkspace(), () => true)); } }
 
+
+        private ICommand _cmdOpenCurrentWorkspace;
         public ICommand CmdOpenCurrentWorkspace { get { return _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspace(), () => true)); } }
 
+
+        private ICommand _cmdDisplayContent;
         public ICommand CmdDisplayContent { get { return _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand(async (paramType) => await PopulateWorkspaceContents(paramType.ToString()), () => true)); } }
-
-        #endregion
-
-        #region Event Handlers
-
 
         #endregion
 
@@ -205,7 +164,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -226,14 +185,14 @@ namespace NCC.PRZTools
                 // Ensure that main Folder Path exists
                 if (!Directory.Exists(_currentWorkspacePath))
                 {
-                    MessageBox.Show("Please select a valid Workspace Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
+                    MsgBox.Show("Please select a valid Workspace Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
                     return false;
                 }
 
                 // Create the INPUT and OUTPUT directories and the PRZ.log file if missing.
                 string pathInputFolder = Path.Combine(_currentWorkspacePath, "INPUT");
                 string pathOutputFolder = Path.Combine(_currentWorkspacePath, "OUTPUT");
-                string pathLogFile = Path.Combine(_currentWorkspacePath, "PRZ.log");
+                string pathLogFile = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_LOGFILE);
 
                 if (!Directory.Exists(pathInputFolder))
                     Directory.CreateDirectory(pathInputFolder);
@@ -252,7 +211,7 @@ namespace NCC.PRZTools
                 }
 
                 // Create the File Geodatabase if missing
-                string pathGDB = Path.Combine(_currentWorkspacePath, "PRZ.gdb");
+                string pathGDB = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
 
                 Geodatabase fgdb;
                 Uri uri = new Uri(pathGDB);
@@ -280,13 +239,13 @@ namespace NCC.PRZTools
                     });
                 }
 
-                MessageBox.Show("Initialize Succeeded");
+                MsgBox.Show("Initialize Succeeded");
                 return true;
 
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -308,13 +267,13 @@ namespace NCC.PRZTools
                 // Ensure that main Folder Path exists
                 if (!Directory.Exists(_currentWorkspacePath))
                 {
-                    MessageBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
+                    MsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
                     return false;
                 }
 
                 string pathInputFolder = Path.Combine(_currentWorkspacePath, "INPUT");
                 string pathOutputFolder = Path.Combine(_currentWorkspacePath, "OUTPUT");
-                string pathLogFile = Path.Combine(_currentWorkspacePath, "PRZ.log");
+                string pathLogFile = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_LOGFILE);
 
                 if (Directory.Exists(pathInputFolder))
                 {
@@ -346,7 +305,7 @@ namespace NCC.PRZTools
                 }
 
                 // Create the File Geodatabase if missing
-                string pathGDB = Path.Combine(_currentWorkspacePath, "PRZ.gdb");
+                string pathGDB = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
 
                 Geodatabase fgdb;
                 Uri uri = new Uri(pathGDB);
@@ -374,12 +333,12 @@ namespace NCC.PRZTools
                     });
                 }
 
-                MessageBox.Show("Refresh Succeeded");
+                MsgBox.Show("Refresh Succeeded");
                 return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -392,7 +351,7 @@ namespace NCC.PRZTools
 
                 if (!Directory.Exists(fp))
                 {
-                    MessageBox.Show("Invalid Workspace Path" + Environment.NewLine + Environment.NewLine + fp + " does not exist");
+                    MsgBox.Show("Invalid Workspace Path" + Environment.NewLine + Environment.NewLine + fp + " does not exist");
                     return;
                 }
 
@@ -409,7 +368,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -529,7 +488,7 @@ namespace NCC.PRZTools
                 }
                 else if (WSType == WorkspaceDisplayMode.GDB.ToString())
                 {
-                    string gdbpath = Path.Combine(fp, "PRZ.gdb");
+                    string gdbpath = Path.Combine(fp, PRZC.c_PRZ_PROJECT_FGDB);
 
                     Geodatabase fgdb = null;
                     Uri uri = new Uri(gdbpath);
@@ -614,7 +573,7 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 this.WorkspaceContents = ex.Message;
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -649,7 +608,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 

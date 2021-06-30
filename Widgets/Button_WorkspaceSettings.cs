@@ -13,19 +13,24 @@ namespace NCC.PRZTools
         {
             try
             {
-                WorkspaceSettings dlg = new WorkspaceSettings();
+                WorkspaceSettings dlg = new WorkspaceSettings();                        // View
+                WorkspaceSettingsVM vm = (WorkspaceSettingsVM)dlg.DataContext;          // View Model
+
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
+
+                // Closed Event Handler
                 dlg.Closed += (sender, e) =>
                 {
                     // Event Handler for Dialog close in case I need to do things...
                     // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
                 };
+
+                // Loaded Event Handler
                 dlg.Loaded += (sender, e) =>
                 {
-                    WorkspaceSettingsVM v = (WorkspaceSettingsVM)dlg.DataContext;
-                    if (v != null)
+                    if (vm != null)
                     {
-                        v.OnProWinLoaded();
+                        vm.OnProWinLoaded();
                     }
                 };
 

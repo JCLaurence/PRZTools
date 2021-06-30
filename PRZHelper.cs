@@ -43,7 +43,7 @@ namespace NCC.PRZTools
             try
             {
                 string parentpath = GetProjectWorkspaceDirectory();
-                if (parentpath == string.Empty) return false;
+                if (parentpath == null) return false;
 
                 string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
                 if (!File.Exists(logfile))
@@ -89,10 +89,14 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
-                return string.Empty;
+                return null;
             }
         }
 
+        /// <summary>
+        /// Returns the path of the current Project Workspace Directory.  Returns null if the directory does not exist.
+        /// </summary>
+        /// <returns></returns>
         internal static string GetProjectWorkspaceDirectory()
         {
             try
@@ -101,15 +105,44 @@ namespace NCC.PRZTools
 
                 if (!Directory.Exists(project_workspace))
                 {
-                    return string.Empty;
+                    return null;
                 }
 
                 return project_workspace;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
-                return string.Empty;
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Returns the path of the Current Project Workspace File Geodatabase.  Returns null if this path does not exist.
+        /// </summary>
+        /// <returns></returns>
+        internal static string GetProjectWorkspaceGDBPath()
+        {
+            try
+            {
+                string ws = GetProjectWorkspaceDirectory();
+                if (ws == null)
+                {
+                    return null;
+                }
+
+                string gdbpath = Path.Combine(ws, PRZC.c_PRZ_PROJECT_FGDB);
+                if (!Directory.Exists(gdbpath))
+                {
+                    return null;
+                }
+
+                return gdbpath;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
             }
         }
 

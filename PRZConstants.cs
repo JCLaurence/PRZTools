@@ -1,11 +1,14 @@
 ﻿namespace NCC.PRZTools
 {
 
+    /// <summary>
+    /// Used on the WorkspaceSettings dialog to indicate the content listing mode
+    /// </summary>
     internal enum WorkspaceDisplayMode
     {
-        DIR,
-        GDB,
-        LOG
+        DIR,    // Workspace Folder contents
+        GDB,    // Workspace File GDB contents
+        LOG     // Workspace Log File contents
     }
 
     internal static class PRZConstants

@@ -13,7 +13,7 @@
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner" 
     ShowMinButton="False" 
-    ShowMaxRestoreButton="False" 
+    ShowMaxRestoreButton="True" 
     ShowCloseButton="True"
     ResizeMode="CanResizeWithGrip"
     >
@@ -60,21 +60,13 @@
                 <RadioButton GroupName="WSContents" Command="{Binding CmdDisplayContent}" CommandParameter="GDB" IsChecked="{Binding GeodatabaseChecked}" Margin="10, 5">Geodatabase</RadioButton>
                 <RadioButton GroupName="WSContents" Command="{Binding CmdDisplayContent}" CommandParameter="LOG" IsChecked="{Binding LogChecked}" Margin="10, 5">Log</RadioButton>
             </StackPanel>
-            
+
             <ScrollViewer Grid.Row="3" Margin="10, 5, 10, 10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <DockPanel LastChildFill="True">
                     <TextBlock Text="{Binding WorkspaceContents}" Background="PaleGoldenrod" FontFamily="Courier New">
                     </TextBlock>
                 </DockPanel>
             </ScrollViewer>
-            <!--<StackPanel Grid.Row="3" Orientation="Horizontal" Background="YellowGreen" Margin="10, 5, 10, 10">
-                <ScrollViewer HorizontalContentAlignment="Stretch">
-                    <TextBlock Margin="10" Background="LightBlue" HorizontalAlignment="Stretch">
-                        This is a scrolling test.
-                    </TextBlock>
-                </ScrollViewer>
-            </StackPanel>-->
-
         </Grid>
     </Border>
     <!--<Grid Margin="10">

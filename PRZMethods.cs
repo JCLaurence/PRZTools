@@ -49,25 +49,25 @@ namespace NCC.PRZTools
 
             try
             {
-                // Verify that Project Folder exists
-                string pathFolder = Properties.Settings.Default.WORKSPACE_PATH;
-                if (!Directory.Exists(pathFolder))
+                // Verify that the Project Workspace exists
+                string pathFolder = PRZH.GetProjectWorkspaceDirectory();
+                if (pathFolder == null)
                 {
-                    MessageBox.Show("Project Folder does not exist at this path:" +
+                    MessageBox.Show("Project Workspace does not exist at this path:" +
                                      Environment.NewLine + Environment.NewLine +
                                      pathFolder + Environment.NewLine + Environment.NewLine +
-                                     "Please verify Project Settings");
+                                     "Please verify Workspace Settings");
                     return false;
                 }
 
-                // Verify that Project GDB exists
-                string pathFGDB = Path.Combine(pathFolder, PRZC.c_PRZ_PROJECT_FGDB);
-                if (!Directory.Exists(pathFGDB))
+                // Verify that Project GDB exists, Part I (directory check)
+                string pathFGDB = PRZH.GetProjectWorkspaceGDBPath();
+                if (pathFGDB == null)
                 {
-                    MessageBox.Show("Project File Geodatabase does not exist at this path:" +
+                    MessageBox.Show("Project Workspace File Geodatabase does not exist at this path:" +
                                      Environment.NewLine + Environment.NewLine +
                                      pathFGDB + Environment.NewLine + Environment.NewLine +
-                                     "Please verify Project Settings");
+                                     "Please verify Workspace Settings");
                     return false;
                 }
 
@@ -85,12 +85,12 @@ namespace NCC.PRZTools
                 if (map.MapType.ToString() != "Map") return false;  // has to be a plain old Map
 
                 // Get the Geodatabase
-                FGDB = await GetProjectFGDB(pathFolder);
+                FGDB = await GetProjectWorkspaceGDB();
                 if (FGDB is null)
                 {
                     MessageBox.Show("Unable to open Project File GDB at this path:" + Environment.NewLine + Environment.NewLine
                                     + pathFGDB + Environment.NewLine + Environment.NewLine +
-                                    "Please verify Project Settings");
+                                    "Please verify Workspace Settings");
                     return false;
                 }
 
@@ -461,22 +461,62 @@ namespace NCC.PRZTools
         }
 
 
-
-
-
         #region GENERIC DATA METHODS
 
         /// <summary>
-        /// ASYNC returns PRZ
+        /// Returns a File Geodatabase object from the supplied path.  Returns null if path is not a valid geodatabase
         /// </summary>
         /// <param name="path"></param>
-        /// <returns></returns>
-        internal static async Task<Geodatabase> GetProjectFGDB(string path)
+        /// <returns>Geodatabase</returns>
+        internal static async Task<Geodatabase> GetFileGDB(string path)
         {
             try
             {
-                string pathFolder = Properties.Settings.Default.WORKSPACE_PATH;
-                string pathGDB = Path.Combine(pathFolder, PRZC.c_PRZ_PROJECT_FGDB);
+                // Ensure the path is an existing directory
+                if (!Directory.Exists(path))
+                {
+                    return null;
+                }
+
+                // Ensure the Uri is a valid Uri
+
+                Uri uri = new Uri(path);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+                Geodatabase gdb = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        gdb = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return gdb;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static async Task<Geodatabase> GetProjectWorkspaceGDB()
+        {
+            try
+            {
+                string pathGDB = PRZH.GetProjectWorkspaceGDBPath();
+
+                if (pathGDB == null)
+                {
+                    return null;
+                }
 
                 Uri uri = new Uri(pathGDB);
                 FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
@@ -490,7 +530,7 @@ namespace NCC.PRZTools
                     });
 
                 }
-                catch (GeodatabaseNotFoundOrOpenedException ex)
+                catch (GeodatabaseNotFoundOrOpenedException)
                 {
                     return null;
                 }
@@ -502,6 +542,43 @@ namespace NCC.PRZTools
             {
                 MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
+            }
+        }
+
+        internal static async Task<bool> ProjectWorkspaceGDBExists()
+        {
+            try
+            {
+                string pathGDB = PRZH.GetProjectWorkspaceGDBPath();
+
+                if (pathGDB == null)
+                {
+                    return false;
+                }
+
+                Uri uri = new Uri(pathGDB);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        var gdb = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return false;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
             }
         }
 
