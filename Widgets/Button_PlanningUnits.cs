@@ -75,6 +75,13 @@ namespace NCC.PRZTools
                     return;
                 }
 
+                Map map = mapView.Map;
+                if (map.MapType != MapType.Map)
+                {
+                    MsgBox.Show("The Map must be of type 'Map'");
+                    return;
+                }                
+
                 #endregion
 
                 #region Configure and Show the Planning Units Dialog

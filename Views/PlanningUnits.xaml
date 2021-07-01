@@ -36,16 +36,16 @@
             <DockPanel Grid.Row="0" Margin="10, 10, 10, 5" Background="LightGray" Height="Auto" >
                 <TextBlock Margin="5, 5, 5, 0" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockRegular}">Specify the Output Spatial Reference</TextBlock>
                 <DockPanel Background="PaleGreen" DockPanel.Dock="Top" LastChildFill="True" Margin="5,5,5,5">
-                    <RadioButton Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">Same as Map</RadioButton>
-                    <TextBlock Margin="10, 5" VerticalAlignment="Center">Map SR</TextBlock>
+                    <RadioButton GroupName="SR" IsEnabled="{Binding SRMapIsEnabled}" Command="{Binding CmdSRMap}" IsChecked="{Binding SRMapIsChecked}" Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">From Map:</RadioButton>
+                    <TextBlock Margin="10, 5" Text="{Binding MapSRName}" VerticalAlignment="Center"></TextBlock>
                 </DockPanel>
                 <DockPanel Background="PaleGoldenrod" DockPanel.Dock="Top" LastChildFill="True" Margin="5,5,5,5">
-                    <RadioButton Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">Same as Layer</RadioButton>
-                    <ComboBox Margin="10, 5"></ComboBox>
+                    <RadioButton GroupName="SR" IsEnabled="{Binding SRLayerIsEnabled}" Command="{Binding CmdSRLayer}" IsChecked="{Binding SRLayerIsChecked}" Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">From Layers: </RadioButton>
+                    <ComboBox Margin="10, 5" ItemsSource="{Binding LayerSRList}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLayerSR}" ></ComboBox>
                 </DockPanel>
                 <DockPanel Background="LightBlue" DockPanel.Dock="Bottom" LastChildFill="True" Margin="5,5,5,5">
-                    <RadioButton Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">User Specified</RadioButton>
-                    <Button Margin="5" DockPanel.Dock="Left" Command="{Binding CmdSelectWorkspaceFolder}">
+                    <RadioButton GroupName="SR" IsEnabled="{Binding SRUserIsEnabled}" Command="{Binding CmdSRUser}" IsChecked="{Binding SRUserIsChecked}" Margin="10, 5" VerticalContentAlignment="Center" DockPanel.Dock="Left">User-specified: </RadioButton>
+                    <Button Margin="5" DockPanel.Dock="Left" IsEnabled="False" Command="{Binding CmdSelectSpatialReference}">
                         <Image Margin="2" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CoordinateSystem16.png" Stretch="None" />
                         <Button.ToolTip>
                             <TextBlock>
@@ -55,10 +55,29 @@
                             </TextBlock>
                         </Button.ToolTip>
                     </Button>
-                    <TextBlock Margin="10, 5" VerticalAlignment="Center">User-specified SR</TextBlock>
+                    <TextBlock Margin="10, 5" Text="{Binding UserSRName}" VerticalAlignment="Center"></TextBlock>
                 </DockPanel>
 
             </DockPanel>
+
+
+            <DockPanel Grid.Row="1">
+                
+            </DockPanel>
+            
+            <DockPanel Grid.Row="2" Background="LightGray" Height="Auto" Margin="10, 10" LastChildFill="True">
+                <Button Style="{DynamicResource Esri_Button}" Command="{Binding CmdBuildPlanningUnits}" Background="Maroon" Foreground="Yellow" Height="25" Margin="5">BUILD PLANNING UNIT FEATURE CLASS</Button>
+            </DockPanel>
+
+            <DockPanel Grid.Row="3" Margin="10, 5, 10, 5" LastChildFill="True" Background="LightGray" Height="Auto">
+                <ScrollViewer Margin="10, 10, 10, 10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DockPanel LastChildFill="True">
+                        <TextBlock Text="{Binding TestInfo}" Background="PaleGoldenrod" FontFamily="Courier New">
+                        </TextBlock>
+                    </DockPanel>
+                </ScrollViewer>
+            </DockPanel>
+            
             <!--<StackPanel Grid.Row="1" Orientation="Horizontal" Background="LightGray" Margin="10, 5" Height="Auto">
                 <Button Command="{Binding CmdInitializeCurrentWorkspace}" Style="{DynamicResource Esri_Button}">Initialize</Button>
                 <Button Command="{Binding CmdResetCurrentWorkspace}" Style="{DynamicResource Esri_Button}">Reset</Button>
