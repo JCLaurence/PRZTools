@@ -197,6 +197,27 @@ namespace NCC.PRZTools
         }
 
 
+        private string _gridAlign_X;
+        public string GridAlign_X
+        {
+            get { return _gridAlign_X; }
+            set
+            {
+                SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
+            }
+        }
+
+        private string _gridAlign_Y;
+        public string GridAlign_Y
+        {
+            get { return _gridAlign_Y; }
+            set
+            {
+                SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
+            }
+        }
+
+
         private bool _bufferUnitMetersIsChecked;
         public bool BufferUnitMetersIsChecked
         {
@@ -238,8 +259,8 @@ namespace NCC.PRZTools
             }
         }
 
-        private double _tileArea;
-        public double TileArea
+        private string _tileArea;
+        public string TileArea
         {
             get { return _tileArea; }
             set
@@ -477,6 +498,9 @@ namespace NCC.PRZTools
                 // Grid Type combo box
                 this.SelectedGridType = "Square";
 
+                // Tile area units
+                this.TileAreaKmIsSelected = true;
+
                 StringBuilder sb = new StringBuilder();
 
                 sb.AppendLine("Map Name: " + map.Name);
@@ -492,41 +516,97 @@ namespace NCC.PRZTools
             }
         }
 
+        internal async Task Progressor_NonCancelable(string message)
+        {
+            ProgressorSource ps = new ProgressorSource(message, false);
+
+            int numSecondsDelay = 5;
+            //If you run this in the DEBUGGER you will NOT see the dialog
+            await QueuedTask.Run(() => Task.Delay(numSecondsDelay * 1000).Wait(), ps.Progressor);
+        }
+
+        internal async Task<bool> ProgressorTest(int x, Progressor progressor)
+        {
+            bool result = false;
+
+            return result;
+        }
+
         internal async Task BuildPlanningUnits()
         {
+            var progressDialog = new ProgressDialog("", "Canceled by User");
+
             try
             {
-                MsgBox.Show(BufferValue);
 
-                if (string.IsNullOrEmpty(BufferValue))
+                bool t = CanBuildPlanningUnits();
+
+                //MsgBox.Show("can we build it?  " + (t ? "Yes!" : "No!"));
+
+                //await Progressor_NonCancelable("message1");
+                //await Progressor_NonCancelable("Message2");
+
+                var progressorSource = new CancelableProgressorSource(progressDialog);
+                var progressor = progressorSource.Progressor;
+
+                progressDialog.Show();
+
+
+                progressor.Value = 0;
+                progressor.Max = 10;
+                progressor.Status = "Phase 1...";
+
+                int i = 0;
+
+                while (i < 10)
                 {
-                    MsgBox.Show("null or empty");
-                }
-                if (BufferValue.Length == 0)
-                {
-                    MsgBox.Show("Length == 0");
-                }
-                if (BufferValue.Length > 0)
-                {
-                    MsgBox.Show(BufferValue.Length.ToString());
+                    i++;
+                    progressor.Value += 1;
+                    progressor.Message = "Step " + i.ToString();
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                    });
+
+                    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+                    {
+                        return;
+                    }
                 }
 
-                double buffval;
-                if (double.TryParse(BufferValue.Trim(), out buffval))
-                {
-                    MsgBox.Show("valid double: " + BufferValue);
-                }
-                else
-                {
-                    MsgBox.Show(BufferValue + " is an invalid double");
-                }
+                progressor.Value = 0;
+                progressor.Max = 5;
+                progressor.Status = "Phase 2...";
 
+                i = 0;
+
+                while (i < 5)
+                {
+                    i++;
+                    progressor.Value += 1;
+                    progressor.Message = "Step " + i.ToString();
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                    });
+
+                    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                }
 
 
             }
             catch (Exception ex)
             {
                 MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+            finally
+            {
+                progressDialog.Dispose();
             }
         }
         private void SelectSpatialReference()
@@ -658,6 +738,60 @@ namespace NCC.PRZTools
                         return false;
                     }
                 }
+
+                // Next validate the X and Y grid alignment variables
+
+                string xtrim = GridAlign_X.ToString().Trim();
+                string ytrim = GridAlign_Y.ToString().Trim();
+
+                if (!string.IsNullOrEmpty(xtrim) && !string.IsNullOrEmpty(ytrim))
+                {
+                    double x;
+                    double y;
+
+                    if (!double.TryParse(xtrim, out x) | !double.TryParse(ytrim, out y))
+                    {
+                        return false;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(xtrim) && string.IsNullOrEmpty(ytrim))
+                {
+                    return false;
+                }
+                else if (string.IsNullOrEmpty(xtrim) && !string.IsNullOrEmpty(ytrim))
+                {
+                    return false;
+                }
+
+                // Next, validate the Tile Type
+                if (string.IsNullOrEmpty(SelectedGridType))
+                {
+                    return false;
+                }
+
+                // Tile Area
+                if (!string.IsNullOrEmpty(TileArea))
+                {
+                    double tilearea;
+                    if (double.TryParse(TileArea.Trim(), out tilearea))
+                    {
+                        if (tilearea < 0)
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+
+
+
 
                 return true;
             }
