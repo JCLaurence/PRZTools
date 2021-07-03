@@ -1,4 +1,5 @@
-﻿using ArcGIS.Core.Data;
+﻿using ArcGIS.Core.CIM;
+using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Catalog;
@@ -7,6 +8,7 @@ using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Controls;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
@@ -142,6 +144,200 @@ namespace NCC.PRZTools
         }
 
 
+        private List<GraphicsLayer> _graphicsLayerList;
+        public List<GraphicsLayer> GraphicsLayerList
+        {
+            get { return _graphicsLayerList; }
+            set
+            {
+                SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
+            }
+        }
+
+        private GraphicsLayer _selectedGraphicsLayer;
+        public GraphicsLayer SelectedGraphicsLayer
+        {
+            get { return _selectedGraphicsLayer; }
+            set
+            {
+                SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
+            }
+        }
+
+
+        private List<FeatureLayer> _featureLayerList;
+        public List<FeatureLayer> FeatureLayerList
+        {
+            get { return _featureLayerList; }
+            set
+            {
+                SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
+            }
+        }
+
+        private FeatureLayer _selectedFeatureLayer;
+        public FeatureLayer SelectedFeatureLayer
+        {
+            get { return _selectedFeatureLayer; }
+            set
+            {
+                SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
+            }
+        }
+
+
+        private string _bufferValue;
+        public string BufferValue
+        {
+            get { return _bufferValue; }
+            set
+            {
+                SetProperty(ref _bufferValue, value, () => BufferValue);
+            }
+        }
+
+
+        private bool _bufferUnitMetersIsChecked;
+        public bool BufferUnitMetersIsChecked
+        {
+            get { return _bufferUnitMetersIsChecked; }
+            set
+            {
+                SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
+            }
+        }
+
+        private bool _bufferUnitKilometersIsChecked;
+        public bool BufferUnitKilometersIsChecked
+        {
+            get { return _bufferUnitKilometersIsChecked; }
+            set
+            {
+                SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
+            }
+        }
+
+
+        private List<string> _gridTypeList = new List<string> { "Square"};
+        public List<string> GridTypeList
+        {
+            get { return _gridTypeList; }
+            set
+            {
+                SetProperty(ref _gridTypeList, value, () => GridTypeList);
+            }
+        }
+
+        private string _selectedGridType;
+        public string SelectedGridType
+        {
+            get { return _selectedGridType; }
+            set
+            {
+                SetProperty(ref _selectedGridType, value, () => SelectedGridType);
+            }
+        }
+
+        private double _tileArea;
+        public double TileArea
+        {
+            get { return _tileArea; }
+            set
+            {
+                SetProperty(ref _tileArea, value, () => TileArea);
+            }
+        }
+
+        private bool _tileAreaMIsSelected;
+        public bool TileAreaMIsSelected
+        {
+            get { return _tileAreaMIsSelected; }
+            set
+            {
+                SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
+            }
+        }
+
+        private bool _tileAreaAcIsSelected;
+        public bool TileAreaAcIsSelected
+        {
+            get { return _tileAreaAcIsSelected; }
+            set
+            {
+                SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
+            }
+        }
+
+        private bool _tileAreaHaIsSelected;
+        public bool TileAreaHaIsSelected
+        {
+            get { return _tileAreaHaIsSelected; }
+            set
+            {
+                SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
+            }
+        }
+
+        private bool _tileAreaKmIsSelected;
+        public bool TileAreaKmIsSelected
+        {
+            get { return _tileAreaKmIsSelected; }
+            set
+            {
+                SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
+            }
+        }
+
+        private bool _buildIsEnabled;
+        public bool BuildIsEnabled
+        {
+            get { return _buildIsEnabled; }
+            set
+            {
+                SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
+            }
+        }
+
+
+        private bool _graphicsLayerIsEnabled;
+        public bool GraphicsLayerIsEnabled
+        {
+            get { return _graphicsLayerIsEnabled; }
+            set
+            {
+                SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
+            }
+        }
+
+        private bool _graphicsLayerIsChecked;
+        public bool GraphicsLayerIsChecked
+        {
+            get { return _graphicsLayerIsChecked; }
+            set
+            {
+                SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
+            }
+        }
+
+        private bool _featureLayerIsEnabled;
+        public bool FeatureLayerIsEnabled
+        {
+            get { return _featureLayerIsEnabled; }
+            set
+            {
+                SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
+            }
+        }
+
+        private bool _featureLayerIsChecked;
+        public bool FeatureLayerIsChecked
+        {
+            get { return _featureLayerIsChecked; }
+            set
+            {
+                SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
+            }
+        }
 
         private string _testInfo;
         public string TestInfo
@@ -222,7 +418,7 @@ namespace NCC.PRZTools
                         {
                             if (!SRList.Contains(sr))
                             {
-                                if (!sr.IsUnknown)
+                                if ((!sr.IsUnknown) && (!sr.IsGeographic))
                                 SRList.Add(sr);
                             }
                         }
@@ -233,8 +429,53 @@ namespace NCC.PRZTools
 
                 // SR Radio Options enabled/disabled
                 this.SRLayerIsEnabled = (SRList.Count > 0);
-                this.SRMapIsEnabled = (!_mapSR.IsUnknown);
+                this.SRMapIsEnabled = (!_mapSR.IsUnknown) && (!_mapSR.IsGeographic);
                 this.SRUserIsEnabled = false;
+
+                // Graphics Layers having selected Polygon Graphics
+                var glyrs = map.GetLayersAsFlattenedList().OfType<GraphicsLayer>().ToList();
+                var polygraphicList = new List<CIMPolygonGraphic>();
+
+                Dictionary<GraphicsLayer, int> DICT_GraphicLayer_SelPolyCount = new Dictionary<GraphicsLayer, int>();
+
+                foreach (var glyr in glyrs)
+                {
+                    var selElems = glyr.GetSelectedElements().OfType<GraphicElement>();
+                    int c = 0;
+
+                    foreach (var elem in selElems)
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            var g = elem.GetGraphic();
+                            if (g is CIMPolygonGraphic)
+                            {
+                                c++;
+                            }
+                        });                        
+                    }
+
+                    if (c > 0)
+                    {
+                        DICT_GraphicLayer_SelPolyCount.Add(glyr, c);
+                    }
+                }
+
+                this.GraphicsLayerList = DICT_GraphicLayer_SelPolyCount.Keys.ToList();
+                this.GraphicsLayerIsEnabled = (DICT_GraphicLayer_SelPolyCount.Count > 0);
+
+                // Polygon Feature Layers having selection
+                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0).ToList();
+
+                this.FeatureLayerList = flyrs;
+                this.FeatureLayerIsEnabled = flyrs.Count > 0;
+
+                // Buffer
+                this.BufferValue = "0";
+                this.BufferUnitMetersIsChecked = true;
+
+                // Grid Type combo box
+                this.SelectedGridType = "Square";
 
                 StringBuilder sb = new StringBuilder();
 
@@ -255,7 +496,33 @@ namespace NCC.PRZTools
         {
             try
             {
-                MsgBox.Show("Generating! Actually, not really.");
+                MsgBox.Show(BufferValue);
+
+                if (string.IsNullOrEmpty(BufferValue))
+                {
+                    MsgBox.Show("null or empty");
+                }
+                if (BufferValue.Length == 0)
+                {
+                    MsgBox.Show("Length == 0");
+                }
+                if (BufferValue.Length > 0)
+                {
+                    MsgBox.Show(BufferValue.Length.ToString());
+                }
+
+                double buffval;
+                if (double.TryParse(BufferValue.Trim(), out buffval))
+                {
+                    MsgBox.Show("valid double: " + BufferValue);
+                }
+                else
+                {
+                    MsgBox.Show(BufferValue + " is an invalid double");
+                }
+
+
+
             }
             catch (Exception ex)
             {
@@ -319,6 +586,89 @@ namespace NCC.PRZTools
                 MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
+
+        
+        /// <summary>
+        /// Returns true if all required input parameters are valid.  False otherwise.
+        /// </summary>
+        /// <returns></returns>
+        private bool CanBuildPlanningUnits()
+        {
+            try
+            {
+                // First validate the Output SR
+                if (this.SRMapIsChecked)
+                {
+                    // If checked, we have a valid output SR   
+                }
+                else if (this.SRLayerIsChecked)
+                {
+                    // If checked, we have at least one valid Layer
+                    // Check to see if user has selected a valid layer
+                    if (this.SelectedLayerSR == null)
+                    {
+                        // no valid layer means no output SR
+                        return false;
+                    }
+                }
+                else if (this.SRUserIsChecked)
+                {
+                    // not implemented yet
+                    return false;
+                }
+                else
+                {
+                    // No radio buttons selected, return false
+                    return false;
+                }
+
+                // Next validate Study Area Source
+                if (GraphicsLayerIsChecked)
+                {
+                    if (SelectedGraphicsLayer == null)
+                    {
+                        return false;
+                    }
+                }
+                else if (FeatureLayerIsChecked)
+                {
+                    if (SelectedFeatureLayer == null)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+
+                // Next validate the buffer value
+                if (!string.IsNullOrEmpty(BufferValue))
+                {
+                    double buffval;
+                    if (double.TryParse(BufferValue.Trim(), out buffval))
+                    {
+                        if (buffval < 0)
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        
 
         #endregion
 
