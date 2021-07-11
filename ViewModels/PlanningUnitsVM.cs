@@ -370,6 +370,45 @@ namespace NCC.PRZTools
             }
         }
 
+        private int _barMax;
+        public int BarMax
+        {
+            get { return _barMax; }
+            set
+            {
+                SetProperty(ref _barMax, value, () => BarMax);
+            }
+        }
+
+        private int _barMin;
+        public int BarMin
+        {
+            get { return _barMin; }
+            set
+            {
+                SetProperty(ref _barMin, value, () => BarMin);
+            }
+        }
+
+        private int _barValue;
+        public int BarValue
+        {
+            get { return _barValue; }
+            set
+            {
+                SetProperty(ref _barValue, value, () => BarValue);
+            }
+        }
+
+        private string _barMessage;
+        public string BarMessage
+        {
+            get { return _barMessage; }
+            set
+            {
+                SetProperty(ref _barMessage, value, () => BarMessage);
+            }
+        }
 
 
         #endregion
@@ -534,71 +573,84 @@ namespace NCC.PRZTools
 
         internal async Task BuildPlanningUnits()
         {
-            var progressDialog = new ProgressDialog("", "Canceled by User");
+            ProgressDialog pd = null;
 
             try
             {
-
-                bool t = CanBuildPlanningUnits();
-
-                //MsgBox.Show("can we build it?  " + (t ? "Yes!" : "No!"));
-
-                //await Progressor_NonCancelable("message1");
-                //await Progressor_NonCancelable("Message2");
-
-                var progressorSource = new CancelableProgressorSource(progressDialog);
-                var progressor = progressorSource.Progressor;
-
-                progressDialog.Show();
+                pd = new ProgressDialog("", "Cancelled by User", false);
+                var cps = new CancelableProgressorSource(pd);
 
 
-                progressor.Value = 0;
-                progressor.Max = 10;
-                progressor.Status = "Phase 1...";
 
-                int i = 0;
+                UpdateBarStatus("", 0, 10, 0);
 
-                while (i < 10)
+                bool a = await DoSomeWork(cps);
+
+                if (!a)
                 {
-                    i++;
-                    progressor.Value += 1;
-                    progressor.Message = "Step " + i.ToString();
-
-                    await QueuedTask.Run(async () =>
-                    {
-                        await Task.Delay(1000);
-                    });
-
-                    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-                    {
-                        return;
-                    }
+                    MsgBox.Show("Cancelled by User.");
+                    return;
                 }
 
-                progressor.Value = 0;
-                progressor.Max = 5;
-                progressor.Status = "Phase 2...";
+//                await DoSomeWork2();
 
-                i = 0;
-
-                while (i < 5)
-                {
-                    i++;
-                    progressor.Value += 1;
-                    progressor.Message = "Step " + i.ToString();
-
-                    await QueuedTask.Run(async () =>
-                    {
-                        await Task.Delay(1000);
-                    });
-
-                    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                }
+//                await DoSomeWork3();
 
 
+                //progressorSource.Max = 30;
+                //progressorSource.Value = 0;
+                //progressorSource.Status = "Phase 1...";
+                //progressDialog.Show();
+                ////                progressor.Status = "Phase 1...";
+
+                //int i = 0;
+
+                //while (i < 10)
+                //{
+                //    i++;
+                //    progressorSource.Value += 1;
+                //    progressorSource.Message = "Step " + i.ToString();
+
+                //    await QueuedTask.Run(async () =>
+                //    {
+                //        await Task.Delay(1000);
+                //    });
+
+                //    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+                //    {
+                //        return;
+                //    }
+                //}
+
+                //progressorSource.Value = 0;
+                //progressorSource.Max = 5;
+                ////progressor.Value = 0;
+                ////progressor.Max = 5;
+                //progressorSource.Status = "Phase 2...";
+
+                //i = 0;
+
+                //while (i < 5)
+                //{
+                //    i++;
+                //    //progressor.Value += 1;
+                //    progressorSource.Value += 1;
+                //    progressorSource.Message = "Step " + i.ToString();
+                //    //progressor.Message = "Step " + i.ToString();
+
+                //    await QueuedTask.Run(async () =>
+                //    {
+                //        await Task.Delay(1000);
+                //    });
+
+                //    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+                //    {
+                //        return;
+                //    }
+                //}
+
+
+                UpdateBarStatus("Operation Complete!", 0, 3, 3);
             }
             catch (Exception ex)
             {
@@ -606,9 +658,85 @@ namespace NCC.PRZTools
             }
             finally
             {
-                progressDialog.Dispose();
+                if (pd != null)
+                    pd.Dispose();
             }
         }
+
+        private async Task<bool> DoSomeWork(CancelableProgressorSource cps)
+        {
+            UpdateBarStatus("Doing Some Work", 0, 10, 0);
+            cps.Message = "whoah there nelly";
+            cps.Status = "ABC";
+
+            int i = 0;
+
+            while (i < 10)
+            {
+                i++;
+
+                await QueuedTask.Run(async () =>
+                {
+                    await Task.Delay(1000);
+                    if (cps.Progressor.CancellationToken.IsCancellationRequested)
+                    {
+                        // someone clicked the cancel button
+                        UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
+                        return;
+                    }
+                }, cps.Progressor);
+                
+                if (cps.Progressor.CancellationToken.IsCancellationRequested)
+                {
+                    // someone clicked the cancel button
+                    UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
+                    return false;
+                }
+
+                UpdateBarStatus("Doing Some Work - " + i.ToString(), 0, 10, i);
+            }
+
+            return true;
+        }
+
+        private async Task DoSomeWork2()
+        {
+            UpdateBarStatus("Doing Some Work 2", 0, 500, 0);
+
+            int i = 0;
+
+            while (i < 500)
+            {
+                i++;
+
+                await QueuedTask.Run(async () =>
+                {
+                    await Task.Delay(1);
+                });
+
+                UpdateBarStatus("Doing Some Work 2 - " + i.ToString(), 0, 500, i);
+            }
+        }
+
+        private async Task DoSomeWork3()
+        {
+            UpdateBarStatus("Doing Some Work 3", 0, 20, 0);
+
+            int i = 0;
+
+            while (i < 20)
+            {
+                i++;
+
+                await QueuedTask.Run(async () =>
+                {
+                    await Task.Delay(300);
+                    UpdateBarStatus("Doing Some Work within QueuedTask.Run - " + i.ToString(), 0, 20, i);
+                });
+
+            }
+        }
+
         private void SelectSpatialReference()
         {
             try
@@ -800,6 +928,28 @@ namespace NCC.PRZTools
                 MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
+        }
+
+        private void UpdateBarStatus(string message, int min, int max, int val)
+        {
+            if (System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                BarMessage = message;
+                BarMin = min;
+                BarMax = max;
+                BarValue = val;
+            }
+            else
+            {
+                ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
+                {
+                    BarMessage = message;
+                    BarMin = min;
+                    BarMax = max;
+                    BarValue = val;
+                }));
+            }
+
         }
 
         

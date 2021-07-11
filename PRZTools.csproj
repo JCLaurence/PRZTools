@@ -224,20 +224,6 @@
     <Resource Include="Images\PRZTools32.ico" />
   </ItemGroup>
   <ItemGroup>
-    <AddInContent Include="Images\PlanningUnits32.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <AddInContent Include="DarkImages\PlanningUnits32.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <AddInContent Include="DarkImages\PlanningUnits16.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <AddInContent Include="Images\PlanningUnits16.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="ImagesWPF\PlanningUnits16.png" />
-    <Resource Include="ImagesWPF\PlanningUnits32.png" />
     <Resource Include="ImagesWPF\PRZTools16.ico" />
     <Resource Include="ImagesWPF\PRZTools16.png" />
     <Resource Include="ImagesWPF\PRZTools32.ico" />
@@ -337,6 +323,18 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\CoordinateSystem16.png" />
     <Resource Include="ImagesWPF\CoordinateSystem32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\PlanningUnits16.png" />
+    <Resource Include="ImagesWPF\PlanningUnits32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\PlanningUnits16.png" />
+    <AddInContent Include="Images\PlanningUnits32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PlanningUnit16.png" />
+    <AddInContent Include="DarkImages\PlanningUnit32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

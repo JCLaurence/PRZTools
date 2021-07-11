@@ -31,7 +31,7 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
             <DockPanel Grid.Row="0" Margin="10, 10, 10, 5" Background="LightGray" Height="Auto" >
@@ -108,13 +108,9 @@
                 <!--<Button IsEnabled="{Binding BuildIsEnabled}" Style="{DynamicResource Esri_Button}" Command="{Binding CmdBuildPlanningUnits}" Background="YellowGreen" Foreground="Black" Height="25" Margin="5">BUILD PLANNING UNIT FEATURE CLASS</Button>-->
             </DockPanel>
             
-            <DockPanel Grid.Row="4" Margin="10, 5, 10, 5" LastChildFill="True" Background="LightGray" Height="Auto">
-                <ScrollViewer Margin="10, 10, 10, 10" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <DockPanel LastChildFill="True">
-                        <TextBlock Text="{Binding TestInfo}" Background="PaleGoldenrod" FontFamily="Courier New">
-                        </TextBlock>
-                    </DockPanel>
-                </ScrollViewer>
+            <DockPanel Grid.Row="4" Margin="10, 5, 10, 5" LastChildFill="false" Background="LightGray" Height="Auto">
+                <ProgressBar Margin="5" Height="20" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
+                <TextBlock Margin="10, 5" DockPanel.Dock="Top" VerticalAlignment="Center" Text="{Binding BarMessage}"></TextBlock>
             </DockPanel>
         </Grid>
     </Border>
