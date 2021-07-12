@@ -19,9 +19,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using MsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
+using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
 using PRZC = NCC.PRZTools.PRZConstants;
+using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
@@ -38,7 +39,6 @@ namespace NCC.PRZTools
         private SpatialReference _userSR;
 
         #endregion
-
 
 
         #region Properties
@@ -239,7 +239,7 @@ namespace NCC.PRZTools
         }
 
 
-        private List<string> _gridTypeList = new List<string> { "Square"};
+        private List<string> _gridTypeList = new List<string> { "SQUARE"};
         public List<string> GridTypeList
         {
             get { return _gridTypeList; }
@@ -535,7 +535,7 @@ namespace NCC.PRZTools
                 this.BufferUnitMetersIsChecked = true;
 
                 // Grid Type combo box
-                this.SelectedGridType = "Square";
+                this.SelectedGridType = "SQUARE";
 
                 // Tile area units
                 this.TileAreaKmIsSelected = true;
@@ -551,121 +551,250 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
-        internal async Task Progressor_NonCancelable(string message)
+        internal async Task<bool> BuildPlanningUnits()
         {
-            ProgressorSource ps = new ProgressorSource(message, false);
-
-            int numSecondsDelay = 5;
-            //If you run this in the DEBUGGER you will NOT see the dialog
-            await QueuedTask.Run(() => Task.Delay(numSecondsDelay * 1000).Wait(), ps.Progressor);
-        }
-
-        internal async Task<bool> ProgressorTest(int x, Progressor progressor)
-        {
-            bool result = false;
-
-            return result;
-        }
-
-        internal async Task BuildPlanningUnits()
-        {
-            ProgressDialog pd = null;
+            CancelableProgressorSource cps = null;  // use this for QueuedTask.Run tasks that take a while.  Otherwise, just use the progressbar on the window
 
             try
             {
-                pd = new ProgressDialog("", "Cancelled by User", false);
-                var cps = new CancelableProgressorSource(pd);
 
+                #region INITIALIZATION
 
+                // Reset the Progress Bar
+                UpdateProgress("Initializing...", false, 0, 10, 0);
 
-                UpdateBarStatus("", 0, 10, 0);
-
-                bool a = await DoSomeWork(cps);
-
-                if (!a)
+                // Notify users what will happen if they proceed
+                if (ProMsgBox.Show("The Planning Units layer is the heart of the various tabular data used by PRZ Tools.  Building a new Planning Units layer invalidates all existing tables since the planning unit IDs and count may be different." +
+                    Environment.NewLine + Environment.NewLine +
+                    "If you proceed, all associated tables and feature classes in the PRZ File Geodatabase WILL BE DELETED!!" +
+                    Environment.NewLine + Environment.NewLine +
+                    "Do you wish to proceed?" + 
+                    Environment.NewLine + Environment.NewLine +
+                    "Choose wisely...",
+                    "Table/Feature Class Overwrite Warning", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
-                    MsgBox.Show("Cancelled by User.");
-                    return;
+                    UpdateProgress("", false, 0, 1, 0);
+                    return false;
                 }
 
-//                await DoSomeWork2();
+                // Proceed if all user input is validated
+                if (!CanBuildPlanningUnits())
+                {
+                    ProMsgBox.Show("Not all user input properly specified.  This message needs to be improved.");
+                    UpdateProgress("User Input Error", true);
+                    return false;
+                }
 
-//                await DoSomeWork3();
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                // Verify that PRZ workspace geodatabase is available
+                bool gdb_exists = await PRZM.ProjectWorkspaceGDBExists();
+                if (!gdb_exists)
+                {
+                    ProMsgBox.Show("PRZ Workspace Geodatabase not found.  Please verify that your workspace is set up correctly.");
+                    UpdateProgress("PRZ Workspace Geodatabase not found.", true);
+                    return false;
+                }
+                else
+                {
+                    UpdateProgress("Project Workspace geodatabase exists...", true);
+                }
+
+                // Prepare Output Spatial Reference
+                var OutputSR = GetOutputSR();
+                if (OutputSR == null)
+                {
+                    ProMsgBox.Show("Please specify a valid Output Spatial Reference.");
+                    UpdateProgress("Output Spatial Reference not specified.", true);
+                    return false;
+                }
+                else
+                {
+                    UpdateProgress("Output Spatial Reference: " + OutputSR.Name, true);
+                }
+
+                // Get Buffer Distance in meters
+                double buffer_distance = 0;
+                string buffer_distance_text = BufferValue.Trim();
+
+                if (buffer_distance_text == "")
+                {
+                    buffer_distance_text = "0";
+                }
+
+                if (!double.TryParse(buffer_distance_text, out buffer_distance))
+                {
+                    ProMsgBox.Show("Invalid Buffer Distance specified.  Must be a number >= 0, or left blank.");
+                    UpdateProgress("Invalid Buffer Distance specified.", true);
+                    return false;
+                }
+                else if (buffer_distance < 0)
+                {
+                    ProMsgBox.Show("Invalid Buffer Distance specified.  Must be a number >= 0, or left blank.");
+                    UpdateProgress("Invalid Buffer Distance specified.", true);
+                    return false;
+                }
+                else
+                {
+                    string s = "Buffer Distance: " + buffer_distance_text;
+
+                    if (BufferUnitMetersIsChecked)
+                    {
+                        s += " m";
+                    }
+                    else if (BufferUnitKilometersIsChecked)
+                    {
+                        s += " km";
+                        buffer_distance = buffer_distance * 1000.0;
+                    }
+
+                    UpdateProgress(s, true);
+                }
+
+                // Get Tile Area in square meters
+                double tile_area = 0;
+                string tile_area_text = TileArea.Trim();
+
+                if (tile_area_text == "")
+                {
+                    tile_area_text = "0";
+                }
+
+                if (!double.TryParse(tile_area_text, out tile_area))
+                {
+                    ProMsgBox.Show("Invalid Tile Area specified.  Must be a number > 0.");
+                    UpdateProgress("Invalid Tile Area specified.", true);
+                    return false;
+                }
+                else if (tile_area <= 0)
+                {
+                    ProMsgBox.Show("Invalid Tile Area specified.  Must be a number > 0.");
+                    UpdateProgress("Invalid Tile Area specified.", true);
+                    return false;
+                }
+                else
+                {
+                    string s = "Tile Area: " + tile_area_text;
+
+                    if (TileAreaMIsSelected)
+                    {
+                        s += " m\xB2";
+                    }
+                    else if (TileAreaAcIsSelected)
+                    {
+                        s += " ac";
+                        tile_area = tile_area * 4046.86;
+                    }
+                    else if (TileAreaHaIsSelected)
+                    {
+                        s += " ha";
+                        tile_area = tile_area * 10000.0;
+                    }
+                    else if (TileAreaKmIsSelected)
+                    {
+                        s += " km\xB2";
+                        tile_area = tile_area * 1000000.0;
+                    }
+
+                    UpdateProgress(s, true);
+                }
+
+                // Get Tile Positioning XY
+                string xtrim = string.IsNullOrEmpty(GridAlign_X) ? "" : GridAlign_X.Trim();
+                string ytrim = string.IsNullOrEmpty(GridAlign_Y) ? "" : GridAlign_Y.Trim();
+                bool UseGridAlign = false;
+                bool GridAlignIssues = false;
+                double gridalignx;
+                double gridaligny;
+
+                if (xtrim.Length > 0 && ytrim.Length > 0)
+                {
+                    if (!double.TryParse(xtrim, out gridalignx))
+                    {
+                        GridAlignIssues = true;                        
+                    }
+                    else if (!double.TryParse(ytrim, out gridaligny))
+                    {
+                        GridAlignIssues = true;
+                    }
+                    else
+                    {
+                        UseGridAlign = true;
+                    }
+                }
+                else if (xtrim.Length > 0 && ytrim.Length == 0)
+                {
+                    GridAlignIssues = true;
+                }
+                else if (xtrim.Length == 0 && ytrim.Length > 0)
+                {
+                    GridAlignIssues = true;
+                }
+
+                if (GridAlignIssues)
+                {
+                    ProMsgBox.Show("Invalid Tile Grid Alignment Coordinates.  Both X and Y values must be numeric, or both must be blank.");
+                    UpdateProgress("Invalid Tile Grid Alignment Coordinates.", true);
+                    return false;
+                }
+                else if (UseGridAlign)
+                {
+                    UpdateProgress("Using Grid Alignment Coordinates.", true);
+                }
+                else
+                {
+                    UpdateProgress("No Grid Alignment Coordinates.", true);
+                }
+
+                #endregion
+
+                #region STUDY AREA
+
+                // Retrieve Polygons to construct Study Area + Buffered Study Area
+
+                if (GraphicsLayerIsChecked)
+                {
+                    
+                }
+                else if (FeatureLayerIsChecked)
+                {
+
+                }
 
 
-                //progressorSource.Max = 30;
-                //progressorSource.Value = 0;
-                //progressorSource.Status = "Phase 1...";
-                //progressDialog.Show();
-                ////                progressor.Status = "Phase 1...";
 
-                //int i = 0;
-
-                //while (i < 10)
-                //{
-                //    i++;
-                //    progressorSource.Value += 1;
-                //    progressorSource.Message = "Step " + i.ToString();
-
-                //    await QueuedTask.Run(async () =>
-                //    {
-                //        await Task.Delay(1000);
-                //    });
-
-                //    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-                //    {
-                //        return;
-                //    }
-                //}
-
-                //progressorSource.Value = 0;
-                //progressorSource.Max = 5;
-                ////progressor.Value = 0;
-                ////progressor.Max = 5;
-                //progressorSource.Status = "Phase 2...";
-
-                //i = 0;
-
-                //while (i < 5)
-                //{
-                //    i++;
-                //    //progressor.Value += 1;
-                //    progressorSource.Value += 1;
-                //    progressorSource.Message = "Step " + i.ToString();
-                //    //progressor.Message = "Step " + i.ToString();
-
-                //    await QueuedTask.Run(async () =>
-                //    {
-                //        await Task.Delay(1000);
-                //    });
-
-                //    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-                //    {
-                //        return;
-                //    }
-                //}
+                #endregion
 
 
-                UpdateBarStatus("Operation Complete!", 0, 3, 3);
+
+
+
+                UpdateProgress("Operation Complete!", true, 0, 3, 3);
+                return true;
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                UpdateProgress(ex.Message, true);
+                return false;
             }
             finally
             {
-                if (pd != null)
-                    pd.Dispose();
+                if (cps != null)
+                    cps.Dispose();
             }
         }
 
         private async Task<bool> DoSomeWork(CancelableProgressorSource cps)
         {
-            UpdateBarStatus("Doing Some Work", 0, 10, 0);
+//            UpdateProgressStatus("Doing Some Work", 0, 10, 0);
             cps.Message = "whoah there nelly";
             cps.Status = "ABC";
 
@@ -681,7 +810,7 @@ namespace NCC.PRZTools
                     if (cps.Progressor.CancellationToken.IsCancellationRequested)
                     {
                         // someone clicked the cancel button
-                        UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
+//                        UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
                         return;
                     }
                 }, cps.Progressor);
@@ -689,11 +818,11 @@ namespace NCC.PRZTools
                 if (cps.Progressor.CancellationToken.IsCancellationRequested)
                 {
                     // someone clicked the cancel button
-                    UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
+  //                  UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
                     return false;
                 }
 
-                UpdateBarStatus("Doing Some Work - " + i.ToString(), 0, 10, i);
+ //               UpdateBarStatus("Doing Some Work - " + i.ToString(), 0, 10, i);
             }
 
             return true;
@@ -701,7 +830,7 @@ namespace NCC.PRZTools
 
         private async Task DoSomeWork2()
         {
-            UpdateBarStatus("Doing Some Work 2", 0, 500, 0);
+            //UpdateProgressStatus("Doing Some Work 2", 0, 500, 0);
 
             int i = 0;
 
@@ -714,13 +843,13 @@ namespace NCC.PRZTools
                     await Task.Delay(1);
                 });
 
-                UpdateBarStatus("Doing Some Work 2 - " + i.ToString(), 0, 500, i);
+               // UpdateProgressStatus("Doing Some Work 2 - " + i.ToString(), 0, 500, i);
             }
         }
 
         private async Task DoSomeWork3()
         {
-            UpdateBarStatus("Doing Some Work 3", 0, 20, 0);
+            UpdateProgress("Doing Some Work 3", false, 0, 20, 0);
 
             int i = 0;
 
@@ -731,7 +860,7 @@ namespace NCC.PRZTools
                 await QueuedTask.Run(async () =>
                 {
                     await Task.Delay(300);
-                    UpdateBarStatus("Doing Some Work within QueuedTask.Run - " + i.ToString(), 0, 20, i);
+                    UpdateProgress("Doing Some Work within QueuedTask.Run - " + i.ToString(), false, 0, 20, i);
                 });
 
             }
@@ -741,19 +870,19 @@ namespace NCC.PRZTools
         {
             try
             {
-                MsgBox.Show("This will eventually be the Coordinate Systems Picker dialog");
+                ProMsgBox.Show("This will eventually be the Coordinate Systems Picker dialog");
 
                 _userSR = SpatialReferences.WebMercator;
                 _outputSR = _userSR;
 
                 if (this.SelectedLayerSR != null)
                 {
-                    MsgBox.Show("Selected SR: " + this.SelectedLayerSR.Name);
+                    ProMsgBox.Show("Selected SR: " + this.SelectedLayerSR.Name);
                 }
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -767,7 +896,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -779,7 +908,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -791,7 +920,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -804,6 +933,7 @@ namespace NCC.PRZTools
         {
             try
             {
+
                 // First validate the Output SR
                 if (this.SRMapIsChecked)
                 {
@@ -869,24 +999,28 @@ namespace NCC.PRZTools
 
                 // Next validate the X and Y grid alignment variables
 
-                string xtrim = GridAlign_X.ToString().Trim();
-                string ytrim = GridAlign_Y.ToString().Trim();
+                string xtrim = (string.IsNullOrEmpty(GridAlign_X) ? "" : GridAlign_X.Trim());
+                string ytrim = (string.IsNullOrEmpty(GridAlign_Y) ? "" : GridAlign_Y.Trim());
 
-                if (!string.IsNullOrEmpty(xtrim) && !string.IsNullOrEmpty(ytrim))
+                if (xtrim.Length > 0 && ytrim.Length > 0)
                 {
                     double x;
                     double y;
 
-                    if (!double.TryParse(xtrim, out x) | !double.TryParse(ytrim, out y))
+                    if (!double.TryParse(xtrim, out x))
+                    {
+                        return false;
+                    }
+                    if (!double.TryParse(ytrim, out y))
                     {
                         return false;
                     }
                 }
-                else if (!string.IsNullOrEmpty(xtrim) && string.IsNullOrEmpty(ytrim))
+                else if (xtrim.Length > 0 && ytrim.Length == 0)
                 {
                     return false;
                 }
-                else if (string.IsNullOrEmpty(xtrim) && !string.IsNullOrEmpty(ytrim))
+                else if (xtrim.Length == 0 && ytrim.Length > 0)
                 {
                     return false;
                 }
@@ -901,6 +1035,7 @@ namespace NCC.PRZTools
                 if (!string.IsNullOrEmpty(TileArea))
                 {
                     double tilearea;
+
                     if (double.TryParse(TileArea.Trim(), out tilearea))
                     {
                         if (tilearea < 0)
@@ -918,43 +1053,209 @@ namespace NCC.PRZTools
                     return false;
                 }
 
-
-
-
                 return true;
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
 
-        private void UpdateBarStatus(string message, int min, int max, int val)
+
+        private void UpdateProgress(string message, bool append)
         {
             if (System.Windows.Application.Current.Dispatcher.CheckAccess())
             {
-                BarMessage = message;
-                BarMin = min;
-                BarMax = max;
-                BarValue = val;
+                UpdateProgressMaster(message, append, null, null, null);
             }
             else
             {
                 ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
                 {
-                    BarMessage = message;
-                    BarMin = min;
-                    BarMax = max;
-                    BarValue = val;
+                    UpdateProgressMaster(message, append, null, null, null);
                 }));
             }
-
         }
 
-        
+        private void UpdateProgress(string message, bool append, int val)
+        {
+            if (System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                UpdateProgressMaster(message, append, null, null, val);
+            }
+            else
+            {
+                ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
+                {
+                    UpdateProgressMaster(message, append, null, null, val);
+                }));
+            }
+        }
+
+        private void UpdateProgress(string message, bool append, int max, int val)
+        {
+            if (System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                UpdateProgressMaster(message, append, null, max, val);
+            }
+            else
+            {
+                ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
+                {
+                    UpdateProgressMaster(message, append, null, max, val);
+                }));
+            }
+        }
+
+        private void UpdateProgress(string message, bool append, int min, int max, int val)
+        {
+            if (System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                UpdateProgressMaster(message, append, min, max, val);
+            }
+            else
+            {
+                ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
+                {
+                    UpdateProgressMaster(message, append, min, max, val);
+                }));
+            }
+        }
+
+        private void UpdateProgressMaster(string message, bool? append, int? min, int? max, int? val)
+        {
+            try
+            {
+                // Update the Message if required
+                if (append != null)
+                {
+                    if (string.IsNullOrEmpty(message))
+                    {
+                        BarMessage = (bool)append ? (BarMessage + Environment.NewLine + "") : "";
+                    }
+                    else
+                    {
+                        BarMessage = (bool)append ? (BarMessage + Environment.NewLine + message) : message;
+                    }
+                }
+
+                // Update the Min property
+                if (min != null)
+                {
+                    BarMin = (int)min;
+                }
+
+                // Update the Max property
+                if (max != null)
+                {
+                    BarMax = (int)max;
+                }
+
+                // Update the Value property
+                if (val != null)
+                {
+                    BarValue = (int)val;
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
 
         #endregion
 
+        private SpatialReference GetOutputSR()
+        {
+            try
+            {
+                if (this.SRMapIsChecked)
+                {
+                    return _mapSR;
+                }
+                else if (this.SRLayerIsChecked)
+                {
+                    if (this.SelectedLayerSR != null)
+                    {
+                        return this.SelectedLayerSR;
+                    }
+                }
+                else if (this.SRUserIsChecked)
+                {
+                    // not implemented yet
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
     }
 }
+
+
+
+
+//                await DoSomeWork2();
+
+//                await DoSomeWork3();
+
+
+//progressorSource.Max = 30;
+//progressorSource.Value = 0;
+//progressorSource.Status = "Phase 1...";
+//progressDialog.Show();
+////                progressor.Status = "Phase 1...";
+
+//int i = 0;
+
+//while (i < 10)
+//{
+//    i++;
+//    progressorSource.Value += 1;
+//    progressorSource.Message = "Step " + i.ToString();
+
+//    await QueuedTask.Run(async () =>
+//    {
+//        await Task.Delay(1000);
+//    });
+
+//    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+//    {
+//        return;
+//    }
+//}
+
+//progressorSource.Value = 0;
+//progressorSource.Max = 5;
+////progressor.Value = 0;
+////progressor.Max = 5;
+//progressorSource.Status = "Phase 2...";
+
+//i = 0;
+
+//while (i < 5)
+//{
+//    i++;
+//    //progressor.Value += 1;
+//    progressorSource.Value += 1;
+//    progressorSource.Message = "Step " + i.ToString();
+//    //progressor.Message = "Step " + i.ToString();
+
+//    await QueuedTask.Run(async () =>
+//    {
+//        await Task.Delay(1000);
+//    });
+
+//    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
+//    {
+//        return;
+//    }
+//}

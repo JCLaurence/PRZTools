@@ -11,6 +11,14 @@
         LOG     // Workspace Log File contents
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    internal enum PlanningUnitTileShape
+    {
+        SQUARE
+    }
+
     internal static class PRZConstants
     {
         // LAYER NAMES

@@ -69,20 +69,4 @@
             </ScrollViewer>
         </Grid>
     </Border>
-    <!--<Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
-        </Grid.RowDefinitions>
-        <TextBlock Padding="5" Height="200">The rain in Spain falls mainly on the play</TextBlock>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" MinWidth="200" Height="Auto">
-            <Button Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding CmdOK}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">OK</Button>
-            <Button IsDefault="True" Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding CmdCancel}" CommandParameter="{Binding ElementName=WorkspaceSettingsDlg}">CANCEL</Button>
-        </StackPanel>
-        <Border Grid.Row="2" BorderBrush="BlueViolet" BorderThickness="2">
-
-        </Border>
-
-    </Grid>-->
 </controls:ProWindow>

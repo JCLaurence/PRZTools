@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Planning Unit Generator"
-    Height="600" Width="500" MinHeight="600" MinWidth="500"
+    Height="650" Width="500" MinHeight="650" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="False"
@@ -31,7 +31,7 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
 
             <DockPanel Grid.Row="0" Margin="10, 10, 10, 5" Background="LightGray" Height="Auto" >
@@ -107,11 +107,13 @@
                 <Button IsEnabled="True" Style="{DynamicResource Esri_Button}" Command="{Binding CmdBuildPlanningUnits}" Background="YellowGreen" Foreground="Black" Height="25" Margin="5">BUILD PLANNING UNIT FEATURE CLASS</Button>
                 <!--<Button IsEnabled="{Binding BuildIsEnabled}" Style="{DynamicResource Esri_Button}" Command="{Binding CmdBuildPlanningUnits}" Background="YellowGreen" Foreground="Black" Height="25" Margin="5">BUILD PLANNING UNIT FEATURE CLASS</Button>-->
             </DockPanel>
-            
-            <DockPanel Grid.Row="4" Margin="10, 5, 10, 5" LastChildFill="false" Background="LightGray" Height="Auto">
-                <ProgressBar Margin="5" Height="20" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
-                <TextBlock Margin="10, 5" DockPanel.Dock="Top" VerticalAlignment="Center" Text="{Binding BarMessage}"></TextBlock>
-            </DockPanel>
+
+            <ScrollViewer Grid.Row="4" Margin="5" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <DockPanel LastChildFill="True" Background="LightGray" Height="Auto">
+                    <ProgressBar Margin="5" Height="12" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
+                    <TextBlock Margin="5" Text="{Binding BarMessage}" Background="PaleGoldenrod" FontFamily="Courier New"></TextBlock>
+                </DockPanel>
+            </ScrollViewer>
         </Grid>
     </Border>
 </controls:ProWindow>
