@@ -525,7 +525,7 @@ namespace NCC.PRZTools
                 this.GraphicsLayerIsEnabled = (DICT_GraphicLayer_SelPolyCount.Count > 0);
 
                 // Polygon Feature Layers having selection
-                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0).ToList();
+                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0 && fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
 
                 this.FeatureLayerList = flyrs;
                 this.FeatureLayerIsEnabled = flyrs.Count > 0;
@@ -561,7 +561,6 @@ namespace NCC.PRZTools
 
             try
             {
-
                 #region INITIALIZATION
 
                 // Reset the Progress Bar
@@ -758,14 +757,126 @@ namespace NCC.PRZTools
                 #region STUDY AREA
 
                 // Retrieve Polygons to construct Study Area + Buffered Study Area
+                List<Polygon> polys = new List<Polygon>();  // capture all individual selected polygons
+                Polygon multipoly = null;
 
                 if (GraphicsLayerIsChecked)
                 {
-                    
+                    // Get the selected polygon graphics from the graphics layer
+                    GraphicsLayer gl = SelectedGraphicsLayer;
+
+                    var selElems = gl.GetSelectedElements().OfType<GraphicElement>();
+
+                    await QueuedTask.Run(() =>
+                    {
+                        PolygonBuilder polyBuilder = new PolygonBuilder(gl.GetSpatialReference());
+
+                        foreach (var elem in selElems)
+                        {
+
+                            var g = elem.GetGraphic();
+                            if (g is CIMPolygonGraphic)
+                            {
+                                var p = g as CIMPolygonGraphic;
+                                var s = p.Polygon.Clone() as Polygon;
+
+                                polyBuilder.AddParts(s.Parts);
+                                Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
+                                polys.Add(p3);
+                            }
+                        }
+
+                        Polygon poly = polyBuilder.ToGeometry();
+                        multipoly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
+                    });
                 }
                 else if (FeatureLayerIsChecked)
                 {
+                    // Get the selected polygon features from the selected feature layer
+                    FeatureLayer fl = SelectedFeatureLayer;
 
+                    await QueuedTask.Run(() =>
+                    {
+                        PolygonBuilder polyBuilder = new PolygonBuilder(fl.GetSpatialReference());
+
+                        using (Selection sel = fl.GetSelection())
+                        {
+                            using (RowCursor cur = sel.Search(null, false))
+                            {
+                                while (cur.MoveNext())
+                                {
+                                    using (Feature feat = (Feature)cur.Current)
+                                    {
+                                        // process feature
+                                        var s = feat.GetShape().Clone() as Polygon;
+                                        polyBuilder.AddParts(s.Parts);
+                                        Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
+                                        polys.Add(p3);
+
+
+                                    }
+                                }
+                            }
+                        }
+
+                        Polygon poly = polyBuilder.ToGeometry();
+                        multipoly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);                                               
+                    });
+                }
+
+                // I now have study area polygons
+                // I want to build the following feature classes:
+                // 1. Study Area Polys
+                // 2. Study Area Single (merged) Poly (multipart feature if required)
+                // 3. Buffered Study Area Polys
+                // 4. Buffered Multipart Study Area Poly
+
+                // Remove any Planning Unit layers
+                var map = MapView.Active.Map;
+                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                List<Layer> LayersToDelete = new List<Layer>();
+                string pathFGDB = PRZH.GetProjectWorkspaceGDBPath();
+                string pathPUFC = Path.Combine(pathFGDB, PRZC.c_FC_PLANNING_UNITS);
+
+                foreach (FeatureLayer flyr in flyrs)
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        FeatureClass fc = flyr.GetFeatureClass();
+                        string fcpath = fc.GetPath().AbsolutePath;
+
+                        if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                        {
+                            LayersToDelete.Add(flyr);
+                        }
+                    });
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    map.RemoveLayers(LayersToDelete);
+                    MapView.Active.RedrawAsync(false);
+                });
+
+
+                // delete existing feature classes
+                using (Geodatabase gdb = await PRZM.GetProjectWorkspaceGDB())
+                {
+                    var puFCExists = await PRZM.FCExists(gdb, PRZC.c_FC_PLANNING_UNITS);
+
+                    await QueuedTask.Run(() =>
+                    {
+                        if (puFCExists)
+                        {
+                            FeatureClassDefinition defin = gdb.GetDefinition<FeatureClassDefinition>(PRZC.c_FC_PLANNING_UNITS);
+                            FeatureClassDescription descr = new FeatureClassDescription(defin);
+                            SchemaBuilder sb = new SchemaBuilder(gdb);
+                            sb.Delete(descr);
+                            bool success = sb.Build();
+                            ProMsgBox.Show(success.ToString());
+                        }
+
+                    });
                 }
 
 
