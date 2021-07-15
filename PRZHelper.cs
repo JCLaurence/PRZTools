@@ -41,12 +41,15 @@ namespace NCC.PRZTools
 
         #region LOGGING
 
-        internal static bool WriteLog(string message, LogMessageType type = LogMessageType.INFO)
+        internal static string WriteLog(string message, LogMessageType type = LogMessageType.INFO)
         {
             try
             {
+                // Create the message lines
+                string lines = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString() + Environment.NewLine + message + Environment.NewLine;
+
                 string parentpath = GetProjectWorkspaceDirectory();
-                if (parentpath == null) return false;
+                if (parentpath == null) return "";
 
                 string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
                 if (!File.Exists(logfile))
@@ -56,19 +59,20 @@ namespace NCC.PRZTools
 
                 using (StreamWriter w = File.AppendText(logfile))
                 {
-                    w.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString());
-                    w.WriteLine(message);
-                    w.WriteLine("");
+                    w.WriteLine(lines);
+                    //w.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString());
+                    //w.WriteLine(message);
+                    //w.WriteLine("");
                     w.Flush();
                     w.Close();
                 }
 
-                return true;
+                return lines;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Unable to log message");
-                return false;
+                return "";
             }
         }
 
@@ -212,7 +216,7 @@ namespace NCC.PRZTools
                 // If GPTool execution (i.e. ExecuteToolAsync) didn't even run, we have a null IGpResult
                 if (gp_result == null)
                 {
-                    messageBuilder.AppendLine(" >>> Failure Executing Tool. IGpResult is null...  Something fishy going on here...");
+                    messageBuilder.AppendLine(" > Failure Executing Tool. IGpResult is null...  Something fishy going on here...");
                     WriteLog(messageBuilder.ToString(), LogMessageType.ERROR);
                     return;
                 }
@@ -220,26 +224,23 @@ namespace NCC.PRZTools
                 // I now have an existing IGpResult.
 
                 // Assemble the IGpResult Messages into a single string
-                StringBuilder sb = new StringBuilder();
                 if (gp_result.Messages.Count() > 0)
                 {
                     foreach (var gp_message in gp_result.Messages)
                     {
-                        string gpm = gp_message.Type.ToString() + " " + gp_message.ErrorCode.ToString() + ": " + gp_message.Text;
-                        sb.AppendLine(gpm);
+                        string gpm = " > " + gp_message.Type.ToString() + " " + gp_message.ErrorCode.ToString() + ": " + gp_message.Text;
+                        messageBuilder.AppendLine(gpm);
                     }
                 }
                 else
                 {
                     // if no messages present, add my own message
-                    sb.AppendLine("No messages generated...  Something fishy going on here... User might have cancelled");
+                    messageBuilder.AppendLine(" > No messages generated...  Something fishy going on here... User might have cancelled");
                 }
 
-                messageBuilder.AppendLine(sb.ToString());
-
                 // Now, provide some execution result info
-                messageBuilder.AppendLine("Result Code (0 means success): " + gp_result.ErrorCode.ToString() + ".   Execution Status: " + (gp_result.IsFailed ? "Failed or Cancelled" : "Succeeded"));
-                messageBuilder.AppendLine("Return Value: " + (gp_result.ReturnValue == null ? "null   --> definitely something fishy going on" : gp_result.ReturnValue));
+                messageBuilder.AppendLine(" > Result Code (0 means success): " + gp_result.ErrorCode.ToString() + "   Execution Status: " + (gp_result.IsFailed ? "Failed or Cancelled" : "Succeeded"));
+                messageBuilder.AppendLine(" > Return Value: " + (gp_result.ReturnValue == null ? "null   --> definitely something fishy going on" : gp_result.ReturnValue));
 
                 // Finally, log the message info and return
                 if (gp_result.IsFailed)

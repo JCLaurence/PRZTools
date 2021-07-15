@@ -880,7 +880,7 @@ namespace NCC.PRZTools
                 }
 
                 // At this point I have no Planning Unit FC in gdb
-                // Build the new Grid FC
+                // Build the new empty Planning Unit FC
                 PRZH.WriteLog("Creating empty Planning Unit Feature Class...");
                 UpdateProgress("Creating empty Planning Unit Feature Class...", true);
                 string gdb_path = PRZH.GetProjectWorkspaceGDBPath();
@@ -889,6 +889,16 @@ namespace NCC.PRZTools
                 bool gpsuccess = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
                 UpdateProgress("CreateFeatureclass_management: " + (gpsuccess ? "successful" : "failed or cancelled by user"), true);
                 if (!gpsuccess) return false;
+
+                // Add Fields to Planning Unit FC
+                PRZH.WriteLog("Adding fields to Planning Unit FC...");
+                UpdateProgress("Creating empty Planning Unit Feature Class...", true);
+
+
+
+
+
+
 
                 #endregion
 
