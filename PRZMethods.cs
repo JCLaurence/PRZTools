@@ -111,12 +111,16 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         FeatureClass fc = flyr.GetFeatureClass();
-                        string fcpath = fc.GetPath().AbsolutePath;
-
-                        if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                        if (fc != null)
                         {
-                            LayersToDelete.Add(flyr);
+                            string fcpath = fc.GetPath().AbsolutePath;
+
+                            if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                            {
+                                LayersToDelete.Add(flyr);
+                            }
                         }
+
                     });
                 }
 

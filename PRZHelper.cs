@@ -6,6 +6,7 @@ using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Extensions;
 using ArcGIS.Desktop.Framework;
@@ -25,10 +26,12 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 //using System.Windows.Forms;
 //using Excel = Microsoft.Office.Interop.Excel;
 using PRZC = NCC.PRZTools.PRZConstants;
 using SysPath = System.IO.Path;
+using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 
 namespace NCC.PRZTools
 {
@@ -38,7 +41,7 @@ namespace NCC.PRZTools
 
         #region LOGGING
 
-        internal static bool WriteLog(string message)
+        internal static bool WriteLog(string message, LogMessageType type = LogMessageType.INFO)
         {
             try
             {
@@ -48,13 +51,12 @@ namespace NCC.PRZTools
                 string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
                 if (!File.Exists(logfile))
                 {
-                    using(FileStream fs = File.Create(logfile)){}
+                    using(FileStream fs = File.Create(logfile)) { }
                 }
 
                 using (StreamWriter w = File.AppendText(logfile))
                 {
-                    w.WriteLine("***************************************");
-                    w.WriteLine(DateTime.Now.ToString());
+                    w.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString());
                     w.WriteLine(message);
                     w.WriteLine("");
                     w.Flush();
@@ -65,12 +67,38 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Unable to log message");
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Unable to log message");
                 return false;
             }
         }
 
+        internal static string ReadLog()
+        {
+            try
+            {
+                string parentpath = GetProjectWorkspaceDirectory();
+                if (parentpath == null) return "";
+
+                string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
+                if (!File.Exists(logfile))
+                {
+                    return "";
+                }
+
+                string content = File.ReadAllText(logfile);
+                return content;
+            }
+            catch (Exception ex)
+            {
+//                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return ex.Message;
+            }
+
+        }
+
         #endregion LOGGING
+
+        #region PATHS AND DIRECTORIES
 
         internal static string GetUserWorkspaceDirectory()
         {
@@ -88,7 +116,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
                 return null;
             }
         }
@@ -112,7 +140,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
             }
         }
@@ -141,11 +169,94 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
             }
         }
 
+        #endregion
+
+        #region GEOPROCESSING
+
+        internal static async Task<bool> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
+        {
+            IGPResult gp_result = null;
+            CancelableProgressorSource cps = new CancelableProgressorSource("Executing GP Tool: " + toolName, "Tool cancelled by user", false);
+
+            // Execute the Geoprocessing Tool
+            try
+            {
+                gp_result = await Geoprocessing.ExecuteToolAsync(toolName, toolParams, toolEnvs, cps.Progressor, flags);
+            }
+            catch (Exception ex)
+            {
+                // handle error and leave
+                WriteLog("Error Executing GP Tool: " + toolName + " >>> " + ex.Message, LogMessageType.ERROR);
+                return false;
+            }
+
+            // At this point, GP Tool has executed and either succeeded, failed, or been cancelled.  There's also a chance that the output IGpResult is null.
+            ProcessGPMessages(gp_result, toolName);
+
+            // Configure return value
+            return !(gp_result == null || gp_result.IsFailed);
+        }
+
+        private static void ProcessGPMessages(IGPResult gp_result, string toolName)
+        {
+            try
+            {
+                StringBuilder messageBuilder = new StringBuilder();
+                messageBuilder.AppendLine("Executing GP Tool: " + toolName);
+
+                // If GPTool execution (i.e. ExecuteToolAsync) didn't even run, we have a null IGpResult
+                if (gp_result == null)
+                {
+                    messageBuilder.AppendLine(" >>> Failure Executing Tool. IGpResult is null...  Something fishy going on here...");
+                    WriteLog(messageBuilder.ToString(), LogMessageType.ERROR);
+                    return;
+                }
+
+                // I now have an existing IGpResult.
+
+                // Assemble the IGpResult Messages into a single string
+                StringBuilder sb = new StringBuilder();
+                if (gp_result.Messages.Count() > 0)
+                {
+                    foreach (var gp_message in gp_result.Messages)
+                    {
+                        string gpm = gp_message.Type.ToString() + " " + gp_message.ErrorCode.ToString() + ": " + gp_message.Text;
+                        sb.AppendLine(gpm);
+                    }
+                }
+                else
+                {
+                    // if no messages present, add my own message
+                    sb.AppendLine("No messages generated...  Something fishy going on here... User might have cancelled");
+                }
+
+                messageBuilder.AppendLine(sb.ToString());
+
+                // Now, provide some execution result info
+                messageBuilder.AppendLine("Result Code (0 means success): " + gp_result.ErrorCode.ToString() + ".   Execution Status: " + (gp_result.IsFailed ? "Failed or Cancelled" : "Succeeded"));
+                messageBuilder.AppendLine("Return Value: " + (gp_result.ReturnValue == null ? "null   --> definitely something fishy going on" : gp_result.ReturnValue));
+
+                // Finally, log the message info and return
+                if (gp_result.IsFailed)
+                {
+                    WriteLog(messageBuilder.ToString(), LogMessageType.ERROR);
+                }
+                else
+                {
+                    WriteLog(messageBuilder.ToString());
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        #endregion
 
 
 #if ARCMAP

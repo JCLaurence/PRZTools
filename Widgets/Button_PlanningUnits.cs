@@ -108,7 +108,6 @@ namespace NCC.PRZTools
                 };
 
                 var result = dlg.ShowDialog();
-
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!
 

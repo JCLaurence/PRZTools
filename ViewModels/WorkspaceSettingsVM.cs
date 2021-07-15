@@ -558,7 +558,7 @@ namespace NCC.PRZTools
                 }
                 else if (WSType == WorkspaceDisplayMode.LOG.ToString())
                 {
-                    contents.AppendLine("Loggy McLogface");
+                    contents.AppendLine(PRZH.ReadLog());
                 }
                 else
                 {

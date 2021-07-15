@@ -12,6 +12,16 @@
     }
 
     /// <summary>
+    /// Applies to individual messages logged to the PRZ log file. 
+    /// </summary>
+    internal enum LogMessageType
+    {
+        INFO,
+        WARNING,
+        ERROR
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     internal enum PlanningUnitTileShape

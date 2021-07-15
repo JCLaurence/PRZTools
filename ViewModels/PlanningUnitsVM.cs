@@ -2,6 +2,7 @@
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework;
@@ -873,13 +874,21 @@ namespace NCC.PRZTools
                             SchemaBuilder sb = new SchemaBuilder(gdb);
                             sb.Delete(descr);
                             bool success = sb.Build();
-                            ProMsgBox.Show(success.ToString());
                         }
 
                     });
                 }
 
-
+                // At this point I have no Planning Unit FC in gdb
+                // Build the new Grid FC
+                PRZH.WriteLog("Creating empty Planning Unit Feature Class...");
+                UpdateProgress("Creating empty Planning Unit Feature Class...", true);
+                string gdb_path = PRZH.GetProjectWorkspaceGDBPath();
+                var toolParams = Geoprocessing.MakeValueArray(gdb_path, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                var toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                bool gpsuccess = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                UpdateProgress("CreateFeatureclass_management: " + (gpsuccess ? "successful" : "failed or cancelled by user"), true);
+                if (!gpsuccess) return false;
 
                 #endregion
 

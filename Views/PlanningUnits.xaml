@@ -12,9 +12,7 @@
     Height="650" Width="500" MinHeight="650" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
-    ShowMinButton="False"
-    ShowMaxRestoreButton="True"
-    ShowCloseButton="True"
+    ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
     ResizeMode="CanResizeWithGrip"
     >
     <controls:ProWindow.Resources>
