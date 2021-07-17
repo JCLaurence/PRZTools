@@ -34,15 +34,15 @@ namespace NCC.PRZTools
                 #region Project Workspace Check
 
                 // Check that WS exists
-                var ws = PRZH.GetProjectWorkspaceDirectory();
-                if (ws == null)
+                bool wsexists = PRZH.ProjectWSExists();
+                if (!wsexists)
                 {
                     MsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
                     return;
                 }
 
                 // Check that Workspace GDB exists
-                var gdbexists = await PRZMethods.ProjectWorkspaceGDBExists();
+                var gdbexists = await PRZH.ProjectGDBExists();
                 if (!gdbexists)
                 {
                     MsgBox.Show("Project Workspace GDB does not exist.  Please Initialize or Reset your Project Workspace.");

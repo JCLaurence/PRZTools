@@ -240,7 +240,7 @@ namespace NCC.PRZTools
         }
 
 
-        private List<string> _gridTypeList = new List<string> { "SQUARE"};
+        private List<string> _gridTypeList;
         public List<string> GridTypeList
         {
             get { return _gridTypeList; }
@@ -536,7 +536,9 @@ namespace NCC.PRZTools
                 this.BufferUnitMetersIsChecked = true;
 
                 // Grid Type combo box
-                this.SelectedGridType = "SQUARE";
+                this.GridTypeList = Enum.GetNames(typeof(PlanningUnitTileShape)).ToList();
+
+                this.SelectedGridType = PlanningUnitTileShape.SQUARE.ToString();
 
                 // Tile area units
                 this.TileAreaKmIsSelected = true;
@@ -595,7 +597,7 @@ namespace NCC.PRZTools
                 stopwatch.Start();
 
                 // Verify that PRZ workspace geodatabase is available
-                bool gdb_exists = await PRZM.ProjectWorkspaceGDBExists();
+                bool gdb_exists = await PRZH.ProjectGDBExists();
                 if (!gdb_exists)
                 {
                     ProMsgBox.Show("PRZ Workspace Geodatabase not found.  Please verify that your workspace is set up correctly.");
@@ -656,6 +658,25 @@ namespace NCC.PRZTools
                     }
 
                     UpdateProgress(s, true);
+                }
+
+                // Validate tile type
+                if (string.IsNullOrEmpty(SelectedGridType))
+                {
+                    ProMsgBox.Show("No Tile Type Specified");
+                    UpdateProgress("No Tile Type specified...", true);
+                    return false;
+                }
+
+                string gridtype = SelectedGridType;
+                var GridType = PlanningUnitTileShape.SQUARE;
+                switch (gridtype)
+                {
+                    case "SQUARE":
+                        GridType = PlanningUnitTileShape.SQUARE;
+                        break;
+                    default:
+                        return false;
                 }
 
                 // Get Tile Area in square meters
@@ -758,8 +779,8 @@ namespace NCC.PRZTools
                 #region STUDY AREA
 
                 // Retrieve Polygons to construct Study Area + Buffered Study Area
-                List<Polygon> polys = new List<Polygon>();  // capture all individual selected polygons
-                Polygon multipoly = null;
+                List<Polygon> study_area_polys = new List<Polygon>();  // capture all individual selected polygons
+                Polygon study_area_poly = null;
 
                 if (GraphicsLayerIsChecked)
                 {
@@ -783,12 +804,12 @@ namespace NCC.PRZTools
 
                                 polyBuilder.AddParts(s.Parts);
                                 Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                polys.Add(p3);
+                                study_area_polys.Add(p3);
                             }
                         }
 
                         Polygon poly = polyBuilder.ToGeometry();
-                        multipoly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
+                        study_area_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
                     });
                 }
                 else if (FeatureLayerIsChecked)
@@ -812,18 +833,24 @@ namespace NCC.PRZTools
                                         var s = feat.GetShape().Clone() as Polygon;
                                         polyBuilder.AddParts(s.Parts);
                                         Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                        polys.Add(p3);
-
-
+                                        study_area_polys.Add(p3);
                                     }
                                 }
                             }
                         }
 
                         Polygon poly = polyBuilder.ToGeometry();
-                        multipoly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);                                               
+                        study_area_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);                                               
                     });
                 }
+
+                // Generate Buffered Polygons (buffer might be 0)
+                Polygon study_area_poly_buffered = GeometryEngine.Instance.Buffer(study_area_poly, buffer_distance) as Polygon;
+                Polygon study_area_polys_buffered = await QueuedTask.Run(() =>
+                {
+                    return GeometryEngine.Instance.Buffer(study_area_polys, buffer_distance) as Polygon;
+                });
+
 
                 // I now have study area polygons
                 // I want to build the following feature classes:
@@ -836,8 +863,8 @@ namespace NCC.PRZTools
                 var map = MapView.Active.Map;
                 var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
                 List<Layer> LayersToDelete = new List<Layer>();
-                string pathFGDB = PRZH.GetProjectWorkspaceGDBPath();
-                string pathPUFC = Path.Combine(pathFGDB, PRZC.c_FC_PLANNING_UNITS);
+                string gdbpath = PRZH.GetProjectGDBPath();
+                string pufcpath = PRZH.GetPlanningUnitFCPath();
 
                 foreach (FeatureLayer flyr in flyrs)
                 {
@@ -846,7 +873,7 @@ namespace NCC.PRZTools
                         FeatureClass fc = flyr.GetFeatureClass();
                         string fcpath = fc.GetPath().AbsolutePath;
 
-                        if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                        if (fcpath.Replace(@"/", @"\") == pufcpath)
                         {
                             LayersToDelete.Add(flyr);
                         }
@@ -859,40 +886,161 @@ namespace NCC.PRZTools
                     MapView.Active.RedrawAsync(false);
                 });
 
+                // *** GEOPROCESSING BEGINS!! ***
 
-                // delete existing feature classes
-                using (Geodatabase gdb = await PRZM.GetProjectWorkspaceGDB())
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                string toolOutput;
+                int max = 15;
+                int val = 0;
+
+                // Delete all tables from PU GDB
+                List<string> delnames = new List<string>();
+
+                await QueuedTask.Run(async () =>
                 {
-                    var puFCExists = await PRZM.FCExists(gdb, PRZC.c_FC_PLANNING_UNITS);
-
-                    await QueuedTask.Run(() =>
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
                     {
-                        if (puFCExists)
+                        var fcdefs = gdb.GetDefinitions<FeatureClassDefinition>();
+                        foreach (var d in fcdefs)
                         {
-                            FeatureClassDefinition defin = gdb.GetDefinition<FeatureClassDefinition>(PRZC.c_FC_PLANNING_UNITS);
-                            FeatureClassDescription descr = new FeatureClassDescription(defin);
-                            SchemaBuilder sb = new SchemaBuilder(gdb);
-                            sb.Delete(descr);
-                            bool success = sb.Build();
+                            delnames.Add(d.GetName());
                         }
 
-                    });
+                        var tabdefs = gdb.GetDefinitions<TableDefinition>();
+                        foreach (var d in tabdefs)
+                        {
+                            delnames.Add(d.GetName());
+                        }
+
+                        var dsdefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
+                        foreach (var u in dsdefs)
+                        {
+                            delnames.Add(u.GetName());
+                        }
+                    }
+                });
+
+                foreach (string s in delnames)
+                {
+                    ProMsgBox.Show(s);
                 }
 
-                // At this point I have no Planning Unit FC in gdb
+                // I'm Here, trying to delete all items in the geodatabase
+                await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    {
+                        SchemaBuilder sb = new SchemaBuilder(gdb);
+                    }
+                });
+
+
+                return false;
+
+
+
+
+
+
+
+                // Delete existing Planning Unit FC
+                UpdateProgress(PRZH.WriteLog("Deleting Planning Unit Feature Class..."), true, max, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                UpdateProgress(PRZH.WriteLog("Create Feature Class: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
+                if (toolOutput is null) return false;
+
                 // Build the new empty Planning Unit FC
-                PRZH.WriteLog("Creating empty Planning Unit Feature Class...");
-                UpdateProgress("Creating empty Planning Unit Feature Class...", true);
-                string gdb_path = PRZH.GetProjectWorkspaceGDBPath();
-                var toolParams = Geoprocessing.MakeValueArray(gdb_path, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                var toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                bool gpsuccess = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
-                UpdateProgress("CreateFeatureclass_management: " + (gpsuccess ? "successful" : "failed or cancelled by user"), true);
-                if (!gpsuccess) return false;
+                UpdateProgress(PRZH.WriteLog("Creating empty Planning Unit Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                UpdateProgress(PRZH.WriteLog("Create Feature Class: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
+                if (toolOutput is null) return false;
 
                 // Add Fields to Planning Unit FC
-                PRZH.WriteLog("Adding fields to Planning Unit FC...");
-                UpdateProgress("Creating empty Planning Unit Feature Class...", true);
+                string fldPUID = PRZC.c_FLD_PUFC_ID + " LONG 'Planning Unit ID' # # #;";
+                string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
+                string fldPUStatus = PRZC.c_FLD_PUFC_STATUS + " LONG 'Status' # 2 #;";
+                string flds = fldPUID + fldPUCost + fldPUStatus;
+
+                UpdateProgress(PRZH.WriteLog("Adding Fields..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
+                UpdateProgress(PRZH.WriteLog("Add Fields: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
+                if (toolOutput is null) return false;
+
+
+
+                // *** BUILD THE GRID
+
+                // calculate my dimensions
+                double tile_edge_length = 0;
+                double tile_width = 0;
+                double tile_center_to_right = 0;
+                double tile_height = 0;
+                double tile_center_to_top = 0;
+                int tiles_across = 0;
+                int tiles_up = 0;
+
+                switch(GridType)
+                {
+                    case PlanningUnitTileShape.SQUARE:
+                        tile_edge_length = Math.Sqrt(tile_area);
+                        tile_width = tile_edge_length;
+                        tile_height = tile_edge_length;
+                        tile_center_to_right = tile_width / 2.0;
+                        tile_center_to_top = tile_height / 2.0;
+                        break;
+                    case PlanningUnitTileShape.HEXAGON:
+                        tile_edge_length = Math.Sqrt((2 * tile_area) / (3 * Math.Sqrt(3)));
+                        tile_width = tile_edge_length * 2;
+                        tile_height = 2 * (tile_edge_length * Math.Sin((60 * Math.PI) / 180));
+                        tile_center_to_right = tile_width / 2;
+                        tile_center_to_top = tile_height / 2;
+                        break;
+                    default:
+                        return false;
+                }
+
+                // how many rows & columns of tiles do I need to cover the area?
+
+                // 1. get envelope from buffered study area
+                // 2. get dimensions of envelope (height + width)
+                // 3. get lower left coords of envelope
+
+                Envelope env = study_area_poly_buffered.Extent;
+                double env_width = env.Width;
+                double env_height = env.Height;
+                MapPoint env_ll_point = null;
+
+                await QueuedTask.Run(() =>
+                {
+                    MapPointBuilder mpbuilder = new MapPointBuilder(env.XMin, env.YMin, OutputSR);
+                    env_ll_point = mpbuilder.ToGeometry();
+                });
+
+                switch (GridType)
+                {
+                    case PlanningUnitTileShape.SQUARE:
+                        tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
+                        tiles_up = (int)Math.Ceiling(env_height / tile_height) + 3;
+                        break;
+                    case PlanningUnitTileShape.HEXAGON:
+                        double temp = Math.Round(env_height / tile_center_to_top);
+                        if ((temp % 2) == 1)
+                            temp++;
+                        tiles_up = Convert.ToInt32((temp / 2) + 3);
+                        temp = (((2 * env_width) - (4 * tile_edge_length)) / (3 * tile_edge_length)) + 3;
+                        tiles_across = Convert.ToInt32(temp) + 3;
+                        break;
+                    default:
+                        return false;
+                }
+
 
 
 

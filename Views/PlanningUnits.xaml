@@ -84,13 +84,13 @@
                 </DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="5,5,5,0" Background="Khaki" Height="Auto" LastChildFill="True">
                     <RadioButton DockPanel.Dock="Left" Margin="5" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="True" IsEnabled="True" GroupName="FCType">Use Grid:</RadioButton>
-                    <ComboBox HorizontalContentAlignment="Center" DockPanel.Dock="Left" Width="65" Margin="5" ItemsSource="{Binding GridTypeList}" SelectedItem="{Binding SelectedGridType}"></ComboBox>
+                    <ComboBox HorizontalContentAlignment="Center" DockPanel.Dock="Left" Width="70" Margin="5" ItemsSource="{Binding GridTypeList}" SelectedItem="{Binding SelectedGridType}"></ComboBox>
                     <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">Tile Area</TextBlock>
                     <TextBox DockPanel.Dock="Left" Text="{Binding TileArea}" Margin="5" Width="40"></TextBox>
-                    <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaMIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">m2</RadioButton>
+                    <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaMIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">m&#x00B2;</RadioButton>
                     <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaAcIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">ac</RadioButton>
                     <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaHaIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">ha</RadioButton>
-                    <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaKmIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">km2</RadioButton>
+                    <RadioButton Margin="0,5,5,5" IsChecked="{Binding TileAreaKmIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">km&#x00B2;</RadioButton>
                 </DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="5,0,5,5" Background="Khaki" Height="Auto" LastChildFill="False">
                     <TextBlock Margin="5" VerticalAlignment="Center">Align grid to these XY coordinates:</TextBlock>

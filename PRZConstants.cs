@@ -26,7 +26,8 @@
     /// </summary>
     internal enum PlanningUnitTileShape
     {
-        SQUARE
+        SQUARE,
+        HEXAGON
     }
 
     internal static class PRZConstants

@@ -30,7 +30,6 @@ using System.Threading.Tasks;
 //using System.Windows.Forms;
 //using Excel = Microsoft.Office.Interop.Excel;
 using PRZC = NCC.PRZTools.PRZConstants;
-using SysPath = System.IO.Path;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 
 namespace NCC.PRZTools
@@ -45,34 +44,35 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Create the message lines
-                string lines = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString() + Environment.NewLine + message + Environment.NewLine;
-
-                string parentpath = GetProjectWorkspaceDirectory();
-                if (parentpath == null) return "";
-
-                string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
-                if (!File.Exists(logfile))
+                // Make sure we have a valid log file
+                if (!ProjectWSExists())
                 {
-                    using(FileStream fs = File.Create(logfile)) { }
+                    return "";
                 }
 
-                using (StreamWriter w = File.AppendText(logfile))
+                string logpath = GetProjectLogPath();
+                if (!ProjectLogExists())
+                {
+                    using (FileStream fs = File.Create(logpath)) { }
+                }
+
+                // Create the message lines
+                string lines = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " :: " + type.ToString() 
+                                + Environment.NewLine + message 
+                                + Environment.NewLine;
+
+                using (StreamWriter w = File.AppendText(logpath))
                 {
                     w.WriteLine(lines);
-                    //w.WriteLine(DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.ff tt") + " " + type.ToString());
-                    //w.WriteLine(message);
-                    //w.WriteLine("");
                     w.Flush();
                     w.Close();
                 }
 
                 return lines;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Unable to log message");
-                return "";
+                return "Unable to log message...";
             }
         }
 
@@ -80,21 +80,17 @@ namespace NCC.PRZTools
         {
             try
             {
-                string parentpath = GetProjectWorkspaceDirectory();
-                if (parentpath == null) return "";
-
-                string logfile = Path.Combine(parentpath, PRZC.c_PRZ_LOGFILE);
-                if (!File.Exists(logfile))
+                if (!ProjectLogExists())
                 {
                     return "";
                 }
 
-                string content = File.ReadAllText(logfile);
-                return content;
+                string logpath = GetProjectLogPath();
+
+                return File.ReadAllText(logpath);
             }
             catch (Exception ex)
             {
-//                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return ex.Message;
             }
 
@@ -102,45 +98,14 @@ namespace NCC.PRZTools
 
         #endregion LOGGING
 
-        #region PATHS AND DIRECTORIES
+        #region RETRIEVING PATHS AND OBJECTS
 
-        internal static string GetUserWorkspaceDirectory()
+        // *** Paths
+        internal static string GetProjectWSPath()
         {
             try
             {
-                string local_app_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string parent_path = SysPath.Combine(local_app_path, PRZC.c_USER_PROFILE_WORKDIR);
-
-                if (!Directory.Exists(parent_path))
-                {
-                    Directory.CreateDirectory(parent_path);
-                }
-
-                return parent_path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Returns the path of the current Project Workspace Directory.  Returns null if the directory does not exist.
-        /// </summary>
-        /// <returns></returns>
-        internal static string GetProjectWorkspaceDirectory()
-        {
-            try
-            {
-                string project_workspace = Properties.Settings.Default.WORKSPACE_PATH;
-
-                if (!Directory.Exists(project_workspace))
-                {
-                    return null;
-                }
-
-                return project_workspace;
+                return Properties.Settings.Default.WORKSPACE_PATH;
             }
             catch (Exception ex)
             {
@@ -149,25 +114,12 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// Returns the path of the Current Project Workspace File Geodatabase.  Returns null if this path does not exist.
-        /// </summary>
-        /// <returns></returns>
-        internal static string GetProjectWorkspaceGDBPath()
+        internal static string GetProjectGDBPath()
         {
             try
             {
-                string ws = GetProjectWorkspaceDirectory();
-                if (ws == null)
-                {
-                    return null;
-                }
-
-                string gdbpath = Path.Combine(ws, PRZC.c_PRZ_PROJECT_FGDB);
-                if (!Directory.Exists(gdbpath))
-                {
-                    return null;
-                }
+                string wspath = GetProjectWSPath();
+                string gdbpath = Path.Combine(wspath, PRZC.c_PRZ_PROJECT_FGDB);
 
                 return gdbpath;
             }
@@ -178,32 +130,315 @@ namespace NCC.PRZTools
             }
         }
 
-        #endregion
-
-        #region GEOPROCESSING
-
-        internal static async Task<bool> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
+        internal static string GetProjectLogPath()
         {
-            IGPResult gp_result = null;
-            CancelableProgressorSource cps = new CancelableProgressorSource("Executing GP Tool: " + toolName, "Tool cancelled by user", false);
-
-            // Execute the Geoprocessing Tool
             try
             {
-                gp_result = await Geoprocessing.ExecuteToolAsync(toolName, toolParams, toolEnvs, cps.Progressor, flags);
+                string ws = GetProjectWSPath();
+                string logpath = Path.Combine(ws, PRZC.c_PRZ_LOGFILE);
+
+                return logpath;
             }
             catch (Exception ex)
             {
-                // handle error and leave
-                WriteLog("Error Executing GP Tool: " + toolName + " >>> " + ex.Message, LogMessageType.ERROR);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static string GetPlanningUnitFCPath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string pufcpath = Path.Combine(gdbpath, PRZC.c_FC_PLANNING_UNITS);
+
+                return pufcpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+        // *** Path + Object Existence
+        internal static bool ProjectWSExists()
+        {
+            try
+            {
+                string path = GetProjectWSPath();
+                return Directory.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
+            }
+        }
+
+        internal static async Task<bool> ProjectGDBExists()
+        {
+            try
+            {
+                string path = GetProjectGDBPath();
+
+                if (path == null)
+                {
+                    return false;
+                }
+
+                Uri uri = new Uri(path);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        var gdb = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return false;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        internal static bool ProjectLogExists()
+        {
+            try
+            {
+                string path = GetProjectLogPath();
+                return File.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        internal static async Task<bool> PlanningUnitFCExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(gdb, PRZC.c_FC_PLANNING_UNITS);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+
+        // *** Objects
+
+        internal static async Task<Geodatabase> GetProjectGDB()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+
+                Uri uri = new Uri(gdbpath);
+                FileGeodatabaseConnectionPath connpath = new FileGeodatabaseConnectionPath(uri);
+                Geodatabase gdb = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        gdb = new Geodatabase(connpath);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return gdb;
+            }
+            catch (Exception)
+            {
+                //MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static async Task<FeatureClass> GetPlanningUnitFC()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS);
+                        return fc;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+
+
+
+
+
+
+
+        #endregion
+
+        #region GENERIC DATA METHODS
+
+        internal static async Task<Geodatabase> GetFileGDB(string path)
+        {
+            try
+            {
+                // Ensure the path is an existing directory
+                if (!Directory.Exists(path))
+                {
+                    return null;
+                }
+
+                // Ensure the Uri is a valid Uri
+
+                Uri uri = new Uri(path);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+                Geodatabase gdb = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        gdb = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return gdb;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    FeatureClassDefinition fcdef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName);
+                    fcdef.Dispose();
+                });
+
+                return true;
+            }
+            catch
+            {
+                // Exception thrown if definition doesn't exist, meaning a FC of that name doesn't exist in GDB
+                return false;
+            }
+        }
+
+        internal static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName);
+                    tabdef.Dispose();
+                });
+
+                return true;
+            }
+            catch
+            {
+                // Exception thrown if definition doesn't exist, meaning a Table of that name doesn't exist in GDB
+                return false;
+            }
+        }
+
+        
+
+
+        #endregion GENERIC DATA METHODS
+
+
+
+        #region GEOPROCESSING
+
+        internal static async Task<string> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
+        {
+            IGPResult gp_result = null;
+            using (CancelableProgressorSource cps = new CancelableProgressorSource("Executing GP Tool: " + toolName, "Tool cancelled by user", false))
+            {
+                // Execute the Geoprocessing Tool
+                try
+                {
+                    gp_result = await Geoprocessing.ExecuteToolAsync(toolName, toolParams, toolEnvs, cps.Progressor, flags);
+                }
+                catch (Exception ex)
+                {
+                    // handle error and leave
+                    WriteLog("Error Executing GP Tool: " + toolName + " >>> " + ex.Message, LogMessageType.ERROR);
+                    return null;
+                }
             }
 
             // At this point, GP Tool has executed and either succeeded, failed, or been cancelled.  There's also a chance that the output IGpResult is null.
             ProcessGPMessages(gp_result, toolName);
 
             // Configure return value
-            return !(gp_result == null || gp_result.IsFailed);
+            if (gp_result == null || gp_result.ReturnValue == null)
+            {
+                return null;
+            }
+            else
+            {
+                return gp_result.ReturnValue;
+            }
         }
 
         private static void ProcessGPMessages(IGPResult gp_result, string toolName)
@@ -240,7 +475,7 @@ namespace NCC.PRZTools
 
                 // Now, provide some execution result info
                 messageBuilder.AppendLine(" > Result Code (0 means success): " + gp_result.ErrorCode.ToString() + "   Execution Status: " + (gp_result.IsFailed ? "Failed or Cancelled" : "Succeeded"));
-                messageBuilder.AppendLine(" > Return Value: " + (gp_result.ReturnValue == null ? "null   --> definitely something fishy going on" : gp_result.ReturnValue));
+                messageBuilder.Append(" > Return Value: " + (gp_result.ReturnValue == null ? "null   --> definitely something fishy going on" : gp_result.ReturnValue));
 
                 // Finally, log the message info and return
                 if (gp_result.IsFailed)
@@ -258,6 +493,30 @@ namespace NCC.PRZTools
         }
 
         #endregion
+
+
+
+
+        internal static string GetUserWSPath()
+        {
+            try
+            {
+                string local_app_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string parent_path = Path.Combine(local_app_path, PRZC.c_USER_PROFILE_WORKDIR);
+
+                if (!Directory.Exists(parent_path))
+                {
+                    Directory.CreateDirectory(parent_path);
+                }
+
+                return parent_path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
 
 #if ARCMAP

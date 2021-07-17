@@ -30,6 +30,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
+using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 
 namespace NCC.PRZTools
 {
@@ -45,33 +46,29 @@ namespace NCC.PRZTools
 
         internal static async Task<bool> ValidatePRZGroupLayers()
         {
-            Geodatabase FGDB = null;
-
             try
             {
                 // Verify that the Project Workspace exists
-                string pathFolder = PRZH.GetProjectWorkspaceDirectory();
-                if (pathFolder == null)
+                string wspath = PRZH.GetProjectWSPath();
+                if (!PRZH.ProjectWSExists())
                 {
-                    MessageBox.Show("Project Workspace does not exist at this path:" +
+                    ProMsgBox.Show("Project Workspace does not exist at this path:" +
                                      Environment.NewLine + Environment.NewLine +
-                                     pathFolder + Environment.NewLine + Environment.NewLine +
+                                     wspath + Environment.NewLine + Environment.NewLine +
                                      "Please verify Workspace Settings");
                     return false;
                 }
 
-                // Verify that Project GDB exists, Part I (directory check)
-                string pathFGDB = PRZH.GetProjectWorkspaceGDBPath();
-                if (pathFGDB == null)
+                // Verify that Project GDB exists
+                string gdbpath = PRZH.GetProjectGDBPath();
+                if (!await PRZH.ProjectGDBExists())
                 {
-                    MessageBox.Show("Project Workspace File Geodatabase does not exist at this path:" +
+                    ProMsgBox.Show("Project Workspace File Geodatabase does not exist at this path:" +
                                      Environment.NewLine + Environment.NewLine +
-                                     pathFGDB + Environment.NewLine + Environment.NewLine +
+                                     gdbpath + Environment.NewLine + Environment.NewLine +
                                      "Please verify Workspace Settings");
                     return false;
                 }
-
-                string pathPUFC = Path.Combine(pathFGDB, PRZC.c_FC_PLANNING_UNITS);
 
                 // Get the MapView information
                 MapView mv = MapView.Active;
@@ -84,22 +81,12 @@ namespace NCC.PRZTools
 
                 if (map.MapType.ToString() != "Map") return false;  // has to be a plain old Map
 
-                // Get the Geodatabase
-                FGDB = await GetProjectWorkspaceGDB();
-                if (FGDB is null)
-                {
-                    MessageBox.Show("Unable to open Project File GDB at this path:" + Environment.NewLine + Environment.NewLine
-                                    + pathFGDB + Environment.NewLine + Environment.NewLine +
-                                    "Please verify Workspace Settings");
-                    return false;
-                }
-
                 // determine if Planning Unit FC exists
-                var puFCExists = await FCExists(FGDB, PRZC.c_FC_PLANNING_UNITS);
-
-                if (!puFCExists)
+                string pufcpath = PRZH.GetPlanningUnitFCPath();
+                bool pufcexists = await PRZH.PlanningUnitFCExists();
+                if (!pufcexists)
                 {
-                    MessageBox.Show("Planning Unit Feature Class doesn't exist in your Project File Geodatabase.  You may not have built it yet...");
+                    ProMsgBox.Show("Planning Unit Feature Class doesn't exist in your Project File Geodatabase.  You may not have built it yet...");
                 }
 
                 // Remove any instances of Planning Unit Feature Layer in the map
@@ -110,17 +97,18 @@ namespace NCC.PRZTools
                 {
                     await QueuedTask.Run(() =>
                     {
-                        FeatureClass fc = flyr.GetFeatureClass();
-                        if (fc != null)
+                        using (FeatureClass fc = flyr.GetFeatureClass())
                         {
-                            string fcpath = fc.GetPath().AbsolutePath;
-
-                            if (fcpath.Replace(@"/", @"\") == pathPUFC)
+                            if (fc != null)
                             {
-                                LayersToDelete.Add(flyr);
+                                string fcpath = fc.GetPath().AbsolutePath;
+
+                                if (fcpath.Replace(@"/", @"\") == pufcpath)
+                                {
+                                    LayersToDelete.Add(flyr);
+                                }
                             }
                         }
-
                     });
                 }
 
@@ -259,9 +247,9 @@ namespace NCC.PRZTools
                 });
 
                 // ADD THE PU FEATURE LAYER HERE WITH NICE PRETTY LEGEND ONCE I HAVE IT CREATED!!!
-                if (puFCExists)
+                if (pufcexists)
                 {
-                    Uri uri = new Uri(pathPUFC);
+                    Uri uri = new Uri(pufcpath);
                     await QueuedTask.Run(() =>
                     {
                         LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, 3, PRZC.c_LAYER_PLANNING_UNITS);
@@ -459,185 +447,10 @@ namespace NCC.PRZTools
             finally
             {
                 // Any clean-up regardless of errors caught above goes here
-                if (FGDB != null)
-                    FGDB.Dispose();
             }
         }
 
 
-        #region GENERIC DATA METHODS
-
-        /// <summary>
-        /// Returns a File Geodatabase object from the supplied path.  Returns null if path is not a valid geodatabase
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns>Geodatabase</returns>
-        internal static async Task<Geodatabase> GetFileGDB(string path)
-        {
-            try
-            {
-                // Ensure the path is an existing directory
-                if (!Directory.Exists(path))
-                {
-                    return null;
-                }
-
-                // Ensure the Uri is a valid Uri
-
-                Uri uri = new Uri(path);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-                Geodatabase gdb = null;
-
-                try
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        gdb = new Geodatabase(pathConn);
-                    });
-
-                }
-                catch (GeodatabaseNotFoundOrOpenedException)
-                {
-                    return null;
-                }
-
-                // If I get to this point, the file gdb exists and was successfully opened
-                return gdb;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        internal static async Task<Geodatabase> GetProjectWorkspaceGDB()
-        {
-            try
-            {
-                string pathGDB = PRZH.GetProjectWorkspaceGDBPath();
-
-                if (pathGDB == null)
-                {
-                    return null;
-                }
-
-                Uri uri = new Uri(pathGDB);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-                Geodatabase FGDB = null;
-
-                try
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        FGDB = new Geodatabase(pathConn);
-                    });
-
-                }
-                catch (GeodatabaseNotFoundOrOpenedException)
-                {
-                    return null;
-                }
-
-                // If I get to this point, the file gdb exists and was successfully opened
-                return FGDB;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        internal static async Task<bool> ProjectWorkspaceGDBExists()
-        {
-            try
-            {
-                string pathGDB = PRZH.GetProjectWorkspaceGDBPath();
-
-                if (pathGDB == null)
-                {
-                    return false;
-                }
-
-                Uri uri = new Uri(pathGDB);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-
-                try
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        var gdb = new Geodatabase(pathConn);
-                    });
-
-                }
-                catch (GeodatabaseNotFoundOrOpenedException)
-                {
-                    return false;
-                }
-
-                // If I get to this point, the file gdb exists and was successfully opened
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// ASYNC Does a Feature Class of the supplied name exist within the supplied geodatabase?  Returns True or False.
-        /// </summary>
-        /// <param name="geodatabase"></param>
-        /// <param name="FCName"></param>
-        /// <returns>bool</returns>
-        internal static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                    FeatureClassDefinition fcdef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName);
-                    fcdef.Dispose();
-                });
-
-                return true;
-            }
-            catch
-            {
-                // Exception thrown if definition doesn't exist, meaning a FC of that name doesn't exist in GDB
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// ASYNC Does a Table of the supplied name exist within the supplied geodatabase?  Returns True or False.
-        /// </summary>
-        /// <param name="geodatabase"></param>
-        /// <param name="TabName"></param>
-        /// <returns>bool</returns>
-        internal static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                    TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName);
-                    tabdef.Dispose();
-                });
-
-                return true;
-            }
-            catch
-            {
-                // Exception thrown if definition doesn't exist, meaning a Table of that name doesn't exist in GDB
-                return false;
-            }
-        }
-
-
-        #endregion GENERIC DATA METHODS
 
 
 
