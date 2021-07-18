@@ -400,6 +400,63 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Delete all Feature Datasets, Tables, and Feature Classes from the Project GDB
+        /// </summary>
+        /// <returns>boolean</returns>
+        internal static async Task<bool> ClearProjectGDB()
+        {
+            try
+            {
+                await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await GetProjectGDB())
+                    {
+                        SchemaBuilder schemaBuilder = new SchemaBuilder(gdb);
+
+                        // First, delete all feature datasets
+                        var fdsDefs = gdb.GetDefinitions<FeatureDatasetDefinition>().ToList();
+                        if (fdsDefs.Count > 0)
+                        {
+                            foreach (var fdsDef in fdsDefs)
+                            {
+                                schemaBuilder.Delete(new FeatureDatasetDescription(fdsDef));
+                            }
+                            schemaBuilder.Build();
+                        }
+
+                        // Next, delete all remaining standalone feature classes
+                        var fcDefs = gdb.GetDefinitions<FeatureClassDefinition>().ToList();
+                        if (fcDefs.Count > 0)
+                        {
+                            foreach (var fcDef in fcDefs)
+                            {
+                                schemaBuilder.Delete(new FeatureClassDescription(fcDef));
+                            }
+                            schemaBuilder.Build();
+                        }
+
+                        // Finally, delete all remaining tables
+                        var tabDefs = gdb.GetDefinitions<TableDefinition>().ToList();
+                        if (tabDefs.Count > 0)
+                        {
+                            foreach (var tabDef in tabDefs)
+                            {
+                                schemaBuilder.Delete(new TableDescription(tabDef));
+                            }
+                            schemaBuilder.Build();
+                        }
+                    }
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
         
 
 

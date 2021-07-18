@@ -895,55 +895,13 @@ namespace NCC.PRZTools
                 int max = 15;
                 int val = 0;
 
-                // Delete all tables from PU GDB
-                List<string> delnames = new List<string>();
-
-                await QueuedTask.Run(async () =>
+                // Delete all Items from Project GDB
+                UpdateProgress(PRZH.WriteLog("Deleting all Feature Datasets, Feature Classes, and Tables from " + PRZC.c_PRZ_PROJECT_FGDB), true);
+                if (!await PRZH.ClearProjectGDB())
                 {
-                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                    {
-                        var fcdefs = gdb.GetDefinitions<FeatureClassDefinition>();
-                        foreach (var d in fcdefs)
-                        {
-                            delnames.Add(d.GetName());
-                        }
-
-                        var tabdefs = gdb.GetDefinitions<TableDefinition>();
-                        foreach (var d in tabdefs)
-                        {
-                            delnames.Add(d.GetName());
-                        }
-
-                        var dsdefs = gdb.GetDefinitions<FeatureDatasetDefinition>();
-                        foreach (var u in dsdefs)
-                        {
-                            delnames.Add(u.GetName());
-                        }
-                    }
-                });
-
-                foreach (string s in delnames)
-                {
-                    ProMsgBox.Show(s);
+                    UpdateProgress(PRZH.WriteLog("Unable to delete FDS / FC / TAB from " + PRZC.c_PRZ_PROJECT_FGDB, LogMessageType.ERROR), true);
+                    return false;
                 }
-
-                // I'm Here, trying to delete all items in the geodatabase
-                await QueuedTask.Run(async () =>
-                {
-                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                    {
-                        SchemaBuilder sb = new SchemaBuilder(gdb);
-                    }
-                });
-
-
-                return false;
-
-
-
-
-
-
 
                 // Delete existing Planning Unit FC
                 UpdateProgress(PRZH.WriteLog("Deleting Planning Unit Feature Class..."), true, max, ++val);
@@ -972,8 +930,6 @@ namespace NCC.PRZTools
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
                 UpdateProgress(PRZH.WriteLog("Add Fields: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
                 if (toolOutput is null) return false;
-
-
 
                 // *** BUILD THE GRID
 
@@ -1041,7 +997,7 @@ namespace NCC.PRZTools
                         return false;
                 }
 
-
+                await LoadTiles();
 
 
 
@@ -1067,6 +1023,73 @@ namespace NCC.PRZTools
             {
                 if (cps != null)
                     cps.Dispose();
+            }
+        }
+
+        internal async Task<bool> LoadTiles()
+        {
+            try
+            {
+                await QueuedTask.Run(async () => 
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
+                    {
+                        RowBuffer rowBuffer = null;
+                        InsertCursor insertCursor = null;
+
+                        try
+                        {
+
+                            // I'm here!!!
+
+
+                            FeatureClassDefinition fcDef = puFC.GetDefinition();
+                            foreach (var a in fcDef.GetFields().ToList())
+                            {
+                                ProMsgBox.Show(a.Name);
+                            }
+
+                            int ixShape = fcDef.FindField(fcDef.GetShapeField());
+                            int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
+
+                            ProMsgBox.Show("Shape Index: " + ixShape.ToString() + "    Status Index: " + ixStatus.ToString());
+
+                            insertCursor = puFC.CreateInsertCursor();
+                           
+                            rowBuffer = puFC.CreateRowBuffer();
+
+                            for (int i = 0; i < 5; i++)
+                            {
+                                rowBuffer[ixStatus] = 9;
+                                insertCursor.Insert(rowBuffer);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message);
+                            return;
+                        }
+                        finally
+                        {
+                            if (rowBuffer != null)
+                                rowBuffer.Dispose();
+                            if (insertCursor != null)
+                                insertCursor.Dispose();
+                        }
+                    }
+                });
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                //ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+            finally
+            {
             }
         }
 
