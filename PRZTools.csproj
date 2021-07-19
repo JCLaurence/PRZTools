@@ -120,6 +120,7 @@
     <AddInContent Include="Config.daml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\ConservationFeaturesVM.cs" />

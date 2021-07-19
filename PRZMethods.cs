@@ -252,7 +252,8 @@ namespace NCC.PRZTools
                     Uri uri = new Uri(pufcpath);
                     await QueuedTask.Run(() =>
                     {
-                        LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, 3, PRZC.c_LAYER_PLANNING_UNITS);
+                        var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, 3, PRZC.c_LAYER_PLANNING_UNITS);
+                        PRZH.ApplyLegend_PU_Simple(puFL);
                     });
                 }
 
@@ -430,6 +431,7 @@ namespace NCC.PRZTools
                 if ((command != null) && command.CanExecute(null))
                 {
                     command.Execute(null);
+                    
                 }
 
                 // *** I still need to somehow enable/active/refresh the buttons on the Contents Pane

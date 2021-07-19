@@ -669,11 +669,14 @@ namespace NCC.PRZTools
                 }
 
                 string gridtype = SelectedGridType;
-                var GridType = PlanningUnitTileShape.SQUARE;
+                var TileShape = PlanningUnitTileShape.SQUARE;
                 switch (gridtype)
                 {
                     case "SQUARE":
-                        GridType = PlanningUnitTileShape.SQUARE;
+                        TileShape = PlanningUnitTileShape.SQUARE;
+                        break;
+                    case "HEXAGON":
+                        TileShape = PlanningUnitTileShape.HEXAGON;
                         break;
                     default:
                         return false;
@@ -870,12 +873,17 @@ namespace NCC.PRZTools
                 {
                     await QueuedTask.Run(() =>
                     {
-                        FeatureClass fc = flyr.GetFeatureClass();
-                        string fcpath = fc.GetPath().AbsolutePath;
-
-                        if (fcpath.Replace(@"/", @"\") == pufcpath)
+                        using (FeatureClass fc = flyr.GetFeatureClass())
                         {
-                            LayersToDelete.Add(flyr);
+                            if (fc != null)
+                            {
+                                string fcpath = fc.GetPath().AbsolutePath;
+
+                                if (fcpath.Replace(@"/", @"\") == pufcpath)
+                                {
+                                    LayersToDelete.Add(flyr);
+                                }
+                            }
                         }
                     });
                 }
@@ -942,7 +950,7 @@ namespace NCC.PRZTools
                 int tiles_across = 0;
                 int tiles_up = 0;
 
-                switch(GridType)
+                switch(TileShape)
                 {
                     case PlanningUnitTileShape.SQUARE:
                         tile_edge_length = Math.Sqrt(tile_area);
@@ -962,12 +970,6 @@ namespace NCC.PRZTools
                         return false;
                 }
 
-                // how many rows & columns of tiles do I need to cover the area?
-
-                // 1. get envelope from buffered study area
-                // 2. get dimensions of envelope (height + width)
-                // 3. get lower left coords of envelope
-
                 Envelope env = study_area_poly_buffered.Extent;
                 double env_width = env.Width;
                 double env_height = env.Height;
@@ -979,7 +981,7 @@ namespace NCC.PRZTools
                     env_ll_point = mpbuilder.ToGeometry();
                 });
 
-                switch (GridType)
+                switch (TileShape)
                 {
                     case PlanningUnitTileShape.SQUARE:
                         tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
@@ -997,20 +999,48 @@ namespace NCC.PRZTools
                         return false;
                 }
 
-                await LoadTiles();
+                PlanningUnitTileInfo tileinfo = new PlanningUnitTileInfo();
+                tileinfo.LL_Point = env_ll_point;
+                tileinfo.tiles_across = tiles_across;
+                tileinfo.tiles_up = tiles_up;
+                tileinfo.tile_area = tile_area;
+                tileinfo.tile_center_to_right = tile_center_to_right;
+                tileinfo.tile_center_to_top = tile_center_to_top;
+                tileinfo.tile_edge_length = tile_edge_length;
+                tileinfo.tile_height = tile_height;
+                tileinfo.tile_shape = TileShape;
+                tileinfo.tile_width = tile_width;
 
+                bool tiles_loaded = await LoadTiles(tileinfo);
+                if (!tiles_loaded)
+                    return false;
 
+                UpdateProgress(PRZH.WriteLog("Tiles constructed..."), true, ++val);
 
+                // Retain only those tiles overlapping the buffered study area polygon
+                bool success = await StripTiles(study_area_poly_buffered);
 
-
+                UpdateProgress(PRZH.WriteLog("Tiles stripped..."), true, ++val);
 
                 #endregion
 
+                // Compact the Geodatabase
+                UpdateProgress(PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath);
+                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, GPExecuteToolFlags.None);
+                UpdateProgress(PRZH.WriteLog("Compact: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
+                if (toolOutput is null) return false;
 
-
-
+                // Refresh the Map & TOC
+                await PRZM.ValidatePRZGroupLayers();
 
                 UpdateProgress("Operation Complete!", true, 0, 3, 3);
+
+                stopwatch.Stop();
+                string message = PRZH.GetElapsedTimeMessage(stopwatch.Elapsed);
+
+                ProMsgBox.Show("Planning Unit Layer Construction is Complete!" + Environment.NewLine + Environment.NewLine + message);
+
                 return true;
             }
             catch (Exception ex)
@@ -1026,7 +1056,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<bool> LoadTiles()
+        internal async Task<bool> LoadTiles(PlanningUnitTileInfo planningUnitTileInfo)
         {
             try
             {
@@ -1040,29 +1070,71 @@ namespace NCC.PRZTools
 
                         try
                         {
-
-                            // I'm here!!!
-
-
+                            // Get the Definition
                             FeatureClassDefinition fcDef = puFC.GetDefinition();
-                            foreach (var a in fcDef.GetFields().ToList())
-                            {
-                                ProMsgBox.Show(a.Name);
-                            }
 
+                            // Field Indexes
                             int ixShape = fcDef.FindField(fcDef.GetShapeField());
+                            int ixPUID = fcDef.FindField(PRZC.c_FLD_PUFC_ID);
                             int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
+                            int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
 
-                            ProMsgBox.Show("Shape Index: " + ixShape.ToString() + "    Status Index: " + ixStatus.ToString());
+                            int puid = 1;
 
                             insertCursor = puFC.CreateInsertCursor();
-                           
                             rowBuffer = puFC.CreateRowBuffer();
 
-                            for (int i = 0; i < 5; i++)
+                            switch (planningUnitTileInfo.tile_shape)
                             {
-                                rowBuffer[ixStatus] = 9;
-                                insertCursor.Insert(rowBuffer);
+                                case PlanningUnitTileShape.SQUARE:
+                                    for(int row = 0; row < planningUnitTileInfo.tiles_up; row++)
+                                    {
+                                        for (int col = 0; col < planningUnitTileInfo.tiles_across; col++)
+                                        {
+                                            double CurrentX = planningUnitTileInfo.LL_Point.X + (col * planningUnitTileInfo.tile_edge_length);
+                                            double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * planningUnitTileInfo.tile_edge_length);
+                                            Polygon poly = await BuildTileSquare(CurrentX, CurrentY, planningUnitTileInfo.tile_edge_length, planningUnitTileInfo.LL_Point.SpatialReference);
+
+                                            rowBuffer[ixStatus] = 0;
+                                            rowBuffer[ixCost] = 1;
+                                            rowBuffer[ixShape] = poly;
+                                            rowBuffer[ixPUID] = puid;
+
+                                            insertCursor.Insert(rowBuffer);
+                                            insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
+
+                                            puid++;
+                                        }
+                                    }
+                                    break;
+
+                                case PlanningUnitTileShape.HEXAGON:
+                                    double hex_horizoffset = planningUnitTileInfo.tile_center_to_right + (planningUnitTileInfo.tile_edge_length / 2.0);
+
+                                    for (int col = 0; col < planningUnitTileInfo.tiles_across; col++)
+                                    {
+                                        for (int row = 0;  row < planningUnitTileInfo.tiles_up; row++)
+                                        {
+                                            double CurrentX = planningUnitTileInfo.LL_Point.X + (col * hex_horizoffset);
+                                            double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * (2 * planningUnitTileInfo.tile_center_to_top)) - ((col % 2) * planningUnitTileInfo.tile_center_to_top);
+
+                                            Polygon poly = await BuildTileHexagon(CurrentX, CurrentY, planningUnitTileInfo.tile_center_to_right, planningUnitTileInfo.tile_center_to_top, planningUnitTileInfo.LL_Point.SpatialReference);
+
+                                            rowBuffer[ixStatus] = 0;
+                                            rowBuffer[ixCost] = 1;
+                                            rowBuffer[ixShape] = poly;
+                                            rowBuffer[ixPUID] = puid;
+
+                                            insertCursor.Insert(rowBuffer);
+                                            insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
+
+                                            puid++;
+                                        }
+                                    }
+                                    break;
+
+                                default:
+                                    return;
                             }
                         }
                         catch (Exception ex)
@@ -1080,7 +1152,6 @@ namespace NCC.PRZTools
                     }
                 });
 
-
                 return true;
             }
             catch (Exception ex)
@@ -1090,6 +1161,134 @@ namespace NCC.PRZTools
             }
             finally
             {
+            }
+        }
+
+        internal async Task<bool> StripTiles(Polygon study_area)
+        {
+            try
+            {
+                await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
+                    {
+                        // Build the spatial filter
+                        SpatialQueryFilter sqFilter = new SpatialQueryFilter();
+                        sqFilter.WhereClause = "";
+                        sqFilter.OutputSpatialReference = study_area.SpatialReference;
+                        sqFilter.FilterGeometry = study_area;
+                        sqFilter.SpatialRelationship = SpatialRelationship.Intersects;
+                        sqFilter.SubFields = "*";
+
+                        // identify all the features I want to keep
+                        List<long> oids = new List<long>();
+                        using (RowCursor rowCursor = puFC.Search(sqFilter, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                // these are the rows I want to keep
+                                using (Feature feature = (Feature)rowCursor.Current)
+                                {
+                                    oids.Add(feature.GetObjectID());
+                                }
+                            }
+                        }
+
+                        // delete unwanted tiles
+                        using (RowCursor rowCursor = puFC.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long oid = row.GetObjectID();
+
+                                    if (!oids.Contains(oid))
+                                    {
+                                        row.Delete();
+                                    }
+                                }
+                            }
+                        }
+
+                        // update remaining tile PUID values
+                        using (RowCursor rowCursor = puFC.Search(null, false))
+                        {
+                            int id = 1;
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    row[PRZC.c_FLD_PUFC_ID] = id;
+                                    row.Store();
+                                    id++;
+                                }
+                            }
+                        }
+                    }
+                });
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            finally
+            {
+            }
+        }
+
+        internal async Task<Polygon> BuildTileSquare(double xmin, double ymin, double side_length, SpatialReference SR)
+        {
+            try
+            {
+                Polygon polygon = null;
+
+                await QueuedTask.Run(() =>
+                {
+                    MapPoint ll = MapPointBuilder.CreateMapPoint(xmin, ymin, SR);
+                    MapPoint ur = MapPointBuilder.CreateMapPoint(xmin + side_length, ymin + side_length, SR);
+                    Envelope env = EnvelopeBuilder.CreateEnvelope(ll, ur, SR);
+                    polygon = PolygonBuilder.CreatePolygon(env, SR);
+                });
+
+                return polygon;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal async Task<Polygon> BuildTileHexagon(double xmin, double ymin, double center_to_vertex, double center_to_edge, SpatialReference SR)
+        {
+            try
+            {
+                Polygon polygon = null;
+
+                await QueuedTask.Run(() =>
+                {
+                    MapPoint mp1 = MapPointBuilder.CreateMapPoint(xmin - center_to_vertex, ymin, SR);
+                    MapPoint mp2 = MapPointBuilder.CreateMapPoint(xmin - (center_to_vertex/2.0), ymin + center_to_edge, SR);
+                    MapPoint mp3 = MapPointBuilder.CreateMapPoint(xmin + (center_to_vertex/2.0), ymin + center_to_edge, SR);
+                    MapPoint mp4 = MapPointBuilder.CreateMapPoint(xmin + center_to_vertex, ymin, SR);
+                    MapPoint mp5 = MapPointBuilder.CreateMapPoint(xmin + (center_to_vertex/2.0), ymin - center_to_edge, SR);
+                    MapPoint mp6 = MapPointBuilder.CreateMapPoint(xmin - (center_to_vertex/2.0), ymin - center_to_edge, SR);
+
+                    List<MapPoint> mps = new List<MapPoint>() { mp1, mp2, mp3, mp4, mp5, mp6 };
+                    polygon = PolygonBuilder.CreatePolygon(mps, SR);
+                });
+
+                return polygon;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
             }
         }
 

@@ -462,8 +462,6 @@ namespace NCC.PRZTools
 
         #endregion GENERIC DATA METHODS
 
-
-
         #region GEOPROCESSING
 
         internal static async Task<string> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
@@ -549,8 +547,216 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static string GetElapsedTimeMessage(TimeSpan span)
+        {
+            try
+            {
+                int inthours = span.Hours;
+                int intminutes = span.Minutes;
+                int intseconds = span.Seconds;
+
+                string hours = inthours.ToString() + ((inthours == 1) ? " hour" : " hours");
+                string minutes = intminutes.ToString() + ((intminutes == 1) ? " minute" : " minutes");
+                string seconds = intseconds.ToString() + ((intseconds == 1) ? " second" : " seconds");
+
+                string elapsedmessage = "";
+
+                if (inthours == 0 & intminutes == 0)
+                {
+                    elapsedmessage = seconds;
+                }
+                else if (inthours == 0)
+                {
+                    elapsedmessage = minutes + " and " + seconds;
+                }
+                else
+                {
+                    elapsedmessage = hours + ", " + minutes + ", " + seconds;
+                }
+
+                return "Elapsed Time: " + elapsedmessage;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return "<error calculating duration>";
+            }
+        }
+
         #endregion
 
+        #region RENDERERS
+
+        public static bool ApplyLegend_PU_Simple(FeatureLayer puFL)
+        {
+            try
+            {
+                // Colors
+                CIMColor outlineColor = GetNamedColor(Color.BlueViolet);
+                CIMColor fillColor = GetNamedColor(Color.PaleGreen);
+
+                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1.5, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
+                CIMSimpleRenderer rend = puFL.GetRenderer() as CIMSimpleRenderer;
+                rend.Symbol = fillSym.MakeSymbolReference();
+                rend.Label = "A lowly planning unit";
+                puFL.SetRenderer(rend);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+
+        #endregion
+
+        #region COLORS AND SYMBOLS
+
+        internal static CIMColor GetRGBColor(byte r, byte g, byte b, byte a = 100)
+        {
+            try
+            {
+                return ColorFactory.Instance.CreateRGBColor(r, g, b, a);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static CIMColor GetNamedColor(Color color)
+        {
+            try
+            {
+                return ColorFactory.Instance.CreateRGBColor(color.R, color.G, color.B, color.A);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        //internal static ISimpleFillSymbol ReturnSimpleFillSymbol(IColor FillColor, IColor OutlineColor, double OutlineWidth, esriSimpleFillStyle FillStyle)
+        //{
+        //    try
+        //    {
+        //        ISimpleLineSymbol Outline = new SimpleLineSymbolClass();
+        //        Outline.Color = OutlineColor;
+        //        Outline.Style = esriSimpleLineStyle.esriSLSSolid;
+        //        Outline.Width = OutlineWidth;
+
+        //        ISimpleFillSymbol FillSymbol = new SimpleFillSymbolClass();
+        //        FillSymbol.Color = FillColor;
+        //        FillSymbol.Outline = Outline;
+        //        FillSymbol.Style = FillStyle;
+
+        //        return FillSymbol;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show(ex.Message);
+        //        return null;
+        //    }
+        //}
+
+        //internal static IMarkerSymbol ReturnMarkerSymbol(string SymbolName, string StyleName, IColor SymbolColor, int SymbolSize)
+        //{
+        //    try
+        //    {
+        //        Type t = Type.GetTypeFromProgID("esriFramework.StyleGallery");
+        //        System.Object obj = Activator.CreateInstance(t);
+        //        IStyleGallery Gallery = obj as IStyleGallery;
+        //        IStyleGalleryStorage GalleryStorage = (IStyleGalleryStorage)Gallery;
+        //        string StylePath = GalleryStorage.DefaultStylePath + StyleName;
+
+        //        bool StyleFound = false;
+
+        //        for (int i = 0; i < GalleryStorage.FileCount; i++)
+        //        {
+        //            if (GalleryStorage.get_File(i).ToUpper() == StyleName.ToUpper())
+        //            {
+        //                StyleFound = true;
+        //                break;
+        //            }
+        //        }
+
+        //        if (!StyleFound)
+        //            GalleryStorage.AddFile(StylePath);
+
+        //        IEnumStyleGalleryItem EnumGalleryItem = Gallery.get_Items("Marker Symbols", StyleName, "DEFAULT");
+        //        IStyleGalleryItem GalleryItem = EnumGalleryItem.Next();
+
+        //        while (GalleryItem != null)
+        //        {
+        //            if (GalleryItem.Name == SymbolName)
+        //            {
+        //                IClone SourceClone = (IClone)GalleryItem.Item;
+        //                IClone DestClone = SourceClone.Clone();
+        //                IMarkerSymbol MarkerSymbol = (IMarkerSymbol)DestClone;
+        //                MarkerSymbol.Color = SymbolColor;
+        //                MarkerSymbol.Size = SymbolSize;
+        //                return MarkerSymbol;
+        //            }
+        //            GalleryItem = EnumGalleryItem.Next();
+        //        }
+
+        //        MessageBox.Show("Unable to locate Marker Symbol '" + SymbolName + "' in style '" + StyleName + "'.");
+        //        return null;
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show(ex.Message);
+        //        return null;
+        //    }
+        //}
+
+        //internal static ISimpleMarkerSymbol ReturnSimpleMarkerSymbol(IColor MarkerColor, IColor OutlineColor, esriSimpleMarkerStyle MarkerStyle, double MarkerSize, double OutlineSize)
+        //{
+        //    try
+        //    {
+        //        ISimpleMarkerSymbol MarkerSymbol = new SimpleMarkerSymbolClass();
+        //        MarkerSymbol.Color = MarkerColor;
+        //        MarkerSymbol.Style = MarkerStyle;
+        //        MarkerSymbol.Size = MarkerSize;
+        //        MarkerSymbol.Outline = true;
+        //        MarkerSymbol.OutlineSize = OutlineSize;
+        //        MarkerSymbol.OutlineColor = OutlineColor;
+
+        //        return MarkerSymbol;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show(ex.Message);
+        //        return null;
+        //    }
+        //}
+
+        //internal static IPictureMarkerSymbol ReturnPictureMarkerSymbol(Bitmap SourceBitmap, IColor TransparentColor, double MarkerSize)
+        //{
+        //    try
+        //    {
+        //        IPictureMarkerSymbol PictureSymbol = new PictureMarkerSymbolClass();
+        //        PictureSymbol.Picture = (IPictureDisp)OLE.GetIPictureDispFromBitmap(SourceBitmap);
+        //        PictureSymbol.Size = MarkerSize;
+        //        PictureSymbol.BitmapTransparencyColor = TransparentColor;
+        //        return PictureSymbol;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        MessageBox.Show(ex.Message);
+        //        return null;
+        //    }
+
+        //}
+
+
+        #endregion
 
 
 
@@ -570,7 +776,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
             }
         }
