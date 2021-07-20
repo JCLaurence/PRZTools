@@ -463,6 +463,17 @@ namespace NCC.PRZTools
                 Map map = mapView.Map;
                 _mapSR = map.SpatialReference;
                 this.MapSRName = _mapSR.Name;
+                bool isMapSRProjM = false;
+
+                if (_mapSR.IsProjected)
+                {
+                    Unit u = _mapSR.Unit; // should be LinearUnit, since SR is projected
+                    LinearUnit lu = u as LinearUnit;
+                    if (lu.FactoryCode == 9001) // meter
+                    {
+                        isMapSRProjM = true;
+                    }
+                }
 
                 // layers
 
@@ -480,7 +491,19 @@ namespace NCC.PRZTools
                             if (!SRList.Contains(sr))
                             {
                                 if ((!sr.IsUnknown) && (!sr.IsGeographic))
-                                SRList.Add(sr);
+                                {
+                                    Unit u = sr.Unit;
+
+                                    if (u.UnitType == ArcGIS.Core.Geometry.UnitType.Linear)
+                                    {
+                                        LinearUnit lu = u as LinearUnit;
+
+                                        if (lu.FactoryCode == 9001) // Meter
+                                        {
+                                            SRList.Add(sr);
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -490,7 +513,7 @@ namespace NCC.PRZTools
 
                 // SR Radio Options enabled/disabled
                 this.SRLayerIsEnabled = (SRList.Count > 0);
-                this.SRMapIsEnabled = (!_mapSR.IsUnknown) && (!_mapSR.IsGeographic);
+                this.SRMapIsEnabled = isMapSRProjM;
                 this.SRUserIsEnabled = false;
 
                 // Graphics Layers having selected Polygon Graphics
@@ -499,6 +522,7 @@ namespace NCC.PRZTools
 
                 Dictionary<GraphicsLayer, int> DICT_GraphicLayer_SelPolyCount = new Dictionary<GraphicsLayer, int>();
 
+                List<GraphicsLayer> gls = new List<GraphicsLayer>();
                 foreach (var glyr in glyrs)
                 {
                     var selElems = glyr.GetSelectedElements().OfType<GraphicElement>();
