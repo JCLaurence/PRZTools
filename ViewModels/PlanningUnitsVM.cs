@@ -1,10 +1,8 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
-using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Core.Geoprocessing;
-using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Controls;
@@ -14,20 +12,19 @@ using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
-using PRZH = NCC.PRZTools.PRZHelper;
 using PRZC = NCC.PRZTools.PRZConstants;
+using PRZH = NCC.PRZTools.PRZHelper;
 using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    public class PlanningUnitsVM : PropertyChangedBase 
+    public class PlanningUnitsVM : PropertyChangedBase
     {
         public PlanningUnitsVM()
         {
@@ -41,407 +38,245 @@ namespace NCC.PRZTools
 
         #endregion
 
-
         #region Properties
 
         private bool _srMapIsChecked;
         public bool SRMapIsChecked
         {
-            get { return _srMapIsChecked; }
-            set
-            {
-                SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
-            }
+            get => _srMapIsChecked; set => SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
         }
 
         private bool _srLayerIsChecked;
         public bool SRLayerIsChecked
         {
-            get { return _srLayerIsChecked; }
-            set
-            {
-                SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
-            }
+            get => _srLayerIsChecked; set => SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
         }
 
         private bool _srUserIsChecked;
         public bool SRUserIsChecked
         {
-            get { return _srUserIsChecked; }
-            set
-            {
-                SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
-            }
+            get => _srUserIsChecked; set => SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
         }
 
         private string _mapSRName;
         public string MapSRName
         {
-            get { return _mapSRName; }
-            set
-            {
-                SetProperty(ref _mapSRName, value, () => MapSRName);
-            }
+            get => _mapSRName; set => SetProperty(ref _mapSRName, value, () => MapSRName);
         }
 
         private string _userSRName;
         public string UserSRName
         {
-            get { return _userSRName; }
-            set
-            {
-                SetProperty(ref _userSRName, value, () => UserSRName);
-            }
+            get => _userSRName; set => SetProperty(ref _userSRName, value, () => UserSRName);
         }
 
         private List<SpatialReference> _layerSRList;
         public List<SpatialReference> LayerSRList
         {
-            get { return _layerSRList; }
-            set
-            {
-                SetProperty(ref _layerSRList, value, () => LayerSRList);
-            }
+            get => _layerSRList; set => SetProperty(ref _layerSRList, value, () => LayerSRList);
         }
 
         private bool _srMapIsEnabled;
         public bool SRMapIsEnabled
         {
-            get { return _srMapIsEnabled; }
-            set
-            {
-                SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
-            }
+            get => _srMapIsEnabled; set => SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
         }
 
         private bool _srLayerIsEnabled;
         public bool SRLayerIsEnabled
         {
-            get { return _srLayerIsEnabled; }
-            set
-            {
-                SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
-            }
+            get => _srLayerIsEnabled; set => SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
         }
 
         private bool _srUserIsEnabled;
         public bool SRUserIsEnabled
         {
-            get { return _srUserIsEnabled; }
-            set
-            {
-                SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
-            }
+            get => _srUserIsEnabled; set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
         }
 
         private SpatialReference _selectedLayerSR;
         public SpatialReference SelectedLayerSR
         {
-            get { return _selectedLayerSR; }
-            set
-            {
-                SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
-            }
+            get => _selectedLayerSR; set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
         }
-
 
         private List<GraphicsLayer> _graphicsLayerList;
         public List<GraphicsLayer> GraphicsLayerList
         {
-            get { return _graphicsLayerList; }
-            set
-            {
-                SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
-            }
+            get => _graphicsLayerList; set => SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
         }
 
         private GraphicsLayer _selectedGraphicsLayer;
         public GraphicsLayer SelectedGraphicsLayer
         {
-            get { return _selectedGraphicsLayer; }
-            set
-            {
-                SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
-            }
+            get => _selectedGraphicsLayer; set => SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
         }
-
 
         private List<FeatureLayer> _featureLayerList;
         public List<FeatureLayer> FeatureLayerList
         {
-            get { return _featureLayerList; }
-            set
-            {
-                SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
-            }
+            get => _featureLayerList; set => SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
         }
 
         private FeatureLayer _selectedFeatureLayer;
         public FeatureLayer SelectedFeatureLayer
         {
-            get { return _selectedFeatureLayer; }
-            set
-            {
-                SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
-            }
+            get => _selectedFeatureLayer; set => SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
         }
-
 
         private string _bufferValue;
         public string BufferValue
         {
-            get { return _bufferValue; }
-            set
-            {
-                SetProperty(ref _bufferValue, value, () => BufferValue);
-            }
+            get => _bufferValue; set => SetProperty(ref _bufferValue, value, () => BufferValue);
         }
-
 
         private string _gridAlign_X;
         public string GridAlign_X
         {
-            get { return _gridAlign_X; }
-            set
-            {
-                SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
-            }
+            get => _gridAlign_X; set => SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
         }
 
         private string _gridAlign_Y;
         public string GridAlign_Y
         {
-            get { return _gridAlign_Y; }
-            set
-            {
-                SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
-            }
+            get => _gridAlign_Y; set => SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
         }
-
 
         private bool _bufferUnitMetersIsChecked;
         public bool BufferUnitMetersIsChecked
         {
-            get { return _bufferUnitMetersIsChecked; }
-            set
-            {
-                SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
-            }
+            get => _bufferUnitMetersIsChecked; set => SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
         }
 
         private bool _bufferUnitKilometersIsChecked;
         public bool BufferUnitKilometersIsChecked
         {
-            get { return _bufferUnitKilometersIsChecked; }
-            set
-            {
-                SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
-            }
+            get => _bufferUnitKilometersIsChecked; set => SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
         }
-
 
         private List<string> _gridTypeList;
         public List<string> GridTypeList
         {
-            get { return _gridTypeList; }
-            set
-            {
-                SetProperty(ref _gridTypeList, value, () => GridTypeList);
-            }
+            get => _gridTypeList; set => SetProperty(ref _gridTypeList, value, () => GridTypeList);
         }
 
         private string _selectedGridType;
         public string SelectedGridType
         {
-            get { return _selectedGridType; }
-            set
-            {
-                SetProperty(ref _selectedGridType, value, () => SelectedGridType);
-            }
+            get => _selectedGridType; set => SetProperty(ref _selectedGridType, value, () => SelectedGridType);
         }
 
         private string _tileArea;
         public string TileArea
         {
-            get { return _tileArea; }
-            set
-            {
-                SetProperty(ref _tileArea, value, () => TileArea);
-            }
+            get => _tileArea; set => SetProperty(ref _tileArea, value, () => TileArea);
         }
 
         private bool _tileAreaMIsSelected;
         public bool TileAreaMIsSelected
         {
-            get { return _tileAreaMIsSelected; }
-            set
-            {
-                SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
-            }
+            get => _tileAreaMIsSelected; set => SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
         }
 
         private bool _tileAreaAcIsSelected;
         public bool TileAreaAcIsSelected
         {
-            get { return _tileAreaAcIsSelected; }
-            set
-            {
-                SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
-            }
+            get => _tileAreaAcIsSelected; set => SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
         }
 
         private bool _tileAreaHaIsSelected;
         public bool TileAreaHaIsSelected
         {
-            get { return _tileAreaHaIsSelected; }
-            set
-            {
-                SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
-            }
+            get => _tileAreaHaIsSelected; set => SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
         }
 
         private bool _tileAreaKmIsSelected;
         public bool TileAreaKmIsSelected
         {
-            get { return _tileAreaKmIsSelected; }
-            set
-            {
-                SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
-            }
+            get => _tileAreaKmIsSelected; set => SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
         }
 
         private bool _buildIsEnabled;
         public bool BuildIsEnabled
         {
-            get { return _buildIsEnabled; }
-            set
-            {
-                SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
-            }
+            get => _buildIsEnabled; set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
         }
-
 
         private bool _graphicsLayerIsEnabled;
         public bool GraphicsLayerIsEnabled
         {
-            get { return _graphicsLayerIsEnabled; }
-            set
-            {
-                SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
-            }
+            get => _graphicsLayerIsEnabled; set => SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
         }
 
         private bool _graphicsLayerIsChecked;
         public bool GraphicsLayerIsChecked
         {
-            get { return _graphicsLayerIsChecked; }
-            set
-            {
-                SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
-            }
+            get => _graphicsLayerIsChecked; set => SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
         }
 
         private bool _featureLayerIsEnabled;
         public bool FeatureLayerIsEnabled
         {
-            get { return _featureLayerIsEnabled; }
-            set
-            {
-                SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
-            }
+            get => _featureLayerIsEnabled; set => SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
         }
 
         private bool _featureLayerIsChecked;
         public bool FeatureLayerIsChecked
         {
-            get { return _featureLayerIsChecked; }
-            set
-            {
-                SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
-            }
-        }
-
-        private string _testInfo;
-        public string TestInfo
-        {
-            get { return _testInfo; }
-            set
-            {
-                SetProperty(ref _testInfo, value, () => TestInfo);
-            }
+            get => _featureLayerIsChecked; set => SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
         }
 
         private int _barMax;
         public int BarMax
         {
-            get { return _barMax; }
-            set
-            {
-                SetProperty(ref _barMax, value, () => BarMax);
-            }
+            get => _barMax; set => SetProperty(ref _barMax, value, () => BarMax);
         }
 
         private int _barMin;
         public int BarMin
         {
-            get { return _barMin; }
-            set
-            {
-                SetProperty(ref _barMin, value, () => BarMin);
-            }
+            get => _barMin; set => SetProperty(ref _barMin, value, () => BarMin);
         }
 
         private int _barValue;
         public int BarValue
         {
-            get { return _barValue; }
-            set
-            {
-                SetProperty(ref _barValue, value, () => BarValue);
-            }
+            get => _barValue; set => SetProperty(ref _barValue, value, () => BarValue);
         }
 
         private string _barMessage;
         public string BarMessage
         {
-            get { return _barMessage; }
-            set
-            {
-                SetProperty(ref _barMessage, value, () => BarMessage);
-            }
+            get => _barMessage; set => SetProperty(ref _barMessage, value, () => BarMessage);
         }
-
 
         #endregion
 
         #region Commands
 
         private ICommand _cmdSelectSpatialReference;
-        public ICommand CmdSelectSpatialReference { get { return _cmdSelectSpatialReference ?? (_cmdSelectSpatialReference = new RelayCommand(() => SelectSpatialReference(), () => true)); } }
+        public ICommand CmdSelectSpatialReference => _cmdSelectSpatialReference ?? (_cmdSelectSpatialReference = new RelayCommand(() => SelectSpatialReference(), () => true));
 
         private ICommand _cmdSRMap;
-        public ICommand CmdSRMap { get { return _cmdSRMap ?? (_cmdSRMap = new RelayCommand(() => SelectMapSR(), () => true)); } }
+        public ICommand CmdSRMap => _cmdSRMap ?? (_cmdSRMap = new RelayCommand(() => SelectMapSR(), () => true));
 
         private ICommand _cmdSRUser;
-        public ICommand CmdSRUser { get { return _cmdSRUser ?? (_cmdSRUser = new RelayCommand(() => SelectUserSR(), () => true)); } }
+        public ICommand CmdSRUser => _cmdSRUser ?? (_cmdSRUser = new RelayCommand(() => SelectUserSR(), () => true));
 
         private ICommand _cmdSRLayer;
-        public ICommand CmdSRLayer { get { return _cmdSRLayer ?? (_cmdSRLayer = new RelayCommand(() => SelectLayerSR(), () => true)); } }
+        public ICommand CmdSRLayer => _cmdSRLayer ?? (_cmdSRLayer = new RelayCommand(() => SelectLayerSR(), () => true));
 
         private ICommand _cmdBuildPlanningUnits;
-        public ICommand CmdBuildPlanningUnits { get { return _cmdBuildPlanningUnits ?? (_cmdBuildPlanningUnits = new RelayCommand(async () => await BuildPlanningUnits(), () => true)); } }
-
+        public ICommand CmdBuildPlanningUnits => _cmdBuildPlanningUnits ?? (_cmdBuildPlanningUnits = new RelayCommand(async () => await BuildPlanningUnits(), () => true));
 
         public ICommand cmdOK => new RelayCommand((paramProWin) =>
         {
-            // TODO: set dialog result and close the window
             (paramProWin as ProWindow).DialogResult = true;
             (paramProWin as ProWindow).Close();
         }, () => true);
 
         public ICommand cmdCancel => new RelayCommand((paramProWin) =>
         {
-            // TODO: set dialog result and close the window
             (paramProWin as ProWindow).DialogResult = false;
             (paramProWin as ProWindow).Close();
         }, () => true);
@@ -450,9 +285,6 @@ namespace NCC.PRZTools
 
         #region Methods
 
-        /// <summary>
-        /// This method runs when the ProWindow Loaded event occurs.
-        /// </summary>
         internal async void OnProWinLoaded()
         {
             try
@@ -462,7 +294,7 @@ namespace NCC.PRZTools
                 MapView mapView = MapView.Active;
                 Map map = mapView.Map;
                 _mapSR = map.SpatialReference;
-                this.MapSRName = _mapSR.Name;
+                MapSRName = _mapSR.Name;
                 bool isMapSRProjM = false;
 
                 if (_mapSR.IsProjected)
@@ -557,7 +389,7 @@ namespace NCC.PRZTools
 
                 // Buffer
                 this.BufferValue = "0";
-                this.BufferUnitMetersIsChecked = true;
+                this.BufferUnitKilometersIsChecked = true;
 
                 // Grid Type combo box
                 this.GridTypeList = Enum.GetNames(typeof(PlanningUnitTileShape)).ToList();
@@ -571,8 +403,6 @@ namespace NCC.PRZTools
 
                 sb.AppendLine("Map Name: " + map.Name);
                 sb.AppendLine("Spatial Reference: " + _mapSR.Name);
-
-                this.TestInfo = sb.ToString();
 
                 #endregion
             }
@@ -588,63 +418,171 @@ namespace NCC.PRZTools
 
             try
             {
-                #region INITIALIZATION
-
-                // Reset the Progress Bar
-                UpdateProgress("Initializing...", false, 0, 10, 0);
-
-                // Notify users what will happen if they proceed
-                if (ProMsgBox.Show("The Planning Units layer is the heart of the various tabular data used by PRZ Tools.  Building a new Planning Units layer invalidates all existing tables since the planning unit IDs and count may be different." +
-                    Environment.NewLine + Environment.NewLine +
-                    "If you proceed, all associated tables and feature classes in the PRZ File Geodatabase WILL BE DELETED!!" +
-                    Environment.NewLine + Environment.NewLine +
-                    "Do you wish to proceed?" + 
-                    Environment.NewLine + Environment.NewLine +
-                    "Choose wisely...",
-                    "Table/Feature Class Overwrite Warning", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
-                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
-                {
-                    UpdateProgress("", false, 0, 1, 0);
-                    return false;
-                }
-
-                // Proceed if all user input is validated
-                if (!CanBuildPlanningUnits())
-                {
-                    ProMsgBox.Show("Not all user input properly specified.  This message needs to be improved.");
-                    UpdateProgress("User Input Error", true);
-                    return false;
-                }
+                #region INITIALIZATION AND USER INPUT VALIDATION
 
                 // Start a stopwatch
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
 
-                // Verify that PRZ workspace geodatabase is available
-                bool gdb_exists = await PRZH.ProjectGDBExists();
-                if (!gdb_exists)
+                // Initialize ProgressBar and Progress Log
+                int max = 30;
+                int val = 0;               
+                UpdateProgress(PRZH.WriteLog("Initializing the Planning Unit Constructor..."), false, max, ++val); // First message in Progress Log
+
+                // Validation: Project Geodatabase
+                string gdbpath = PRZH.GetProjectGDBPath();
+                if (!await PRZH.ProjectGDBExists())
                 {
-                    ProMsgBox.Show("PRZ Workspace Geodatabase not found.  Please verify that your workspace is set up correctly.");
-                    UpdateProgress("PRZ Workspace Geodatabase not found.", true);
+                    ProMsgBox.Show("Project Geodatabase not found at this path:" + 
+                                   Environment.NewLine +
+                                   gdbpath + 
+                                   Environment.NewLine + Environment.NewLine + 
+                                   "Please specify a valid Project Workspace.", "Validation");
+
+                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath), true, ++val);
                     return false;
                 }
                 else
                 {
-                    UpdateProgress("Project Workspace geodatabase exists...", true);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase is OK: " + gdbpath), true, ++val);
                 }
 
-                // Prepare Output Spatial Reference
+                // Validation: Output Spatial Reference
                 var OutputSR = GetOutputSR();
                 if (OutputSR == null)
                 {
-                    ProMsgBox.Show("Please specify a valid Output Spatial Reference.");
-                    UpdateProgress("Output Spatial Reference not specified.", true);
+                    ProMsgBox.Show("Please specify a valid Output Spatial Reference", "Validation");
+                    UpdateProgress(PRZH.WriteLog("Validation >> Unspecified or invalid output Spatial Reference"), true, ++val);
                     return false;
                 }
                 else
                 {
-                    UpdateProgress("Output Spatial Reference: " + OutputSR.Name, true);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Output Spatial Reference is OK: " + OutputSR.Name), true, ++val);
                 }
+
+                // Validation: Tile Shape
+                string tile_shape = (string.IsNullOrEmpty(SelectedGridType) ? "" : SelectedGridType);
+                if (tile_shape == "")
+                {
+                    ProMsgBox.Show("Please specify a tile shape", "Validation");
+                    UpdateProgress(PRZH.WriteLog("Validation >> Tile shape not specified"), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Tile Shape is " + tile_shape), true, ++val);
+                }
+
+                var TileShape = PlanningUnitTileShape.SQUARE;
+                switch (tile_shape)
+                {
+                    case "SQUARE":
+                        TileShape = PlanningUnitTileShape.SQUARE;
+                        break;
+                    case "HEXAGON":
+                        TileShape = PlanningUnitTileShape.HEXAGON;
+                        break;
+                    default:
+                        return false;
+                }
+
+                // Validation: Tile Area
+                string tile_area_text = string.IsNullOrEmpty(TileArea) ? "0" : ((TileArea.Trim() == "") ? "0" : TileArea.Trim());
+
+                if (!double.TryParse(tile_area_text, out double tile_area_m2))
+                {
+                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
+                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    return false;
+                }
+                else if (tile_area_m2 <= 0)
+                {
+                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
+                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    string au = "";
+
+                    if (TileAreaMIsSelected)
+                    {
+                        au = tile_area_text + " m\xB2";
+                    }
+                    else if (TileAreaAcIsSelected)
+                    {
+                        au = tile_area_text + " ac";
+                        tile_area_m2 *= 4046.86;
+                    }
+                    else if (TileAreaHaIsSelected)
+                    {
+                        au = tile_area_text + " ha";
+                        tile_area_m2 *= 10000.0;
+                    }
+                    else if (TileAreaKmIsSelected)
+                    {
+                        au = tile_area_text + " km\xB2";
+                        tile_area_m2 *= 1000000.0;
+                    }
+
+                    UpdateProgress(PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
+                }
+
+                // Validation: Grid Alignment Coordinates
+                string gridalign_x_text = string.IsNullOrEmpty(GridAlign_X) ? "" : GridAlign_X.Trim();
+                string gridalign_y_text = string.IsNullOrEmpty(GridAlign_Y) ? "" : GridAlign_Y.Trim();
+
+                double gridalign_x_coord = 0;
+                double gridalign_y_coord = 0;
+
+                bool align_grid = false;
+                bool alignment_param_error = false;
+
+                if (gridalign_x_text.Length > 0 && gridalign_y_text.Length > 0)
+                {
+                    if (!double.TryParse(gridalign_x_text, out gridalign_x_coord))
+                    {
+                        alignment_param_error = true;
+                    }
+                    else if (!double.TryParse(gridalign_y_text, out gridalign_y_coord))
+                    {
+                        alignment_param_error = true;
+                    }
+                    else
+                    {
+                        align_grid = true;
+                    }
+                }
+                else if (gridalign_x_text.Length > 0 && gridalign_y_text.Length == 0)
+                {
+                    alignment_param_error = true;
+                }
+                else if (gridalign_x_text.Length == 0 && gridalign_y_text.Length > 0)
+                {
+                    alignment_param_error = true;
+                }
+
+                if (alignment_param_error)
+                {
+                    ProMsgBox.Show("Invalid Tile Grid Alignment Coordinates.  Both X and Y values must be numeric, or both must be blank.", "Validation");
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid tile grid alignment coordinates.  X and Y must both be numeric or blank"), true, ++val);
+                    return false;
+                }
+                else if (align_grid)
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Tile grid alignment coordinates are OK: (" + gridalign_x_text + ", " + gridalign_y_text + ")"), true, ++val);
+                }
+                else
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> No tile grid alignment was specified, and that's OK."), true, ++val);
+                }
+
+                // Study Area Specification
+
+
+
+
+
 
                 // Get Buffer Distance in meters
                 double buffer_distance = 0;
@@ -684,122 +622,36 @@ namespace NCC.PRZTools
                     UpdateProgress(s, true);
                 }
 
-                // Validate tile type
-                if (string.IsNullOrEmpty(SelectedGridType))
+
+
+
+
+
+
+
+                // Notify users what will happen if they proceed
+                if (ProMsgBox.Show("The Planning Units and Study Area layers are the heart of the various tabular data used by PRZ Tools.  " +
+                                   "Running this task invalidates all existing tables since the planning unit IDs and count may be different." +
+                                   Environment.NewLine + Environment.NewLine +
+                                   "If you proceed, all tables and feature classes in the PRZ File Geodatabase WILL BE DELETED!!" +
+                                   Environment.NewLine + Environment.NewLine +
+                                   "Do you wish to proceed?" +
+                                   Environment.NewLine + Environment.NewLine +
+                                   "Choose wisely...",
+                                   "Table/Feature Class Overwrite Warning",
+                                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
-                    ProMsgBox.Show("No Tile Type Specified");
-                    UpdateProgress("No Tile Type specified...", true);
+                    UpdateProgress(PRZH.WriteLog("User chickened out."), true, ++val);
                     return false;
                 }
 
-                string gridtype = SelectedGridType;
-                var TileShape = PlanningUnitTileShape.SQUARE;
-                switch (gridtype)
-                {
-                    case "SQUARE":
-                        TileShape = PlanningUnitTileShape.SQUARE;
-                        break;
-                    case "HEXAGON":
-                        TileShape = PlanningUnitTileShape.HEXAGON;
-                        break;
-                    default:
-                        return false;
-                }
 
-                // Get Tile Area in square meters
-                double tile_area = 0;
-                string tile_area_text = TileArea.Trim();
 
-                if (tile_area_text == "")
-                {
-                    tile_area_text = "0";
-                }
 
-                if (!double.TryParse(tile_area_text, out tile_area))
-                {
-                    ProMsgBox.Show("Invalid Tile Area specified.  Must be a number > 0.");
-                    UpdateProgress("Invalid Tile Area specified.", true);
-                    return false;
-                }
-                else if (tile_area <= 0)
-                {
-                    ProMsgBox.Show("Invalid Tile Area specified.  Must be a number > 0.");
-                    UpdateProgress("Invalid Tile Area specified.", true);
-                    return false;
-                }
-                else
-                {
-                    string s = "Tile Area: " + tile_area_text;
 
-                    if (TileAreaMIsSelected)
-                    {
-                        s += " m\xB2";
-                    }
-                    else if (TileAreaAcIsSelected)
-                    {
-                        s += " ac";
-                        tile_area = tile_area * 4046.86;
-                    }
-                    else if (TileAreaHaIsSelected)
-                    {
-                        s += " ha";
-                        tile_area = tile_area * 10000.0;
-                    }
-                    else if (TileAreaKmIsSelected)
-                    {
-                        s += " km\xB2";
-                        tile_area = tile_area * 1000000.0;
-                    }
 
-                    UpdateProgress(s, true);
-                }
 
-                // Get Tile Positioning XY
-                string xtrim = string.IsNullOrEmpty(GridAlign_X) ? "" : GridAlign_X.Trim();
-                string ytrim = string.IsNullOrEmpty(GridAlign_Y) ? "" : GridAlign_Y.Trim();
-                bool UseGridAlign = false;
-                bool GridAlignIssues = false;
-                double gridalignx;
-                double gridaligny;
-
-                if (xtrim.Length > 0 && ytrim.Length > 0)
-                {
-                    if (!double.TryParse(xtrim, out gridalignx))
-                    {
-                        GridAlignIssues = true;                        
-                    }
-                    else if (!double.TryParse(ytrim, out gridaligny))
-                    {
-                        GridAlignIssues = true;
-                    }
-                    else
-                    {
-                        UseGridAlign = true;
-                    }
-                }
-                else if (xtrim.Length > 0 && ytrim.Length == 0)
-                {
-                    GridAlignIssues = true;
-                }
-                else if (xtrim.Length == 0 && ytrim.Length > 0)
-                {
-                    GridAlignIssues = true;
-                }
-
-                if (GridAlignIssues)
-                {
-                    ProMsgBox.Show("Invalid Tile Grid Alignment Coordinates.  Both X and Y values must be numeric, or both must be blank.");
-                    UpdateProgress("Invalid Tile Grid Alignment Coordinates.", true);
-                    return false;
-                }
-                else if (UseGridAlign)
-                {
-                    UpdateProgress("Using Grid Alignment Coordinates.", true);
-                }
-                else
-                {
-                    UpdateProgress("No Grid Alignment Coordinates.", true);
-                }
 
                 #endregion
 
@@ -878,54 +730,21 @@ namespace NCC.PRZTools
                     return GeometryEngine.Instance.Buffer(study_area_polys, buffer_distance) as Polygon;
                 });
 
-
-                // I now have study area polygons
-                // I want to build the following feature classes:
-                // 1. Study Area Polys
-                // 2. Study Area Single (merged) Poly (multipart feature if required)
-                // 3. Buffered Study Area Polys
-                // 4. Buffered Multipart Study Area Poly
-
-                // Remove any Planning Unit layers
                 var map = MapView.Active.Map;
                 var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
                 List<Layer> LayersToDelete = new List<Layer>();
-                string gdbpath = PRZH.GetProjectGDBPath();
                 string pufcpath = PRZH.GetPlanningUnitFCPath();
 
-                foreach (FeatureLayer flyr in flyrs)
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        using (FeatureClass fc = flyr.GetFeatureClass())
-                        {
-                            if (fc != null)
-                            {
-                                string fcpath = fc.GetPath().AbsolutePath;
-
-                                if (fcpath.Replace(@"/", @"\") == pufcpath)
-                                {
-                                    LayersToDelete.Add(flyr);
-                                }
-                            }
-                        }
-                    });
-                }
-
-                await QueuedTask.Run(() =>
-                {
-                    map.RemoveLayers(LayersToDelete);
-                    MapView.Active.RedrawAsync(false);
-                });
+                // Remove any PRZ GDB Layers or Tables
+                UpdateProgress(PRZH.WriteLog("Removing all Layers and Standalone Tables with Source = " + gdbpath), true, ++val);
+                bool removed = await RemovePRZLayersAndTables();
+                if (!removed) return false;
 
                 // *** GEOPROCESSING BEGINS!! ***
-
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 string toolOutput;
-                int max = 15;
-                int val = 0;
 
                 // Delete all Items from Project GDB
                 UpdateProgress(PRZH.WriteLog("Deleting all Feature Datasets, Feature Classes, and Tables from " + PRZC.c_PRZ_PROJECT_FGDB), true);
@@ -953,9 +772,10 @@ namespace NCC.PRZTools
 
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_PUFC_ID + " LONG 'Planning Unit ID' # # #;";
+                string fldNCCID = PRZC.c_FLD_NCC_ID + " LONG 'NCC ID' # # #;";
                 string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUStatus = PRZC.c_FLD_PUFC_STATUS + " LONG 'Status' # 2 #;";
-                string flds = fldPUID + fldPUCost + fldPUStatus;
+                string flds = fldPUID + fldNCCID + fldPUCost + fldPUStatus;
 
                 UpdateProgress(PRZH.WriteLog("Adding Fields..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -977,14 +797,14 @@ namespace NCC.PRZTools
                 switch(TileShape)
                 {
                     case PlanningUnitTileShape.SQUARE:
-                        tile_edge_length = Math.Sqrt(tile_area);
+                        tile_edge_length = Math.Sqrt(tile_area_m2);
                         tile_width = tile_edge_length;
                         tile_height = tile_edge_length;
                         tile_center_to_right = tile_width / 2.0;
                         tile_center_to_top = tile_height / 2.0;
                         break;
                     case PlanningUnitTileShape.HEXAGON:
-                        tile_edge_length = Math.Sqrt((2 * tile_area) / (3 * Math.Sqrt(3)));
+                        tile_edge_length = Math.Sqrt((2 * tile_area_m2) / (3 * Math.Sqrt(3)));
                         tile_width = tile_edge_length * 2;
                         tile_height = 2 * (tile_edge_length * Math.Sin((60 * Math.PI) / 180));
                         tile_center_to_right = tile_width / 2;
@@ -1027,7 +847,7 @@ namespace NCC.PRZTools
                 tileinfo.LL_Point = env_ll_point;
                 tileinfo.tiles_across = tiles_across;
                 tileinfo.tiles_up = tiles_up;
-                tileinfo.tile_area = tile_area;
+                tileinfo.tile_area = tile_area_m2;
                 tileinfo.tile_center_to_right = tile_center_to_right;
                 tileinfo.tile_center_to_top = tile_center_to_top;
                 tileinfo.tile_edge_length = tile_edge_length;
@@ -1045,6 +865,14 @@ namespace NCC.PRZTools
                 bool success = await StripTiles(study_area_poly_buffered);
 
                 UpdateProgress(PRZH.WriteLog("Tiles stripped..."), true, ++val);
+
+                // Index the PU ID field
+                UpdateProgress(PRZH.WriteLog("Indexing..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_PUFC_ID, "ix" + PRZC.c_FLD_PUFC_ID, "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, GPExecuteToolFlags.None);
+                UpdateProgress(PRZH.WriteLog("Add Index: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
+                if (toolOutput is null) return false;
 
                 #endregion
 
@@ -1080,6 +908,87 @@ namespace NCC.PRZTools
             }
         }
 
+        internal async Task<bool> RemovePRZLayersAndTables()
+        {
+            try
+            {
+                var map = MapView.Active.Map;
+
+                List<StandaloneTable> tables_to_delete = new List<StandaloneTable>();
+                List<Layer> layers_to_delete = new List<Layer>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (var geodatabase = await PRZH.GetProjectGDB())
+                    {
+                        string gdbpath = geodatabase.GetPath().AbsolutePath;
+
+                        // Standalone Tables
+                        var standalone_tables = map.StandaloneTables.ToList();
+                        foreach (var standalone_table in standalone_tables)
+                        {
+                            using (Table table = standalone_table.GetTable())
+                            {
+                                if (table != null)
+                                {
+                                    try
+                                    {
+                                        using (var store = table.GetDatastore())
+                                        {
+                                            if (store != null && store is Geodatabase)
+                                            {
+                                                var uri = store.GetPath();
+                                                if (uri != null)
+                                                {
+                                                    string newpath = uri.AbsolutePath;
+
+                                                    if (gdbpath == newpath)
+                                                    {
+                                                        tables_to_delete.Add(standalone_table);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Layers
+                        var layers = map.GetLayersAsFlattenedList().ToList();
+                        foreach (var layer in layers)
+                        {
+                            var uri = layer.GetPath();
+                            if (uri != null)
+                            {
+                                string layer_path = uri.AbsolutePath;
+
+                                if (layer_path.StartsWith(gdbpath))
+                                {
+                                    layers_to_delete.Add(layer);
+                                }
+                            }
+                        }
+                    }
+
+                    map.RemoveStandaloneTables(tables_to_delete);
+                    map.RemoveLayers(layers_to_delete);
+                    await MapView.Active.RedrawAsync(false);
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
         internal async Task<bool> LoadTiles(PlanningUnitTileInfo planningUnitTileInfo)
         {
             try
@@ -1103,7 +1012,7 @@ namespace NCC.PRZTools
                             int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
                             int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
 
-                            int puid = 1;
+                            //int puid = 1;
 
                             insertCursor = puFC.CreateInsertCursor();
                             rowBuffer = puFC.CreateRowBuffer();
@@ -1122,12 +1031,12 @@ namespace NCC.PRZTools
                                             rowBuffer[ixStatus] = 0;
                                             rowBuffer[ixCost] = 1;
                                             rowBuffer[ixShape] = poly;
-                                            rowBuffer[ixPUID] = puid;
+                                            //rowBuffer[ixPUID] = puid;
 
                                             insertCursor.Insert(rowBuffer);
                                             insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
 
-                                            puid++;
+                                            //puid++;
                                         }
                                     }
                                     break;
@@ -1147,12 +1056,12 @@ namespace NCC.PRZTools
                                             rowBuffer[ixStatus] = 0;
                                             rowBuffer[ixCost] = 1;
                                             rowBuffer[ixShape] = poly;
-                                            rowBuffer[ixPUID] = puid;
+                                            //rowBuffer[ixPUID] = puid;
 
                                             insertCursor.Insert(rowBuffer);
                                             insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
 
-                                            puid++;
+                                            //puid++;
                                         }
                                     }
                                     break;
@@ -1316,80 +1225,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> DoSomeWork(CancelableProgressorSource cps)
-        {
-//            UpdateProgressStatus("Doing Some Work", 0, 10, 0);
-            cps.Message = "whoah there nelly";
-            cps.Status = "ABC";
-
-            int i = 0;
-
-            while (i < 10)
-            {
-                i++;
-
-                await QueuedTask.Run(async () =>
-                {
-                    await Task.Delay(1000);
-                    if (cps.Progressor.CancellationToken.IsCancellationRequested)
-                    {
-                        // someone clicked the cancel button
-//                        UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
-                        return;
-                    }
-                }, cps.Progressor);
-                
-                if (cps.Progressor.CancellationToken.IsCancellationRequested)
-                {
-                    // someone clicked the cancel button
-  //                  UpdateBarStatus("ERROR.  ERROR. ERROR. ERROR.", 0, 1, 0);
-                    return false;
-                }
-
- //               UpdateBarStatus("Doing Some Work - " + i.ToString(), 0, 10, i);
-            }
-
-            return true;
-        }
-
-        private async Task DoSomeWork2()
-        {
-            //UpdateProgressStatus("Doing Some Work 2", 0, 500, 0);
-
-            int i = 0;
-
-            while (i < 500)
-            {
-                i++;
-
-                await QueuedTask.Run(async () =>
-                {
-                    await Task.Delay(1);
-                });
-
-               // UpdateProgressStatus("Doing Some Work 2 - " + i.ToString(), 0, 500, i);
-            }
-        }
-
-        private async Task DoSomeWork3()
-        {
-            UpdateProgress("Doing Some Work 3", false, 0, 20, 0);
-
-            int i = 0;
-
-            while (i < 20)
-            {
-                i++;
-
-                await QueuedTask.Run(async () =>
-                {
-                    await Task.Delay(300);
-                    UpdateProgress("Doing Some Work within QueuedTask.Run - " + i.ToString(), false, 0, 20, i);
-                });
-
-            }
-        }
-
         private void SelectSpatialReference()
         {
             try
@@ -1415,8 +1250,6 @@ namespace NCC.PRZTools
             try
             {
                 _outputSR = _mapSR;
-                this.TestInfo = _mapSR.Name;
-
             }
             catch (Exception ex)
             {
@@ -1428,7 +1261,6 @@ namespace NCC.PRZTools
         {
             try
             {
-                this.TestInfo = "Enabled Select User SR Mode";
             }
             catch (Exception ex)
             {
@@ -1440,7 +1272,6 @@ namespace NCC.PRZTools
         {
             try
             {
-                this.TestInfo = "Enabled Select LAYER SR Mode";
             }
             catch (Exception ex)
             {
@@ -1448,11 +1279,6 @@ namespace NCC.PRZTools
             }
         }
 
-        
-        /// <summary>
-        /// Returns true if all required input parameters are valid.  False otherwise.
-        /// </summary>
-        /// <returns></returns>
         private bool CanBuildPlanningUnits()
         {
             try
@@ -1586,7 +1412,6 @@ namespace NCC.PRZTools
             }
         }
 
-
         private void UpdateProgress(string message, bool append)
         {
             if (System.Windows.Application.Current.Dispatcher.CheckAccess())
@@ -1696,18 +1521,18 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (this.SRMapIsChecked)
+                if (SRMapIsChecked)
                 {
                     return _mapSR;
                 }
-                else if (this.SRLayerIsChecked)
+                else if (SRLayerIsChecked)
                 {
-                    if (this.SelectedLayerSR != null)
+                    if (SelectedLayerSR != null)
                     {
                         return this.SelectedLayerSR;
                     }
                 }
-                else if (this.SRUserIsChecked)
+                else if (SRUserIsChecked)
                 {
                     // not implemented yet
                 }
@@ -1724,62 +1549,3 @@ namespace NCC.PRZTools
     }
 }
 
-
-
-
-//                await DoSomeWork2();
-
-//                await DoSomeWork3();
-
-
-//progressorSource.Max = 30;
-//progressorSource.Value = 0;
-//progressorSource.Status = "Phase 1...";
-//progressDialog.Show();
-////                progressor.Status = "Phase 1...";
-
-//int i = 0;
-
-//while (i < 10)
-//{
-//    i++;
-//    progressorSource.Value += 1;
-//    progressorSource.Message = "Step " + i.ToString();
-
-//    await QueuedTask.Run(async () =>
-//    {
-//        await Task.Delay(1000);
-//    });
-
-//    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-//    {
-//        return;
-//    }
-//}
-
-//progressorSource.Value = 0;
-//progressorSource.Max = 5;
-////progressor.Value = 0;
-////progressor.Max = 5;
-//progressorSource.Status = "Phase 2...";
-
-//i = 0;
-
-//while (i < 5)
-//{
-//    i++;
-//    //progressor.Value += 1;
-//    progressorSource.Value += 1;
-//    progressorSource.Message = "Step " + i.ToString();
-//    //progressor.Message = "Step " + i.ToString();
-
-//    await QueuedTask.Run(async () =>
-//    {
-//        await Task.Delay(1000);
-//    });
-
-//    if (progressorSource.CancellationTokenSource.IsCancellationRequested)
-//    {
-//        return;
-//    }
-//}

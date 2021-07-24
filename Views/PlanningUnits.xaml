@@ -39,7 +39,7 @@
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
                         <RadioButton Margin="5" GroupName="SR" IsEnabled="{Binding SRLayerIsEnabled}" Command="{Binding CmdSRLayer}" IsChecked="{Binding SRLayerIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">From Layers: </RadioButton>
-                        <ComboBox Margin="3" ItemsSource="{Binding LayerSRList}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLayerSR}" ></ComboBox>
+                        <ComboBox Margin="5,3,5,3" ItemsSource="{Binding LayerSRList}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedLayerSR}" ></ComboBox>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Bottom" LastChildFill="True" Margin="0">
                         <RadioButton Margin="5" GroupName="SR" IsEnabled="{Binding SRUserIsEnabled}" Command="{Binding CmdSRUser}" IsChecked="{Binding SRUserIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">User-specified:</RadioButton>
@@ -55,11 +55,11 @@
                     <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Specify the Study Area Source Geometry</TextBlock>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="True">
                         <RadioButton Margin="5" IsEnabled="{Binding GraphicsLayerIsEnabled}" IsChecked="{Binding GraphicsLayerIsChecked}" VerticalContentAlignment="Center" GroupName="StudyAreaSource" VerticalAlignment="Center" DockPanel.Dock="Left">Graphics Layers with Poly Selections:</RadioButton>
-                        <ComboBox Margin="3" ItemsSource="{Binding GraphicsLayerList}" SelectedItem="{Binding SelectedGraphicsLayer}"></ComboBox>
+                        <ComboBox Margin="5,3,5,3" ItemsSource="{Binding GraphicsLayerList}" SelectedItem="{Binding SelectedGraphicsLayer}"></ComboBox>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="True">
                         <RadioButton Margin="5" IsEnabled="{Binding FeatureLayerIsEnabled}" IsChecked="{Binding FeatureLayerIsChecked}" VerticalContentAlignment="Center" GroupName="StudyAreaSource" VerticalAlignment="Center" DockPanel.Dock="Left">Poly Feature Layers with Selections:</RadioButton>
-                        <ComboBox Margin="3" ItemsSource="{Binding FeatureLayerList}" SelectedItem="{Binding SelectedFeatureLayer}"></ComboBox>
+                        <ComboBox Margin="5,3,5,3" ItemsSource="{Binding FeatureLayerList}" SelectedItem="{Binding SelectedFeatureLayer}"></ComboBox>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
                         <TextBlock Margin="5" VerticalAlignment="Center" DockPanel.Dock="Left">Apply Buffer to Features/Graphics:</TextBlock>
@@ -75,12 +75,12 @@
                     <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Specify the Planning Unit Source Geometry</TextBlock>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="True">
                         <RadioButton Margin="5" DockPanel.Dock="Left" VerticalAlignment="Center" VerticalContentAlignment="Center" IsEnabled="False" GroupName="FCType">Use Existing Feature Layer:</RadioButton>
-                        <ComboBox Margin="3" ItemsSource="{Binding GraphicsLayerList}" SelectedItem="{Binding SelectedGraphicsLayer}"></ComboBox>
+                        <ComboBox Margin="5,3,5,3" ItemsSource="{Binding GraphicsLayerList}" SelectedItem="{Binding SelectedGraphicsLayer}"></ComboBox>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="True">
                         <RadioButton Margin="5" DockPanel.Dock="Left" VerticalAlignment="Center" VerticalContentAlignment="Center" IsChecked="True" IsEnabled="True" GroupName="FCType">Use Grid:</RadioButton>
-                        <ComboBox Margin="3" HorizontalContentAlignment="Center" DockPanel.Dock="Left" Width="70" ItemsSource="{Binding GridTypeList}" SelectedItem="{Binding SelectedGridType}"></ComboBox>
-                        <TextBlock Margin="5" DockPanel.Dock="Left" VerticalAlignment="Center">Tile Area</TextBlock>
+                        <ComboBox Margin="5,3,5,3" HorizontalContentAlignment="Center" DockPanel.Dock="Left" Width="70" ItemsSource="{Binding GridTypeList}" SelectedItem="{Binding SelectedGridType}"></ComboBox>
+                        <TextBlock Margin="5" DockPanel.Dock="Left" VerticalAlignment="Center">Tile Area:</TextBlock>
                         <TextBox Margin="5" DockPanel.Dock="Left" Text="{Binding TileArea}" Width="40"></TextBox>
                         <RadioButton Margin="5" IsChecked="{Binding TileAreaMIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">m&#x00B2;</RadioButton>
                         <RadioButton Margin="5" IsChecked="{Binding TileAreaAcIsSelected}" VerticalAlignment="Center" VerticalContentAlignment="Center" GroupName="TileUnits">ac</RadioButton>
@@ -98,10 +98,22 @@
             </Border>
             <Border Grid.Row="3" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
                 <DockPanel Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Margin="0" LastChildFill="False">
-                    <Button Margin="5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Left" IsEnabled="True" Command="{Binding CmdBuildPlanningUnits}" Height="25">BUILD PLANNING UNIT FEATURE CLASS</Button>
+                    <Button Margin="5" Height="25"  Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Left" IsEnabled="True" Command="{Binding CmdBuildPlanningUnits}">BUILD THE STUFF!</Button>
+                    <Button Margin="5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">---</Button>
+                    <Button Margin="5,5,0,5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">---</Button>
+                    <Button Margin="5,5,0,5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">EXISTING INFO</Button>
                 </DockPanel>
             </Border>
             <Border Grid.Row="4" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
+                    <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+                        <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Construction Log</TextBlock>
+                        <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
+                        <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                            <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding BarMessage}" FontFamily="Courier New" FontSize="10"></TextBlock>
+                        </ScrollViewer>
+                </DockPanel>
+            </Border>
+            <!--<Border Grid.Row="4" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
                 <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
                         <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Construction Log</TextBlock>
@@ -109,7 +121,7 @@
                         <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding BarMessage}" FontFamily="Courier New" FontSize="10"></TextBlock>
                     </DockPanel>
                 </ScrollViewer>
-            </Border>
+            </Border>-->
         </Grid>
     </Border>
 </controls:ProWindow>
