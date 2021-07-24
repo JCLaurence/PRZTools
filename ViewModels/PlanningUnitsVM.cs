@@ -433,13 +433,13 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetProjectGDBPath();
                 if (!await PRZH.ProjectGDBExists())
                 {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" + 
                                    Environment.NewLine +
                                    gdbpath + 
                                    Environment.NewLine + Environment.NewLine + 
                                    "Please specify a valid Project Workspace.", "Validation");
 
-                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath), true, ++val);
                     return false;
                 }
                 else
@@ -451,8 +451,8 @@ namespace NCC.PRZTools
                 var OutputSR = GetOutputSR();
                 if (OutputSR == null)
                 {
-                    ProMsgBox.Show("Please specify a valid Output Spatial Reference", "Validation");
                     UpdateProgress(PRZH.WriteLog("Validation >> Unspecified or invalid output Spatial Reference"), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Output Spatial Reference", "Validation");
                     return false;
                 }
                 else
@@ -460,12 +460,78 @@ namespace NCC.PRZTools
                     UpdateProgress(PRZH.WriteLog("Validation >> Output Spatial Reference is OK: " + OutputSR.Name), true, ++val);
                 }
 
+                // Validation: Study Area Source Geometry
+                if (GraphicsLayerIsChecked)
+                {
+                    if (SelectedGraphicsLayer == null)
+                    {
+                        UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer was selected."), true, ++val);
+                        ProMsgBox.Show("You must specify a Graphics Layer", "Validation");
+                        return false;
+                    }
+                    else
+                    {
+                        UpdateProgress(PRZH.WriteLog("Validation >> Graphics Layer Name: " + SelectedGraphicsLayer.Name), true, ++val);
+                    }
+                }
+                else if (FeatureLayerIsChecked)
+                {
+                    if (SelectedFeatureLayer == null)
+                    {
+                        UpdateProgress(PRZH.WriteLog("Validation >> No Feature Layer was selected."), true, ++val);
+                        ProMsgBox.Show("You must specify a Feature Layer", "Validation");
+                        return false;
+                    }
+                    else
+                    {
+                        UpdateProgress(PRZH.WriteLog("Validation >> Feature Layer Name: " + SelectedFeatureLayer.Name), true, ++val);
+                    }
+                }
+                else
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer or Feature Layer was selected."), true, ++val);
+                    ProMsgBox.Show("You must select either a Graphics Layer or a Feature Layer", "Validation");
+                    return false;
+                }
+
+                // Validation: Buffer Distance
+                string buffer_dist_text = string.IsNullOrEmpty(BufferValue) ? "0" : ((BufferValue.Trim() == "") ? "0" : BufferValue.Trim());
+
+                if (!double.TryParse(buffer_dist_text, out double buffer_dist))
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified."), true, ++val);
+                    ProMsgBox.Show("Invalid Buffer Distance specified.  The value must be numeric and >= 0, or blank.", "Validation");
+                    return false;
+                }
+                else if (buffer_dist < 0)
+                {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified."), true, ++val);
+                    ProMsgBox.Show("Invalid Buffer Distance specified.  The value must be >= 0", "Validation");
+                    return false;
+                }
+
+                double buffer_dist_m = 0;
+                string bu = "";
+
+                if (BufferUnitMetersIsChecked)
+                {
+                    bu = buffer_dist_text + " m";
+                    buffer_dist_m = buffer_dist;
+                }
+                else if (BufferUnitKilometersIsChecked)
+                {
+                    bu = buffer_dist_text + " km";
+                    buffer_dist_m = buffer_dist * 1000.0;
+                }
+
+                UpdateProgress(PRZH.WriteLog("Validation >> Buffer Distance = " + bu), true, ++val);
+
                 // Validation: Tile Shape
                 string tile_shape = (string.IsNullOrEmpty(SelectedGridType) ? "" : SelectedGridType);
                 if (tile_shape == "")
                 {
-                    ProMsgBox.Show("Please specify a tile shape", "Validation");
                     UpdateProgress(PRZH.WriteLog("Validation >> Tile shape not specified"), true, ++val);
+                    ProMsgBox.Show("Please specify a tile shape", "Validation");
                     return false;
                 }
                 else
@@ -491,14 +557,14 @@ namespace NCC.PRZTools
 
                 if (!double.TryParse(tile_area_text, out double tile_area_m2))
                 {
-                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     return false;
                 }
                 else if (tile_area_m2 <= 0)
                 {
-                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     return false;
                 }
                 else
@@ -564,8 +630,8 @@ namespace NCC.PRZTools
 
                 if (alignment_param_error)
                 {
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid tile grid alignment coordinates."), true, ++val);
                     ProMsgBox.Show("Invalid Tile Grid Alignment Coordinates.  Both X and Y values must be numeric, or both must be blank.", "Validation");
-                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid tile grid alignment coordinates.  X and Y must both be numeric or blank"), true, ++val);
                     return false;
                 }
                 else if (align_grid)
@@ -576,58 +642,6 @@ namespace NCC.PRZTools
                 {
                     UpdateProgress(PRZH.WriteLog("Validation >> No tile grid alignment was specified, and that's OK."), true, ++val);
                 }
-
-                // Study Area Specification
-
-
-
-
-
-
-                // Get Buffer Distance in meters
-                double buffer_distance = 0;
-                string buffer_distance_text = BufferValue.Trim();
-
-                if (buffer_distance_text == "")
-                {
-                    buffer_distance_text = "0";
-                }
-
-                if (!double.TryParse(buffer_distance_text, out buffer_distance))
-                {
-                    ProMsgBox.Show("Invalid Buffer Distance specified.  Must be a number >= 0, or left blank.");
-                    UpdateProgress("Invalid Buffer Distance specified.", true);
-                    return false;
-                }
-                else if (buffer_distance < 0)
-                {
-                    ProMsgBox.Show("Invalid Buffer Distance specified.  Must be a number >= 0, or left blank.");
-                    UpdateProgress("Invalid Buffer Distance specified.", true);
-                    return false;
-                }
-                else
-                {
-                    string s = "Buffer Distance: " + buffer_distance_text;
-
-                    if (BufferUnitMetersIsChecked)
-                    {
-                        s += " m";
-                    }
-                    else if (BufferUnitKilometersIsChecked)
-                    {
-                        s += " km";
-                        buffer_distance = buffer_distance * 1000.0;
-                    }
-
-                    UpdateProgress(s, true);
-                }
-
-
-
-
-
-
-
 
                 // Notify users what will happen if they proceed
                 if (ProMsgBox.Show("The Planning Units and Study Area layers are the heart of the various tabular data used by PRZ Tools.  " +
@@ -642,18 +656,15 @@ namespace NCC.PRZTools
                                    System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
                                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
-                    UpdateProgress(PRZH.WriteLog("User chickened out."), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("User bailed out."), true, ++val);
                     return false;
                 }
 
-
-
-
-
-
-
-
                 #endregion
+
+                return false;
+                // I'm here!!!
+
 
                 #region STUDY AREA
 
@@ -724,10 +735,10 @@ namespace NCC.PRZTools
                 }
 
                 // Generate Buffered Polygons (buffer might be 0)
-                Polygon study_area_poly_buffered = GeometryEngine.Instance.Buffer(study_area_poly, buffer_distance) as Polygon;
+                Polygon study_area_poly_buffered = GeometryEngine.Instance.Buffer(study_area_poly, buffer_dist) as Polygon;
                 Polygon study_area_polys_buffered = await QueuedTask.Run(() =>
                 {
-                    return GeometryEngine.Instance.Buffer(study_area_polys, buffer_distance) as Polygon;
+                    return GeometryEngine.Instance.Buffer(study_area_polys, buffer_dist) as Polygon;
                 });
 
                 var map = MapView.Active.Map;
