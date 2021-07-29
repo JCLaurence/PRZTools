@@ -269,6 +269,9 @@ namespace NCC.PRZTools
         private ICommand _cmdBuildPlanningUnits;
         public ICommand CmdBuildPlanningUnits => _cmdBuildPlanningUnits ?? (_cmdBuildPlanningUnits = new RelayCommand(async () => await BuildPlanningUnits(), () => true));
 
+        private ICommand _cmdClearConstructionLog;
+        public ICommand CmdClearConstructionLog => _cmdClearConstructionLog ?? (_cmdClearConstructionLog = new RelayCommand(() => BarMessage = "", () => true));
+
         public ICommand cmdOK => new RelayCommand((paramProWin) =>
         {
             (paramProWin as ProWindow).DialogResult = true;
@@ -662,15 +665,11 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                return false;
-                // I'm here!!!
-
-
                 #region STUDY AREA
 
                 // Retrieve Polygons to construct Study Area + Buffered Study Area
-                List<Polygon> study_area_polys = new List<Polygon>();  // capture all individual selected polygons
-                Polygon study_area_poly = null;
+                List<Polygon> LIST_SA_polys = new List<Polygon>();
+                Polygon SA_poly = null;
 
                 if (GraphicsLayerIsChecked)
                 {
@@ -678,6 +677,7 @@ namespace NCC.PRZTools
                     GraphicsLayer gl = SelectedGraphicsLayer;
 
                     var selElems = gl.GetSelectedElements().OfType<GraphicElement>();
+                    int polyelems = 0;
 
                     await QueuedTask.Run(() =>
                     {
@@ -685,7 +685,6 @@ namespace NCC.PRZTools
 
                         foreach (var elem in selElems)
                         {
-
                             var g = elem.GetGraphic();
                             if (g is CIMPolygonGraphic)
                             {
@@ -694,18 +693,23 @@ namespace NCC.PRZTools
 
                                 polyBuilder.AddParts(s.Parts);
                                 Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                study_area_polys.Add(p3);
+                                LIST_SA_polys.Add(p3);
+                                polyelems++;
                             }
                         }
 
                         Polygon poly = polyBuilder.ToGeometry();
-                        study_area_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
+                        SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
                     });
+
+                    UpdateProgress(PRZH.WriteLog("Study Area >> Retrieved " + polyelems.ToString() + " selected polygon(s) from Graphics Layer: " + gl.Name), true, ++val);
                 }
                 else if (FeatureLayerIsChecked)
                 {
                     // Get the selected polygon features from the selected feature layer
                     FeatureLayer fl = SelectedFeatureLayer;
+
+                    int selpol = 0;
 
                     await QueuedTask.Run(() =>
                     {
@@ -723,23 +727,29 @@ namespace NCC.PRZTools
                                         var s = feat.GetShape().Clone() as Polygon;
                                         polyBuilder.AddParts(s.Parts);
                                         Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                        study_area_polys.Add(p3);
+                                        LIST_SA_polys.Add(p3);
+                                        selpol++;
                                     }
                                 }
                             }
                         }
 
                         Polygon poly = polyBuilder.ToGeometry();
-                        study_area_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);                                               
+                        SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);                                               
                     });
+
+                    UpdateProgress(PRZH.WriteLog("Study Area >> Retrieved " + selpol.ToString() + " selected polygon(s) from Layer: " + fl.Name), true, ++val);
                 }
 
                 // Generate Buffered Polygons (buffer might be 0)
-                Polygon study_area_poly_buffered = GeometryEngine.Instance.Buffer(study_area_poly, buffer_dist) as Polygon;
-                Polygon study_area_polys_buffered = await QueuedTask.Run(() =>
+                UpdateProgress(PRZH.WriteLog("Study Area >> Buffering...   Buffer Distance (m): " + buffer_dist_m.ToString()), true, ++val);
+                Polygon SA_poly_buffer = GeometryEngine.Instance.Buffer(SA_poly, buffer_dist_m) as Polygon;
+                Polygon SA_polys_buffer = await QueuedTask.Run(() =>
                 {
-                    return GeometryEngine.Instance.Buffer(study_area_polys, buffer_dist) as Polygon;
+                    return GeometryEngine.Instance.Buffer(LIST_SA_polys, buffer_dist_m) as Polygon;
                 });
+
+                // I'm here!!!
 
                 var map = MapView.Active.Map;
                 var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
@@ -825,7 +835,7 @@ namespace NCC.PRZTools
                         return false;
                 }
 
-                Envelope env = study_area_poly_buffered.Extent;
+                Envelope env = SA_poly_buffer.Extent;
                 double env_width = env.Width;
                 double env_height = env.Height;
                 MapPoint env_ll_point = null;
@@ -873,7 +883,7 @@ namespace NCC.PRZTools
                 UpdateProgress(PRZH.WriteLog("Tiles constructed..."), true, ++val);
 
                 // Retain only those tiles overlapping the buffered study area polygon
-                bool success = await StripTiles(study_area_poly_buffered);
+                bool success = await StripTiles(SA_poly_buffer);
 
                 UpdateProgress(PRZH.WriteLog("Tiles stripped..."), true, ++val);
 

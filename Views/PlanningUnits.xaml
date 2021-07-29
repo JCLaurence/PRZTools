@@ -105,23 +105,17 @@
                 </DockPanel>
             </Border>
             <Border Grid.Row="4" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                    <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                        <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Construction Log</TextBlock>
-                        <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
-                        <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                            <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding BarMessage}" FontFamily="Courier New" FontSize="10"></TextBlock>
-                        </ScrollViewer>
+                <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+                    <DockPanel DockPanel.Dock="Top" LastChildFill="False">
+                        <TextBlock Margin="5" DockPanel.Dock="Left" Style="{DynamicResource Esri_TextBlockH4}">Construction Log</TextBlock>
+                        <Button Margin="5" Command="{Binding CmdClearConstructionLog}" Style="{DynamicResource Esri_Button}" DockPanel.Dock="Right">Clear Log</Button>
+                    </DockPanel>
+                    <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
+                    <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding BarMessage}" FontFamily="Courier New" FontSize="10"></TextBlock>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
-            <!--<Border Grid.Row="4" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                        <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Construction Log</TextBlock>
-                        <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding BarMin}" Maximum="{Binding BarMax}" Value="{Binding BarValue}" />
-                        <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding BarMessage}" FontFamily="Courier New" FontSize="10"></TextBlock>
-                    </DockPanel>
-                </ScrollViewer>
-            </Border>-->
         </Grid>
     </Border>
 </controls:ProWindow>
