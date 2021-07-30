@@ -81,41 +81,11 @@ namespace NCC.PRZTools
 
                 if (map.MapType.ToString() != "Map") return false;  // has to be a plain old Map
 
-                // determine if Planning Unit FC exists
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
-                bool pufcexists = await PRZH.PlanningUnitFCExists();
-                if (!pufcexists)
+                // Remove any instances of PRZ Geodatabase layers in the map
+                if (!await RemovePRZLayersAndTables())
                 {
-                    ProMsgBox.Show("Planning Unit Feature Class doesn't exist in your Project File Geodatabase.  You may not have built it yet...");
+                    return false;
                 }
-
-                // Remove any instances of Planning Unit Feature Layer in the map
-                var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-                List<Layer> LayersToDelete = new List<Layer>();
-
-                foreach (FeatureLayer flyr in flyrs)
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        using (FeatureClass fc = flyr.GetFeatureClass())
-                        {
-                            if (fc != null)
-                            {
-                                string fcpath = fc.GetPath().AbsolutePath;
-
-                                if (fcpath.Replace(@"/", @"\") == pufcpath)
-                                {
-                                    LayersToDelete.Add(flyr);
-                                }
-                            }
-                        }
-                    });
-                }
-
-                await QueuedTask.Run(() =>
-                {
-                    map.RemoveLayers(LayersToDelete);
-                });
 
                 // *** PRZ GROUP LAYER *******************************************
 
@@ -224,7 +194,7 @@ namespace NCC.PRZTools
                 }
 
                 // Finally (at top level), remove all layers from PRZ Group Layer that are not one of the 3 child group layers
-                LayersToDelete.Clear();
+                List<Layer> LayersToDelete = new List<Layer>();
                 var lyrs = GL_PRZ.Layers;
                 foreach (var lyr in lyrs)
                 {
@@ -246,13 +216,45 @@ namespace NCC.PRZTools
                     GL_PRZ.RemoveLayers(LayersToDelete);
                 });
 
-                // ADD THE PU FEATURE LAYER HERE WITH NICE PRETTY LEGEND ONCE I HAVE IT CREATED!!!
+                // Add the 2 study area layers and the planning unit layer
+                bool pufcexists = await PRZH.PlanningUnitFCExists();
+                bool safcexists = await PRZH.StudyAreaFCExists();
+                bool sabfcexists = await PRZH.StudyAreaBufferFCExists();
+
+                int i = 3;
+
+                if (sabfcexists)
+                {
+                    string sabfcpath = PRZH.GetStudyAreaBufferFCPath();
+
+                    Uri uri = new Uri(sabfcpath);
+                    await QueuedTask.Run(() =>
+                    {
+                        var sabFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
+                        PRZH.ApplyLegend_SAB_Simple(sabFL);
+                    });
+                }
+
+                if (safcexists)
+                {
+                    string safcpath = PRZH.GetStudyAreaFCPath();
+
+                    Uri uri = new Uri(safcpath);
+                    await QueuedTask.Run(() =>
+                    {
+                        var saFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_STUDY_AREA);
+                        PRZH.ApplyLegend_SA_Simple(saFL);
+                    });
+                }
+
                 if (pufcexists)
                 {
+                    string pufcpath = PRZH.GetPlanningUnitFCPath();
+
                     Uri uri = new Uri(pufcpath);
                     await QueuedTask.Run(() =>
                     {
-                        var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, 3, PRZC.c_LAYER_PLANNING_UNITS);
+                        var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_PLANNING_UNITS);
                         PRZH.ApplyLegend_PU_Simple(puFL);
                     });
                 }
@@ -452,6 +454,86 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static async Task<bool> RemovePRZLayersAndTables()
+        {
+            try
+            {
+                var map = MapView.Active.Map;
+
+                List<StandaloneTable> tables_to_delete = new List<StandaloneTable>();
+                List<Layer> layers_to_delete = new List<Layer>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (var geodatabase = await PRZH.GetProjectGDB())
+                    {
+                        string gdbpath = geodatabase.GetPath().AbsolutePath;
+
+                        // Standalone Tables
+                        var standalone_tables = map.StandaloneTables.ToList();
+                        foreach (var standalone_table in standalone_tables)
+                        {
+                            using (Table table = standalone_table.GetTable())
+                            {
+                                if (table != null)
+                                {
+                                    try
+                                    {
+                                        using (var store = table.GetDatastore())
+                                        {
+                                            if (store != null && store is Geodatabase)
+                                            {
+                                                var uri = store.GetPath();
+                                                if (uri != null)
+                                                {
+                                                    string newpath = uri.AbsolutePath;
+
+                                                    if (gdbpath == newpath)
+                                                    {
+                                                        tables_to_delete.Add(standalone_table);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Layers
+                        var layers = map.GetLayersAsFlattenedList().ToList();
+                        foreach (var layer in layers)
+                        {
+                            var uri = layer.GetPath();
+                            if (uri != null)
+                            {
+                                string layer_path = uri.AbsolutePath;
+
+                                if (layer_path.StartsWith(gdbpath))
+                                {
+                                    layers_to_delete.Add(layer);
+                                }
+                            }
+                        }
+                    }
+
+                    map.RemoveStandaloneTables(tables_to_delete);
+                    map.RemoveLayers(layers_to_delete);
+                    await MapView.Active.RedrawAsync(false);
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
 
 

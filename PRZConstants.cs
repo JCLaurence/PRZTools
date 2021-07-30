@@ -41,6 +41,8 @@
         internal const string c_GROUPLAYER_STATUS_EXCLUDE = "LOCKED OUT";
         internal const string c_GROUPLAYER_CF = "CONSERVATION FEATURES";
         internal const string c_LAYER_PLANNING_UNITS = "Planning Units";
+        internal const string c_LAYER_STUDY_AREA = "Study Area";
+        internal const string c_LAYER_STUDY_AREA_BUFFER = "Study Area Buffer";
 
         // MAJOR OBJECTS
         internal const string c_TEMP_FILEGDB_NAME = "PRZTemp.gdb";

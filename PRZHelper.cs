@@ -194,6 +194,38 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static string GetStudyAreaBufferFCPath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+
+                return fcpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static string GetStudyAreaBufferMultiFCPath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI_BUFFERED);
+
+                return fcpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         // *** Path + Object Existence
         internal static bool ProjectWSExists()
         {
@@ -280,6 +312,47 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static async Task<bool> StudyAreaFCExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(gdb, PRZC.c_FC_STUDY_AREA_MAIN);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        internal static async Task<bool> StudyAreaBufferFCExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(gdb, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         // *** Objects
 
@@ -641,6 +714,51 @@ namespace NCC.PRZTools
             }
         }
 
+        public static bool ApplyLegend_SAB_Simple(FeatureLayer sabFL)
+        {
+            try
+            {
+                // Colors
+                CIMColor outlineColor = GetNamedColor(Color.Black);
+                CIMColor fillColor = CIMColor.NoColor();
+
+                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
+                CIMSimpleRenderer rend = sabFL.GetRenderer() as CIMSimpleRenderer;
+                rend.Symbol = fillSym.MakeSymbolReference();
+                //rend.Label = "";
+                sabFL.SetRenderer(rend);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static bool ApplyLegend_SA_Simple(FeatureLayer saFL)
+        {
+            try
+            {
+                // Colors
+                CIMColor outlineColor = GetNamedColor(Color.Black);
+                CIMColor fillColor = CIMColor.NoColor();
+
+                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 2, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
+                CIMSimpleRenderer rend = saFL.GetRenderer() as CIMSimpleRenderer;
+                rend.Symbol = fillSym.MakeSymbolReference();
+                //rend.Label = "";
+                saFL.SetRenderer(rend);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         #endregion
 
