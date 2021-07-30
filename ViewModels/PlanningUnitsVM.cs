@@ -270,7 +270,13 @@ namespace NCC.PRZTools
         public ICommand CmdBuildPlanningUnits => _cmdBuildPlanningUnits ?? (_cmdBuildPlanningUnits = new RelayCommand(async () => await BuildPlanningUnits(), () => true));
 
         private ICommand _cmdClearConstructionLog;
-        public ICommand CmdClearConstructionLog => _cmdClearConstructionLog ?? (_cmdClearConstructionLog = new RelayCommand(() => BarMessage = "", () => true));
+        public ICommand CmdClearConstructionLog => _cmdClearConstructionLog ?? (_cmdClearConstructionLog = new RelayCommand(() =>
+        {
+            BarMessage = "";
+            BarMin = 0;
+            BarValue = 0;
+            BarMax = 3;
+        }, () => true));
 
         public ICommand cmdOK => new RelayCommand((paramProWin) =>
         {
@@ -407,6 +413,10 @@ namespace NCC.PRZTools
                 sb.AppendLine("Map Name: " + map.Name);
                 sb.AppendLine("Spatial Reference: " + _mapSR.Name);
 
+                BarMin = 0;
+                BarMax = 3;
+                BarValue = 0;
+
                 #endregion
             }
             catch (Exception ex)
@@ -436,7 +446,7 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetProjectGDBPath();
                 if (!await PRZH.ProjectGDBExists())
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" + 
                                    Environment.NewLine +
                                    gdbpath + 
@@ -454,7 +464,7 @@ namespace NCC.PRZTools
                 var OutputSR = GetOutputSR();
                 if (OutputSR == null)
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Unspecified or invalid output Spatial Reference"), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Unspecified or invalid output Spatial Reference", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Please specify a valid Output Spatial Reference", "Validation");
                     return false;
                 }
@@ -468,7 +478,7 @@ namespace NCC.PRZTools
                 {
                     if (SelectedGraphicsLayer == null)
                     {
-                        UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer was selected."), true, ++val);
+                        UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("You must specify a Graphics Layer", "Validation");
                         return false;
                     }
@@ -481,7 +491,7 @@ namespace NCC.PRZTools
                 {
                     if (SelectedFeatureLayer == null)
                     {
-                        UpdateProgress(PRZH.WriteLog("Validation >> No Feature Layer was selected."), true, ++val);
+                        UpdateProgress(PRZH.WriteLog("Validation >> No Feature Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("You must specify a Feature Layer", "Validation");
                         return false;
                     }
@@ -492,7 +502,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer or Feature Layer was selected."), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> No Graphics Layer or Feature Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("You must select either a Graphics Layer or a Feature Layer", "Validation");
                     return false;
                 }
@@ -502,13 +512,13 @@ namespace NCC.PRZTools
 
                 if (!double.TryParse(buffer_dist_text, out double buffer_dist))
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified."), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Invalid Buffer Distance specified.  The value must be numeric and >= 0, or blank.", "Validation");
                     return false;
                 }
                 else if (buffer_dist < 0)
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified."), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid buffer distance specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Invalid Buffer Distance specified.  The value must be >= 0", "Validation");
                     return false;
                 }
@@ -533,7 +543,7 @@ namespace NCC.PRZTools
                 string tile_shape = (string.IsNullOrEmpty(SelectedGridType) ? "" : SelectedGridType);
                 if (tile_shape == "")
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Tile shape not specified"), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Tile shape not specified", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Please specify a tile shape", "Validation");
                     return false;
                 }
@@ -560,13 +570,13 @@ namespace NCC.PRZTools
 
                 if (!double.TryParse(tile_area_text, out double tile_area_m2))
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     return false;
                 }
                 else if (tile_area_m2 <= 0)
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area"), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                     return false;
                 }
@@ -633,7 +643,7 @@ namespace NCC.PRZTools
 
                 if (alignment_param_error)
                 {
-                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid tile grid alignment coordinates."), true, ++val);
+                    UpdateProgress(PRZH.WriteLog("Validation >> Invalid tile grid alignment coordinates.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Invalid Tile Grid Alignment Coordinates.  Both X and Y values must be numeric, or both must be blank.", "Validation");
                     return false;
                 }
@@ -665,7 +675,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region STUDY AREA
+                #region STUDY AREA GEOMETRY
 
                 // Retrieve Polygons to construct Study Area + Buffered Study Area
                 List<Polygon> LIST_SA_polys = new List<Polygon>();
@@ -742,71 +752,82 @@ namespace NCC.PRZTools
                 }
 
                 // Generate Buffered Polygons (buffer might be 0)
-                UpdateProgress(PRZH.WriteLog("Study Area >> Buffering...   Buffer Distance (m): " + buffer_dist_m.ToString()), true, ++val);
                 Polygon SA_poly_buffer = GeometryEngine.Instance.Buffer(SA_poly, buffer_dist_m) as Polygon;
                 Polygon SA_polys_buffer = await QueuedTask.Run(() =>
                 {
                     return GeometryEngine.Instance.Buffer(LIST_SA_polys, buffer_dist_m) as Polygon;
                 });
+                UpdateProgress(PRZH.WriteLog("Study Area >> Buffered by " + buffer_dist_m.ToString() + ((buffer_dist_m == 1) ? " meter" : " meters")), true, ++val);
 
-                // I'm here!!!
+                #endregion
 
+                #region STRIP MAP AND GDB
+
+                // Remove any PRZ GDB Layers or Tables from Active Map
                 var map = MapView.Active.Map;
                 var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
                 List<Layer> LayersToDelete = new List<Layer>();
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
 
-                // Remove any PRZ GDB Layers or Tables
-                UpdateProgress(PRZH.WriteLog("Removing all Layers and Standalone Tables with Source = " + gdbpath), true, ++val);
-                bool removed = await RemovePRZLayersAndTables();
-                if (!removed) return false;
+                if (!await RemovePRZLayersAndTables())
+                {
+                    UpdateProgress(PRZH.WriteLog("Unable to remove all Layers and Standalone Tables with source = " + gdbpath, LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    UpdateProgress(PRZH.WriteLog("Removed all Layers and Standalone Tables with source = " + gdbpath), true, ++val);
+                }
 
-                // *** GEOPROCESSING BEGINS!! ***
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 string toolOutput;
 
                 // Delete all Items from Project GDB
-                UpdateProgress(PRZH.WriteLog("Deleting all Feature Datasets, Feature Classes, and Tables from " + PRZC.c_PRZ_PROJECT_FGDB), true);
                 if (!await PRZH.ClearProjectGDB())
                 {
-                    UpdateProgress(PRZH.WriteLog("Unable to delete FDS / FC / TAB from " + PRZC.c_PRZ_PROJECT_FGDB, LogMessageType.ERROR), true);
+                    UpdateProgress(PRZH.WriteLog("Unable to delete Feature Datasets, Feature Classes, and Tables from " + gdbpath, LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    UpdateProgress(PRZH.WriteLog("Deleted all Feature Datasets, Feature Classes, and Tables from " + gdbpath), true, ++val);
+                }
+
+                #endregion
+
+                #region CREATE PLANNING UNIT FC
+
+                string pufcpath = PRZH.GetPlanningUnitFCPath();
+
+                // Build the new empty Planning Unit FC
+                UpdateProgress(PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error creating Planning Unit FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                     return false;
                 }
 
-                // Delete existing Planning Unit FC
-                UpdateProgress(PRZH.WriteLog("Deleting Planning Unit Feature Class..."), true, max, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
-                UpdateProgress(PRZH.WriteLog("Create Feature Class: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
-                if (toolOutput is null) return false;
-
-                // Build the new empty Planning Unit FC
-                UpdateProgress(PRZH.WriteLog("Creating empty Planning Unit Feature Class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
-                UpdateProgress(PRZH.WriteLog("Create Feature Class: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
-                if (toolOutput is null) return false;
-
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_PUFC_ID + " LONG 'Planning Unit ID' # # #;";
-                string fldNCCID = PRZC.c_FLD_NCC_ID + " LONG 'NCC ID' # # #;";
+                string fldNCCID = PRZC.c_FLD_PUFC_NCC_ID + " LONG 'NCC ID' # # #;";
                 string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUStatus = PRZC.c_FLD_PUFC_STATUS + " LONG 'Status' # 2 #;";
                 string flds = fldPUID + fldNCCID + fldPUCost + fldPUStatus;
 
-                UpdateProgress(PRZH.WriteLog("Adding Fields..."), true, ++val);
+                UpdateProgress(PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
-                UpdateProgress(PRZH.WriteLog("Add Fields: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
-                if (toolOutput is null) return false;
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error adding fields to Planning Unit FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
-                // *** BUILD THE GRID
-
-                // calculate my dimensions
+                // Assemble the Grid
                 double tile_edge_length = 0;
                 double tile_width = 0;
                 double tile_center_to_right = 0;
@@ -876,43 +897,234 @@ namespace NCC.PRZTools
                 tileinfo.tile_shape = TileShape;
                 tileinfo.tile_width = tile_width;
 
-                bool tiles_loaded = await LoadTiles(tileinfo);
-                if (!tiles_loaded)
+                UpdateProgress(PRZH.WriteLog("Loading Tiles into Planning Unit Feature Class..."), true, ++val);
+                if (!await LoadTiles(tileinfo))
+                {
+                    UpdateProgress(PRZH.WriteLog("Tile Load failed...", LogMessageType.ERROR), true, ++val);
                     return false;
-
-                UpdateProgress(PRZH.WriteLog("Tiles constructed..."), true, ++val);
+                }
 
                 // Retain only those tiles overlapping the buffered study area polygon
-                bool success = await StripTiles(SA_poly_buffer);
-
-                UpdateProgress(PRZH.WriteLog("Tiles stripped..."), true, ++val);
+                UpdateProgress(PRZH.WriteLog("Deleting Tiles outside of buffered study area..."), true, ++val);
+                if (!await StripTiles(SA_poly_buffer))
+                {
+                    UpdateProgress(PRZH.WriteLog("Tile Deletion failed...", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
                 // Index the PU ID field
-                UpdateProgress(PRZH.WriteLog("Indexing..."), true, ++val);
+                UpdateProgress(PRZH.WriteLog("Indexing fields in the Planning Unit Feature Class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_PUFC_ID, "ix" + PRZC.c_FLD_PUFC_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, GPExecuteToolFlags.None);
-                UpdateProgress(PRZH.WriteLog("Add Index: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
-                if (toolOutput is null) return false;
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
                 #endregion
+
+                #region CREATE STUDY AREA FC
+
+                string safcpath = PRZH.GetStudyAreaFCPath();
+
+                // Build the new empty Main Study Area FC
+                UpdateProgress(PRZH.WriteLog("Creating Main Study Area Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error creating main Study Area Feature Class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add Fields to Main Study Area FC
+                string fldArea_ac = PRZC.c_FLD_SAFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
+                string fldArea_ha = PRZC.c_FLD_SAFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
+                string fldArea_km = PRZC.c_FLD_SAFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+                string SAflds = fldArea_ac + fldArea_ha + fldArea_km;
+
+                UpdateProgress(PRZH.WriteLog("Adding fields to Main Study Area Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(safcpath, SAflds);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error adding fields to main Study Area FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add Feature to Main Study Area FC
+                if (!await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    using (FeatureClass saFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN))
+                    using (RowBuffer rowBuffer = saFC.CreateRowBuffer())
+                    {
+                        try
+                        {
+                            // Get the Definition
+                            FeatureClassDefinition fcDef = saFC.GetDefinition();
+
+                            // Field Indexes
+                            int ixShape = fcDef.FindField(fcDef.GetShapeField());
+                            int ixAcres = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_AC);
+                            int ixHectares = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_HA);
+                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_KM);
+
+                            // Prepare area values
+                            double ac = SA_poly.Area * PRZC.c_CONVERT_M2_TO_AC;
+                            double ha = SA_poly.Area * PRZC.c_CONVERT_M2_TO_HA;
+                            double km2 = SA_poly.Area * PRZC.c_CONVERT_M2_TO_KM2;
+
+                            // Assign values for a one-time row creation
+                            rowBuffer[ixShape] = SA_poly;
+                            rowBuffer[ixAcres] = ac;
+                            rowBuffer[ixHectares] = ha;
+                            rowBuffer[ixKm2] = km2;
+
+                            // Create the one new row
+                            using (Feature feature = saFC.CreateRow(rowBuffer))
+                            {
+                                feature.Store();    // this may not be necessary
+                            }
+
+                            return true;
+                        }
+                        catch (Exception)
+                        {
+                            return false;
+                        }
+                    }
+                }))
+                {
+                    // it did not work
+                    UpdateProgress(PRZH.WriteLog("Error loading polygon feature into Study Area Feature Class.", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    // it did work, yay.
+                    UpdateProgress(PRZH.WriteLog("Loaded polygon feature into Study Area Feature Class"), true, ++val);
+                }
+
+
+                #endregion
+
+                #region CREATE STUDY AREA (MULTI) FC
+
+                string samultifcpath = PRZH.GetStudyAreaMultiFCPath();
+
+                // Build the new empty Multi Study Area FC
+                UpdateProgress(PRZH.WriteLog("Creating Multi-part Study Area Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error creating multi-part Study Area Feature Class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add Fields to Multi Study Area FC
+                string fldMultiArea_ac = PRZC.c_FLD_SAFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
+                string fldMultiArea_ha = PRZC.c_FLD_SAFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
+                string fldMultiArea_km = PRZC.c_FLD_SAFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+                string SAMultiflds = fldMultiArea_ac + fldMultiArea_ha + fldMultiArea_km;
+
+                UpdateProgress(PRZH.WriteLog("Adding fields to multi-part Study Area Feature Class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(samultifcpath, SAMultiflds);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error adding fields to multi-part Study Area FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add Features to Multi Study Area FC
+                // I'm here! this needs to use an insertCursor
+                if (!await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    using (FeatureClass saMultiFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MULTI))
+                    using (RowBuffer rowBuffer = saMultiFC.CreateRowBuffer())
+                    {
+                        try
+                        {
+                            // Get the Definition
+                            FeatureClassDefinition fcDef = saMultiFC.GetDefinition();
+
+                            // Field Indexes
+                            int ixShape = fcDef.FindField(fcDef.GetShapeField());
+                            int ixAcres = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_AC);
+                            int ixHectares = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_HA);
+                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_KM);
+
+                            // Prepare area values
+                            double ac = SA_poly.Area * PRZC.c_CONVERT_M2_TO_AC;
+                            double ha = SA_poly.Area * PRZC.c_CONVERT_M2_TO_HA;
+                            double km2 = SA_poly.Area * PRZC.c_CONVERT_M2_TO_KM2;
+
+                            // Assign values for a one-time row creation
+                            rowBuffer[ixShape] = SA_poly;
+                            rowBuffer[ixAcres] = ac;
+                            rowBuffer[ixHectares] = ha;
+                            rowBuffer[ixKm2] = km2;
+
+                            // Create the one new row
+                            using (Feature feature = saFC.CreateRow(rowBuffer))
+                            {
+                                feature.Store();    // this may not be necessary
+                            }
+
+                            return true;
+                        }
+                        catch (Exception)
+                        {
+                            return false;
+                        }
+                    }
+                }))
+                {
+                    // it did not work
+                    UpdateProgress(PRZH.WriteLog("Error loading polygon feature into Study Area Feature Class.", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    // it did work, yay.
+                    UpdateProgress(PRZH.WriteLog("Loaded polygon feature into Study Area Feature Class"), true, ++val);
+                }
+
+
+                #endregion
+
 
                 // Compact the Geodatabase
                 UpdateProgress(PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath);
                 toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, GPExecuteToolFlags.None);
-                UpdateProgress(PRZH.WriteLog("Compact: " + ((toolOutput is null) ? "failed or cancelled by user" : "successful")), true);
-                if (toolOutput is null) return false;
+                if (toolOutput == null)
+                {
+                    UpdateProgress(PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
                 // Refresh the Map & TOC
-                await PRZM.ValidatePRZGroupLayers();
+                if (!await PRZM.ValidatePRZGroupLayers())
+                {
+                    UpdateProgress(PRZH.WriteLog("Error validating PRZ layers...", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
-                UpdateProgress("Operation Complete!", true, 0, 3, 3);
-
+                // Wrap things up
                 stopwatch.Stop();
                 string message = PRZH.GetElapsedTimeMessage(stopwatch.Elapsed);
+                UpdateProgress(PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
+                UpdateProgress(PRZH.WriteLog(message), true, 1, 1);
 
-                ProMsgBox.Show("Planning Unit Layer Construction is Complete!" + Environment.NewLine + Environment.NewLine + message);
+                ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
 
                 return true;
             }

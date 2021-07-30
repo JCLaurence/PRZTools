@@ -162,6 +162,37 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static string GetStudyAreaFCPath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN);
+
+                return fcpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        internal static string GetStudyAreaMultiFCPath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI);
+
+                return fcpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
         // *** Path + Object Existence
         internal static bool ProjectWSExists()

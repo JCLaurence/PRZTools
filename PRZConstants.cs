@@ -18,6 +18,7 @@
     {
         INFO,
         WARNING,
+        VALIDATION_ERROR,
         ERROR
     }
 
@@ -127,7 +128,12 @@
         internal const string c_FLD_PUFC_ID = "id";
         internal const string c_FLD_PUFC_STATUS = "status";
         internal const string c_FLD_PUFC_COST = "cost";
-        internal const string c_FLD_NCC_ID = "ncc_id";
+        internal const string c_FLD_PUFC_NCC_ID = "ncc_id";
+
+        // Study Area Feature Class
+        internal const string c_FLD_SAFC_AREA_AC = "acres";
+        internal const string c_FLD_SAFC_AREA_HA = "hectares";
+        internal const string c_FLD_SAFC_AREA_KM = "square_km";
 
         // Status DataTable Fields
         internal const string c_FLD_DATATABLE_STATUS_INDEX = "index";
@@ -183,6 +189,10 @@
         internal const int c_ADJACENTFEATURECOUNT_HEXAGON = 6;    //number of features adjacent to a completely encircled hexagon feature
         internal const int c_ADJACENTFEATURECOUNT_SQUARE = 4;     //number of features adjacent to a completely encirled square or diamond feature
 
+        // CONVERSION
+        internal const double c_CONVERT_M2_TO_AC = 0.000247105;
+        internal const double c_CONVERT_M2_TO_HA = 0.0001;
+        internal const double c_CONVERT_M2_TO_KM2 = 0.000001;
 
         // LOGGING & DIRECTORIES
         internal const string c_PRZ_LOGFILE = "PRZ.log";
