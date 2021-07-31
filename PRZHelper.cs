@@ -691,20 +691,20 @@ namespace NCC.PRZTools
 
         #region RENDERERS
 
-        public static bool ApplyLegend_PU_Simple(FeatureLayer puFL)
+        internal static bool ApplyLegend_PU_Simple(FeatureLayer FL)
         {
             try
             {
                 // Colors
-                CIMColor outlineColor = GetNamedColor(Color.BlueViolet);
-                CIMColor fillColor = GetNamedColor(Color.PaleGreen);
+                CIMColor outlineColor = GetNamedColor(Color.Aquamarine);
+                CIMColor fillColor = CIMColor.NoColor();
 
-                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1.5, SimpleLineStyle.Solid);
+                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
                 CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
-                CIMSimpleRenderer rend = puFL.GetRenderer() as CIMSimpleRenderer;
+                CIMSimpleRenderer rend = FL.GetRenderer() as CIMSimpleRenderer;
                 rend.Symbol = fillSym.MakeSymbolReference();
                 rend.Label = "A lowly planning unit";
-                puFL.SetRenderer(rend);
+                FL.SetRenderer(rend);
                 return true;
             }
             catch (Exception ex)
@@ -714,7 +714,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static bool ApplyLegend_SAB_Simple(FeatureLayer sabFL)
+        internal static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
         {
             try
             {
@@ -724,10 +724,10 @@ namespace NCC.PRZTools
 
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
                 CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
-                CIMSimpleRenderer rend = sabFL.GetRenderer() as CIMSimpleRenderer;
+                CIMSimpleRenderer rend = FL.GetRenderer() as CIMSimpleRenderer;
                 rend.Symbol = fillSym.MakeSymbolReference();
                 //rend.Label = "";
-                sabFL.SetRenderer(rend);
+                FL.SetRenderer(rend);
                 return true;
             }
             catch (Exception ex)
@@ -737,7 +737,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static bool ApplyLegend_SA_Simple(FeatureLayer saFL)
+        internal static bool ApplyLegend_SA_Simple(FeatureLayer FL)
         {
             try
             {
@@ -747,10 +747,10 @@ namespace NCC.PRZTools
 
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 2, SimpleLineStyle.Solid);
                 CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
-                CIMSimpleRenderer rend = saFL.GetRenderer() as CIMSimpleRenderer;
+                CIMSimpleRenderer rend = FL.GetRenderer() as CIMSimpleRenderer;
                 rend.Symbol = fillSym.MakeSymbolReference();
                 //rend.Label = "";
-                saFL.SetRenderer(rend);
+                FL.SetRenderer(rend);
                 return true;
             }
             catch (Exception ex)

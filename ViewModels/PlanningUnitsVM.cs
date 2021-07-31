@@ -428,6 +428,7 @@ namespace NCC.PRZTools
         internal async Task<bool> BuildPlanningUnits()
         {
             CancelableProgressorSource cps = null;  // use this for QueuedTask.Run tasks that take a while.  Otherwise, just use the progressbar on the window
+            int val = 0;
 
             try
             {
@@ -439,7 +440,6 @@ namespace NCC.PRZTools
 
                 // Initialize ProgressBar and Progress Log
                 int max = 30;
-                int val = 0;               
                 UpdateProgress(PRZH.WriteLog("Initializing the Planning Unit Constructor..."), false, max, ++val); // First message in Progress Log
 
                 // Validation: Project Geodatabase
@@ -1314,7 +1314,7 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                UpdateProgress(ex.Message, true);
+                UpdateProgress(PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
                 return false;
             }
             finally
