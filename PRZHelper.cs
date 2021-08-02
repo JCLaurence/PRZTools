@@ -226,6 +226,23 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static string GetStatusInfoTablePath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string path = Path.Combine(gdbpath, PRZC.c_TABLENAME_STATUSINFO);
+
+                return path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
         // *** Path + Object Existence
         internal static bool ProjectWSExists()
         {
@@ -354,6 +371,28 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static async Task<bool> StatusInfoTableExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLENAME_STATUSINFO);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+
         // *** Objects
 
         internal static async Task<Geodatabase> GetProjectGDB()
@@ -415,12 +454,83 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static async Task<FeatureClass> GetStudyAreaFC()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
 
+                    try
+                    {
+                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN);
+                        return fc;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
+        internal static async Task<FeatureClass> GetStudyAreaBufferFC()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
 
+                    try
+                    {
+                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                        return fc;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
+        internal static async Task<Table> GetStatusInfoTable()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
 
-
+                    try
+                    {
+                        Table tab = gdb.OpenDataset<Table>(PRZC.c_TABLENAME_STATUSINFO);
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
 
         #endregion
@@ -696,7 +806,7 @@ namespace NCC.PRZTools
             try
             {
                 // Colors
-                CIMColor outlineColor = GetNamedColor(Color.Aquamarine);
+                CIMColor outlineColor = GetNamedColor(Color.DarkSalmon);
                 CIMColor fillColor = CIMColor.NoColor();
 
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);

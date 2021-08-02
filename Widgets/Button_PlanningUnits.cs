@@ -1,26 +1,11 @@
 ﻿using ArcGIS.Core.CIM;
-using ArcGIS.Core.Data;
-using ArcGIS.Core.Data.DDL;
-using ArcGIS.Desktop.Catalog;
-using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Controls;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Input;
-using MsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
+using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZC = NCC.PRZTools.PRZConstants;
-
 
 namespace NCC.PRZTools
 {
@@ -37,7 +22,7 @@ namespace NCC.PRZTools
                 bool wsexists = PRZH.ProjectWSExists();
                 if (!wsexists)
                 {
-                    MsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
+                    ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
                     return;
                 }
 
@@ -45,7 +30,7 @@ namespace NCC.PRZTools
                 var gdbexists = await PRZH.ProjectGDBExists();
                 if (!gdbexists)
                 {
-                    MsgBox.Show("Project Workspace GDB does not exist.  Please Initialize or Reset your Project Workspace.");
+                    ProMsgBox.Show("Project Workspace GDB does not exist.  Please Initialize or Reset your Project Workspace.");
                     return;
                 }
 
@@ -57,28 +42,28 @@ namespace NCC.PRZTools
                 var mapView = MapView.Active;
                 if (mapView == null)
                 {
-                    MsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
+                    ProMsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
                     return;
                 }
 
                 // Ensure that MapView is ready to work with
                 if (!mapView.IsReady)
                 {
-                    MsgBox.Show("The Map View is not ready!  Try again later.");
+                    ProMsgBox.Show("The Map View is not ready!  Try again later.");
                     return;
                 }
 
                 // Ensure that the MapView is a regular 2D MapView
                 if (mapView.ViewingMode != MapViewingMode.Map)
                 {
-                    MsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
+                    ProMsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
                     return;
                 }
 
                 Map map = mapView.Map;
                 if (map.MapType != MapType.Map)
                 {
-                    MsgBox.Show("The Map must be of type 'Map'");
+                    ProMsgBox.Show("The Map must be of type 'Map'");
                     return;
                 }                
 
@@ -108,14 +93,14 @@ namespace NCC.PRZTools
                 };
 
                 var result = dlg.ShowDialog();
-                // Take whatever action required here once the dialog is close (true or false)
+                // Take whatever action required here once the dialog is closed (true or false)
                 // do stuff here!
 
                 #endregion
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 

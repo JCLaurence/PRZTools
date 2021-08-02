@@ -294,7 +294,7 @@ namespace NCC.PRZTools
 
         #region Methods
 
-        internal async void OnProWinLoaded()
+        public async void OnProWinLoaded()
         {
             try
             {
