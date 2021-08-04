@@ -8,5 +8,8 @@
     <Setting Name="WORKSPACE_DISPLAY_MODE" Type="System.String" Scope="User">
       <Value Profile="(Default)">DIR</Value>
     </Setting>
+    <Setting Name="DEFAULT_STATUS_THRESHOLD" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -46,5 +46,17 @@ namespace NCC.PRZTools.Properties {
                 this["WORKSPACE_DISPLAY_MODE"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string DEFAULT_STATUS_THRESHOLD {
+            get {
+                return ((string)(this["DEFAULT_STATUS_THRESHOLD"]));
+            }
+            set {
+                this["DEFAULT_STATUS_THRESHOLD"] = value;
+            }
+        }
     }
 }

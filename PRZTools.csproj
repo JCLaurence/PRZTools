@@ -122,6 +122,7 @@
   <ItemGroup>
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
+    <Compile Include="Models\ProgressManager.cs" />
     <Compile Include="Models\StatusConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\ConservationFeaturesVM.cs" />
@@ -338,7 +339,18 @@
     <AddInContent Include="DarkImages\PlanningUnit16.png" />
     <AddInContent Include="DarkImages\PlanningUnit32.png" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <AddInContent Include="DarkImages\CalculateStatus16.png" />
+    <AddInContent Include="DarkImages\CalculateStatus32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\CalculateStatus16.png" />
+    <AddInContent Include="Images\CalculateStatus32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\CalculateStatus16.png" />
+    <Resource Include="ImagesWPF\CalculateStatus32.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

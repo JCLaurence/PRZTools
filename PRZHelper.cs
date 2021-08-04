@@ -35,12 +35,12 @@ using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 namespace NCC.PRZTools
 {
 
-    internal static class PRZHelper
+    public static class PRZHelper
     {
+        #region LOGGING AND NOTIFICATIONS
 
-        #region LOGGING
-
-        internal static string WriteLog(string message, LogMessageType type = LogMessageType.INFO)
+        // Write to log
+        public static string WriteLog(string message, LogMessageType type = LogMessageType.INFO)
         {
             try
             {
@@ -76,7 +76,8 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string ReadLog()
+        // Read from the log
+        public static string ReadLog()
         {
             try
             {
@@ -96,12 +97,118 @@ namespace NCC.PRZTools
 
         }
 
+        // User notifications
+        public static void UpdateProgress(ProgressManager pm, string message, bool append)
+        {
+            try
+            {
+                DispatchProgress(pm, message, append, null, null, null);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        public static void UpdateProgress(ProgressManager pm, string message, bool append, int current)
+        {
+            try
+            {
+                DispatchProgress(pm, message, append, null, null, current);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        public static void UpdateProgress(ProgressManager pm, string message, bool append, int max, int current)
+        {
+            try
+            {
+                DispatchProgress(pm, message, append, null, max, current);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        public static void UpdateProgress(ProgressManager pm, string message, bool append, int min, int max, int current)
+        {
+            try
+            {
+                DispatchProgress(pm, message, append, min, max, current);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static void DispatchProgress(ProgressManager pm, string message, bool append, int? min, int? max, int? current)
+        {
+            try
+            {
+                if (System.Windows.Application.Current.Dispatcher.CheckAccess())
+                {
+                    ManageProgress(pm, message, append, min, max, current);
+                }
+                else
+                {
+                    ProApp.Current.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, (Action)(() =>
+                    {
+                        ManageProgress(pm, message, append, min, max, current);
+                    }));
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private static void ManageProgress(ProgressManager pm, string message, bool append, int? min, int? max, int? current)
+        {
+            try
+            {
+                // Update the Message
+                if (string.IsNullOrEmpty(message))
+                {
+                    pm.Message = append ? (pm.Message + Environment.NewLine + "") : "";
+                }
+                else
+                {
+                    pm.Message = append ? (pm.Message + Environment.NewLine + message) : message;
+                }
+
+                // Update the Min property
+                if (min != null)
+                {
+                    pm.Min = (int)min;
+                }
+
+                // Update the Max property
+                if (max != null)
+                {
+                    pm.Max = (int)max;
+                }
+
+                // Update the Value property
+                if (current != null)
+                {
+                    pm.Current = (int)current;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+
         #endregion LOGGING
 
         #region RETRIEVING PATHS AND OBJECTS
 
         // *** Paths
-        internal static string GetProjectWSPath()
+        public static string GetProjectWSPath()
         {
             try
             {
@@ -114,7 +221,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetProjectGDBPath()
+        public static string GetProjectGDBPath()
         {
             try
             {
@@ -130,7 +237,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetProjectLogPath()
+        public static string GetProjectLogPath()
         {
             try
             {
@@ -146,7 +253,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetPlanningUnitFCPath()
+        public static string GetPlanningUnitFCPath()
         {
             try
             {
@@ -162,7 +269,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetStudyAreaFCPath()
+        public static string GetStudyAreaFCPath()
         {
             try
             {
@@ -178,7 +285,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetStudyAreaMultiFCPath()
+        public static string GetStudyAreaMultiFCPath()
         {
             try
             {
@@ -194,7 +301,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetStudyAreaBufferFCPath()
+        public static string GetStudyAreaBufferFCPath()
         {
             try
             {
@@ -210,7 +317,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetStudyAreaBufferMultiFCPath()
+        public static string GetStudyAreaBufferMultiFCPath()
         {
             try
             {
@@ -226,7 +333,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetStatusInfoTablePath()
+        public static string GetStatusInfoTablePath()
         {
             try
             {
@@ -244,7 +351,7 @@ namespace NCC.PRZTools
 
 
         // *** Path + Object Existence
-        internal static bool ProjectWSExists()
+        public static bool ProjectWSExists()
         {
             try
             {
@@ -258,7 +365,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> ProjectGDBExists()
+        public static async Task<bool> ProjectGDBExists()
         {
             try
             {
@@ -294,7 +401,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static bool ProjectLogExists()
+        public static bool ProjectLogExists()
         {
             try
             {
@@ -308,7 +415,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> PlanningUnitFCExists()
+        public static async Task<bool> PlanningUnitFCExists()
         {
             try
             {
@@ -329,7 +436,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> StudyAreaFCExists()
+        public static async Task<bool> StudyAreaFCExists()
         {
             try
             {
@@ -350,7 +457,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> StudyAreaBufferFCExists()
+        public static async Task<bool> StudyAreaBufferFCExists()
         {
             try
             {
@@ -371,7 +478,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> StatusInfoTableExists()
+        public static async Task<bool> StatusInfoTableExists()
         {
             try
             {
@@ -395,7 +502,7 @@ namespace NCC.PRZTools
 
         // *** Objects
 
-        internal static async Task<Geodatabase> GetProjectGDB()
+        public static async Task<Geodatabase> GetProjectGDB()
         {
             try
             {
@@ -428,7 +535,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<FeatureClass> GetPlanningUnitFC()
+        public static async Task<FeatureClass> GetPlanningUnitFC()
         {
             try
             {
@@ -454,7 +561,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<FeatureClass> GetStudyAreaFC()
+        public static async Task<FeatureClass> GetStudyAreaFC()
         {
             try
             {
@@ -480,7 +587,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<FeatureClass> GetStudyAreaBufferFC()
+        public static async Task<FeatureClass> GetStudyAreaBufferFC()
         {
             try
             {
@@ -506,7 +613,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<Table> GetStatusInfoTable()
+        public static async Task<Table> GetStatusInfoTable()
         {
             try
             {
@@ -535,9 +642,662 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region RETRIEVING LAYERS AND STANDALONE TABLES
+
+        public static bool PRZLayerExists(Map map, PRZLayerNames layer_name)
+        {
+            try
+            {
+                switch(layer_name)
+                {
+                    case PRZLayerNames.MAIN:
+                        return GroupLayerExists_MAIN(map);
+
+                    case PRZLayerNames.STATUS:
+                        return GroupLayerExists_STATUS(map);
+
+                    case PRZLayerNames.STATUS_INCLUDE:
+                        return GroupLayerExists_STATUS_INCLUDE(map);
+
+                    case PRZLayerNames.STATUS_EXCLUDE:
+                        return GroupLayerExists_STATUS_EXCLUDE(map);
+
+                    case PRZLayerNames.COST:
+                        return GroupLayerExists_COST(map);
+
+                    case PRZLayerNames.CF:
+                        return GroupLayerExists_CF(map);
+
+                    case PRZLayerNames.PU:
+                        return FeatureLayerExists_PU(map);
+
+                    case PRZLayerNames.SA:
+                        return FeatureLayerExists_SA(map);
+
+                    case PRZLayerNames.SAB:
+                        return FeatureLayerExists_SAB(map);
+
+                    default:
+                        return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static Layer GetPRZLayer(Map map, PRZLayerNames layer_name)
+        {
+            try
+            {
+                switch (layer_name)
+                {
+                    case PRZLayerNames.MAIN:
+                        return GetGroupLayer_MAIN(map);
+
+                    case PRZLayerNames.STATUS:
+                        return GetGroupLayer_STATUS(map);
+
+                    case PRZLayerNames.STATUS_INCLUDE:
+                        return GetGroupLayer_STATUS_INCLUDE(map);
+
+                    case PRZLayerNames.STATUS_EXCLUDE:
+                        return GetGroupLayer_STATUS_EXCLUDE(map);
+
+                    case PRZLayerNames.COST:
+                        return GetGroupLayer_COST(map);
+
+                    case PRZLayerNames.CF:
+                        return GetGroupLayer_CF(map);
+
+                    case PRZLayerNames.PU:
+                        return GetFeatureLayer_PU(map);
+
+                    case PRZLayerNames.SA:
+                        return GetFeatureLayer_SA(map);
+
+                    case PRZLayerNames.SAB:
+                        return GetFeatureLayer_SAB(map);
+
+                    default:
+                        return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+        public static bool GroupLayerExists_MAIN(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // Get list of map-level group layers having matching name
+                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_PRZ && (l is GroupLayer)).ToList();
+
+                // If at least one match is found, return true.  Otherwise, false.
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_MAIN(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_MAIN(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // Retrieve and return the first of any matching layers (match on name and layer type) 
+                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_PRZ && (l is GroupLayer)).ToList();
+
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool GroupLayerExists_STATUS(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS && (l is GroupLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_STATUS(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_STATUS(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS && (l is GroupLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+        public static bool GroupLayerExists_STATUS_INCLUDE(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If STATUS Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_STATUS(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in Status Group Layer for matches (match on name and type=grouplayer)
+                GroupLayer StatusGroupLayer = GetGroupLayer_STATUS(map);
+                List<Layer> LIST_layers = StatusGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_INCLUDE && (l is GroupLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_STATUS_INCLUDE(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_STATUS_INCLUDE(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = grouplayer)
+                GroupLayer StatusGroupLayer = GetGroupLayer_STATUS(map);
+                List<Layer> LIST_layers = StatusGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_INCLUDE && (l is GroupLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool GroupLayerExists_STATUS_EXCLUDE(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If STATUS Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_STATUS(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in Status Group Layer for matches (match on name and type=grouplayer)
+                GroupLayer StatusGroupLayer = GetGroupLayer_STATUS(map);
+                List<Layer> LIST_layers = StatusGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_EXCLUDE && (l is GroupLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_STATUS_EXCLUDE(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_STATUS_EXCLUDE(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = grouplayer)
+                GroupLayer StatusGroupLayer = GetGroupLayer_STATUS(map);
+                List<Layer> LIST_layers = StatusGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_EXCLUDE && (l is GroupLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool GroupLayerExists_COST(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_COST && (l is GroupLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_COST(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_COST(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_COST && (l is GroupLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool GroupLayerExists_CF(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_CF && (l is GroupLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static GroupLayer GetGroupLayer_CF(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_CF(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = grouplayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_CF && (l is GroupLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as GroupLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool FeatureLayerExists_PU(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is FeatureLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static FeatureLayer GetFeatureLayer_PU(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = FeatureLayerExists_PU(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is FeatureLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as FeatureLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool FeatureLayerExists_SA(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_STUDY_AREA && (l is FeatureLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static FeatureLayer GetFeatureLayer_SA(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = FeatureLayerExists_SA(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_STUDY_AREA && (l is FeatureLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as FeatureLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static bool FeatureLayerExists_SAB(Map map)
+        {
+            try
+            {
+                // map can't be null
+                if (map == null)
+                {
+                    return false;
+                }
+
+                // If PRZ Group Layer doesn't exist, return false;
+                if (!GroupLayerExists_MAIN(map))
+                {
+                    return false;
+                }
+
+                // Search top-level layers in PRZ Group Layer for matches (match on name and type=featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_STUDY_AREA_BUFFER && (l is FeatureLayer)).ToList();
+
+                // If at least one match exists, return true.  Otherwise, return false;
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static FeatureLayer GetFeatureLayer_SAB(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = FeatureLayerExists_SAB(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer PRZGroupLayer = GetGroupLayer_MAIN(map);
+                List<Layer> LIST_layers = PRZGroupLayer.Layers.Where(l => l.Name == PRZC.c_LAYER_STUDY_AREA_BUFFER && (l is FeatureLayer)).ToList();
+
+                // return the first match, or null if no matches
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as FeatureLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+        #endregion
+
         #region GENERIC DATA METHODS
 
-        internal static async Task<Geodatabase> GetFileGDB(string path)
+        public static async Task<Geodatabase> GetFileGDB(string path)
         {
             try
             {
@@ -576,7 +1336,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
+        public static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
         {
             try
             {
@@ -595,7 +1355,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
+        public static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
         {
             try
             {
@@ -618,7 +1378,7 @@ namespace NCC.PRZTools
         /// Delete all Feature Datasets, Tables, and Feature Classes from the Project GDB
         /// </summary>
         /// <returns>boolean</returns>
-        internal static async Task<bool> ClearProjectGDB()
+        public static async Task<bool> ClearProjectGDB()
         {
             try
             {
@@ -678,7 +1438,7 @@ namespace NCC.PRZTools
 
         #region GEOPROCESSING
 
-        internal static async Task<string> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
+        public static async Task<string> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)
         {
             IGPResult gp_result = null;
             using (CancelableProgressorSource cps = new CancelableProgressorSource("Executing GP Tool: " + toolName, "Tool cancelled by user", false))
@@ -761,7 +1521,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static string GetElapsedTimeMessage(TimeSpan span)
+        public static string GetElapsedTimeMessage(TimeSpan span)
         {
             try
             {
@@ -801,7 +1561,7 @@ namespace NCC.PRZTools
 
         #region RENDERERS
 
-        internal static bool ApplyLegend_PU_Simple(FeatureLayer FL)
+        public static bool ApplyLegend_PU_Simple(FeatureLayer FL)
         {
             try
             {
@@ -824,7 +1584,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
+        public static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
         {
             try
             {
@@ -847,7 +1607,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static bool ApplyLegend_SA_Simple(FeatureLayer FL)
+        public static bool ApplyLegend_SA_Simple(FeatureLayer FL)
         {
             try
             {
@@ -874,7 +1634,7 @@ namespace NCC.PRZTools
 
         #region COLORS AND SYMBOLS
 
-        internal static CIMColor GetRGBColor(byte r, byte g, byte b, byte a = 100)
+        public static CIMColor GetRGBColor(byte r, byte g, byte b, byte a = 100)
         {
             try
             {
@@ -887,7 +1647,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static CIMColor GetNamedColor(Color color)
+        public static CIMColor GetNamedColor(Color color)
         {
             try
             {
@@ -1019,7 +1779,7 @@ namespace NCC.PRZTools
 
 
 
-        internal static string GetUserWSPath()
+        public static string GetUserWSPath()
         {
             try
             {
@@ -1673,7 +2433,7 @@ namespace NCC.PRZTools
 
 #endif
 
-        internal static string GetUser()
+        public static string GetUser()
         {
             string[] fulluser = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split(new Char[] { '\\' });
             return fulluser[fulluser.Length - 1];
