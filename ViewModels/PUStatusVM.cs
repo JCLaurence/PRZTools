@@ -13,10 +13,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
@@ -432,55 +434,77 @@ namespace NCC.PRZTools
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 string toolOutput;
 
-                #region CALCULATION STUFF
+                #region PREPARE THE LAYER DATATABLES
 
-                // I'm here!!!
+                // Create Include and Exclude Data Tables
+                // Each DataTable will contain one row per layer in that category (e.g. Include DT might contain 3 rows, one row per layer within the INclude group layer)
+                DataTable DT_IncludeLayers = new DataTable("INCLUDE");    // doesn't really need a name
+                DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_INDEX, Type.GetType("System.Int32"));
+                DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_NAME, Type.GetType("System.String"));
+                DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD, Type.GetType("System.Double"));
+                DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_STATUS, Type.GetType("System.Int32"));
+
+                DataTable DT_ExcludeLayers = DT_IncludeLayers.Clone();
+
+                if (!await PopulateLayerTable(PRZLayerNames.STATUS_INCLUDE, DT_IncludeLayers))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("INCLUDE Layers >> Unable to populate Data Table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to populate the INCLUDE Data Table.", "INCLUDE Layers");
+                    return false;
+                }
+
+                if (!await PopulateLayerTable(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("EXCLUDE Layers >> Unable to populate Data Table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to populate the EXCLUDE Data Table.", "EXCLUDE Layers");
+                    return false;
+                }
+
+                // Ensure that at least one row exists in one of the 2 DataTables.  Otherwise, quit
+
+                if (DT_IncludeLayers.Rows.Count == 0 && DT_ExcludeLayers.Rows.Count == 0)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Calculator >> No valid Polygon Feature Layers found from INCLUDE or EXCLUDE group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("There must be at least one valid Polygon Feature Layer in either the INCLUDE or EXCLUDE group layers.", "Status Calculator");
+                    return false;
+                }
+
+                #endregion
+
+                #region RETRIEVE PUID > AREA_M2 DICTIONARY FOR EACH PLANNING UNIT
+
+                Dictionary<int, double> DICT_PUID_and_assoc_area_m2 = new Dictionary<int, double>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                    using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
+                    using (RowCursor rowCursor = puFC.Search(null, false))
+                    {
+                        // Get the Definition
+                        FeatureClassDefinition fcDef = puFC.GetDefinition();
+
+                        // Field Indexes
+                        int ixPUID = fcDef.FindField(PRZC.c_FLD_PUFC_ID);
+                        int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
+                        int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
+                        // I'm here!!!
+                        int ixArea_m2 = fcDef.FindField(PRZC.c_FLD_BESTSOLN_PUID)
 
 
 
+
+
+
+
+                    }
+                });
 
 
                 #endregion
 
                 return false;
 
-                        // 1. Prompt User for OK.  The Planning Unit Status Table will be overwritten, and the planning unit status field will be updated
-
-                        // 2. Validation: ensure the planning unit layer is there
-
-                        // 2. stopwatch
-
-                        // *** I MAY NOT NEED THIS ***
-                        // 3. Retrieve tile info (side length, side count, tile area (not sure why).
-                        //      I can't rely on just tiles, as my planning unit FC has to eventually be a non-tiled FC
-                        // *** I MAY NOT NEED THIS ***
-
-                        // 4. Validate default threshold, must be 0 >= threshold >= 100
-
-                // 5. Validate the presence of the Status group layer and the Include and Exclude group layers
-
-                // 6. Create 2 DataTables: one for Include layer info, and one for Exclude layer info
-                //      columns are: INDEX (int), NAME (string), THRESHOLD (double), and STATUS (int)       // threshold might be int, not double (?)
-
-                // 7. Cycle through each Layer in INCLUDE group layer, validate and add info to INCLUDE data table
-                //          if no layer, return
-                //          foreach layer
-                //              a) if not a feature layer, or invalid, or unknown SR, or not a polygon FL
-                //                      prompt user to either skip this layer, or abort the whole thing
-                //              b) Validate the layer name
-                //                      Examine name for the threshold pattern ( [0], [00], or [000])
-                //                      if found, ensure that extracted value is a double between 0 and 100 inclusive
-                //                          if not, prompt user to skip layer, or cancel the whole thing
-                //                      Ensure that the remaining layer name (after [0] has been extracted) is valid
-                //              c) Add row to data table
-                //                      INDEX=i  (for i = 0, i < Layers.count, i++)
-                //                      NAME = layer name (name with [0] extracted)
-                //                      THRESHOLD = extracted double value, or default value, whichever got set
-                //                      STATUS = If current group layer is INCLUDE, then set to 2.  If current group layer is EXCLUDE, then set to 3.
-
-                // 8. Repeat #7 for EXCLUDE group layer
-
-                // 9. If both data tables contain zero rows, exit since there are no input layers to calculate status with
 
                 // 9.5 build a dictionary<int, double> of key=PUID, value=pu area in m2 for the entire planning unit FC
 
@@ -599,6 +623,197 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> PopulateLayerTable(PRZLayerNames layer, DataTable DT)
+        {
+            try
+            {
+                Map map = MapView.Active.Map;
+
+                List<FeatureLayer> LIST_FL = null;
+                string group = "";
+                int status_val;
+
+                switch (layer)
+                {
+                    case PRZLayerNames.STATUS_INCLUDE:
+                        LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
+                        status_val = 2;
+                        group = "INCLUDE";
+                        break;
+                    case PRZLayerNames.STATUS_EXCLUDE:
+                        LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
+                        status_val = 3;
+                        group = "EXCLUDE";
+                        break;
+                    default:
+                        return false;
+                }
+
+                for (int i = 0; i < LIST_FL.Count; i++) // if the list has no members, this whole for loop will be skipped and we'll return true, which is good.
+                {
+                    // VALIDATE THE FEATURE LAYER
+                    FeatureLayer FL = LIST_FL[i];
+
+                    // Make sure the layer has source data and is not an invalid layer
+                    if (!await QueuedTask.Run(() =>
+                    {
+                        FeatureClass FC = FL.GetFeatureClass();
+                        bool exists = FC != null;       // if the FL has a valid source, FC will not be null.  If the FL doesn't, FC will be null
+                        return exists;                  // return true = FC exists, false = FC doesn't exist.
+                    }))
+                    {
+                        if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' has no Data Source.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                            group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                            == System.Windows.MessageBoxResult.Cancel)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Make sure the layer has a valid spatial reference
+                    if (await QueuedTask.Run(() =>
+                    {
+                        SpatialReference SR = FL.GetSpatialReference();
+                        return (SR == null || SR.IsUnknown);        // return true = invalid SR, or false = valid SR
+                    }))
+                    {
+                        if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' has a NULL or UNKNOWN Spatial Reference.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                            group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                            == System.Windows.MessageBoxResult.Cancel)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Make sure the layer is a polygon layer
+                    if (FL.ShapeType != esriGeometryType.esriGeometryPolygon)
+                    {
+                        if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' is NOT a Polygon Feature Layer.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                            group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                            == System.Windows.MessageBoxResult.Cancel)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    // NOW CHECK THE LAYER NAME FOR A USER-SUPPLIED THRESHOLD
+                    string original_layer_name = FL.Name;
+                    string layer_name;
+                    int threshold_int;
+
+                    string pattern = @"^\[\d{1,3}\]";
+                    Regex regex = new Regex(pattern);
+                    Match match = regex.Match(original_layer_name);
+
+                    if (match.Success)
+                    {
+                        string matched_pattern = match.Value;   // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
+                        layer_name = original_layer_name.Substring(matched_pattern.Length).Trim();  // layer name minus the [n], [nn], or [nnn] substring
+                        string threshold_text = matched_pattern.Replace("[", "").Replace("]", "");  // leaves just the 1, 2, or 3 numeric digits, no more brackets
+
+                        threshold_int = int.Parse(threshold_text);  // integer value
+
+                        if (threshold_int < 0 | threshold_int > 100)
+                        {
+                            string message = "An invalid threshold of " + threshold_int.ToString() + " has been specified for:" +
+                                             Environment.NewLine + Environment.NewLine +
+                                             "Layer: " + original_layer_name + Environment.NewLine +
+                                             "Group Layer: " + group + Environment.NewLine + Environment.NewLine +
+                                             "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+                            
+                            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK) 
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // check the name length
+                        if (layer_name.Length == 0)
+                        {
+                            string message = "Layer '" + original_layer_name + "' has a zero-length name once the threshold value is removed." +
+                                             Environment.NewLine + Environment.NewLine +
+                                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        layer_name = original_layer_name;
+
+                        // check the name length
+                        if (layer_name.Length == 0)
+                        {
+                            string message = "Layer '" + original_layer_name + "' has a zero-length name." +
+                                             Environment.NewLine + Environment.NewLine +
+                                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // get the default threshold for this layer
+                        threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_STATUS_THRESHOLD);   // use default value
+                    }
+
+                    double threshold_double = threshold_int / 100.0;    // convert threshold to a double between 0 and 1 inclusive
+
+                    // ADD ROW TO DATATABLE
+                    DataRow DR = DT.NewRow();
+                    DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX] = i;
+                    DR[PRZC.c_FLD_DATATABLE_STATUS_NAME] = layer_name;
+                    DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD] = threshold_double;
+                    DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS] = status_val;
+
+                    DT.Rows.Add(DR);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+
+        }
+
         public bool Tester()
         {
             try
@@ -648,3 +863,14 @@ namespace NCC.PRZTools
 
     }
 }
+
+
+
+
+
+
+
+
+
+
+

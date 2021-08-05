@@ -1307,6 +1307,8 @@ namespace NCC.PRZTools
                 GroupLayer GL = GetGroupLayer_STATUS_INCLUDE(map);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
 
+                // TODO: I need to ensure that this function always returns the same layers in the same order!!!!!
+
                 return LIST_layers;
             }
             catch (Exception ex)
@@ -1330,6 +1332,8 @@ namespace NCC.PRZTools
                 // retrieve all matches (name and type = featurelayer)
                 GroupLayer GL = GetGroupLayer_STATUS_EXCLUDE(map);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                // TODO: I need to ensure that this function always returns the same layers in the same order!!!!!
 
                 return LIST_layers;
             }
