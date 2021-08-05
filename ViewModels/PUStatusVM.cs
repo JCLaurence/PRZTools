@@ -315,20 +315,14 @@ namespace NCC.PRZTools
             {
                 #region INITIALIZATION AND USER INPUT VALIDATION
 
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                string toolOutput;
+                // Initialize a few thingies
+                Map map = MapView.Active.Map;
 
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Status Calculator..."), false, max, ++val);
 
-                // Validation: Project Geodatabase
+                // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetProjectGDBPath();
                 if (!await PRZH.ProjectGDBExists())
                 {
@@ -350,7 +344,7 @@ namespace NCC.PRZTools
                 string pufcpath = PRZH.GetPlanningUnitFCPath();
                 if (!await PRZH.PlanningUnitFCExists())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found.", LogMessageType.ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
                 }
                 else
@@ -358,7 +352,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
                 }
 
-                // Validation: Default Threshold
+                // Validation: Ensure the Default Status Threshold is valid
                 string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
 
                 if (!double.TryParse(threshold_text, out double threshold_double))
@@ -378,14 +372,73 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Threshold = " + threshold_text), true, ++val);
                 }
 
+                // Validation: Ensure three required Layers are present
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Layers are missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("PRZ Layers are missing.  Please reload the PRZ Layers and try again.", "Validation");
+                    return false;
+                }
 
-                // User Prompt
+                // Validation: Ensure that at least one Feature Layer is present in either of the two group layers
+                var LIST_IncludeFL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
+                var LIST_ExcludeFL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
+
+                if (LIST_IncludeFL == null || LIST_ExcludeFL == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload the PRZ Layers and try again.", "Validation");
+                    return false;
+                }
+
+                if (LIST_IncludeFL.Count == 0 && LIST_ExcludeFL.Count == 0)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Feature Layers found within Status Include or Status Exclude group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("There must be at least one Feature Layer within either the Status INCLUDE or the Status EXCLUDE group layers.", "Validation");
+                    return false;
+                }
+
+                // Validation: Prompt User for permission to proceed
                 if (ProMsgBox.Show("You sure you want to do this?", "Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation, System.Windows.MessageBoxResult.Cancel)
                         == System.Windows.MessageBoxResult.Cancel)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out"), true, ++val);
                     return false;
                 }
+
+                if (ProMsgBox.Show("If you proceed, the Planning Unit Status table will be overwritten if it exists in the Project Geodatabase." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Additionally, the contents of the 'status' field in the Planning Unit Feature Class will be updated." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "TABLE OVERWRITE WARNING",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Status Calculation."), true, ++val);
+                    return false;
+                }
+
+                #endregion
+
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                string toolOutput;
+
+                #region CALCULATION STUFF
+
+                // I'm here!!!
+
+
+
+
 
                 #endregion
 

@@ -1292,6 +1292,101 @@ namespace NCC.PRZTools
             }
         }
 
+        public static List<FeatureLayer> GetFeatureLayers_STATUS_INCLUDE(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_STATUS_INCLUDE(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer GL = GetGroupLayer_STATUS_INCLUDE(map);
+                List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<FeatureLayer> GetFeatureLayers_STATUS_EXCLUDE(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_STATUS_EXCLUDE(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer GL = GetGroupLayer_STATUS_EXCLUDE(map);
+                List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<FeatureLayer> GetFeatureLayers_COST(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_COST(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer GL = GetGroupLayer_COST(map);
+                List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<FeatureLayer> GetFeatureLayers_CF(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_CF(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer GL = GetGroupLayer_CF(map);
+                List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
         #endregion
 
