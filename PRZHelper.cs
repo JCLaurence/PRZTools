@@ -655,6 +655,66 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<Table> GetTable(string table_name)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(table_name);
+                        });
+
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<FeatureClass> GetFeatureClass(string fc_name)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        FeatureClass fc = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<FeatureClass>(fc_name);
+                        });
+
+                        return fc;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         #endregion
 
@@ -1547,8 +1607,6 @@ namespace NCC.PRZTools
                 return false;
             }
         }
-
-        
 
 
         #endregion GENERIC DATA METHODS

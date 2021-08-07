@@ -628,12 +628,20 @@ namespace NCC.PRZTools
                     ProMsgBox.Show("Error intersecting the INCLUDE layers.", "");
                     return false;
                 }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully intersected all INCLUDE layers (if any were present)."), true, ++val);
+                }
 
                 if (!await IntersectConstraintLayers(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers, DICT_PUID_and_assoc_area_m2))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the EXCLUDE layers.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("Error intersecting the EXCLUDE layers.", "");
                     return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully disoolved all EXCLUDE layers (if any were present)."), true, ++val);
                 }
 
                 #endregion
@@ -737,6 +745,7 @@ namespace NCC.PRZTools
                     // Some GP variables
                     IReadOnlyList<string> toolParams;
                     IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                    GPExecuteToolFlags flags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                     string toolOutput;
 
                     // some paths
@@ -792,8 +801,7 @@ namespace NCC.PRZTools
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersecting " + group + " layer " + layer_number.ToString() + ": " + layer_name), true);
                         toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_output, "ALL", "", "INPUT");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        GPExecuteToolFlags flags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);                        
                         toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, flags);
                         if (toolOutput == null)
                         {
@@ -804,6 +812,32 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersect was successful for " + group + " layer " + layer_number.ToString() + "."), true);
                         }
+
+                        // Now dissolve the temp intersect layer on PUID
+
+                        string dissolve_output = Path.Combine(gdbpath, prefix + layer_number.ToString() + "_Prelim2_Dslv");
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Dissolving on Planning Unit ID..."), true);
+                        toolParams = Geoprocessing.MakeValueArray(intersect_output, dissolve_output, PRZC.c_FLD_PUFC_ID, "", "MULTI_PART", "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, flags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error dissolving " + intersect_output + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog(intersect_output + " was dissolved successfully."), true);
+                        }
+
+                        // Pass through the Dissolve Layer, and retrieve the PUID and area for each feature (store in DICT)
+                        using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                        {
+
+
+                        }
+
                     }
 
                     return true;
