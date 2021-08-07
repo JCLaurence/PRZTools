@@ -824,7 +824,12 @@ namespace NCC.PRZTools
                 string fldNCCID = PRZC.c_FLD_PUFC_NCC_ID + " LONG 'NCC ID' # # #;";
                 string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUStatus = PRZC.c_FLD_PUFC_STATUS + " LONG 'Status' # 2 #;";
-                string flds = fldPUID + fldNCCID + fldPUCost + fldPUStatus;
+                string fldPUAreaM = PRZC.c_FLD_PUFC_AREA_M + " DOUBLE 'Square m' # 1 #;";
+                string fldPUAreaAC = PRZC.c_FLD_PUFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
+                string fldPUAreaHA = PRZC.c_FLD_PUFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
+                string fldPUAreaKM = PRZC.c_FLD_PUFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+
+                string flds = fldPUID + fldNCCID + fldPUCost + fldPUStatus + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM;
 
                 UpdateProgress(PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -1413,10 +1418,9 @@ namespace NCC.PRZTools
                 {
                     using (Geodatabase gdb = await PRZH.GetProjectGDB())
                     using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
+                    using (RowBuffer rowBuffer = puFC.CreateRowBuffer())
+                    using (InsertCursor insertCursor = puFC.CreateInsertCursor())
                     {
-                        RowBuffer rowBuffer = null;
-                        InsertCursor insertCursor = null;
-
                         try
                         {
                             // Get the Definition
@@ -1427,11 +1431,12 @@ namespace NCC.PRZTools
                             int ixPUID = fcDef.FindField(PRZC.c_FLD_PUFC_ID);
                             int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
                             int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
+                            int ixAreaM = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_M);
+                            int ixAreaAC = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_AC);
+                            int ixAreaHA = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_HA);
+                            int ixAreaKM = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_KM);
 
                             //int puid = 1;
-
-                            insertCursor = puFC.CreateInsertCursor();
-                            rowBuffer = puFC.CreateRowBuffer();
 
                             switch (planningUnitTileInfo.tile_shape)
                             {
@@ -1444,15 +1449,23 @@ namespace NCC.PRZTools
                                             double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * planningUnitTileInfo.tile_edge_length);
                                             Polygon poly = await BuildTileSquare(CurrentX, CurrentY, planningUnitTileInfo.tile_edge_length, planningUnitTileInfo.LL_Point.SpatialReference);
 
+                                            double m = poly.Area;
+
+                                            // Prepare area values
+                                            double ac = m * PRZC.c_CONVERT_M2_TO_AC;
+                                            double ha = m * PRZC.c_CONVERT_M2_TO_HA;
+                                            double km = m * PRZC.c_CONVERT_M2_TO_KM2;
+
                                             rowBuffer[ixStatus] = 0;
                                             rowBuffer[ixCost] = 1;
                                             rowBuffer[ixShape] = poly;
-                                            //rowBuffer[ixPUID] = puid;
+                                            rowBuffer[ixAreaM] = m;
+                                            rowBuffer[ixAreaAC] = ac;
+                                            rowBuffer[ixAreaHA] = ha;
+                                            rowBuffer[ixAreaKM] = km;
 
                                             insertCursor.Insert(rowBuffer);
                                             insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
-
-                                            //puid++;
                                         }
                                     }
                                     break;
@@ -1466,18 +1479,25 @@ namespace NCC.PRZTools
                                         {
                                             double CurrentX = planningUnitTileInfo.LL_Point.X + (col * hex_horizoffset);
                                             double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * (2 * planningUnitTileInfo.tile_center_to_top)) - ((col % 2) * planningUnitTileInfo.tile_center_to_top);
-
                                             Polygon poly = await BuildTileHexagon(CurrentX, CurrentY, planningUnitTileInfo.tile_center_to_right, planningUnitTileInfo.tile_center_to_top, planningUnitTileInfo.LL_Point.SpatialReference);
+
+                                            double m = poly.Area;
+
+                                            // Prepare area values
+                                            double ac = m * PRZC.c_CONVERT_M2_TO_AC;
+                                            double ha = m * PRZC.c_CONVERT_M2_TO_HA;
+                                            double km = m * PRZC.c_CONVERT_M2_TO_KM2;
 
                                             rowBuffer[ixStatus] = 0;
                                             rowBuffer[ixCost] = 1;
                                             rowBuffer[ixShape] = poly;
-                                            //rowBuffer[ixPUID] = puid;
+                                            rowBuffer[ixAreaM] = m;
+                                            rowBuffer[ixAreaAC] = ac;
+                                            rowBuffer[ixAreaHA] = ha;
+                                            rowBuffer[ixAreaKM] = km;
 
                                             insertCursor.Insert(rowBuffer);
                                             insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
-
-                                            //puid++;
                                         }
                                     }
                                     break;
@@ -1490,13 +1510,6 @@ namespace NCC.PRZTools
                         {
                             ProMsgBox.Show(ex.Message);
                             return;
-                        }
-                        finally
-                        {
-                            if (rowBuffer != null)
-                                rowBuffer.Dispose();
-                            if (insertCursor != null)
-                                insertCursor.Dispose();
                         }
                     }
                 });

@@ -74,11 +74,11 @@ namespace NCC.PRZTools
                 #region Layers Check
 
                 // Ensure the PRZ Group Layer is set up
-                if (!await PRZM.ValidatePRZGroupLayers())
-                {
-                    ProMsgBox.Show("Unable to Validate PRZ Layers");
-                    return;
-                }
+                //if (!await PRZM.ValidatePRZGroupLayers())
+                //{
+                //    ProMsgBox.Show("Unable to Validate PRZ Layers");
+                //    return;
+                //}
 
                 // Ensure the Planning Unit Layer is present
                 if (!await PRZH.PlanningUnitFCExists())

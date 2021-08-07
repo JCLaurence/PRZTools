@@ -15,6 +15,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -401,13 +402,6 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Prompt User for permission to proceed
-                if (ProMsgBox.Show("You sure you want to do this?", "Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation, System.Windows.MessageBoxResult.Cancel)
-                        == System.Windows.MessageBoxResult.Cancel)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out"), true, ++val);
-                    return false;
-                }
-
                 if (ProMsgBox.Show("If you proceed, the Planning Unit Status table will be overwritten if it exists in the Project Geodatabase." +
                    Environment.NewLine + Environment.NewLine +
                    "Additionally, the contents of the 'status' field in the Planning Unit Feature Class will be updated." +
@@ -425,20 +419,12 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                string toolOutput;
-
                 #region PREPARE THE LAYER DATATABLES
 
                 // Create Include and Exclude Data Tables
                 // Each DataTable will contain one row per layer in that category (e.g. Include DT might contain 3 rows, one row per layer within the INclude group layer)
                 DataTable DT_IncludeLayers = new DataTable("INCLUDE");    // doesn't really need a name
+                DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_LAYER, typeof(Layer));
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_INDEX, Type.GetType("System.Int32"));
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_NAME, Type.GetType("System.String"));
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD, Type.GetType("System.Double"));
@@ -471,9 +457,10 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region RETRIEVE PUID > AREA_M2 DICTIONARY FOR EACH PLANNING UNIT
+                #region POPULATE 2 DICTIONARIES:  PUID -> AREA_M, and PUID -> STATUS
 
                 Dictionary<int, double> DICT_PUID_and_assoc_area_m2 = new Dictionary<int, double>();
+                Dictionary<int, int> DICT_PUID_and_assoc_status = new Dictionary<int, int>();
 
                 await QueuedTask.Run(async () =>
                 {
@@ -484,58 +471,174 @@ namespace NCC.PRZTools
                         // Get the Definition
                         FeatureClassDefinition fcDef = puFC.GetDefinition();
 
-                        // Field Indexes
-                        int ixPUID = fcDef.FindField(PRZC.c_FLD_PUFC_ID);
-                        int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
-                        int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
-                        // I'm here!!!
-                        int ixArea_m2 = fcDef.FindField(PRZC.c_FLD_BESTSOLN_PUID)
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                double a = (double)row[PRZC.c_FLD_PUFC_AREA_M];
+                                int status = (int)row[PRZC.c_FLD_PUFC_STATUS];
 
+                                // store this id -> area KVP in the 1st dictionary
+                                DICT_PUID_and_assoc_area_m2.Add(puid, a);
 
-
-
-
-
-
+                                // store this id -> status KVP in the 2nd dictionary
+                                DICT_PUID_and_assoc_status.Add(puid, status);
+                            }
+                        }
                     }
                 });
 
+                #endregion
+
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                string toolOutput;
+
+                #region BUILD THE STATUS INFO TABLE
+
+                string sipath = PRZH.GetStatusInfoTablePath();
+                
+                // Delete the existing Status Info table, if it exists
+
+                if (await PRZH.StatusInfoTableExists())
+                {
+                    // Delete the existing Status Info table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Status Info Table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(sipath, "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleted the existing Status Info Table..."), true, ++val);
+                    }
+                }
+
+                // Copy PU FC rows into new Status Info table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying Planning Unit FC Attributes into new Status Info table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(pufcpath, sipath, "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("CopyRows_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error copying PU FC rows to Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Info Table successfully created and populated..."), true, ++val);
+                }
+
+                // Delete all fields but OID and PUID from Status Info table
+                List<string> LIST_DeleteFields = new List<string>();
+
+                using (Table tab = await PRZH.GetStatusInfoTable())
+                {
+                    if (tab == null)
+                    {
+                        ProMsgBox.Show("Error getting Status Info Table :(");
+                        return false;
+                    }
+
+                    await QueuedTask.Run(() =>
+                    {
+                        TableDefinition tDef = tab.GetDefinition();
+                        List<Field> fields = tDef.GetFields().Where(f => f.FieldType != FieldType.OID && f.Name != PRZC.c_FLD_PUFC_ID).ToList();
+
+                        foreach (Field field in fields)
+                        {
+                            LIST_DeleteFields.Add(field.Name);
+                        }
+                    });
+                }
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Removing unnecessary fields from the Status Info table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(sipath, LIST_DeleteFields);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Info Table fields successfully deleted"), true, ++val);
+                }
+
+                // Now index the PUID field in the Status Info table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing Planning Unit ID field in the Status Info table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(sipath, PRZC.c_FLD_PUFC_ID, "ix" + PRZC.c_FLD_PUFC_ID, "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add 2 additional fields to Status Info
+                string fldQuickStatus = PRZC.c_FLD_STATUSINFO_QUICKSTATUS + " LONG 'Quick Status' # # #;";
+                string fldConflict = PRZC.c_FLD_STATUSINFO_CONFLICT + " LONG 'Conflict' # # #;";
+
+                string flds = fldQuickStatus + fldConflict;
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Status Info Table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(sipath, flds);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Add INCLUDE & EXCLUDE layer-based columns to Status Info table
+                if (!await AddLayerFields(PRZLayerNames.STATUS_INCLUDE, DT_IncludeLayers))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding INCLUDE layer fields to Status Info Table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error adding the INCLUDE layer fields to the Status Info table.", "");
+                    return false;
+                }
+
+                if (!await AddLayerFields(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding EXCLUDE layer fields to Status Info Table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error adding the EXCLUDE layer fields to the Status Info table.", "");
+                    return false;
+                }
 
                 #endregion
 
-                return false;
+                #region INTERSECT THE VARIOUS LAYERS
+
+                if (!await IntersectConstraintLayers(PRZLayerNames.STATUS_INCLUDE, DT_IncludeLayers, DICT_PUID_and_assoc_area_m2))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the INCLUDE layers.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error intersecting the INCLUDE layers.", "");
+                    return false;
+                }
+
+                if (!await IntersectConstraintLayers(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers, DICT_PUID_and_assoc_area_m2))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the EXCLUDE layers.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error intersecting the EXCLUDE layers.", "");
+                    return false;
+                }
+
+                #endregion
 
 
-                // 9.5 build a dictionary<int, double> of key=PUID, value=pu area in m2 for the entire planning unit FC
-
-                // 10. Build the Status Info Table (use GP Tools)
-                //      - delete if exists
-                //      - Clear PU layer selection
-                //      - CopyRows - copy the PU Layer attribute table to a new table (the Status Info Table)
-                //      - delete all fields except for OID and the PUID fields
-                //      - index the PUID field
-                //      - Add new attributes
-                //          - QUICKSTATUS (long)
-                //          - CONFLICT (long)
-
-                // 11. Add additional columns to Status Info table for the INCLUDE group layer
-
-                //      Foreach row in the INCLUDE datatable
-                //          get all values from the row
-                //          Add the NAME field              column name = "IN" + LayerNumber + "_Name"              (text, 75)
-                //          Add the STATUS field            column name = "IN" + LayerNumber + "_Status"            (short)
-                //          Add the AREA field              column name = "IN" + LayerNumber + "_Area"              (double)
-                //          Add the THRESHOLD field         column name = "IN" + LayerNumber + "Threshold"          (double)
-
-                //          Populate the new fields for each row in the Status Info table (i.e. for each planning unit)
-                //              set NAME to first 75 chars of layer name
-                //              set AREA to 0
-                //              set STATUS to 2
-                //              set THRESHOLD to the layer threshold / default threshold (whichever was set above)
-
-                // 12. Repeat for EXCLUDE group layer
-                //      Prefix is "EX" instead of "IN"
-                //      Status value is 3 instead of 2
 
                 // 13. Intersect INCLUDE layers with Planning Unit layer
                 //      foreach row in INCLUDE datatable
@@ -620,6 +723,222 @@ namespace NCC.PRZTools
             {
                 if (cps != null)
                     cps.Dispose();
+            }
+        }
+
+        private async Task<bool> IntersectConstraintLayers(PRZLayerNames layer, DataTable DT, Dictionary<int, double> DICT_PUID_area)
+        {
+            try
+            {
+                var success = await QueuedTask.Run(async () =>
+                {
+                    Map map = MapView.Active.Map;
+
+                    // Some GP variables
+                    IReadOnlyList<string> toolParams;
+                    IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                    string toolOutput;
+
+                    // some paths
+                    string gdbpath = PRZH.GetProjectGDBPath();
+                    string pufcpath = PRZH.GetPlanningUnitFCPath();
+                    string sipath = PRZH.GetStatusInfoTablePath();
+
+                    // some other stuff
+                    FeatureLayer PUFL = PRZH.GetFeatureLayer_PU(map);
+                    PUFL.ClearSelection();  // we don't want selected features only, we want all of them
+
+                    List<FeatureLayer> LIST_FL = null;
+                    string group = "";
+                    string prefix = "";
+
+                    switch (layer)
+                    {
+                        case PRZLayerNames.STATUS_INCLUDE:
+                            LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
+                            group = "INCLUDE";
+                            prefix = "IN";
+                            break;
+                        case PRZLayerNames.STATUS_EXCLUDE:
+                            LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
+                            group = "EXCLUDE";
+                            prefix = "EX";
+                            break;
+                        default:
+                            return false;
+                    }
+
+                    foreach (DataRow DR in DT.Rows)
+                    {
+                        FeatureLayer FL = (FeatureLayer)DR[PRZC.c_FLD_DATATABLE_STATUS_LAYER];
+                        FL.ClearSelection();    // get rid of any selection on this layer
+
+                        int layer_index = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX];
+                        string layer_name = DR[PRZC.c_FLD_DATATABLE_STATUS_NAME].ToString();
+                        int layer_status = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS];
+                        double threshold_double = (double)DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD];
+                        int layer_number = layer_index + 1;
+
+                        string intersect_output = Path.Combine(gdbpath, prefix + layer_number.ToString() + "_Prelim1_Int");
+
+                        // Construct the inputs value array
+                        object[] a = { PUFL, 1 };   // prelim array -> combine the layer object and the Rank (PU layer)
+                        object[] b = { FL, 2 };     // prelim array -> combine the layer object and the Rank (layer from DT)
+
+                        var a2 = Geoprocessing.MakeValueArray(a);   // Let this method figure out how best to quote the layer info
+                        var b2 = Geoprocessing.MakeValueArray(b);   // Let this method figure out how best to quote the layer info
+
+                        string inputs_string = String.Join(" ", a2) + ";" + String.Join(" ", b2);   // my final inputs string
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersecting " + group + " layer " + layer_number.ToString() + ": " + layer_name), true);
+                        toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_output, "ALL", "", "INPUT");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        GPExecuteToolFlags flags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                        toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, flags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting " + group + " layer " + layer_number.ToString() + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersect was successful for " + group + " layer " + layer_number.ToString() + "."), true);
+                        }
+                    }
+
+                    return true;
+
+                });
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
+                return false;
+            }
+        }
+
+        private async Task<bool> AddLayerFields(PRZLayerNames layer, DataTable DT)
+        {
+            try
+            {
+                Map map = MapView.Active.Map;
+
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                string toolOutput;
+
+                string gdbpath = PRZH.GetProjectGDBPath();
+                string sipath = PRZH.GetStatusInfoTablePath();
+
+                List<FeatureLayer> LIST_FL = null;
+                string group = "";
+                string prefix = "";
+
+                switch (layer)
+                {
+                    case PRZLayerNames.STATUS_INCLUDE:
+                        LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
+                        group = "INCLUDE";
+                        prefix = "IN";
+                        break;
+                    case PRZLayerNames.STATUS_EXCLUDE:
+                        LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
+                        group = "EXCLUDE";
+                        prefix = "EX";
+                        break;
+                    default:
+                        return false;
+                }
+
+                foreach (DataRow DR in DT.Rows)
+                {
+                    int layer_index = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX];
+                    string layer_name = DR[PRZC.c_FLD_DATATABLE_STATUS_NAME].ToString();
+                    //int layer_status = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS];
+                    double threshold_double = (double)DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD];
+                    int layer_number = layer_index + 1; // not sure why I need this?  maybe zeros aren't cool as the first layer?
+                    string layer_name_75 = (layer_name.Length > 75) ? layer_name.Substring(0, 75) : layer_name;
+
+                    // Add all the fields for this layer
+                    string fldName = prefix + layer_number.ToString() + "_Name";
+                    string fldNameAlias = prefix + " " + layer_number.ToString() + " Name";
+                    string fld1 = fldName + " TEXT '" + fldNameAlias + "'  75 # #;";
+
+                    string fldStatus = prefix + layer_number.ToString() + "_Status";
+                    string fldStatusAlias = prefix + " " + layer_number.ToString() + " Status";
+                    string fld2 = fldStatus + " LONG '" + fldStatusAlias + "' # # #;";
+
+                    string fldArea = prefix + layer_number.ToString() + "_Area";
+                    string fldAreaAlias = prefix + " " + layer_number.ToString() + " Area (m2)";
+                    string fld3 = fldArea + " DOUBLE '" + fldAreaAlias + "' # # #;";
+
+                    string fldThreshold = prefix + layer_number.ToString() + "_Threshold";
+                    string fldThresholdAlias = prefix + " " + layer_number.ToString() + " Threshold";
+                    string fld4 = fldThreshold + " DOUBLE '" + fldThresholdAlias + "' # # #;";
+
+                    string flds = fld1 + fld2 + fld3 + fld4;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding " + group + " Layer fields to Status Info Table..."), true);
+                    toolParams = Geoprocessing.MakeValueArray(sipath, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding Layer fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                        return false;
+                    }
+
+                    // Now Calculate these fields
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                        using (Table table = await PRZH.GetStatusInfoTable())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    // set the name
+                                    row[fldName] = layer_name_75;
+
+                                    // set the status
+                                    if (prefix == "IN")
+                                    {
+                                        row[fldStatus] = 2;
+                                    }
+                                    else if (prefix == "EX")
+                                    {
+                                        row[fldStatus] = 3;
+                                    }
+                                    else
+                                    {
+                                        row[fldStatus] = 0;
+                                    }
+
+                                    // set the area to 0
+                                    row[fldArea] = 0;
+
+                                    // set the layer threshold
+                                    row[fldThreshold] = threshold_double;
+
+                                    row.Store();
+                                }
+                            }
+                        }
+                    });
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
             }
         }
 
@@ -713,7 +1032,10 @@ namespace NCC.PRZTools
                     string layer_name;
                     int threshold_int;
 
-                    string pattern = @"^\[\d{1,3}\]";
+                    //string pattern_start = @"^\[\d{1,3}\]"; // start of string
+                    //string pattern_end = @"$\[\d{1,3}\]";   // end of string
+                    string pattern = @"\[\d{1,3}\]";        // anywhere in string
+
                     Regex regex = new Regex(pattern);
                     Match match = regex.Match(original_layer_name);
 
@@ -796,6 +1118,7 @@ namespace NCC.PRZTools
 
                     // ADD ROW TO DATATABLE
                     DataRow DR = DT.NewRow();
+                    DR[PRZC.c_FLD_DATATABLE_STATUS_LAYER] = FL;
                     DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX] = i;
                     DR[PRZC.c_FLD_DATATABLE_STATUS_NAME] = layer_name;
                     DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD] = threshold_double;
@@ -811,7 +1134,6 @@ namespace NCC.PRZTools
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
-
         }
 
         public bool Tester()

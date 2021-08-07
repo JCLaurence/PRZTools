@@ -545,7 +545,11 @@ namespace NCC.PRZTools
 
                     try
                     {
-                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS);
+                        FeatureClass fc = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS);
+                        });
+
                         return fc;
                     }
                     catch
@@ -571,7 +575,11 @@ namespace NCC.PRZTools
 
                     try
                     {
-                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN);
+                        FeatureClass fc = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN);
+                        });
+
                         return fc;
                     }
                     catch
@@ -597,7 +605,11 @@ namespace NCC.PRZTools
 
                     try
                     {
-                        FeatureClass fc = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                        FeatureClass fc = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                        });
+
                         return fc;
                     }
                     catch
@@ -623,7 +635,11 @@ namespace NCC.PRZTools
 
                     try
                     {
-                        Table tab = gdb.OpenDataset<Table>(PRZC.c_TABLENAME_STATUSINFO);
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLENAME_STATUSINFO);
+                        });
+
                         return tab;
                     }
                     catch
@@ -1441,15 +1457,16 @@ namespace NCC.PRZTools
             {
                 await QueuedTask.Run(() =>
                 {
-                    FeatureClassDefinition fcdef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName);
-                    fcdef.Dispose();
+                    using (FeatureClassDefinition fcDef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName))
+                    {
+                        // Error will be thrown by using statement above if FC of the supplied name doesn't exist in GDB
+                    }
                 });
 
                 return true;
             }
             catch
             {
-                // Exception thrown if definition doesn't exist, meaning a FC of that name doesn't exist in GDB
                 return false;
             }
         }
@@ -1460,15 +1477,16 @@ namespace NCC.PRZTools
             {
                 await QueuedTask.Run(() =>
                 {
-                    TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName);
-                    tabdef.Dispose();
+                    using (TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName))
+                    {
+                        // Error will be thrown by using statement above if table of the supplied name doesn't exist in GDB
+                    }
                 });
 
                 return true;
             }
             catch
             {
-                // Exception thrown if definition doesn't exist, meaning a Table of that name doesn't exist in GDB
                 return false;
             }
         }

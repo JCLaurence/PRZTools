@@ -144,6 +144,10 @@
         public const string c_FLD_PUFC_STATUS = "status";
         public const string c_FLD_PUFC_COST = "cost";
         public const string c_FLD_PUFC_NCC_ID = "ncc_id";
+        public const string c_FLD_PUFC_AREA_M = "square_m";
+        public const string c_FLD_PUFC_AREA_AC = "acres";
+        public const string c_FLD_PUFC_AREA_HA = "hectares";
+        public const string c_FLD_PUFC_AREA_KM = "square_km";
 
         // Study Area Feature Class
         public const string c_FLD_SAFC_AREA_AC = "acres";
@@ -151,6 +155,7 @@
         public const string c_FLD_SAFC_AREA_KM = "square_km";
 
         // Status DataTable Fields
+        public const string c_FLD_DATATABLE_STATUS_LAYER = "layer";
         public const string c_FLD_DATATABLE_STATUS_INDEX = "index";
         public const string c_FLD_DATATABLE_STATUS_NAME = "name";
         public const string c_FLD_DATATABLE_STATUS_THRESHOLD = "threshold";

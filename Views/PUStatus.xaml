@@ -26,8 +26,8 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="2*"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="2*"></RowDefinition>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
                 <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" >
