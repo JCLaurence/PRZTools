@@ -122,6 +122,7 @@
   <ItemGroup>
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
+    <Compile Include="Menu1.cs" />
     <Compile Include="Models\ProgressManager.cs" />
     <Compile Include="Models\StatusConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />

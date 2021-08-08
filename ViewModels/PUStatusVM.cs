@@ -122,6 +122,14 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
+        //CmdDeleteStatusInfoTable
+        private ICommand _cmdDeleteStatusInfoTable;
+        public ICommand CmdDeleteStatusInfoTable => _cmdDeleteStatusInfoTable ?? (_cmdDeleteStatusInfoTable = new RelayCommand(() => DeleteStatusInfoTable(), () => true));
+
+        private ICommand _cmdConstraintDoubleClick;
+        public ICommand CmdConstraintDoubleClick => _cmdConstraintDoubleClick ?? (_cmdConstraintDoubleClick = new RelayCommand(() => ConstraintDoubleClick(), () => true));
+
+
         private ICommand _calculateStatus;
         public ICommand CmdCalculateStatus => _calculateStatus ?? (_calculateStatus = new RelayCommand(() => CalculateStatus(), () => true));
 
@@ -1540,7 +1548,50 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> ConstraintDoubleClick()
+        {
+            try
+            {
 
+                if (SelectedConflict != null)
+                {
+                    ProMsgBox.Show("TODO: Select the planning units associated with this conflict");
+
+                    string IncludeLayer = SelectedConflict.include;
+                    string ExcludeLayer = SelectedConflict.exclude;
+
+                    // select all rows from the Status Info table where these fields have >0 areas
+                    // TODO: Finish this!
+                }
+
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        private async Task<bool> DeleteStatusInfoTable()
+        {
+            try
+            {
+                ProMsgBox.Show("Delete this table (todo)");
+
+
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         #endregion
 

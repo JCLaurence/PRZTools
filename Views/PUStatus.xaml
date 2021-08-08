@@ -22,6 +22,7 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </controls:ProWindow.Resources>
+
     <Border Margin="5" Padding="5" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" BorderBrush="{DynamicResource Esri_BorderBrush}"  BorderThickness="1.5">
         <Grid>
             <Grid.RowDefinitions>
@@ -36,6 +37,10 @@
                             <Image Margin="2" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus16.png" Stretch="None" />
                         </Button>
                         <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Calculate the Planning Unit Status</TextBlock>
+                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdDeleteStatusInfoTable}">
+                            <Image Margin="2" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus16.png" Stretch="None" />
+                        </Button>
+                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Delete Planning Unit Status Info</TextBlock>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0">
                         <TextBlock DockPanel.Dock="Left" Margin="5" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Constraint Threshold:</TextBlock>
@@ -47,8 +52,11 @@
                 <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
                     <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}" Text="{Binding ConflictGridCaption}"></TextBlock>
                     <DataGrid Margin="5" IsReadOnly="True" ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict}"
-                              SelectionMode="Single" AutoGenerateColumns="False"
+                              SelectionMode="Single" SelectionUnit="FullRow" AutoGenerateColumns="False"
                               Style="{DynamicResource Esri_DataGrid}" ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" CellStyle="{DynamicResource Esri_DataGridCell}">
+                        <DataGrid.InputBindings>
+                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdConstraintDoubleClick}" />
+                        </DataGrid.InputBindings>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Conflict #" Binding="{Binding conflict_num}" CanUserReorder="False" CanUserSort="False" />
                             <DataGridTextColumn Header="'Include' Layer" Binding="{Binding include}" CanUserReorder="False" CanUserSort="False" />
