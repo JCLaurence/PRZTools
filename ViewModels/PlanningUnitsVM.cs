@@ -822,14 +822,15 @@ namespace NCC.PRZTools
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_PUFC_ID + " LONG 'Planning Unit ID' # # #;";
                 string fldNCCID = PRZC.c_FLD_PUFC_NCC_ID + " LONG 'NCC ID' # # #;";
-                string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUStatus = PRZC.c_FLD_PUFC_STATUS + " LONG 'Status' # 2 #;";
+                string fldConflict = PRZC.c_FLD_PUFC_CONFLICT + " LONG 'Status Conflict' # 0 #;";
+                string fldPUCost = PRZC.c_FLD_PUFC_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUAreaM = PRZC.c_FLD_PUFC_AREA_M + " DOUBLE 'Square m' # 1 #;";
                 string fldPUAreaAC = PRZC.c_FLD_PUFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
                 string fldPUAreaHA = PRZC.c_FLD_PUFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
                 string fldPUAreaKM = PRZC.c_FLD_PUFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
 
-                string flds = fldPUID + fldNCCID + fldPUCost + fldPUStatus + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM;
+                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM;
 
                 UpdateProgress(PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -1426,18 +1427,7 @@ namespace NCC.PRZTools
                             // Get the Definition
                             FeatureClassDefinition fcDef = puFC.GetDefinition();
 
-                            // Field Indexes
-                            int ixShape = fcDef.FindField(fcDef.GetShapeField());
-                            int ixPUID = fcDef.FindField(PRZC.c_FLD_PUFC_ID);
-                            int ixStatus = fcDef.FindField(PRZC.c_FLD_PUFC_STATUS);
-                            int ixCost = fcDef.FindField(PRZC.c_FLD_PUFC_COST);
-                            int ixAreaM = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_M);
-                            int ixAreaAC = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_AC);
-                            int ixAreaHA = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_HA);
-                            int ixAreaKM = fcDef.FindField(PRZC.c_FLD_PUFC_AREA_KM);
-
-                            //int puid = 1;
-
+                            // Set Shape-related values
                             switch (planningUnitTileInfo.tile_shape)
                             {
                                 case PlanningUnitTileShape.SQUARE:
@@ -1445,27 +1435,32 @@ namespace NCC.PRZTools
                                     {
                                         for (int col = 0; col < planningUnitTileInfo.tiles_across; col++)
                                         {
+                                            // Get shape
                                             double CurrentX = planningUnitTileInfo.LL_Point.X + (col * planningUnitTileInfo.tile_edge_length);
                                             double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * planningUnitTileInfo.tile_edge_length);
                                             Polygon poly = await BuildTileSquare(CurrentX, CurrentY, planningUnitTileInfo.tile_edge_length, planningUnitTileInfo.LL_Point.SpatialReference);
 
-                                            double m = poly.Area;
-
                                             // Prepare area values
+                                            double m = poly.Area;
                                             double ac = m * PRZC.c_CONVERT_M2_TO_AC;
                                             double ha = m * PRZC.c_CONVERT_M2_TO_HA;
                                             double km = m * PRZC.c_CONVERT_M2_TO_KM2;
 
-                                            rowBuffer[ixStatus] = 0;
-                                            rowBuffer[ixCost] = 1;
-                                            rowBuffer[ixShape] = poly;
-                                            rowBuffer[ixAreaM] = m;
-                                            rowBuffer[ixAreaAC] = ac;
-                                            rowBuffer[ixAreaHA] = ha;
-                                            rowBuffer[ixAreaKM] = km;
+                                            // set shape-related values
+                                            rowBuffer[fcDef.GetShapeField()] = poly;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_M] = m;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_AC] = ac;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_HA] = ha;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_KM] = km;
 
+                                            // Set common values
+                                            rowBuffer[PRZC.c_FLD_PUFC_STATUS] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
+
+                                            // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);
-                                            insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
+                                            insertCursor.Flush();
                                         }
                                     }
                                     break;
@@ -1477,27 +1472,33 @@ namespace NCC.PRZTools
                                     {
                                         for (int row = 0;  row < planningUnitTileInfo.tiles_up; row++)
                                         {
+                                            // Get shape
                                             double CurrentX = planningUnitTileInfo.LL_Point.X + (col * hex_horizoffset);
                                             double CurrentY = planningUnitTileInfo.LL_Point.Y + (row * (2 * planningUnitTileInfo.tile_center_to_top)) - ((col % 2) * planningUnitTileInfo.tile_center_to_top);
                                             Polygon poly = await BuildTileHexagon(CurrentX, CurrentY, planningUnitTileInfo.tile_center_to_right, planningUnitTileInfo.tile_center_to_top, planningUnitTileInfo.LL_Point.SpatialReference);
 
-                                            double m = poly.Area;
 
                                             // Prepare area values
+                                            double m = poly.Area;
                                             double ac = m * PRZC.c_CONVERT_M2_TO_AC;
                                             double ha = m * PRZC.c_CONVERT_M2_TO_HA;
                                             double km = m * PRZC.c_CONVERT_M2_TO_KM2;
 
-                                            rowBuffer[ixStatus] = 0;
-                                            rowBuffer[ixCost] = 1;
-                                            rowBuffer[ixShape] = poly;
-                                            rowBuffer[ixAreaM] = m;
-                                            rowBuffer[ixAreaAC] = ac;
-                                            rowBuffer[ixAreaHA] = ha;
-                                            rowBuffer[ixAreaKM] = km;
+                                            // set shape-related values
+                                            rowBuffer[fcDef.GetShapeField()] = poly;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_M] = m;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_AC] = ac;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_HA] = ha;
+                                            rowBuffer[PRZC.c_FLD_PUFC_AREA_KM] = km;
 
+                                            // Set common values
+                                            rowBuffer[PRZC.c_FLD_PUFC_STATUS] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
+
+                                            // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);
-                                            insertCursor.Flush();               // may not be necessary, or only if there are lots of tiles being written?
+                                            insertCursor.Flush();
                                         }
                                     }
                                     break;
@@ -1505,6 +1506,7 @@ namespace NCC.PRZTools
                                 default:
                                     return;
                             }
+
                         }
                         catch (Exception ex)
                         {

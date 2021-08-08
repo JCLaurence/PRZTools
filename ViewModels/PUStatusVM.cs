@@ -42,7 +42,7 @@ namespace NCC.PRZTools
 
         #region Properties
 
-        private ObservableCollection<StatusConflict> _conflicts;
+        private ObservableCollection<StatusConflict> _conflicts = new ObservableCollection<StatusConflict>();
 
         public ObservableCollection<StatusConflict> Conflicts
         {
@@ -84,6 +84,12 @@ namespace NCC.PRZTools
             get => _barMessage; set => SetProperty(ref _barMessage, value, () => BarMessage);
         }
 
+        private string _conflictGridCaption;
+        public string ConflictGridCaption
+        {
+            get => _conflictGridCaption; set => SetProperty(ref _conflictGridCaption, value, () => ConflictGridCaption);
+        }
+
         private string _defaultThreshold = Properties.Settings.Default.DEFAULT_STATUS_THRESHOLD;
         public string DefaultThreshold
         {
@@ -116,9 +122,6 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        private ICommand _cmdTest;
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest= new RelayCommand(() => Tester(), () => true));
-
         private ICommand _calculateStatus;
         public ICommand CmdCalculateStatus => _calculateStatus ?? (_calculateStatus = new RelayCommand(() => CalculateStatus(), () => true));
 
@@ -144,40 +147,35 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
+                // Populate the Grid
+                bool Populated = await PopulateConflictGrid();
 
 
+                //// Get the list of Status Conflicts
+                //List<StatusConflict> l = new List<StatusConflict>
+                //{
+                //    new StatusConflict()
+                //    {
+                //        conflict_num = 4,
+                //        pu_count = 7,
+                //        include = "Layer a",
+                //        exclude = "Layer b",
+                //    },
+                //    new StatusConflict()
+                //    {
+                //        conflict_num = 2,
+                //        pu_count = 22,
+                //        include = "Layer d",
+                //        exclude = "Layer r",
+                //    }
+                //};
 
-                // Get the list of Status Conflicts
-                List<StatusConflict> l = new List<StatusConflict>
-                {
-                    new StatusConflict()
-                    {
-                        conflict_num = 4,
-                        pu_count = 7,
-                        include = "Layer a",
-                        exclude = "Layer b",
-                        conflict_area_ac = 2.41,
-                        conflict_area_ha = 1.1,
-                        conflict_area_km2 = 0.011
-                    },
-                    new StatusConflict()
-                    {
-                        conflict_num = 2,
-                        pu_count = 22,
-                        include = "Layer d",
-                        exclude = "Layer r",
-                        conflict_area_ac = 109.1,
-                        conflict_area_ha = 40.3,
-                        conflict_area_km2 = 0.04
-                    }
-                };
+                //// Sort them
+                //l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
 
-                // Sort them
-                l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
-
-                // Set the property
-                _conflicts = new ObservableCollection<StatusConflict>(l);
-                NotifyPropertyChanged(() => Conflicts);
+                //// Set the property
+                //_conflicts = new ObservableCollection<StatusConflict>(l);
+                //NotifyPropertyChanged(() => Conflicts);
 
 
 
@@ -306,6 +304,186 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private async Task<bool> PopulateConflictGrid()
+        {
+            try
+            {
+                // Read records from the Status Info table
+                // convert each record to a Status Conflict object
+                // add to ObservableCollection
+                // call notifypropertychanged method
+
+                // Clear the contents of the Conflicts observable collection
+                Conflicts.Clear();
+
+                if (!await PRZH.StatusInfoTableExists())
+                {
+                    // format stuff appropriately if no table exists
+                    return true;
+                }
+
+                // PUStatus Table exists, retrieve the data
+                Dictionary<int, string> DICT_IN = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = IN Constraint Layer to which it applies
+                Dictionary<int, string> DICT_EX = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = EX Constraint Layer to which it applies
+
+                List<Field> fields = null;  // List of Planning Unit Status table fields
+
+                // Populate the Dictionaries
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetStatusInfoTable())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        TableDefinition tDef = table.GetDefinition();
+                        fields = tDef.GetFields().ToList();
+
+                        // Get the first row (I only need one row)
+                        if (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                // Now, get field info and row value info that's present in all rows exactly the same (that's why I only need one row)
+                                for (int i = 0; i < fields.Count; i++)
+                                {
+                                    Field field = fields[i];
+
+                                    if (field.Name.EndsWith("_Name"))
+                                    {
+                                        string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
+
+                                        if (field.Name.StartsWith("IN"))
+                                        {
+                                            DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                                        }
+                                        else if (field.Name.StartsWith("EX"))
+                                        {
+                                            DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Build a List of Unique Combinations of IN and EX Layers
+                string c_ConflictNumber = "CONFLICT";
+                string c_NameInclude = "'INCLUDE' Constraint";
+                string c_NameExclude = "'EXCLUDE' Constraint";
+                string c_TileCount = "TILE COUNT";
+                string c_IndexInclude = "IndexIN";
+                string c_IndexExclude = "IndexEX";
+                string c_ConflictExists = "Exists";
+
+                DataTable DT = new DataTable();
+                DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_NameInclude, Type.GetType("System.String"));
+                DT.Columns.Add(c_NameExclude, Type.GetType("System.String"));
+                DT.Columns.Add(c_TileCount, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_IndexInclude, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_IndexExclude, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
+
+                foreach (int in_ix in DICT_IN.Keys)
+                {
+                    string in_name = DICT_IN[in_ix];
+
+                    foreach (int ex_ix in DICT_EX.Keys)
+                    {
+                        string ex_name = DICT_EX[ex_ix];
+
+                        DataRow DR = DT.NewRow();
+
+                        DR[c_NameInclude] = in_name;
+                        DR[c_NameExclude] = ex_name;
+                        DR[c_TileCount] = 0;
+                        DR[c_IndexInclude] = in_ix;
+                        DR[c_IndexExclude] = ex_ix;
+                        DR[c_ConflictExists] = false;
+                        DT.Rows.Add(DR);
+                    }
+                }
+
+                // For each row in DataTable, query PU Status for pairs having area>0 in both IN and EX
+                int conflict_number = 1;
+                int IN_AreaField_Index;
+                int EX_AreaField_Index;
+                string IN_AreaField_Name = "";
+                string EX_AreaField_Name = "";
+
+                foreach (DataRow DR in DT.Rows)
+                {
+                    IN_AreaField_Index = (int)DR[c_IndexInclude];
+                    EX_AreaField_Index = (int)DR[c_IndexExclude];
+
+                    IN_AreaField_Name = fields[IN_AreaField_Index].Name;
+                    EX_AreaField_Name = fields[EX_AreaField_Index].Name;
+
+                    string where_clause = IN_AreaField_Name + @" > 0 And " + EX_AreaField_Name + @" > 0";
+
+                    QueryFilter QF = new QueryFilter();
+                    QF.SubFields = IN_AreaField_Name + "," + EX_AreaField_Name;
+                    QF.WhereClause = where_clause;
+
+                    int row_count = 0;
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetStatusInfoTable())
+                        {
+                            row_count = table.GetCount(QF);
+                        }
+                    });
+
+                    if (row_count > 0)
+                    {
+                        DR[c_ConflictNumber] = conflict_number++;
+                        DR[c_TileCount] = row_count;
+                        DR[c_ConflictExists] = true;
+                    }
+                }
+
+
+                // Filter out only those DataRows where conflict exists
+                DataView DV = DT.DefaultView;
+                DV.RowFilter = c_ConflictExists + " = true";
+
+                // Finally, populate the Observable Collection
+
+                List<StatusConflict> l = new List<StatusConflict>();
+                foreach (DataRowView DRV in DV)
+                {
+                    StatusConflict sc = new StatusConflict();
+
+                    sc.include = DRV[c_NameInclude].ToString();
+                    sc.exclude = DRV[c_NameExclude].ToString();
+                    sc.conflict_num = (int)DRV[c_ConflictNumber];
+                    sc.pu_count = (int)DRV[c_TileCount];
+
+                    l.Add(sc);
+                }
+
+                // Sort them
+                l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
+
+                // Set the property
+                _conflicts = new ObservableCollection<StatusConflict>(l);
+                NotifyPropertyChanged(() => Conflicts);
+
+                int count = DV.Count;
+
+                ConflictGridCaption = "Planning Unit Status Conflict Listing (" + ((count == 1) ? "1 conflict)" : count.ToString() + " conflicts)");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
+                return false;
             }
         }
 
@@ -649,6 +827,7 @@ namespace NCC.PRZTools
                 #region UPDATE QUICKSTATUS AND CONFLICT FIELDS
 
                 Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
+                Dictionary<int, int> DICT_PUID_and_Conflict = new Dictionary<int, int>();
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Calculating Status Conflicts and QuickStatus"), true, ++val);
 
@@ -718,10 +897,12 @@ namespace NCC.PRZTools
                                         if (hasIN & hasEX)
                                         {
                                             row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 1;
+                                            DICT_PUID_and_Conflict.Add(puid, 1);
                                         }
                                         else
                                         {
                                             row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            DICT_PUID_and_Conflict.Add(puid, 0);
                                         }
 
                                         // update the row
@@ -742,7 +923,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region UPDATE PLANNING UNIT FC QUICKSTATUS COLUMN
+                #region UPDATE PLANNING UNIT FC QUICKSTATUS AND CONFLICT COLUMNS
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
 
@@ -768,6 +949,15 @@ namespace NCC.PRZTools
                                         row[PRZC.c_FLD_PUFC_STATUS] = -1;
                                     }
 
+                                    if (DICT_PUID_and_Conflict.ContainsKey(puid))
+                                    {
+                                        row[PRZC.c_FLD_PUFC_CONFLICT] = DICT_PUID_and_Conflict[puid];
+                                    }
+                                    else
+                                    {
+                                        row[PRZC.c_FLD_PUFC_CONFLICT] = -1;
+                                    }
+
                                     row.Store();
                                 }
                             }
@@ -784,13 +974,10 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region WRAP THINGS UP
 
-                // 16. Update Planning Unit FC QuickStatus column
-
-                //          foreach row in PU FC
-                //              get value from Status Values DICT for key = PUID
-                //              set PU FC Status column value to this value
-
+                // Populate the Grid
+                bool Populated = await PopulateConflictGrid();
 
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the geodatabase..."), true, ++val);
@@ -819,6 +1006,7 @@ namespace NCC.PRZTools
 
                 return true;
 
+                #endregion
             }
             catch (Exception ex)
             {
@@ -1257,7 +1445,8 @@ namespace NCC.PRZTools
                     if (match.Success)
                     {
                         string matched_pattern = match.Value;   // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
-                        layer_name = original_layer_name.Substring(matched_pattern.Length).Trim();  // layer name minus the [n], [nn], or [nnn] substring
+                        //layer_name = original_layer_name.Substring(matched_pattern.Length).Trim();  // layer name minus the [n], [nn], or [nnn] substring
+                        layer_name = original_layer_name.Replace(matched_pattern, "");  // layer name minus the [n], [nn], or [nnn] substring
                         string threshold_text = matched_pattern.Replace("[", "").Replace("]", "");  // leaves just the 1, 2, or 3 numeric digits, no more brackets
 
                         threshold_int = int.Parse(threshold_text);  // integer value
@@ -1341,44 +1530,6 @@ namespace NCC.PRZTools
 
                     DT.Rows.Add(DR);
                 }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public bool Tester()
-        {
-            try
-            {
-
-                //if (SelectedConflict != null)
-                //{
-                //    ProMsgBox.Show(SelectedConflict.conflict_num.ToString());
-                //}
-                //else
-                //{
-                //    ProMsgBox.Show("nulllll");
-                //}
-
-                //PM.Message = "blueberry";
-
-                var gl = PRZH.GetGroupLayer_STATUS(MapView.Active.Map);
-
-                if (gl == null)
-                {
-                    ProMsgBox.Show("null");
-                }
-                else
-                {
-                    ProMsgBox.Show(gl.Name);
-                }
-
-
 
                 return true;
             }

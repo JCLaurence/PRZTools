@@ -148,6 +148,7 @@
         public const string c_FLD_PUFC_AREA_AC = "acres";
         public const string c_FLD_PUFC_AREA_HA = "hectares";
         public const string c_FLD_PUFC_AREA_KM = "square_km";
+        public const string c_FLD_PUFC_CONFLICT = "conflict";
 
         // Study Area Feature Class
         public const string c_FLD_SAFC_AREA_AC = "acres";

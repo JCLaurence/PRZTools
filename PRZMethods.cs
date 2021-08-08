@@ -99,6 +99,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_PRZ = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_PRZ);
+                        GL_PRZ.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
@@ -112,6 +113,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         map.MoveLayer(GL_PRZ, 0);
+                        GL_PRZ.SetVisibility(true);
                     });
                 }
 
@@ -125,6 +127,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_STATUS = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 0, PRZC.c_GROUPLAYER_STATUS);
+                        GL_STATUS.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
@@ -138,6 +141,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_PRZ.MoveLayer(GL_STATUS, 0);
+                        GL_STATUS.SetVisibility(true);
                     });
                 }
 
@@ -151,6 +155,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 1, PRZC.c_GROUPLAYER_COST);
+                        GL_COST.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
@@ -164,6 +169,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_PRZ.MoveLayer(GL_COST, 1);
+                        GL_COST.SetVisibility(true);
                     });
                 }
 
@@ -177,6 +183,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_CF = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 2, PRZC.c_GROUPLAYER_CF);
+                        GL_CF.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
@@ -190,6 +197,7 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(() =>
                     {
                         GL_PRZ.MoveLayer(GL_CF, 2);
+                        GL_CF.SetVisibility(true);
                     });
                 }
 
@@ -232,6 +240,7 @@ namespace NCC.PRZTools
                     {
                         var sabFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
                         PRZH.ApplyLegend_SAB_Simple(sabFL);
+                        sabFL.SetVisibility(true);
                     });
                 }
 
@@ -244,6 +253,7 @@ namespace NCC.PRZTools
                     {
                         var saFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_STUDY_AREA);
                         PRZH.ApplyLegend_SA_Simple(saFL);
+                        saFL.SetVisibility(true);
                     });
                 }
 
@@ -256,38 +266,13 @@ namespace NCC.PRZTools
                     {
                         var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_PLANNING_UNITS);
                         PRZH.ApplyLegend_PU_Simple(puFL);
+                        puFL.SetVisibility(true);
                     });
                 }
 
                 // ***************************************************************
 
                 // *** STATUS GROUP LAYER ****************************************
-
-                // Status Exclude Group Layer
-                GroupLayer GL_STATUS_EXCLUDE = null;
-
-                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_EXCLUDE, false).OfType<GroupLayer>().ToList();
-                if (glyrs.Count == 0)
-                {
-                    // Status Exclude GL not found in Status GL - add it
-                    await QueuedTask.Run(() =>
-                    {
-                        GL_STATUS_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 0, PRZC.c_GROUPLAYER_STATUS_EXCLUDE);
-                    });
-                }
-                else if (glyrs.Count > 1)
-                {
-                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_EXCLUDE + " Group Layer appears more than once.  There can be only one.");
-                    return false;
-                }
-                else
-                {
-                    GL_STATUS_EXCLUDE = glyrs[0];
-                    await QueuedTask.Run(() =>
-                    {
-                        GL_STATUS.MoveLayer(GL_STATUS_EXCLUDE, 0);
-                    });
-                }
 
                 // Status Include Group Layer
                 GroupLayer GL_STATUS_INCLUDE = null;
@@ -298,7 +283,8 @@ namespace NCC.PRZTools
                     // Status Include GL not found in Status GL - add it
                     await QueuedTask.Run(() =>
                     {
-                        GL_STATUS_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 1, PRZC.c_GROUPLAYER_STATUS_INCLUDE);
+                        GL_STATUS_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 0, PRZC.c_GROUPLAYER_STATUS_INCLUDE);
+                        GL_STATUS_INCLUDE.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
@@ -311,7 +297,36 @@ namespace NCC.PRZTools
                     GL_STATUS_INCLUDE = glyrs[0];
                     await QueuedTask.Run(() =>
                     {
-                        GL_STATUS.MoveLayer(GL_STATUS_INCLUDE, 1);
+                        GL_STATUS.MoveLayer(GL_STATUS_INCLUDE, 0);
+                        GL_STATUS_INCLUDE.SetVisibility(true);
+                    });
+                }
+
+                // Status Exclude Group Layer
+                GroupLayer GL_STATUS_EXCLUDE = null;
+
+                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_EXCLUDE, false).OfType<GroupLayer>().ToList();
+                if (glyrs.Count == 0)
+                {
+                    // Status Exclude GL not found in Status GL - add it
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 1, PRZC.c_GROUPLAYER_STATUS_EXCLUDE);
+                        GL_STATUS_EXCLUDE.SetVisibility(true);
+                    });
+                }
+                else if (glyrs.Count > 1)
+                {
+                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_EXCLUDE + " Group Layer appears more than once.  There can be only one.");
+                    return false;
+                }
+                else
+                {
+                    GL_STATUS_EXCLUDE = glyrs[0];
+                    await QueuedTask.Run(() =>
+                    {
+                        GL_STATUS.MoveLayer(GL_STATUS_EXCLUDE, 1);
+                        GL_STATUS_EXCLUDE.SetVisibility(true);
                     });
                 }
 
@@ -353,6 +368,13 @@ namespace NCC.PRZTools
                     {
                         LayersToDelete.Add(lyr);                        
                     }
+                    else
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            lyr.SetVisibility(true);
+                        });
+                    }
                 }
 
                 await QueuedTask.Run(() =>
@@ -373,6 +395,13 @@ namespace NCC.PRZTools
                     if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
                     {
                         LayersToDelete.Add(lyr);
+                    }
+                    else
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            lyr.SetVisibility(true);
+                        });
                     }
                 }
 
@@ -395,6 +424,13 @@ namespace NCC.PRZTools
                     {
                         LayersToDelete.Add(lyr);
                     }
+                    else
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            lyr.SetVisibility(true);
+                        });
+                    }
                 }
 
                 await QueuedTask.Run(() =>
@@ -415,6 +451,13 @@ namespace NCC.PRZTools
                     if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
                     {
                         LayersToDelete.Add(lyr);
+                    }
+                    else
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            lyr.SetVisibility(true);
+                        });
                     }
                 }
 
