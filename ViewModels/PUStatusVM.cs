@@ -646,45 +646,144 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region UPDATE QUICKSTATUS AND CONFLICT FIELDS
 
+                Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
 
-                // 13. Intersect INCLUDE layers with Planning Unit layer
-                //      foreach row in INCLUDE datatable
-                //          get values from row
-                //          Intersect row layer with planning unit FC (keep all attributes)
-                //          Dissolve intersection on the PUID field (create multipart features)
-                //          cycle through each row in the dissolve FC, get the PUID and area values, and update the Status Info table
-                //          for each row (representing each planning unit for which the layer has even the slightest overlap)
-                //              get dissolve feature PUID
-                //              get dissolve feature area (m2)
-                //              get area of full planning unit having same PUID, from dictionary<int, double> from step 9.5
-                //              calculate layer overlap for this PU, as dissolve feature area/full PU area ( a percentage)
-                //              if %overlap >= THRESHOLD
-                //                  Update the Status Info Table row of the same PUID, SPECIFICALLY THE AREA field
-                //                      SET statusinfo area field for column prefix + layernumber + "_area" = dissolve feature area
-                //          delete 2 temp layers
-                //      
-                // 14. Repeat for EXCLUDE group layer
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Calculating Status Conflicts and QuickStatus"), true, ++val);
 
-                // 15. Update Quickstatus and Conflict Info
-                //          get 2 lists of Status Info table AREA field indexes (List<int>), one for INCLUDE layers and one for EXCLUDE layers
-                //          Foreach row in Status Info table
-                //              get PUID
-                //              if any of the INCLUDE area columns have a value > 0, set IncludeFlag = true
-                //              if any of the EXCLUDE area columns have a value > 0, set ExcludeFlag = true
-                //              
-                //              if IncludeFlag is true
-                //                  set Status Info QuickStat column to 2
-                //                  add to DICT<int, int> => PUID,2             -- Status Values DICT
-                //              else if ExcludeFlag is true
-                //                  Status Info QuickStat column = 3
-                //                  add to DICT                                 -- Status Values DICT
-                //              else
-                //                  Status Info QuickStat Column = 0
-                //                  add to DICT                                 -- Status Values DICT
-                //              
-                //              if both flags are true, set CONFLICT field = 1
-                //              else set CONFLICT field = 0
+                try
+                {
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetStatusInfoTable())
+                        {
+                            TableDefinition tDef = table.GetDefinition();
+
+                            // Get list of INCLUDE layer Area fields
+                            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith("IN") && f.Name.EndsWith("_Area")).ToList();
+
+                            // Get list of EXCLUDE layer Area fields
+                            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith("EX") && f.Name.EndsWith("_Area")).ToList();
+
+                            using (RowCursor rowCursor = table.Search(null, false))
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+
+                                        bool hasIN = false;
+                                        bool hasEX = false;
+
+                                        // Determine if there are any INCLUDE area fields having values > 0 for this PU ID
+                                        foreach (Field fld in INAreaFields)
+                                        {
+                                            double test = (double)row[fld.Name];
+                                            if (test > 0)
+                                            {
+                                                hasIN = true;
+                                            }
+                                        }
+
+                                        // Determine if there are any EXCLUDE area fields having values > 0 for this PU ID
+                                        foreach (Field fld in EXAreaFields)
+                                        {
+                                            double test = (double)row[fld.Name];
+                                            if (test > 0)
+                                            {
+                                                hasEX = true;
+                                            }
+                                        }
+
+                                        // Update the QuickStatus Field
+                                        if (hasIN)
+                                        {
+                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 2;
+                                            DICT_PUID_and_QuickStatus.Add(puid, 2);
+                                        }
+                                        else if (hasEX)
+                                        {
+                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 3;
+                                            DICT_PUID_and_QuickStatus.Add(puid, 3);
+                                        }
+                                        else
+                                        {
+                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 0;
+                                            DICT_PUID_and_QuickStatus.Add(puid, 0);
+                                        }
+
+                                        // Update the Conflict Field
+                                        if (hasIN & hasEX)
+                                        {
+                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 1;
+                                        }
+                                        else
+                                        {
+                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                        }
+
+                                        // update the row
+                                        row.Store();
+                                    }
+                                }
+                            }
+                        }
+
+                    });
+                }
+                catch (Exception ex)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
+                    return false;
+                }
+
+                #endregion
+
+                #region UPDATE PLANNING UNIT FC QUICKSTATUS COLUMN
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
+
+                try
+                {
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetPlanningUnitFC())    // Get the Planning Unit FC attribute table
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+
+                                    if (DICT_PUID_and_QuickStatus.ContainsKey(puid))
+                                    {
+                                        row[PRZC.c_FLD_PUFC_STATUS] = DICT_PUID_and_QuickStatus[puid];
+                                    }
+                                    else
+                                    {
+                                        row[PRZC.c_FLD_PUFC_STATUS] = -1;
+                                    }
+
+                                    row.Store();
+                                }
+                            }
+                        }
+
+                    });
+                }
+                catch (Exception ex)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
+                    return false;
+                }
+
+                #endregion
+
 
                 // 16. Update Planning Unit FC QuickStatus column
 
@@ -788,7 +887,8 @@ namespace NCC.PRZTools
                         double threshold_double = (double)DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD];
                         int layer_number = layer_index + 1;
 
-                        string intersect_output = Path.Combine(gdbpath, prefix + layer_number.ToString() + "_Prelim1_Int");
+                        string intersect_fc_name = prefix + layer_number.ToString() + "_Prelim1_Int";
+                        string intersect_fc_path = Path.Combine(gdbpath, intersect_fc_name);
 
                         // Construct the inputs value array
                         object[] a = { PUFL, 1 };   // prelim array -> combine the layer object and the Rank (PU layer)
@@ -800,7 +900,7 @@ namespace NCC.PRZTools
                         string inputs_string = String.Join(" ", a2) + ";" + String.Join(" ", b2);   // my final inputs string
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersecting " + group + " layer " + layer_number.ToString() + ": " + layer_name), true);
-                        toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_output, "ALL", "", "INPUT");
+                        toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_fc_path, "ALL", "", "INPUT");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);                        
                         toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, flags);
                         if (toolOutput == null)
@@ -814,30 +914,111 @@ namespace NCC.PRZTools
                         }
 
                         // Now dissolve the temp intersect layer on PUID
-
-                        string dissolve_output = Path.Combine(gdbpath, prefix + layer_number.ToString() + "_Prelim2_Dslv");
+                        string dissolve_fc_name = prefix + layer_number.ToString() + "_Prelim2_Dslv";
+                        string dissolve_fc_path = Path.Combine(gdbpath, dissolve_fc_name);
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Dissolving on Planning Unit ID..."), true);
-                        toolParams = Geoprocessing.MakeValueArray(intersect_output, dissolve_output, PRZC.c_FLD_PUFC_ID, "", "MULTI_PART", "");
+                        toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_PUFC_ID, "", "MULTI_PART", "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, flags);
                         if (toolOutput == null)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error dissolving " + intersect_output + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error dissolving " + intersect_fc_name + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
                             return false;
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog(intersect_output + " was dissolved successfully."), true);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog(intersect_fc_name + " was dissolved successfully."), true);
                         }
 
                         // Pass through the Dissolve Layer, and retrieve the PUID and area for each feature (store in DICT)
+                        Dictionary<int, double> DICT_PUID_and_dissolved_area = new Dictionary<int, double>();
+
+                        // get the puids and areas from the dissolved features first
                         using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                        using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
                         {
+                            if (fc == null)
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to locate dissolve output: " + dissolve_fc_name, LogMessageType.ERROR), true);
+                                return false;
+                            }
 
+                            using (RowCursor rowCursor = fc.Search(null, false))
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Feature feature = (Feature)rowCursor.Current)
+                                    {
+                                        // set up variables
+                                        int puid;
+                                        double area_m;
 
+                                        // get the planning unit id
+                                        puid = (int)feature[PRZC.c_FLD_PUFC_ID];
+
+                                        // get the area
+                                        Polygon poly = (Polygon)feature.GetShape();
+                                        area_m = poly.Area;
+
+                                        DICT_PUID_and_dissolved_area.Add(puid, area_m);
+                                    }
+                                }
+                            }
                         }
 
+                        // Now write this puid and area information into the Status Info table
+                        using (Table table = await PRZH.GetStatusInfoTable())
+                        {
+                            QueryFilter QF = new QueryFilter();
+                            QF.SubFields = "*";
+
+                            foreach (KeyValuePair<int, double> kvp in DICT_PUID_and_dissolved_area)
+                            {
+                                int puid = kvp.Key;
+                                double area_constraint_m = kvp.Value;
+                                double area_planning_unit_m = DICT_PUID_area[puid];
+                                double percent_constrained = area_constraint_m / area_planning_unit_m;
+                                string area_field = prefix + layer_number.ToString() + "_Area";
+
+                                QF.WhereClause = PRZC.c_FLD_PUFC_ID + " = " + kvp.Key;
+
+                                if (percent_constrained >= threshold_double)
+                                {
+                                    using (RowCursor rowCursor = table.Search(QF, false))
+                                    {
+                                        while (rowCursor.MoveNext())
+                                        {
+                                            using (Row row = rowCursor.Current)
+                                            {
+                                                row[area_field] = area_constraint_m;
+                                                row.Store();
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+
+                        // Finally, delete the two temp feature classes
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature classes..."), true);
+
+                        object[] e = { intersect_fc_path, dissolve_fc_path };
+                        var e2 = Geoprocessing.MakeValueArray(e);   // Let this method figure out how best to quote the paths
+                        string inputs2= String.Join(";", e2);
+                        toolParams = Geoprocessing.MakeValueArray(inputs2, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, flags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temp feature classes.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp Feature Classes deleted successfully."), true);
+                        }
                     }
 
                     return true;

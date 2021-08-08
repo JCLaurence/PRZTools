@@ -655,27 +655,24 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<Table> GetTable(string table_name)
+        public static async Task<Table> GetTable(Geodatabase gdb, string table_name)
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                if (gdb == null) return null;
+
+                try
                 {
-                    if (gdb == null) return null;
-
-                    try
+                    Table tab = await QueuedTask.Run(() =>
                     {
-                        Table tab = await QueuedTask.Run(() =>
-                        {
-                            return gdb.OpenDataset<Table>(table_name);
-                        });
+                        return gdb.OpenDataset<Table>(table_name);
+                    });
 
-                        return tab;
-                    }
-                    catch
-                    {
-                        return null;
-                    }
+                    return tab;
+                }
+                catch
+                {
+                    return null;
                 }
             }
             catch (Exception ex)
@@ -685,27 +682,25 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<FeatureClass> GetFeatureClass(string fc_name)
+        public static async Task<FeatureClass> GetFeatureClass(Geodatabase gdb, string fc_name)
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                if (gdb == null) return null;
+
+                try
                 {
-                    if (gdb == null) return null;
-
-                    try
+                    FeatureClass fc = await QueuedTask.Run(() =>
                     {
-                        FeatureClass fc = await QueuedTask.Run(() =>
-                        {
-                            return gdb.OpenDataset<FeatureClass>(fc_name);
-                        });
+                        return gdb.OpenDataset<FeatureClass>(fc_name);
+                    });
 
-                        return fc;
-                    }
-                    catch
-                    {
-                        return null;
-                    }
+                    return fc;
+                }
+                catch (Exception ex)
+                {
+                    ProMsgBox.Show(ex.Message);
+                    return null;
                 }
             }
             catch (Exception ex)
