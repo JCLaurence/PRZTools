@@ -37,13 +37,14 @@ namespace NCC.PRZTools
 
         #region Fields
 
+        private const string c_OVERRIDE_INCLUDE = "LOCKED IN";
+        private const string c_OVERRIDE_EXCLUDE = "LOCKED OUT";
 
         #endregion
 
         #region Properties
 
         private ObservableCollection<StatusConflict> _conflicts = new ObservableCollection<StatusConflict>();
-
         public ObservableCollection<StatusConflict> Conflicts
         {
             get { return _conflicts; }
@@ -59,6 +60,19 @@ namespace NCC.PRZTools
         {
             get => _selectedConflict; set => SetProperty(ref _selectedConflict, value, () => SelectedConflict);
         }
+
+        private List<string> _overrideOptions = new List<string> { c_OVERRIDE_INCLUDE, c_OVERRIDE_EXCLUDE };
+        public List<string> OverrideOptions
+        {
+            get => _overrideOptions; set => SetProperty(ref _overrideOptions, value, () => OverrideOptions);
+        }
+
+        private string _selectedOverrideOption = c_OVERRIDE_INCLUDE;
+        public string SelectedOverrideOption
+        {
+            get => _selectedOverrideOption; set => SetProperty(ref _selectedOverrideOption, value, () => SelectedOverrideOption);
+        }
+
 
         private int _barMax;
         public int BarMax
@@ -155,158 +169,11 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
+                // Set the Conflict Override value default
+                SelectedOverrideOption = c_OVERRIDE_INCLUDE;
+
                 // Populate the Grid
                 bool Populated = await PopulateConflictGrid();
-
-
-                //// Get the list of Status Conflicts
-                //List<StatusConflict> l = new List<StatusConflict>
-                //{
-                //    new StatusConflict()
-                //    {
-                //        conflict_num = 4,
-                //        pu_count = 7,
-                //        include = "Layer a",
-                //        exclude = "Layer b",
-                //    },
-                //    new StatusConflict()
-                //    {
-                //        conflict_num = 2,
-                //        pu_count = 22,
-                //        include = "Layer d",
-                //        exclude = "Layer r",
-                //    }
-                //};
-
-                //// Sort them
-                //l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
-
-                //// Set the property
-                //_conflicts = new ObservableCollection<StatusConflict>(l);
-                //NotifyPropertyChanged(() => Conflicts);
-
-
-
-                //#region Spatial Reference Information
-
-                //MapView mapView = MapView.Active;
-                //Map map = mapView.Map;
-                //_mapSR = map.SpatialReference;
-                //MapSRName = _mapSR.Name;
-                //bool isMapSRProjM = false;
-
-                //if (_mapSR.IsProjected)
-                //{
-                //    Unit u = _mapSR.Unit; // should be LinearUnit, since SR is projected
-                //    LinearUnit lu = u as LinearUnit;
-                //    if (lu.FactoryCode == 9001) // meter
-                //    {
-                //        isMapSRProjM = true;
-                //    }
-                //}
-
-                //// layers
-
-                //List<SpatialReference> SRList = new List<SpatialReference>();
-
-                //var lyrs = map.GetLayersAsFlattenedList().ToList();
-
-                //foreach (var lyr in lyrs)
-                //{
-                //    await QueuedTask.Run(() =>
-                //    {
-                //        var sr = lyr.GetSpatialReference();
-                //        if (sr != null)
-                //        {
-                //            if (!SRList.Contains(sr))
-                //            {
-                //                if ((!sr.IsUnknown) && (!sr.IsGeographic))
-                //                {
-                //                    Unit u = sr.Unit;
-
-                //                    if (u.UnitType == ArcGIS.Core.Geometry.UnitType.Linear)
-                //                    {
-                //                        LinearUnit lu = u as LinearUnit;
-
-                //                        if (lu.FactoryCode == 9001) // Meter
-                //                        {
-                //                            SRList.Add(sr);
-                //                        }
-                //                    }
-                //                }
-                //            }
-                //        }
-                //    });
-                //}
-
-                //this.LayerSRList = SRList;
-
-                //// SR Radio Options enabled/disabled
-                //this.SRLayerIsEnabled = (SRList.Count > 0);
-                //this.SRMapIsEnabled = isMapSRProjM;
-                //this.SRUserIsEnabled = false;
-
-                //// Graphics Layers having selected Polygon Graphics
-                //var glyrs = map.GetLayersAsFlattenedList().OfType<GraphicsLayer>().ToList();
-                //var polygraphicList = new List<CIMPolygonGraphic>();
-
-                //Dictionary<GraphicsLayer, int> DICT_GraphicLayer_SelPolyCount = new Dictionary<GraphicsLayer, int>();
-
-                //List<GraphicsLayer> gls = new List<GraphicsLayer>();
-                //foreach (var glyr in glyrs)
-                //{
-                //    var selElems = glyr.GetSelectedElements().OfType<GraphicElement>();
-                //    int c = 0;
-
-                //    foreach (var elem in selElems)
-                //    {
-                //        await QueuedTask.Run(() =>
-                //        {
-                //            var g = elem.GetGraphic();
-                //            if (g is CIMPolygonGraphic)
-                //            {
-                //                c++;
-                //            }
-                //        });
-                //    }
-
-                //    if (c > 0)
-                //    {
-                //        DICT_GraphicLayer_SelPolyCount.Add(glyr, c);
-                //    }
-                //}
-
-                //this.GraphicsLayerList = DICT_GraphicLayer_SelPolyCount.Keys.ToList();
-                //this.GraphicsLayerIsEnabled = (DICT_GraphicLayer_SelPolyCount.Count > 0);
-
-                //// Polygon Feature Layers having selection
-                //var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0 && fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
-
-                //this.FeatureLayerList = flyrs;
-                //this.FeatureLayerIsEnabled = flyrs.Count > 0;
-
-                //// Buffer
-                //this.BufferValue = "0";
-                //this.BufferUnitKilometersIsChecked = true;
-
-                //// Grid Type combo box
-                //this.GridTypeList = Enum.GetNames(typeof(PlanningUnitTileShape)).ToList();
-
-                //this.SelectedGridType = PlanningUnitTileShape.SQUARE.ToString();
-
-                //// Tile area units
-                //this.TileAreaKmIsSelected = true;
-
-                //StringBuilder sb = new StringBuilder();
-
-                //sb.AppendLine("Map Name: " + map.Name);
-                //sb.AppendLine("Spatial Reference: " + _mapSR.Name);
-
-                //BarMin = 0;
-                //BarMax = 3;
-                //BarValue = 0;
-
-                //#endregion
 
             }
             catch (Exception ex)
@@ -330,6 +197,8 @@ namespace NCC.PRZTools
                 if (!await PRZH.StatusInfoTableExists())
                 {
                     // format stuff appropriately if no table exists
+                    ConflictGridCaption = "Planning Unit Status Conflict Listing (no Status Info Table)";
+
                     return true;
                 }
 
@@ -466,8 +335,10 @@ namespace NCC.PRZTools
                 {
                     StatusConflict sc = new StatusConflict();
 
-                    sc.include = DRV[c_NameInclude].ToString();
-                    sc.exclude = DRV[c_NameExclude].ToString();
+                    sc.include_layer_name = DRV[c_NameInclude].ToString();
+                    sc.include_layer_index = (int)DRV[c_IndexInclude];
+                    sc.exclude_layer_name = DRV[c_NameExclude].ToString();
+                    sc.exclude_layer_index = (int)DRV[c_IndexExclude];
                     sc.conflict_num = (int)DRV[c_ConflictNumber];
                     sc.pu_count = (int)DRV[c_TileCount];
 
@@ -884,33 +755,63 @@ namespace NCC.PRZTools
                                             }
                                         }
 
-                                        // Update the QuickStatus Field
-                                        if (hasIN)
+                                        // Update the QuickStatus and Conflict information
+
+                                        // Both INCLUDE and EXCLUDE occur in PU:
+                                        if (hasIN && hasEX)
                                         {
+                                            // Flag as a conflicted planning unit
+                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 1;
+                                            DICT_PUID_and_Conflict.Add(puid, 1);
+
+                                            // Set the 'winning' QuickStatus based on user-specified setting
+                                            if (SelectedOverrideOption == c_OVERRIDE_INCLUDE)
+                                            {
+                                                row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 2;
+                                                DICT_PUID_and_QuickStatus.Add(puid, 2);
+                                            }
+                                            else if (SelectedOverrideOption == c_OVERRIDE_EXCLUDE)
+                                            {
+                                                row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 3;
+                                                DICT_PUID_and_QuickStatus.Add(puid, 3);
+                                            }
+
+                                        }
+
+                                        // INCLUDE only:
+                                        else if (hasIN)
+                                        {
+                                            // Flag as a no-conflict planning unit
+                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            DICT_PUID_and_Conflict.Add(puid, 0);
+
+                                            // Set the Status
                                             row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 2;
                                             DICT_PUID_and_QuickStatus.Add(puid, 2);
                                         }
+
+                                        // EXCLUDE only:
                                         else if (hasEX)
                                         {
+                                            // Flag as a no-conflict planning unit
+                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            DICT_PUID_and_Conflict.Add(puid, 0);
+
+                                            // Set the Status
                                             row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 3;
                                             DICT_PUID_and_QuickStatus.Add(puid, 3);
                                         }
-                                        else
-                                        {
-                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 0;
-                                            DICT_PUID_and_QuickStatus.Add(puid, 0);
-                                        }
 
-                                        // Update the Conflict Field
-                                        if (hasIN & hasEX)
-                                        {
-                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 1;
-                                            DICT_PUID_and_Conflict.Add(puid, 1);
-                                        }
+                                        // Neither:
                                         else
                                         {
+                                            // Flag as a no-conflict planning unit
                                             row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
                                             DICT_PUID_and_Conflict.Add(puid, 0);
+
+                                            // Set the Status
+                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 0;
+                                            DICT_PUID_and_QuickStatus.Add(puid, 0);
                                         }
 
                                         // update the row
@@ -1557,8 +1458,11 @@ namespace NCC.PRZTools
                 {
                     ProMsgBox.Show("TODO: Select the planning units associated with this conflict");
 
-                    string IncludeLayer = SelectedConflict.include;
-                    string ExcludeLayer = SelectedConflict.exclude;
+                    string IncludeLayer = SelectedConflict.include_layer_name;
+                    string ExcludeLayer = SelectedConflict.exclude_layer_name;
+                    
+
+                    ProMsgBox.Show("Included: " + IncludeLayer + Environment.NewLine + "Excluded: " + ExcludeLayer);
 
                     // select all rows from the Status Info table where these fields have >0 areas
                     // TODO: Finish this!
@@ -1577,18 +1481,101 @@ namespace NCC.PRZTools
 
         private async Task<bool> DeleteStatusInfoTable()
         {
+            int val = 0;
+
             try
             {
-                ProMsgBox.Show("Delete this table (todo)");
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                string toolOutput;
 
+                // Initialize ProgressBar and Progress Log
+                int max = 10;
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing..."), false, max, ++val);
 
+                // Quit if table doesn't exist
+                if (!await PRZH.StatusInfoTableExists())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Table does not exist in the Project Geodatabase."), true, ++val);
+                    ProMsgBox.Show("Status Info table does not exist in the Project Geodatabase.  There's nothing to delete.");
+                    return true;
+                }
 
+                // Validation: Prompt User for permission to proceed
+                if (ProMsgBox.Show("If you proceed, the Planning Unit Status table will be DELETED if it exists in the Project Geodatabase." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Additionally, the contents of the 'status' field in the Planning Unit Feature Class will be reset to 0." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "TABLE DELETE WARNING",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Status Calculation."), true, ++val);
+                    return false;
+                }
+
+                // Delete the Status Info Table
+                string gdbpath = PRZH.GetProjectGDBPath();
+                string sipath = PRZH.GetStatusInfoTablePath();
+
+                if (await PRZH.StatusInfoTableExists())
+                {
+                    // Delete the existing Status Info table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Status Info Table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(sipath, "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Info Table deleted successfully..."), true, ++val);
+                    }
+                }
+
+                // Update the PUFC Status and Conflict fields to zero (0).
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit Feature Class, setting Status and Conflict fields to 0."), true, ++val);
+                await QueuedTask.Run(async () =>
+                {
+                    using (FeatureClass PUFC = await PRZH.GetPlanningUnitFC())
+                    using (RowCursor rowCursor = PUFC.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                row[PRZC.c_FLD_PUFC_STATUS] = 0;
+                                row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+
+                                row.Store();
+                            }
+                        }
+                    }
+                });
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Status and Conflict fields updated successfully."), true, ++val);
+
+                // Rebuild the Conflict Grid
+                if (!await PopulateConflictGrid())
+                {
+                    ProMsgBox.Show("Error populating the Conflict Grid...");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Conflict Grid.", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
 
                 return true;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
                 return false;
             }
         }

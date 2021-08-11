@@ -1736,7 +1736,7 @@ namespace NCC.PRZTools
             try
             {
                 // Colors
-                CIMColor outlineColor = GetNamedColor(Color.DarkSalmon);
+                CIMColor outlineColor = GetRGBColor(0, 112, 255); // Blue-ish
                 CIMColor fillColor = CIMColor.NoColor();
 
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
