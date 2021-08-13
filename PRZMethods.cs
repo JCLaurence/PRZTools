@@ -262,10 +262,10 @@ namespace NCC.PRZTools
                     string pufcpath = PRZH.GetPlanningUnitFCPath();
 
                     Uri uri = new Uri(pufcpath);
-                    await QueuedTask.Run(() =>
+                    await QueuedTask.Run(async () =>
                     {
                         var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_PLANNING_UNITS);
-                        PRZH.ApplyLegend_PU_Simple(puFL);
+                        await PRZH.ApplyLegend_PU_Basic(puFL);
                         puFL.SetVisibility(true);
                     });
                 }

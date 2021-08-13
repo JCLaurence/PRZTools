@@ -59,21 +59,21 @@
           <tooltip heading="Conservation Features">
             Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
-        <button id="NCC_PRZTools_Menu1_Items_Button1" caption="Menu Button 1" className="Menu1_button1" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png">
-          <tooltip heading="Menu Button 1">ToolTip<disabledText /></tooltip>
+        <button id="prz_button_legend_pu_basic" keytip="z" caption="Planning Units - Basic" className="Button_Legend_PU_Basic" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
         </button>
-        <button id="NCC_PRZTools_Menu1_Items_Button2" caption="Menu Button 2" className="Menu1_button2" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png">
-          <tooltip heading="Menu Button 2">ToolTip<disabledText /></tooltip>
+        <button id="prz_button_legend_pu_status" keytip="z" caption="Planning Units - Status and Conflicts" className="Button_Legend_PU_Status" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
         </button>
-        <button id="NCC_PRZTools_Menu1_Items_Button3" caption="Menu Button 3" className="Menu1_button3" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png">
-          <tooltip heading="Menu Button 3">ToolTip<disabledText /></tooltip>
+        <button id="prz_button_legend_pu_cf_count" keytip="z" caption="Planning Units - Conservation Feature Count" className="Button_Legend_PU_CFCount" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
         </button>
       </controls>
       <menus>
-        <menu id="prz_menu_legends" caption="Legends" smallImage="Images\CalculateStatus16.png" largeImage="Images\CalculateStatus32.png">
-          <button refID="NCC_PRZTools_Menu1_Items_Button1" />
-          <button refID="NCC_PRZTools_Menu1_Items_Button2" />
-          <button refID="NCC_PRZTools_Menu1_Items_Button3" />
+        <menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
+          <button refID="prz_button_legend_pu_basic" />
+          <button refID="prz_button_legend_pu_status" />
+          <button refID="prz_button_legend_pu_cf_count" />
         </menu>
       </menus>
     </insertModule>

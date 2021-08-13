@@ -122,7 +122,9 @@
   <ItemGroup>
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
-    <Compile Include="Menu1.cs" />
+    <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
+    <Compile Include="Widgets\Button_Legend_PU_Status.cs" />
+    <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
     <Compile Include="Models\ProgressManager.cs" />
     <Compile Include="Models\StatusConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
@@ -351,6 +353,18 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\CalculateStatus16.png" />
     <Resource Include="ImagesWPF\CalculateStatus32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\Legend16.png" />
+    <AddInContent Include="DarkImages\Legend32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\Legend16.png" />
+    <AddInContent Include="Images\Legend32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Legend16.png" />
+    <Resource Include="ImagesWPF\Legend32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

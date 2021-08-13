@@ -19,25 +19,10 @@ using System.Threading.Tasks;
 
 namespace NCC.PRZTools
 {
-    internal class Menu1_button1 : Button
+    internal class Button_Legend_PU_CFCount : Button
     {
         protected override void OnClick()
         {
         }
     }
-
-    internal class Menu1_button2 : Button
-    {
-        protected override void OnClick()
-        {
-        }
-    }
-
-    internal class Menu1_button3 : Button
-    {
-        protected override void OnClick()
-        {
-        }
-    }
-
 }

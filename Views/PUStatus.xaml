@@ -61,8 +61,8 @@
                         </DataGrid.InputBindings>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Conflict #" Binding="{Binding conflict_num}" CanUserReorder="False" CanUserSort="False" />
-                            <DataGridTextColumn Header="'Include' Layer" Binding="{Binding include}" CanUserReorder="False" CanUserSort="False" />
-                            <DataGridTextColumn Header="'Exclude' Layer" Binding="{Binding exclude}" CanUserReorder="False" CanUserSort="False" />
+                            <DataGridTextColumn Header="'Include' Layer" Binding="{Binding include_layer_name}" CanUserReorder="False" CanUserSort="False" />
+                            <DataGridTextColumn Header="'Exclude' Layer" Binding="{Binding exclude_layer_name}" CanUserReorder="False" CanUserSort="False" />
                             <DataGridTextColumn Header="Planning Unit Count" Binding="{Binding pu_count}" CanUserReorder="False" CanUserSort="False" />
                         </DataGrid.Columns>
                     </DataGrid>

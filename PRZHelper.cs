@@ -1731,7 +1731,7 @@ namespace NCC.PRZTools
 
         #region RENDERERS
 
-        public static bool ApplyLegend_PU_Simple(FeatureLayer FL)
+        public static async Task<bool> ApplyLegend_PU_Basic(FeatureLayer FL)
         {
             try
             {
@@ -1739,12 +1739,108 @@ namespace NCC.PRZTools
                 CIMColor outlineColor = GetRGBColor(0, 112, 255); // Blue-ish
                 CIMColor fillColor = CIMColor.NoColor();
 
+                // Symbols
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
                 CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
-                CIMSimpleRenderer rend = FL.GetRenderer() as CIMSimpleRenderer;
-                rend.Symbol = fillSym.MakeSymbolReference();
-                rend.Label = "A lowly planning unit";
+
+                // Create a new Renderer Definition
+                SimpleRendererDefinition rendDef = new SimpleRendererDefinition
+                {
+                    Label = "A lowly planning unit",
+                    SymbolTemplate = fillSym.MakeSymbolReference()
+                };
+
+                // Create the renderer
+                CIMSimpleRenderer rend = await QueuedTask.Run(() =>
+                {
+                    return (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
+                });
+
+                // apply it
                 FL.SetRenderer(rend);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> ApplyLegend_PU_Status(FeatureLayer FL)
+        {
+            try
+            {
+                // I need 3 CIM Poly Symbols
+                
+                // COLORS
+                CIMColor outlineColor = GetRGBColor(60, 60, 60); // dark greyish?   // outline color for all 3 poly symbols
+                CIMColor fillColor_Available = GetNamedColor(Color.Bisque);
+                CIMColor fillColor_Include = GetNamedColor(Color.DarkOrchid);
+                CIMColor fillColor_Exclude = GetNamedColor(Color.LawnGreen);
+
+                // SYMBOLS
+                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillSym_Available = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Available, SimpleFillStyle.Solid, outlineSym);
+                CIMPolygonSymbol fillSym_Include = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Include, SimpleFillStyle.Solid, outlineSym);
+                CIMPolygonSymbol fillSym_Exclude = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Exclude, SimpleFillStyle.Solid, outlineSym);
+
+                // CIM UNIQUE VALUES
+                CIMUniqueValue uv_Available = new CIMUniqueValue { FieldValues = new string[] { "0" } };
+                CIMUniqueValue uv_Include = new CIMUniqueValue { FieldValues = new string[] { "2" } };
+                CIMUniqueValue uv_Exclude = new CIMUniqueValue { FieldValues = new string[] { "3" } };
+
+                // CIM UNIQUE VALUE CLASSES
+                CIMUniqueValueClass uvcAvailable = new CIMUniqueValueClass
+                {
+                    Editable = true,
+                    Label = "Available",
+                    Patch = PatchShape.AreaRoundedRectangle,
+                    Symbol = fillSym_Available.MakeSymbolReference(),
+                    Description = "",
+                    Visible = true,
+                    Values = new CIMUniqueValue[] {uv_Available}
+                };
+                CIMUniqueValueClass uvcInclude = new CIMUniqueValueClass
+                {
+                    Editable = true,
+                    Label = "Locked In",
+                    Patch = PatchShape.AreaRoundedRectangle,
+                    Symbol = fillSym_Include.MakeSymbolReference(),
+                    Description = "",
+                    Visible = true,
+                    Values = new CIMUniqueValue[] { uv_Include }
+                };
+                CIMUniqueValueClass uvcExclude = new CIMUniqueValueClass
+                {
+                    Editable = true,
+                    Label = "Locked Out",
+                    Patch = PatchShape.AreaRoundedRectangle,
+                    Symbol = fillSym_Exclude.MakeSymbolReference(),
+                    Description = "",
+                    Visible = true,
+                    Values = new CIMUniqueValue[] { uv_Exclude }
+                };
+
+                // CIM UNIQUE VALUE GROUP
+                CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
+                {
+                    Classes = new CIMUniqueValueClass[] { uvcAvailable, uvcInclude, uvcExclude },
+                    Heading = "Statorama"
+                };
+
+                // UV RENDERER
+                CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
+                {
+                    UseDefaultSymbol = false,
+                    Fields = new string[] { PRZC.c_FLD_PUFC_STATUS },
+                    Groups = new CIMUniqueValueGroup[] { uvgMain }
+
+                };
+
+                FL.SetRenderer(UVRend);
+
                 return true;
             }
             catch (Exception ex)

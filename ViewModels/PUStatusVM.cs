@@ -248,37 +248,37 @@ namespace NCC.PRZTools
 
                 // Build a List of Unique Combinations of IN and EX Layers
                 string c_ConflictNumber = "CONFLICT";
-                string c_NameInclude = "'INCLUDE' Constraint";
-                string c_NameExclude = "'EXCLUDE' Constraint";
-                string c_TileCount = "TILE COUNT";
-                string c_IndexInclude = "IndexIN";
-                string c_IndexExclude = "IndexEX";
+                string c_LayerName_Include = "'INCLUDE' Constraint";
+                string c_LayerName_Exclude = "'EXCLUDE' Constraint";
+                string c_PUCount = "PLANNING UNIT COUNT";
+                string c_AreaFieldIndex_Include = "IndexIN";
+                string c_AreaFieldIndex_Exclude = "IndexEX";
                 string c_ConflictExists = "Exists";
 
                 DataTable DT = new DataTable();
                 DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_NameInclude, Type.GetType("System.String"));
-                DT.Columns.Add(c_NameExclude, Type.GetType("System.String"));
-                DT.Columns.Add(c_TileCount, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_IndexInclude, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_IndexExclude, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_LayerName_Include, Type.GetType("System.String"));
+                DT.Columns.Add(c_LayerName_Exclude, Type.GetType("System.String"));
+                DT.Columns.Add(c_PUCount, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_AreaFieldIndex_Include, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_AreaFieldIndex_Exclude, Type.GetType("System.Int32"));
                 DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
 
-                foreach (int in_ix in DICT_IN.Keys)
+                foreach (int IN_AreaFieldIndex in DICT_IN.Keys)
                 {
-                    string in_name = DICT_IN[in_ix];
+                    string IN_LayerName = DICT_IN[IN_AreaFieldIndex];
 
-                    foreach (int ex_ix in DICT_EX.Keys)
+                    foreach (int EX_AreaFieldIndex in DICT_EX.Keys)
                     {
-                        string ex_name = DICT_EX[ex_ix];
+                        string EX_LayerName = DICT_EX[EX_AreaFieldIndex];
 
                         DataRow DR = DT.NewRow();
 
-                        DR[c_NameInclude] = in_name;
-                        DR[c_NameExclude] = ex_name;
-                        DR[c_TileCount] = 0;
-                        DR[c_IndexInclude] = in_ix;
-                        DR[c_IndexExclude] = ex_ix;
+                        DR[c_LayerName_Include] = IN_LayerName;
+                        DR[c_LayerName_Exclude] = EX_LayerName;
+                        DR[c_PUCount] = 0;
+                        DR[c_AreaFieldIndex_Include] = IN_AreaFieldIndex;
+                        DR[c_AreaFieldIndex_Exclude] = EX_AreaFieldIndex;
                         DR[c_ConflictExists] = false;
                         DT.Rows.Add(DR);
                     }
@@ -293,8 +293,8 @@ namespace NCC.PRZTools
 
                 foreach (DataRow DR in DT.Rows)
                 {
-                    IN_AreaField_Index = (int)DR[c_IndexInclude];
-                    EX_AreaField_Index = (int)DR[c_IndexExclude];
+                    IN_AreaField_Index = (int)DR[c_AreaFieldIndex_Include];
+                    EX_AreaField_Index = (int)DR[c_AreaFieldIndex_Exclude];
 
                     IN_AreaField_Name = fields[IN_AreaField_Index].Name;
                     EX_AreaField_Name = fields[EX_AreaField_Index].Name;
@@ -318,7 +318,7 @@ namespace NCC.PRZTools
                     if (row_count > 0)
                     {
                         DR[c_ConflictNumber] = conflict_number++;
-                        DR[c_TileCount] = row_count;
+                        DR[c_PUCount] = row_count;
                         DR[c_ConflictExists] = true;
                     }
                 }
@@ -335,12 +335,12 @@ namespace NCC.PRZTools
                 {
                     StatusConflict sc = new StatusConflict();
 
-                    sc.include_layer_name = DRV[c_NameInclude].ToString();
-                    sc.include_layer_index = (int)DRV[c_IndexInclude];
-                    sc.exclude_layer_name = DRV[c_NameExclude].ToString();
-                    sc.exclude_layer_index = (int)DRV[c_IndexExclude];
+                    sc.include_layer_name = DRV[c_LayerName_Include].ToString();
+                    sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
+                    sc.exclude_layer_name = DRV[c_LayerName_Exclude].ToString();
+                    sc.exclude_area_field_index = (int)DRV[c_AreaFieldIndex_Exclude];
                     sc.conflict_num = (int)DRV[c_ConflictNumber];
-                    sc.pu_count = (int)DRV[c_TileCount];
+                    sc.pu_count = (int)DRV[c_PUCount];
 
                     l.Add(sc);
                 }
@@ -1456,19 +1456,80 @@ namespace NCC.PRZTools
 
                 if (SelectedConflict != null)
                 {
-                    ProMsgBox.Show("TODO: Select the planning units associated with this conflict");
+                    string LayerName_IN = SelectedConflict.include_layer_name;
+                    string LayerName_EX = SelectedConflict.exclude_layer_name;
 
-                    string IncludeLayer = SelectedConflict.include_layer_name;
-                    string ExcludeLayer = SelectedConflict.exclude_layer_name;
-                    
+                    int AreaFieldIndex_IN = SelectedConflict.include_area_field_index;
+                    int AreaFieldIndex_EX = SelectedConflict.exclude_area_field_index;
 
-                    ProMsgBox.Show("Included: " + IncludeLayer + Environment.NewLine + "Excluded: " + ExcludeLayer);
+                    ProMsgBox.Show("Include Index: " + AreaFieldIndex_IN.ToString() + "   Layer: " + LayerName_IN);
+                    ProMsgBox.Show("Exclude Index: " + AreaFieldIndex_EX.ToString() + "   Layer: " + LayerName_EX);
 
-                    // select all rows from the Status Info table where these fields have >0 areas
-                    // TODO: Finish this!
+                    // Query the Status Info table for all records (i.e. PUs) where field IN ix > 0 and field EX ix > 0
+                    // Save the PUIDs in a list
+
+                    List<int> PlanningUnitIDs = new List<int>();
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetStatusInfoTable())
+                        using (TableDefinition tDef = table.GetDefinition())
+                        {
+                            // Get the field names
+                            var fields = tDef.GetFields();
+                            string area_field_IN = fields[AreaFieldIndex_IN].Name;
+                            string area_field_EX = fields[AreaFieldIndex_EX].Name;
+
+                            ProMsgBox.Show("IN Field Name: " + area_field_IN + "    EX Field Name: " + area_field_EX);
+
+                            QueryFilter QF = new QueryFilter();
+                            QF.SubFields = PRZC.c_FLD_PUFC_ID + "," + area_field_IN + "," + area_field_EX;
+                            QF.WhereClause = area_field_IN + @" > 0 And " + area_field_EX + @" > 0";
+
+                            using (RowCursor rowCursor = table.Search(QF, false))
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                        PlanningUnitIDs.Add(puid);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // validate the number of PUIDs returned
+                    if (PlanningUnitIDs.Count == 0)
+                    {
+                        ProMsgBox.Show("No Planning Unit IDs retrieved.  That's very strange, there should be at least 1.  Ask JC about this.");
+                        return true;
+                    }
+
+                    // I now have a list of PUIDs.  I need to select the associated features in the PUFC
+                    Map map = MapView.Active.Map;
+
+                    await QueuedTask.Run(() =>
+                    {
+                        // Get the Planning Unit Feature Layer
+                        FeatureLayer featureLayer = PRZH.GetFeatureLayer_PU(map);
+
+                        // Clear Selection
+                        featureLayer.ClearSelection();
+
+                        // Build QueryFilter
+                        QueryFilter QF = new QueryFilter();
+                        string puid_list = string.Join(",", PlanningUnitIDs);
+                        QF.WhereClause = PRZC.c_FLD_PUFC_ID + " In (" + puid_list + ")";
+
+                        // Do the actual selection
+                        using (Selection selection = featureLayer.Select(QF, SelectionCombinationMethod.New))   // selection happens here
+                        {
+                            // do nothing?
+                        }
+                    });
                 }
-
-
 
                 return true;
             }
