@@ -14,5 +14,8 @@
     <Setting Name="COST_CONSTANT_VALUE" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
+    <Setting Name="COST_TABLE_IMPORT_PATH" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\TEMP</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

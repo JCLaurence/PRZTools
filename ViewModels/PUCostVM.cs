@@ -1,6 +1,7 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework;
@@ -87,6 +88,9 @@ namespace NCC.PRZTools
         private ICommand _cmdCalculateCost;
         public ICommand CmdCalculateCost => _cmdCalculateCost ?? (_cmdCalculateCost = new RelayCommand(() => CalculateCost(), () => true));
 
+        private ICommand _cmdImportTable;
+        public ICommand CmdImportTable => _cmdImportTable ?? (_cmdImportTable = new RelayCommand(() => ImportTable(), () => true));
+
 
 
         public ICommand cmdOK => new RelayCommand((paramProWin) =>
@@ -102,28 +106,6 @@ namespace NCC.PRZTools
             (paramProWin as ProWindow).DialogResult = false;
             (paramProWin as ProWindow).Close();
         }, () => true);
-
-        /*
-                // Validation: Ensure the Default Status Threshold is valid
-                string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
-
-                if (!double.TryParse(threshold_text, out double threshold_double))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
-                    return false;
-                }
-                else if (threshold_double < 0 | threshold_double > 100)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Threshold = " + threshold_text), true, ++val);
-                }
-         */
 
         #endregion
 
@@ -149,12 +131,215 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> ImportTable()
+        {
+            int val = 0;
+
+            try
+            {
+                string gdbpath = PRZH.GetProjectGDBPath();
+                string savedpath = Properties.Settings.Default.COST_TABLE_IMPORT_PATH;
+
+                string initDir = Directory.Exists(savedpath) ? savedpath : gdbpath;
+
+                OpenItemDialog dlg = new OpenItemDialog
+                {
+                    Title = "Cost Import: Select a Table or Feature Class",
+                    InitialLocation = initDir,
+                    MultiSelect = false,
+                    AlwaysUseInitialLocation = false,
+                    Filter = ItemFilters.composite_addToMap
+                };
+
+                bool? ok = dlg.ShowDialog();
+
+                if (ok == true)
+                {
+                    IEnumerable<Item> selitems = dlg.Items;
+                    Item i = selitems.First();
+
+                    if (i != null)
+                    {
+                        string s = "Item GetType.Name: " + i.GetType().Name + Environment.NewLine +
+                                   "Name of Item: " + i.Name + Environment.NewLine +
+                                   "Item Path: " + i.Path + Environment.NewLine +
+                                   "Item Physical Path: " + i.PhysicalPath + Environment.NewLine +
+                                   "Item Type: " + i.Type;
+                        ProMsgBox.Show(s);
+                    }
+                }
+                else
+                {
+                    ProMsgBox.Show("boo");
+                    return false;
+                }
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                return false;
+            }
+        }
+
         private async Task<bool> CalculateCost()
         {
             int val = 0;
 
             try
             {
+                // Initialize a few thingies
+                Map map = MapView.Active.Map;
+
+                // Initialize ProgressBar and Progress Log
+                int max = 50;
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Cost Calculator..."), false, max, ++val);
+
+                // Validation: Ensure the Project Geodatabase Exists
+                string gdbpath = PRZH.GetProjectGDBPath();
+                if (!await PRZH.ProjectGDBExists())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Project Geodatabase not found at this path:" +
+                                   Environment.NewLine +
+                                   gdbpath +
+                                   Environment.NewLine + Environment.NewLine +
+                                   "Please specify a valid Project Workspace.", "Validation");
+
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase is OK: " + gdbpath), true, ++val);
+                }
+
+                // Validation: Ensure the Planning Unit FC exists
+                string pufcpath = PRZH.GetPlanningUnitFCPath();
+                if (!await PRZH.PlanningUnitFCExists())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
+                }
+
+                // Determine the Cost Option specified by the user
+                if (ConstantCostIsChecked)
+                {
+                    // Validation: Ensure the Default Status Threshold is valid
+                    string constant_cost_text = string.IsNullOrEmpty(ConstantCost) ? "0" : ((ConstantCost.Trim() == "") ? "0" : ConstantCost.Trim());
+
+                    if (!double.TryParse(constant_cost_text, out double constant_cost_double))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Constant Cost value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Please specify a valid Constant Cost value.  Value must be a number greater than zero.", "Validation");
+                        return false;
+                    }
+                    else if (constant_cost_double <= 0)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Constant Cost value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Please specify a valid Constant Cost value.  Value must be a number greater than zero.", "Validation");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Constant Cost = " + constant_cost_text), true, ++val);
+                    }
+
+                    // Validation: Prompt User for permission to proceed
+                    if (ProMsgBox.Show("If you proceed, the contents of the Cost field in the Planning Unit Feature Class will be overwritten." +
+                       Environment.NewLine + Environment.NewLine +
+                       Environment.NewLine + Environment.NewLine +
+                       "Do you wish to proceed?" +
+                       Environment.NewLine + Environment.NewLine +
+                       "Choose wisely...",
+                       "COLUMN OVERWRITE WARNING",
+                       System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                       System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Cost Calculation."), true, ++val);
+                        return false;
+                    }
+
+                    // Update PUFC cost column with the constant value
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating FC: Setting cost = " + constant_cost_double.ToString() + " for all features."), true, ++val);
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                        using (RowCursor rowCursor = featureClass.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    row[PRZC.c_FLD_PUFC_COST] = constant_cost_double;
+                                    row.Store();
+                                }
+                            }
+                        }
+                    });
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost updated successfully."), true, ++val);
+                    ProMsgBox.Show("Cost Updated Successfully");
+                }
+                else if (AreaCostIsChecked)
+                {
+                    // Validation: Prompt User for permission to proceed
+                    if (ProMsgBox.Show("If you proceed, the contents of the Cost field in the Planning Unit Feature Class will be overwritten." +
+                       Environment.NewLine + Environment.NewLine +
+                       Environment.NewLine + Environment.NewLine +
+                       "Do you wish to proceed?" +
+                       Environment.NewLine + Environment.NewLine +
+                       "Choose wisely...",
+                       "COLUMN OVERWRITE WARNING",
+                       System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                       System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Cost Calculation."), true, ++val);
+                        return false;
+                    }
+
+                    // Update PUFC cost column with the area value of the feature's geometry
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating FC: Setting cost = area for all features."), true, ++val);
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                        using (RowCursor rowCursor = featureClass.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Feature feature = (Feature)rowCursor.Current)
+                                {
+                                    Polygon p = (Polygon)feature.GetShape();
+                                    double area = p.Area;
+
+                                    feature[PRZC.c_FLD_PUFC_COST] = area;
+                                    feature.Store();
+                                }
+                            }
+                        }
+                    });
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost updated successfully."), true, ++val);
+                    ProMsgBox.Show("Cost Updated Successfully");
+                }
+                else if (ImportCostIsChecked)
+                {
+                    ProMsgBox.Show("Still working on this one...");
+
+                }
+                else
+                {
+                    return false;
+                }
+
+
+
 
                 return true;
             }

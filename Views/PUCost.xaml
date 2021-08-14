@@ -33,21 +33,21 @@
                 <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" >
                     <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Set the Planning Unit Cost</TextBlock>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdCostOption}" IsChecked="{Binding ConstantCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Constant Cost Value:</RadioButton>
-                        <TextBox Text="{Binding ConstantCost}" Margin="5" Width="40" DockPanel.Dock="Left"></TextBox>
+                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdConstantOption}" IsChecked="{Binding ConstantCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Constant Cost Value:</RadioButton>
+                        <TextBox IsEnabled="{Binding ConstantCostIsChecked}" HorizontalContentAlignment="Right" Text="{Binding ConstantCost}" Margin="5" Width="50" DockPanel.Dock="Left"></TextBox>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdCostOption}" IsChecked="{Binding AreaCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Planning Unit Area</RadioButton>
+                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdAreaOption}" IsChecked="{Binding AreaCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Planning Unit Area</RadioButton>
                     </DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdCostOption}" IsChecked="{Binding ImportCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Top">Import Cost from Table</RadioButton>
+                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdImportOption}" IsChecked="{Binding ImportCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Top">Import Cost from Table</RadioButton>
                         <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                            <Button Margin="40, 5, 5, 5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdImportTable}">
-                                <Image Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/Table32.png" Stretch="None" />
+                            <Button Margin="40, 5, 5, 5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdImportTable}" IsEnabled="{Binding ImportCostIsChecked}">
+                                <Image IsEnabled="{Binding ImportCostIsChecked}" Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/Table32.png" Stretch="None" />
                             </Button>
-                            <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Left">Import Table</TextBlock>
+                            <TextBlock IsEnabled="{Binding ImportCostIsChecked}" Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Left">Import Table</TextBlock>
                         </DockPanel>
-                        <TextBlock Margin="40, 5, 5, 5" Text="{Binding ImportTablePath}" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Bottom"></TextBlock>
+                        <TextBlock IsEnabled="{Binding ImportCostIsChecked}" Margin="40, 5, 5, 5" Text="{Binding ImportTablePath}" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Bottom"></TextBlock>
                     </DockPanel>
                 </DockPanel>
             </Border>

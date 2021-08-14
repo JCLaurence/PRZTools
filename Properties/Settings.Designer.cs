@@ -70,5 +70,17 @@ namespace NCC.PRZTools.Properties {
                 this["COST_CONSTANT_VALUE"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\TEMP")]
+        public string COST_TABLE_IMPORT_PATH {
+            get {
+                return ((string)(this["COST_TABLE_IMPORT_PATH"]));
+            }
+            set {
+                this["COST_TABLE_IMPORT_PATH"] = value;
+            }
+        }
     }
 }
