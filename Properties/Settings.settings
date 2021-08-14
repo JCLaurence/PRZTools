@@ -11,5 +11,8 @@
     <Setting Name="DEFAULT_STATUS_THRESHOLD" Type="System.String" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
+    <Setting Name="COST_CONSTANT_VALUE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

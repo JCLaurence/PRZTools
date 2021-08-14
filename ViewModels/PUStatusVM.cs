@@ -73,31 +73,6 @@ namespace NCC.PRZTools
             get => _selectedOverrideOption; set => SetProperty(ref _selectedOverrideOption, value, () => SelectedOverrideOption);
         }
 
-
-        private int _barMax;
-        public int BarMax
-        {
-            get => _barMax; set => SetProperty(ref _barMax, value, () => BarMax);
-        }
-
-        private int _barMin;
-        public int BarMin
-        {
-            get => _barMin; set => SetProperty(ref _barMin, value, () => BarMin);
-        }
-
-        private int _barValue;
-        public int BarValue
-        {
-            get => _barValue; set => SetProperty(ref _barValue, value, () => BarValue);
-        }
-
-        private string _barMessage;
-        public string BarMessage
-        {
-            get => _barMessage; set => SetProperty(ref _barMessage, value, () => BarMessage);
-        }
-
         private string _conflictGridCaption;
         public string ConflictGridCaption
         {
@@ -368,7 +343,6 @@ namespace NCC.PRZTools
 
         private async Task<bool> CalculateStatus()
         {
-            CancelableProgressorSource cps = null;  // use this for QueuedTask.Run tasks that take a while.  Otherwise, just use the progressbar on the window
             int val = 0;
 
             try
@@ -922,11 +896,6 @@ namespace NCC.PRZTools
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
                 return false;
-            }
-            finally
-            {
-                if (cps != null)
-                    cps.Dispose();
             }
         }
 
@@ -1643,10 +1612,6 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Event Handlers
-
-
-        #endregion
 
     }
 }

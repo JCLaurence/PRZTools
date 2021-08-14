@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Planning Unit Status Calculator"
-    Height="500" Width="600" MinHeight="500" MinWidth="600"
+    Height="400" Width="500" MinHeight="400" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUStatus.ico" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
@@ -31,22 +31,24 @@
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
             <Border Grid.Row="0" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
-                <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" >
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
-                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdCalculateStatus}">
-                            <Image Margin="2" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus16.png" Stretch="None" />
-                        </Button>
-                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Calculate the Planning Unit Status</TextBlock>
-                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdDeleteStatusInfoTable}">
-                            <Image Margin="2" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus16.png" Stretch="None" />
-                        </Button>
-                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Delete Planning Unit Status Info</TextBlock>
-                    </DockPanel>
+                <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" LastChildFill="False">
                     <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0">
                         <TextBlock DockPanel.Dock="Left" Margin="5" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Constraint Threshold:</TextBlock>
                         <TextBox Text="{Binding DefaultThreshold}" Margin="5" Width="30" DockPanel.Dock="Left"></TextBox>
                         <TextBlock DockPanel.Dock="Left" Margin="5" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Conflict Override: </TextBlock>
                         <ComboBox Width="110" Margin="5,3,5,3" DockPanel.Dock="Left" ItemsSource="{Binding OverrideOptions}" SelectedItem="{Binding SelectedOverrideOption}" ></ComboBox>
+                    </DockPanel>
+                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
+                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdCalculateStatus}">
+                            <Image Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus32.png" Stretch="None" />
+                        </Button>
+                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Calculate the Planning Unit Status</TextBlock>
+                    </DockPanel>
+                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
+                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdDeleteStatusInfoTable}">
+                            <Image Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/TableDelete32.png" Stretch="None" />
+                        </Button>
+                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Delete Planning Unit Status Info</TextBlock>
                     </DockPanel>
                 </DockPanel>
             </Border>

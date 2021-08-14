@@ -366,6 +366,30 @@
     <Resource Include="ImagesWPF\Legend16.png" />
     <Resource Include="ImagesWPF\Legend32.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Table16.png" />
+    <Resource Include="ImagesWPF\Table32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\Table16.png" />
+    <AddInContent Include="Images\Table32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\Table16.png" />
+    <AddInContent Include="DarkImages\Table32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\TableDelete16.png" />
+    <Resource Include="ImagesWPF\TableDelete32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\TableDelete16.png" />
+    <AddInContent Include="Images\TableDelete32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\TableDelete16.png" />
+    <AddInContent Include="DarkImages\TableDelete32.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

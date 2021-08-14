@@ -1750,14 +1750,12 @@ namespace NCC.PRZTools
                     SymbolTemplate = fillSym.MakeSymbolReference()
                 };
 
-                // Create the renderer
-                CIMSimpleRenderer rend = await QueuedTask.Run(() =>
+                // Create and set the renderer
+                await QueuedTask.Run(() =>
                 {
-                    return (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
+                    CIMSimpleRenderer rend = (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
+                    FL.SetRenderer(rend);
                 });
-
-                // apply it
-                FL.SetRenderer(rend);
 
                 return true;
             }
@@ -1777,8 +1775,8 @@ namespace NCC.PRZTools
                 // COLORS
                 CIMColor outlineColor = GetRGBColor(60, 60, 60); // dark greyish?   // outline color for all 3 poly symbols
                 CIMColor fillColor_Available = GetNamedColor(Color.Bisque);
-                CIMColor fillColor_Include = GetNamedColor(Color.DarkOrchid);
-                CIMColor fillColor_Exclude = GetNamedColor(Color.LawnGreen);
+                CIMColor fillColor_Include = GetNamedColor(Color.GreenYellow);
+                CIMColor fillColor_Exclude = GetNamedColor(Color.OrangeRed);
 
                 // SYMBOLS
                 CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
@@ -1839,7 +1837,10 @@ namespace NCC.PRZTools
 
                 };
 
-                FL.SetRenderer(UVRend);
+                await QueuedTask.Run(() =>
+                {
+                    FL.SetRenderer(UVRend);
+                });
 
                 return true;
             }

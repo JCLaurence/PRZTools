@@ -58,5 +58,17 @@ namespace NCC.PRZTools.Properties {
                 this["DEFAULT_STATUS_THRESHOLD"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public string COST_CONSTANT_VALUE {
+            get {
+                return ((string)(this["COST_CONSTANT_VALUE"]));
+            }
+            set {
+                this["COST_CONSTANT_VALUE"] = value;
+            }
+        }
     }
 }
