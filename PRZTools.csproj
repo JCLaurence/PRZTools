@@ -122,6 +122,7 @@
   <ItemGroup>
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
+    <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Status.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />

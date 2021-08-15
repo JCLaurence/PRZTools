@@ -85,6 +85,12 @@ namespace NCC.PRZTools
 
         #region Commands
 
+        private ICommand _cmdClearLog;
+        public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
+        {
+            PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+        }, () => true));
+
         private ICommand _cmdCalculateCost;
         public ICommand CmdCalculateCost => _cmdCalculateCost ?? (_cmdCalculateCost = new RelayCommand(() => CalculateCost(), () => true));
 
@@ -138,22 +144,32 @@ namespace NCC.PRZTools
             try
             {
                 string gdbpath = PRZH.GetProjectGDBPath();
-                string savedpath = Properties.Settings.Default.COST_TABLE_IMPORT_PATH;
 
-                string initDir = Directory.Exists(savedpath) ? savedpath : gdbpath;
+                BrowseProjectFilter bf = new BrowseProjectFilter
+                {
+                    Name = "Tables and Feature Classes"
+                };
+
+                // Tables or Feature Classes
+                bf.AddCanBeFlag(BrowseProjectFilter.FilterFlag.Table);
+                bf.AddCanBeFlag(BrowseProjectFilter.FilterFlag.FeatureClass);
+
+                bf.Includes.Add("FolderConnection");
+                bf.Includes.Add("GDB");
+                bf.Excludes.Add("esri_browsePlaces_Online");
 
                 OpenItemDialog dlg = new OpenItemDialog
                 {
                     Title = "Cost Import: Select a Table or Feature Class",
-                    InitialLocation = initDir,
+                    InitialLocation = gdbpath,
                     MultiSelect = false,
                     AlwaysUseInitialLocation = false,
-                    Filter = ItemFilters.composite_addToMap
+                    BrowseFilter = bf
                 };
 
                 bool? ok = dlg.ShowDialog();
 
-                if (ok == true)
+                if (ok == true && dlg.Items.Count() > 0)
                 {
                     IEnumerable<Item> selitems = dlg.Items;
                     Item i = selitems.First();
