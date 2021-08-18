@@ -62,12 +62,32 @@ namespace NCC.PRZTools
             set => SetProperty(ref _dsPath, value, () => DSPath);
         }
 
+        private string _dsType;
+        public string DSType
+        {
+            get => _dsType;
+            set => SetProperty(ref _dsType, value, () => DSType);
+        }
+
+        private string _headerText;
+        public string HeaderText
+        {
+            get => _headerText;
+            set => SetProperty(ref _headerText, value, () => HeaderText);
+        }
 
         private List<string> _numericFields;
         public List<string> NumericFields
         {
             get => _numericFields;
             set => SetProperty(ref _numericFields, value, () => NumericFields);
+        }
+
+        private List<string> _intFields;
+        public List<string> IntFields
+        {
+            get => _intFields;
+            set => SetProperty(ref _intFields, value, () => IntFields);
         }
 
         private string _selectedPUIDField;
@@ -117,12 +137,6 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        //private ICommand _cmdCalculateCost;
-        //public ICommand CmdCalculateCost => _cmdCalculateCost ?? (_cmdCalculateCost = new RelayCommand(() => CalculateCost(), () => true));
-
-        private ICommand _cmdTest;
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
-
 
         public ICommand CmdOK => new RelayCommand((paramProWin) =>
         {
@@ -152,7 +166,7 @@ namespace NCC.PRZTools
         {
             try
             {
-
+                HeaderText = DSName + " " + DSType;
             }
             catch (Exception ex)
             {
@@ -160,35 +174,6 @@ namespace NCC.PRZTools
             }
         }
 
-        public void Test()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(SelectedPUIDField))
-                {
-                    ProMsgBox.Show("PUID Null Or Empty");
-                }
-                else
-                {
-                    ProMsgBox.Show("PUID: " + SelectedPUIDField);
-                }
-
-                if (string.IsNullOrEmpty(SelectedCostField))
-                {
-                    ProMsgBox.Show("Cost Null Or Empty");
-                }
-                else
-                {
-                    ProMsgBox.Show("Cost: " + SelectedCostField);
-                }
-
-
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
 
         private void ReviewOKEnabled()
         {

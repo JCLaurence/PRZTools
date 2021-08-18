@@ -196,13 +196,13 @@ namespace NCC.PRZTools
                     return false;
                 }
 
-                Dataset DS = null;
                 bool IsOK = false;
-                bool IsFC = false;
 
                 List<string> LIST_NumericFieldNames = new List<string>();
+                List<string> LIST_IntFieldNames = new List<string>();
                 string DSName = "";
                 string DSPath = "";
+                string DSType = "";
 
                 await QueuedTask.Run(() =>
                 {
@@ -214,13 +214,14 @@ namespace NCC.PRZTools
                         if (ds is Table)
                         {
                             IsOK = true;
+                            DSType = "Table";
                         }
 
                         // Is it a Feature Class?
                         if (ds is FeatureClass)
                         {
                             IsOK = true;
-                            IsFC = true;
+                            DSType = "Feature Class";
                         }
 
                         if (IsOK)
@@ -236,6 +237,14 @@ namespace NCC.PRZTools
                             {
                                 LIST_NumericFieldNames.Add(fld.Name);
                             }
+
+                            List<Field> intFields = tDef.GetFields().Where(f => f.FieldType == FieldType.Integer
+                                                | f.FieldType == FieldType.SmallInteger).ToList();
+
+                            foreach (Field fld in intFields) using (fld)
+                                {
+                                    LIST_IntFieldNames.Add(fld.Name);
+                                }
                         }
                     }
                 });
@@ -245,9 +254,9 @@ namespace NCC.PRZTools
                     ProMsgBox.Show("Selected Item is not a Geodatabase Table or Geodatabase Feature Class");
                     return false;
                 }
-                else if (LIST_NumericFieldNames.Count == 0)
+                else if (LIST_NumericFieldNames.Count == 0 | LIST_IntFieldNames.Count == 0)
                 {
-                    ProMsgBox.Show("Selected Dataset has NO numeric attribute fields outside of the OID or FeatureID fields."
+                    ProMsgBox.Show("Selected Dataset doesn't have required numeric attribute fields outside of the OID or FeatureID fields."
                                     + Environment.NewLine + Environment.NewLine +
                                    "Numeric Fields are required to map Planning Unit ID and Cost values.");
                     return false;
@@ -255,21 +264,8 @@ namespace NCC.PRZTools
                 else
                 {
                     LIST_NumericFieldNames.Sort();
+                    LIST_IntFieldNames.Sort();
                 }
-
-                // The User has selected a valid GDB Table or FC.
-                // Next steps:
-                // 1. Prompt the user to specify the PU ID and Cost fields
-                //      - PU ID field must be int/long/double
-                //      - Cost field must be int/double (basically, numeric values > 0)
-                // 2. Retrieve a Dictionary of PU FC ID -> Cost Values
-                //      - this will tell me
-                //          a) how many rows/features to look for
-                //          b) exact ID values to match
-                // 3. Retrieve a dictionary of DS ID -> Cost values
-                // 4. Compare DICTs:
-                //      - ensure that for each PU ID in PUFC, there is a matching PU ID in DS
-                //      
 
                 #region Configure and Show the CostImportFields Dialog
 
@@ -280,9 +276,11 @@ namespace NCC.PRZTools
 
                 CostImportFieldsVM vm = (CostImportFieldsVM)CIFdlg.DataContext;    // View Model
                 vm.NumericFields = LIST_NumericFieldNames;
+                vm.IntFields = LIST_IntFieldNames;
                 vm.CostParent = this;
                 vm.DSName = DSName;
                 vm.DSPath = DSPath;
+                vm.DSType = DSType;
 
 
                 // Closed Event Handler
@@ -306,19 +304,105 @@ namespace NCC.PRZTools
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!
 
-                ProMsgBox.Show("Result is: " + (result.HasValue ? result.ToString() : "null"));
-
-                if (result == true)
+                if (!result.HasValue || result == false)
                 {
-                    ProMsgBox.Show("PUID Field Name: " + ImportFieldPUID + Environment.NewLine + Environment.NewLine +
-                                   "Cost Field Name: " + ImportFieldCost);
-                }
-                else
-                {
-                    ProMsgBox.Show("User Cancelled or something weird happened");
+                    // Cancelled by user
                     return false;
                 }
+
                 #endregion
+
+                // User has now specified the PUID and Cost fields from their selected Dataset
+
+                // Next, I must do a lot of validation on the contents of the selected Dataset
+                // 1. Get a Dictionary of PUID => Cost from the PU FC
+                // 2. Get the same Dictionary from the Dataset
+                // 3. Validate the Dataset:
+                //      - NULL, zero, or <0 values in the PUID column?
+                //      - DUPLICATE values in PUID column?
+                //      - or...
+                //      - DUPLICATE values in PUID column having different COST values? Definitely check for this one, especially where PUID is also in PU FC
+                //
+                //      - Null, zero, or <0 values in the COST column?
+                //      
+                // 4. Comparison Validation
+                //      - For each PUID in PU FC, a matching PUID in Dataset? not necessarily a requirement (ie. update only some of the planning units
+                //      - 
+
+
+                //if (result == true)
+                //{
+                //    ProMsgBox.Show("PUID Field Name: " + ImportFieldPUID + Environment.NewLine + Environment.NewLine +
+                //                   "Cost Field Name: " + ImportFieldCost);
+                //}
+
+                // Configure Dictionaries
+                Dictionary<int, double> DICT_PUFC_PUID_and_cost = new Dictionary<int, double>();    // (PUID => Cost) from the Planning Unit FC
+                Dictionary<int, double> DICT_DS_PUID_and_cost = new Dictionary<int, double>();    // (PUID => Cost) from the Dataset
+
+                // Populate the PUFC dictionary
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Planning Unit Feature Class..."), true, ++val);
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetPlanningUnitFC())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                double cost = (double)row[PRZC.c_FLD_PUFC_COST];
+
+                                DICT_PUFC_PUID_and_cost.Add(puid, cost);
+                            }
+                        }
+                    }
+                });
+
+                // Populate the Dataset dictionary
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Import Dataset: " + DSName), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    using (Table table = (Table)GDBItemHelper.GetDatasetFromItem(item))
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                object puid_obj = row[ImportFieldPUID];
+                                object cost_obj = row[ImportFieldCost];
+
+                                // I'm here!!
+
+                                int puid = (int)row[ImportFieldPUID];
+                                double cost = (double)row[ImportFieldCost];
+
+                                DICT_DS_PUID_and_cost.Add(puid, cost);
+                            }
+                        }
+                    }
+                });
+
+                // Validate the Dataset Dictionary
+                int minPUID = 0;
+                int maxPUID = 0;
+                int nullCountPUID = 0;
+
+                int minCost = 0;
+                int maxCost = 0;
+                int nullCountCost = 0;
+
+                var PUFCKeys = DICT_PUFC_PUID_and_cost.Keys.ToList();
+                var DSKeys = DICT_DS_PUID_and_cost.Keys.ToList();
+
+                minPUID = PUFCKeys.Min();
+                maxPUID = PUFCKeys.Max();
+                nullCountPUID = PUFCKeys.Where(x => x)
+
+
+
 
                 return true;
             }
