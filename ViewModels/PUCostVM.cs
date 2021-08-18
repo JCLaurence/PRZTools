@@ -22,6 +22,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
@@ -42,6 +43,21 @@ namespace NCC.PRZTools
         #endregion
 
         #region Properties
+
+        private string _importFieldPUID;
+        public string ImportFieldPUID
+        {
+            get => _importFieldPUID;
+            set => SetProperty(ref _importFieldPUID, value, () => ImportFieldPUID);
+        }
+
+        private string _importFieldCost;
+        public string ImportFieldCost
+        {
+            get => _importFieldCost;
+            set => SetProperty(ref _importFieldCost, value, () => ImportFieldCost);
+        }
+
 
         private string _constantCost = Properties.Settings.Default.COST_CONSTANT_VALUE;
         public string ConstantCost
@@ -169,27 +185,140 @@ namespace NCC.PRZTools
 
                 bool? ok = dlg.ShowDialog();
 
-                if (ok == true && dlg.Items.Count() > 0)
+                if (!ok.HasValue || dlg.Items.Count() == 0)
                 {
-                    IEnumerable<Item> selitems = dlg.Items;
-                    Item i = selitems.First();
-
-                    if (i != null)
-                    {
-                        string s = "Item GetType.Name: " + i.GetType().Name + Environment.NewLine +
-                                   "Name of Item: " + i.Name + Environment.NewLine +
-                                   "Item Path: " + i.Path + Environment.NewLine +
-                                   "Item Physical Path: " + i.PhysicalPath + Environment.NewLine +
-                                   "Item Type: " + i.Type;
-                        ProMsgBox.Show(s);
-                    }
-                }
-                else
-                {
-                    ProMsgBox.Show("boo");
                     return false;
                 }
 
+                Item item = dlg.Items.First();
+                if (item == null)
+                {
+                    return false;
+                }
+
+                Dataset DS = null;
+                bool IsOK = false;
+                bool IsFC = false;
+
+                List<string> LIST_NumericFieldNames = new List<string>();
+                string DSName = "";
+                string DSPath = "";
+
+                await QueuedTask.Run(() =>
+                {
+                    using (Dataset ds = GDBItemHelper.GetDatasetFromItem(item))
+                    {
+                        DSName = ds.GetName();
+                        DSPath = ds.GetPath().AbsolutePath;
+                        // Is it a table?
+                        if (ds is Table)
+                        {
+                            IsOK = true;
+                        }
+
+                        // Is it a Feature Class?
+                        if (ds is FeatureClass)
+                        {
+                            IsOK = true;
+                            IsFC = true;
+                        }
+
+                        if (IsOK)
+                        {
+                            Table table = (Table)ds;
+                            TableDefinition tDef = table.GetDefinition();
+                            List<Field> numericFields = tDef.GetFields().Where(f => f.FieldType == FieldType.Double
+                                                                            | f.FieldType == FieldType.Integer
+                                                                            | f.FieldType == FieldType.Single
+                                                                            | f.FieldType == FieldType.SmallInteger).ToList();
+
+                            foreach (Field fld in numericFields) using (fld)
+                            {
+                                LIST_NumericFieldNames.Add(fld.Name);
+                            }
+                        }
+                    }
+                });
+
+                if (!IsOK)
+                {
+                    ProMsgBox.Show("Selected Item is not a Geodatabase Table or Geodatabase Feature Class");
+                    return false;
+                }
+                else if (LIST_NumericFieldNames.Count == 0)
+                {
+                    ProMsgBox.Show("Selected Dataset has NO numeric attribute fields outside of the OID or FeatureID fields."
+                                    + Environment.NewLine + Environment.NewLine +
+                                   "Numeric Fields are required to map Planning Unit ID and Cost values.");
+                    return false;
+                }
+                else
+                {
+                    LIST_NumericFieldNames.Sort();
+                }
+
+                // The User has selected a valid GDB Table or FC.
+                // Next steps:
+                // 1. Prompt the user to specify the PU ID and Cost fields
+                //      - PU ID field must be int/long/double
+                //      - Cost field must be int/double (basically, numeric values > 0)
+                // 2. Retrieve a Dictionary of PU FC ID -> Cost Values
+                //      - this will tell me
+                //          a) how many rows/features to look for
+                //          b) exact ID values to match
+                // 3. Retrieve a dictionary of DS ID -> Cost values
+                // 4. Compare DICTs:
+                //      - ensure that for each PU ID in PUFC, there is a matching PU ID in DS
+                //      
+
+                #region Configure and Show the CostImportFields Dialog
+
+                CostImportFields CIFdlg = new CostImportFields
+                {
+                    Owner = FrameworkApplication.Current.MainWindow
+                };                                                                  // View
+
+                CostImportFieldsVM vm = (CostImportFieldsVM)CIFdlg.DataContext;    // View Model
+                vm.NumericFields = LIST_NumericFieldNames;
+                vm.CostParent = this;
+                vm.DSName = DSName;
+                vm.DSPath = DSPath;
+
+
+                // Closed Event Handler
+                CIFdlg.Closed += (o, e) =>
+                {
+                    // Event Handler for Dialog close in case I need to do things...
+                    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+                };
+
+                // Loaded Event Handler
+                CIFdlg.Loaded += (sender, e) =>
+                {
+                    if (vm != null)
+                    {
+                        vm.OnProWinLoaded();
+                    }
+                };
+
+                bool? result = CIFdlg.ShowDialog();
+
+                // Take whatever action required here once the dialog is close (true or false)
+                // do stuff here!
+
+                ProMsgBox.Show("Result is: " + (result.HasValue ? result.ToString() : "null"));
+
+                if (result == true)
+                {
+                    ProMsgBox.Show("PUID Field Name: " + ImportFieldPUID + Environment.NewLine + Environment.NewLine +
+                                   "Cost Field Name: " + ImportFieldCost);
+                }
+                else
+                {
+                    ProMsgBox.Show("User Cancelled or something weird happened");
+                    return false;
+                }
+                #endregion
 
                 return true;
             }

@@ -123,6 +123,11 @@
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
+    <Compile Include="ViewModels\CostImportFieldsVM.cs" />
+    <Compile Include="Views\CostImportFields.xaml.cs">
+      <DependentUpon>CostImportFields.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\ShowCostImportFields.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Status.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
@@ -202,6 +207,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\ConservationFeatures.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\CostImportFields.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
