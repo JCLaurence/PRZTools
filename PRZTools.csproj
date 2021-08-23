@@ -127,7 +127,6 @@
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ShowCostImportFields.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Status.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />

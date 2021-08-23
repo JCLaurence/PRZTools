@@ -183,9 +183,9 @@ namespace NCC.PRZTools
                     BrowseFilter = bf
                 };
 
-                bool? ok = dlg.ShowDialog();
+                bool? result1 = dlg.ShowDialog();
 
-                if (!ok.HasValue || dlg.Items.Count() == 0)
+                if (!result1.HasValue || !result1.Value || dlg.Items.Count() == 0)
                 {
                     return false;
                 }
@@ -299,12 +299,12 @@ namespace NCC.PRZTools
                     }
                 };
 
-                bool? result = CIFdlg.ShowDialog();
+                bool? result2 = CIFdlg.ShowDialog();
 
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!
 
-                if (!result.HasValue || result == false)
+                if (!result2.HasValue || result2.Value == false)
                 {
                     // Cancelled by user
                     return false;
@@ -338,7 +338,11 @@ namespace NCC.PRZTools
 
                 // Configure Dictionaries
                 Dictionary<int, double> DICT_PUFC_PUID_and_cost = new Dictionary<int, double>();    // (PUID => Cost) from the Planning Unit FC
-                Dictionary<int, double> DICT_DS_PUID_and_cost = new Dictionary<int, double>();    // (PUID => Cost) from the Dataset
+                Dictionary<int, double?> DICT_DS_PUID_and_cost = new Dictionary<int, double?>();    // (PUID => Cost) from the Dataset
+                List<int> LIST_DS_PUID_multiple_costs = new List<int>();
+
+                int nullDSPUIDCount = 0;
+                int nullDSCostCount = 0;
 
                 // Populate the PUFC dictionary
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Planning Unit Feature Class..."), true, ++val);
@@ -371,38 +375,122 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                object puid_obj = row[ImportFieldPUID];
-                                object cost_obj = row[ImportFieldCost];
+                                int? puid_nullable = (int?)row[ImportFieldPUID];
+                                double? cost_nullable = (double?)row[ImportFieldCost];
 
-                                // I'm here!!
+                                // If PUID is null, skip this row
+                                if (!puid_nullable.HasValue)
+                                {
+                                    nullDSPUIDCount++;
+                                    continue;
+                                }
 
-                                int puid = (int)row[ImportFieldPUID];
-                                double cost = (double)row[ImportFieldCost];
+                                int puid = puid_nullable.Value;
 
-                                DICT_DS_PUID_and_cost.Add(puid, cost);
+                                if (DICT_DS_PUID_and_cost.ContainsKey(puid))
+                                {
+                                    double? existing_cost = DICT_DS_PUID_and_cost[puid];
+
+                                    if (!cost_nullable.Equals(existing_cost))
+                                    {
+                                        LIST_DS_PUID_multiple_costs.Add(puid);
+                                    }
+                                }
+                                else
+                                {
+                                    DICT_DS_PUID_and_cost.Add(puid, cost_nullable);
+                                }
                             }
                         }
                     }
                 });
 
-                // Validate the Dataset Dictionary
-                int minPUID = 0;
-                int maxPUID = 0;
-                int nullCountPUID = 0;
-
-                int minCost = 0;
-                int maxCost = 0;
-                int nullCountCost = 0;
-
+                // Review the PU FC Dictionary (Do I need to do this?)
                 var PUFCKeys = DICT_PUFC_PUID_and_cost.Keys.ToList();
+                var PUFCValues = DICT_PUFC_PUID_and_cost.Values.ToList();
+
+                int PUFC_minPUID = PUFCKeys.Min();  // should be 1
+                int PUFC_maxPUID = PUFCKeys.Max();
+                int PUFC_Count = PUFCKeys.Count;
+                double PUFC_minCost = PUFCValues.Min();
+                double PUFC_maxCost = PUFCValues.Max();
+
+                // Review the DS Dictionary (Definitely need to do this!)
                 var DSKeys = DICT_DS_PUID_and_cost.Keys.ToList();
+                var DSValues = DICT_DS_PUID_and_cost.Values.ToList();
 
-                minPUID = PUFCKeys.Min();
-                maxPUID = PUFCKeys.Max();
-                nullCountPUID = PUFCKeys.Where(x => x)
+                int DS_minPUID = DSKeys.Min();
+                int DS_maxPUID = DSKeys.Max();
+                int DS_Count = DSKeys.Count;
+                double DS_minCost = DSValues.Min().GetValueOrDefault();
+                double DS_maxCost = DSValues.Max().GetValueOrDefault();
 
+                // I need to fill a dictionary of PUID => cost values that I will use to
+                // update PU FC cost field.
 
+                // Only PUIDs existing in both DICT can be added.
+                Dictionary<int, double> DICT_Updator = new Dictionary<int, double>();
 
+                foreach(var kvp in DICT_PUFC_PUID_and_cost)
+                {
+                    int puid = kvp.Key;
+                    
+                    if (DICT_DS_PUID_and_cost.ContainsKey(puid))
+                    {
+                        double c = DICT_DS_PUID_and_cost[puid].GetValueOrDefault();
+                        DICT_Updator.Add(puid, c);
+                    }
+                }
+
+                // Verify that at least 1 KVP was added to dict
+                if (DICT_Updator.Count == 0)
+                {
+                    ProMsgBox.Show("No matching PUID values were found in the specified Dataset...");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Specified Dataset has no matching Planning Unit ID values.  Ending import.", LogMessageType.ERROR), true, ++val);
+                    return false;
+                }
+
+                // Prompt User to proceed or cancel
+                string match_count = (DICT_Updator.Count == 1) ? "1 matching planning unit ID found." : DICT_Updator.Count.ToString() + " matching planning unit IDs found.";
+                if (ProMsgBox.Show(match_count +
+                   Environment.NewLine + Environment.NewLine +
+                   "Click OK to update the Planning Unit Feature Class cost field with matching values." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "FIELD CALCULATE WARNING",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Cost Import Process."), true, ++val);
+                    return false;
+                }
+
+                // Do the update
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating FC: Setting cost value for {DICT_Updator.Count} feature(s)."), true, ++val);
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                    using (RowCursor rowCursor = featureClass.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+
+                                if (DICT_Updator.ContainsKey(puid))
+                                {
+                                    row[PRZC.c_FLD_PUFC_COST] = DICT_Updator[puid];
+                                    row.Store();
+                                }
+                            }
+                        }
+                    }
+                });
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost values successfully imported."), true, ++val);
+                ProMsgBox.Show("Cost Imported Successfully");
 
                 return true;
             }

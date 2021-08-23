@@ -27,7 +27,6 @@
           <button refID="prz_button_pucost" size="large" />
           <button refID="prz_button_boundarylengths" size="large" />
           <button refID="prz_button_conservationfeatures" size="large" />
-          <button refID="NCC_PRZTools_Views_CostImportFields" size="large" />
         </group>
         <group id="prz_group_output" caption="Output" keytip="z">
           <menu refID="prz_menu_legends" size="large" />
@@ -68,9 +67,6 @@
         </button>
         <button id="prz_button_legend_pu_cf_count" keytip="z" caption="Planning Units - Conservation Feature Count" className="Button_Legend_PU_CFCount" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
-        </button>
-        <button id="NCC_PRZTools_Views_CostImportFields" caption="CostImportFields" className="NCC.PRZTools.Views.ShowCostImportFields" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonPurple32.png">
-          <tooltip heading="Tooltip Heading">Tooltip text<disabledText /></tooltip>
         </button>
       </controls>
       <menus>

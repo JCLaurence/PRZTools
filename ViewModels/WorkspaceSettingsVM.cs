@@ -14,31 +14,33 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
-using MsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
-using PRZH = NCC.PRZTools.PRZHelper;
+using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
+using PRZH = NCC.PRZTools.PRZHelper;
 
 namespace NCC.PRZTools
 {
     public class WorkspaceSettingsVM : PropertyChangedBase
     {
-
         public WorkspaceSettingsVM()
         {
         }
+
+        #region Fields
+
+        #endregion
 
         #region Properties
 
         private string _currentWorkspacePath = Properties.Settings.Default.WORKSPACE_PATH;
         public string CurrentWorkspacePath
         {
-            get { return _currentWorkspacePath; }
+            get => _currentWorkspacePath;
             set
             {
                 SetProperty(ref _currentWorkspacePath, value, () => CurrentWorkspacePath);
-                Properties.Settings.Default.WORKSPACE_PATH = _currentWorkspacePath;
+                Properties.Settings.Default.WORKSPACE_PATH = value;
                 Properties.Settings.Default.Save();
             }
         }
@@ -46,80 +48,53 @@ namespace NCC.PRZTools
         private string _workspaceContents;
         public string WorkspaceContents
         {
-            get { return _workspaceContents; }
-            set
-            {
-                SetProperty(ref _workspaceContents, value, () => WorkspaceContents);
-            }
+            get => _workspaceContents;
+            set => SetProperty(ref _workspaceContents, value, () => WorkspaceContents);
         }
 
         private bool _folderChecked;
         public bool FolderChecked
         {
-            get { return _folderChecked; }
-            set
-            {
-                SetProperty(ref _folderChecked, value, () => FolderChecked);
-            }
+            get => _folderChecked;
+            set => SetProperty(ref _folderChecked, value, () => FolderChecked);
         }
 
         private bool _geodatabaseChecked;
         public bool GeodatabaseChecked
         {
-            get { return _geodatabaseChecked; }
-            set
-            {
-                SetProperty(ref _geodatabaseChecked, value, () => GeodatabaseChecked);
-            }
+            get => _geodatabaseChecked;
+            set => SetProperty(ref _geodatabaseChecked, value, () => GeodatabaseChecked);
         }
 
         private bool _logChecked;
         public bool LogChecked
         {
-            get { return _logChecked; }
-            set
-            {
-                SetProperty(ref _logChecked, value, () => LogChecked);
-            }
+            get => _logChecked;
+            set => SetProperty(ref _logChecked, value, () => LogChecked);
         }
 
         #endregion
 
         #region Commands
 
-        public ICommand CmdOK => new RelayCommand((paramProWin) =>
-        {
-            // TODO: set dialog result and close the window
-            (paramProWin as ProWindow).DialogResult = true;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-
-        public ICommand CmdCancel => new RelayCommand((paramProWin) =>
-        {
-            // TODO: set dialog result and close the window
-            (paramProWin as ProWindow).DialogResult = false;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-
-
         private ICommand _cmdSelectWorkspaceFolder;
-        public ICommand CmdSelectWorkspaceFolder { get { return _cmdSelectWorkspaceFolder ?? (_cmdSelectWorkspaceFolder = new RelayCommand(() => SelectWorkspaceFolder(), () => true)); } }
+        public ICommand CmdSelectWorkspaceFolder => _cmdSelectWorkspaceFolder ?? (_cmdSelectWorkspaceFolder = new RelayCommand(() => SelectWorkspaceFolder(), () => true));
 
 
         private ICommand _cmdInitializeCurrentWorkspace;
-        public ICommand CmdInitializeCurrentWorkspace { get { return _cmdInitializeCurrentWorkspace ?? (_cmdInitializeCurrentWorkspace = new RelayCommand(async () => await InitializeCurrentWorkspace(), () => true)); } }
+        public ICommand CmdInitializeCurrentWorkspace => _cmdInitializeCurrentWorkspace ?? (_cmdInitializeCurrentWorkspace = new RelayCommand(async () => await InitializeCurrentWorkspace(), () => true));
 
 
         private ICommand _cmdResetCurrentWorkspace;
-        public ICommand CmdResetCurrentWorkspace { get { return _cmdResetCurrentWorkspace ?? (_cmdResetCurrentWorkspace = new RelayCommand(async () => await ResetCurrentWorkspace(), () => true)); } }
+        public ICommand CmdResetCurrentWorkspace => _cmdResetCurrentWorkspace ?? (_cmdResetCurrentWorkspace = new RelayCommand(async () => await ResetCurrentWorkspace(), () => true));
 
 
         private ICommand _cmdOpenCurrentWorkspace;
-        public ICommand CmdOpenCurrentWorkspace { get { return _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspace(), () => true)); } }
+        public ICommand CmdOpenCurrentWorkspace => _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspace(), () => true));
 
 
         private ICommand _cmdDisplayContent;
-        public ICommand CmdDisplayContent { get { return _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand(async (paramType) => await PopulateWorkspaceContents(paramType.ToString()), () => true)); } }
+        public ICommand CmdDisplayContent => _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand(async (paramType) => await DisplayContent(paramType.ToString()), () => true));
 
         #endregion
 
@@ -133,7 +108,7 @@ namespace NCC.PRZTools
 
                 if (Directory.Exists(this.CurrentWorkspacePath))
                 {
-                    DirectoryInfo di = new DirectoryInfo(this.CurrentWorkspacePath);
+                    DirectoryInfo di = new DirectoryInfo(CurrentWorkspacePath);
                     DirectoryInfo dip = di.Parent;
 
                     if (dip != null)
@@ -142,29 +117,34 @@ namespace NCC.PRZTools
                     }
                 }
 
-                OpenItemDialog dlg = new OpenItemDialog();
-                dlg.Title = "Specify a Project Folder";
-                dlg.InitialLocation = initDir;
-                dlg.MultiSelect = false;
-                dlg.AlwaysUseInitialLocation = true;
-                dlg.Filter = ItemFilters.folders;
-
-                bool? ok = dlg.ShowDialog();
-
-                if (ok == true)
+                OpenItemDialog dlg = new OpenItemDialog
                 {
-                    IEnumerable<Item> selitems = dlg.Items;
-                    Item i = selitems.First();
+                    Title = "Specify a Project Workspace folder",
+                    InitialLocation = initDir,
+                    MultiSelect = false,
+                    AlwaysUseInitialLocation = true,
+                    Filter = ItemFilters.folders
+                };
 
-                    if (i != null)
-                    {
-                        this.CurrentWorkspacePath = i.Path;
-                    }
+                bool? result = dlg.ShowDialog();
+
+                if (!result.HasValue || !result.Value || dlg.Items.Count() == 0)
+                {
+                    return;
                 }
+
+                Item item = dlg.Items.First();
+
+                if (item == null)
+                {
+                    return;
+                }
+
+                CurrentWorkspacePath = item.Path;
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -178,27 +158,41 @@ namespace NCC.PRZTools
                 // 3. If PRZ.log file not found, add it.  Else, do nothing
                 // 4. If PRZ.gdb geodatabase not found, add it.  Else, do nothing
                 // 5. Add line in PRZ.log file saying we just initialized the folder
-                // 6. somehow trigger the ContentListing value recalculation
-
-                // This method will use the value currently in _folderPath field
+                // 6. Trigger the ContentListing value recalculation
 
                 // Ensure that main Folder Path exists
-                if (!Directory.Exists(_currentWorkspacePath))
+                if (!Directory.Exists(CurrentWorkspacePath))
                 {
-                    MsgBox.Show("Please select a valid Workspace Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
+                    ProMsgBox.Show("Please select a valid Workspace Folder" + Environment.NewLine + Environment.NewLine + CurrentWorkspacePath + " does not exist");
+                    return false;
+                }
+
+                // Validation: Prompt User for permission to proceed
+                if (ProMsgBox.Show("If you proceed, bla bla bla" + Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "INITIALIZE PROJECT WORKSPACE",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
                     return false;
                 }
 
                 // Create the INPUT and OUTPUT directories and the PRZ.log file if missing.
-                string pathInputFolder = Path.Combine(_currentWorkspacePath, "INPUT");
-                string pathOutputFolder = Path.Combine(_currentWorkspacePath, "OUTPUT");
-                string pathLogFile = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_LOGFILE);
+                string pathInputFolder = Path.Combine(CurrentWorkspacePath, "INPUT");
+                string pathOutputFolder = Path.Combine(CurrentWorkspacePath, "OUTPUT");
+                string pathLogFile = Path.Combine(CurrentWorkspacePath, PRZC.c_PRZ_LOGFILE);
 
                 if (!Directory.Exists(pathInputFolder))
+                {
                     Directory.CreateDirectory(pathInputFolder);
+                }
 
                 if (!Directory.Exists(pathOutputFolder))
+                {
                     Directory.CreateDirectory(pathOutputFolder);
+                }
 
                 if (!File.Exists(pathLogFile))
                 {
@@ -211,41 +205,40 @@ namespace NCC.PRZTools
                 }
 
                 // Create the File Geodatabase if missing
-                string pathGDB = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
-
-                Geodatabase fgdb;
+                string pathGDB = Path.Combine(CurrentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
                 Uri uri = new Uri(pathGDB);
                 FileGeodatabaseConnectionPath gdbpath = new FileGeodatabaseConnectionPath(uri);
 
-                bool worked = false;
+                bool gdbExists = false;
+
                 try
                 {
                     await QueuedTask.Run(() =>
                     {
-                        fgdb = new Geodatabase(gdbpath);
-                        worked = true;
-                        fgdb.Dispose();
+                        using (Geodatabase gdb = new Geodatabase(gdbpath))
+                        {
+                            gdbExists = true;
+                        }
                     });
 
                 }
                 catch (GeodatabaseNotFoundOrOpenedException) { }
 
-                if (!worked)
+                if (!gdbExists)
                 {
                     await QueuedTask.Run(() =>
                     {
-                        fgdb = SchemaBuilder.CreateGeodatabase(gdbpath);
-                        fgdb.Dispose();
+                        using (Geodatabase gdb = SchemaBuilder.CreateGeodatabase(gdbpath)) {}
                     });
                 }
 
-                MsgBox.Show("Initialize Succeeded");
-                return true;
+                ProMsgBox.Show("Workspace Initialization Succeeded");
 
+                return true;
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -262,18 +255,27 @@ namespace NCC.PRZTools
                 // 5. Add line in PRZ.log file saying we just reset the folder
                 // 6. somehow trigger the ContentListing value recalculation
 
-                // This method will use the value currently in _folderPath field
-
-                // Ensure that main Folder Path exists
-                if (!Directory.Exists(_currentWorkspacePath))
+                if (!Directory.Exists(CurrentWorkspacePath))
                 {
-                    MsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + _currentWorkspacePath + " does not exist");
+                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + CurrentWorkspacePath + " does not exist");
                     return false;
                 }
 
-                string pathInputFolder = Path.Combine(_currentWorkspacePath, "INPUT");
-                string pathOutputFolder = Path.Combine(_currentWorkspacePath, "OUTPUT");
-                string pathLogFile = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_LOGFILE);
+                // Validation: Prompt User for permission to proceed
+                if (ProMsgBox.Show("If you proceed, bla bla bla" + Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "RESET PROJECT WORKSPACE",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    return false;
+                }
+
+                string pathInputFolder = Path.Combine(CurrentWorkspacePath, "INPUT");
+                string pathOutputFolder = Path.Combine(CurrentWorkspacePath, "OUTPUT");
+                string pathLogFile = Path.Combine(CurrentWorkspacePath, PRZC.c_PRZ_LOGFILE);
 
                 if (Directory.Exists(pathInputFolder))
                 {
@@ -305,40 +307,40 @@ namespace NCC.PRZTools
                 }
 
                 // Create the File Geodatabase if missing
-                string pathGDB = Path.Combine(_currentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
-
-                Geodatabase fgdb;
+                string pathGDB = Path.Combine(CurrentWorkspacePath, PRZC.c_PRZ_PROJECT_FGDB);
                 Uri uri = new Uri(pathGDB);
                 FileGeodatabaseConnectionPath gdbpath = new FileGeodatabaseConnectionPath(uri);
 
-                bool worked = false;
+                bool gdbExists = false;
+
                 try
                 {
                     await QueuedTask.Run(() =>
                     {
-                        fgdb = new Geodatabase(gdbpath);
-                        worked = true;
-                        fgdb.Dispose();
+                        using (Geodatabase gdb = new Geodatabase(gdbpath))
+                        {
+                            gdbExists = true;
+                        }
                     });
 
                 }
                 catch (GeodatabaseNotFoundOrOpenedException) { }
 
-                if (!worked)
+                if (!gdbExists)
                 {
                     await QueuedTask.Run(() =>
                     {
-                        fgdb = SchemaBuilder.CreateGeodatabase(gdbpath);
-                        fgdb.Dispose();
+                        using (Geodatabase gdb = SchemaBuilder.CreateGeodatabase(gdbpath)) { }
                     });
                 }
 
-                MsgBox.Show("Refresh Succeeded");
+                ProMsgBox.Show("Workspace Reset Succeeded");
+
                 return true;
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -347,54 +349,64 @@ namespace NCC.PRZTools
         {
             try
             {
-                string fp = _currentWorkspacePath;
+                string fp = CurrentWorkspacePath;
 
                 if (!Directory.Exists(fp))
                 {
-                    MsgBox.Show("Invalid Workspace Path" + Environment.NewLine + Environment.NewLine + fp + " does not exist");
+                    ProMsgBox.Show("Invalid Workspace Path" + Environment.NewLine + Environment.NewLine + fp + " does not exist");
                     return;
                 }
 
                 if (!fp.EndsWith(Path.DirectorySeparatorChar.ToString()))
                 {
-                    fp = fp + Path.DirectorySeparatorChar.ToString();
+                    fp += Path.DirectorySeparatorChar.ToString();
                 }
 
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = fp;
-                psi.UseShellExecute = true;
-                psi.Verb = "open";
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = fp,
+                    UseShellExecute = true,
+                    Verb = "open"
+                };
+
                 Process.Start(psi);
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
             }
         }
 
-        private async Task PopulateWorkspaceContents(string WSType)
+        private async Task DisplayContent(string WSType)
         {
+            StringBuilder contents = new StringBuilder("");
+
             try
             {
-                string fp = _currentWorkspacePath;
+                // Save the latest display type
+                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = WSType;
+                Properties.Settings.Default.Save();
 
-                StringBuilder contents = new StringBuilder();
+                string wspath = CurrentWorkspacePath;
 
                 if (WSType == WorkspaceDisplayMode.DIR.ToString())
                 {
                     // Validate the Project Folder
-
-                    if (!Directory.Exists(fp))
+                    if (!Directory.Exists(wspath))
+                    {
+                        contents.AppendLine($"Directory does not exist: {wspath}");
+                        this.WorkspaceContents = contents.ToString();
                         return;
+                    }
 
                     // Enter top-level info
                     contents.AppendLine("PRZ PROJECT FOLDER");
-                    contents.AppendLine("*********************");
-                    contents.AppendLine("PATH: " + fp);
+                    contents.AppendLine("******************");
+                    contents.AppendLine("PATH: " + wspath);
                     contents.AppendLine();
 
                     // List Directories
-                    string[] subdirs = Directory.GetDirectories(fp);
+                    string[] subdirs = Directory.GetDirectories(wspath);
 
                     contents.AppendLine("SUBFOLDERS");
                     contents.AppendLine("**********");
@@ -415,7 +427,7 @@ namespace NCC.PRZTools
                     }
 
                     // List Files
-                    string[] files = Directory.GetFiles(fp);
+                    string[] files = Directory.GetFiles(wspath);
 
                     contents.AppendLine("FILES");
                     contents.AppendLine("*****");
@@ -436,12 +448,13 @@ namespace NCC.PRZTools
                     }
 
                     // INPUT Folder Contents, if present
-                    string inputdir = System.IO.Path.Combine(fp, "INPUT");
+                    string inputdir = System.IO.Path.Combine(wspath, "INPUT");
 
                     if (Directory.Exists(inputdir))
                     {
                         contents.AppendLine("INPUT FOLDER FILES");
                         contents.AppendLine("******************");
+
                         string[] inputfiles = Directory.GetFiles(inputdir);
 
                         if (inputfiles.Length == 0)
@@ -461,7 +474,7 @@ namespace NCC.PRZTools
                     }
 
                     // OUTPUT Folder Contents, if present
-                    string outputdir = System.IO.Path.Combine(fp, "OUTPUT");
+                    string outputdir = System.IO.Path.Combine(wspath, "OUTPUT");
 
                     if (Directory.Exists(outputdir))
                     {
@@ -488,25 +501,13 @@ namespace NCC.PRZTools
                 }
                 else if (WSType == WorkspaceDisplayMode.GDB.ToString())
                 {
-                    string gdbpath = Path.Combine(fp, PRZC.c_PRZ_PROJECT_FGDB);
+                    string gdbpath = PRZH.GetProjectGDBPath();
+                    bool gdbExists = await PRZH.ProjectGDBExists();
 
-                    Geodatabase fgdb = null;
-                    Uri uri = new Uri(gdbpath);
-                    FileGeodatabaseConnectionPath cp = new FileGeodatabaseConnectionPath(uri);
-
-                    bool worked = false;
-                    try
+                    if (!gdbExists)
                     {
-                        await QueuedTask.Run(() =>
-                        {
-                            fgdb = new Geodatabase(cp);
-                            worked = true;
-                        });
-
-                    }
-                    catch (GeodatabaseNotFoundOrOpenedException ex)
-                    {
-                        contents.AppendLine(ex.Message);
+                        contents.AppendLine($"Workspace Geodatabase does not exist at path: {gdbpath}");
+                        this.WorkspaceContents = contents.ToString();
                         return;
                     }
 
@@ -514,51 +515,76 @@ namespace NCC.PRZTools
                     contents.AppendLine("PRZ FILE GEODATABASE WORKSPACE");
                     contents.AppendLine("*********************************");
                     contents.AppendLine("PATH:    " + gdbpath);
+                    contents.AppendLine();
 
-                    List<string> LIST_FC = new List<string>();
-                    List<string> LIST_TAB = new List<string>();
+                    List<string> FCNames = new List<string>();
+                    List<string> TableNames = new List<string>();
 
-                    await QueuedTask.Run(() =>
+                    try
                     {
-                        IReadOnlyList<FeatureClassDefinition> fc = fgdb.GetDefinitions<FeatureClassDefinition>();
-                        foreach (var def in fc)
+                        await QueuedTask.Run(async () =>
                         {
-                            LIST_FC.Add(def.GetName());
-                        }
+                            using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                            {
+                                IReadOnlyList<FeatureClassDefinition> fcDefs = gdb.GetDefinitions<FeatureClassDefinition>();
 
-                        IReadOnlyList<TableDefinition> tab = fgdb.GetDefinitions<TableDefinition>();
-                        foreach (var def in tab)
-                        {
-                            LIST_TAB.Add(def.GetName());
-                        }
+                                foreach (var fcDef in fcDefs)
+                                {
+                                    FCNames.Add(fcDef.GetName());
+                                }
 
-                        fgdb.Dispose();
-                    });
+                                IReadOnlyList<TableDefinition> tabDefs = gdb.GetDefinitions<TableDefinition>();
+
+                                foreach (var tabDef in tabDefs)
+                                {
+                                    TableNames.Add(tabDef.GetName());
+                                }
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        contents.AppendLine(ex.Message);
+                        this.WorkspaceContents = contents.ToString();
+                        return;
+                    }
 
                     // List Feature Classes
                     contents.AppendLine("FEATURE CLASSES");
                     contents.AppendLine("***************");
-                    LIST_FC.Sort();
-                    foreach (var fc in LIST_FC)
+
+                    FCNames.Sort();
+
+                    foreach (string name in FCNames)
                     {
-                        contents.AppendLine(" > " + fc);
+                        contents.AppendLine($" > {name}");
                     }
+
                     contents.AppendLine();
 
                     // List Tables
                     contents.AppendLine("TABLES");
                     contents.AppendLine("******");
-                    LIST_TAB.Sort();
-                    foreach (var tab in LIST_TAB)
+                    
+                    TableNames.Sort();
+                    
+                    foreach (string name in TableNames)
                     {
-                        contents.AppendLine(" > " + tab);
+                        contents.AppendLine($" > {name}");
                     }
-                    contents.AppendLine();
 
+                    contents.AppendLine();
                 }
                 else if (WSType == WorkspaceDisplayMode.LOG.ToString())
                 {
-                    contents.AppendLine(PRZH.ReadLog());
+                    if (PRZH.ProjectLogExists())
+                    {
+                        contents.AppendLine(PRZH.ReadLog());
+                    }
+                    else
+                    {
+                        contents.AppendLine("Project Log File not found at path: " + PRZH.GetProjectLogPath());
+                    }
                 }
                 else
                 {
@@ -566,21 +592,16 @@ namespace NCC.PRZTools
                 }
 
                 this.WorkspaceContents = contents.ToString();
-                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = WSType;
-                Properties.Settings.Default.Save();
-
             }
             catch (Exception ex)
             {
-                this.WorkspaceContents = ex.Message;
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                contents.AppendLine(ex.Message);
+                this.WorkspaceContents = contents.ToString();
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
-        /// <summary>
-        /// This method runs when the ProWindow Loaded event occurs.
-        /// </summary>
-        internal async void OnProWinLoaded()
+        public async Task OnProWinLoaded()
         {
             try
             {
@@ -604,11 +625,11 @@ namespace NCC.PRZTools
 
                 }
 
-                await PopulateWorkspaceContents(wdm);
+                await DisplayContent(wdm);
             }
             catch (Exception ex)
             {
-                MsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 

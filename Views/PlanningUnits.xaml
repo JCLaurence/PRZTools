@@ -21,7 +21,15 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </controls:ProWindow.Resources>
-    <Border Margin="5" Padding="5" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" BorderBrush="{DynamicResource Esri_BorderBrush}"  BorderThickness="1.5">
+
+    <!--Outer Border-->
+    <Border
+        Margin="5"
+        Padding="5" 
+        BorderThickness="1.5"
+        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" 
+        BorderBrush="{DynamicResource Esri_BorderBrush}">
+        
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
@@ -30,7 +38,14 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
+        
+            <!--Inner Border #1-->
+            <Border 
+                Grid.Row="0"
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                
                 <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" >
                     <TextBlock Style="{DynamicResource Esri_TextBlockH4}" Margin="5" DockPanel.Dock="Top" >Specify the Output Spatial Reference (linear units = meters)</TextBlock>
                     <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
@@ -50,6 +65,7 @@
                     </DockPanel>
                 </DockPanel>
             </Border>
+            
             <Border Grid.Row="1" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
                 <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto">
                     <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Specify the Study Area Source Geometry</TextBlock>

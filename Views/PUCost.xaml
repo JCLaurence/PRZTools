@@ -13,7 +13,6 @@
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUCost32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
-    ResizeMode="CanResizeWithGrip"
     >
     <controls:ProWindow.Resources>
         <ResourceDictionary>
@@ -22,52 +21,230 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </controls:ProWindow.Resources>
-    <Border Margin="5" Padding="5" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" BorderBrush="{DynamicResource Esri_BorderBrush}"  BorderThickness="1.5">
+
+    <!--Outer Border-->
+    <Border
+        Margin="5" 
+        Padding="5" 
+        BorderThickness="1.5"
+        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" 
+        BorderBrush="{DynamicResource Esri_BorderBrush}">
+        
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
-                <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" >
-                    <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}">Set the Planning Unit Cost</TextBlock>
-                    <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdConstantOption}" IsChecked="{Binding ConstantCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Constant Cost Value:</RadioButton>
-                        <TextBox IsEnabled="{Binding ConstantCostIsChecked}" HorizontalContentAlignment="Right" Text="{Binding ConstantCost}" Margin="5" Width="50" DockPanel.Dock="Left"></TextBox>
+            
+            <!--Inner Border #1-->
+            <Border
+                Grid.Row="0" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5" 
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                
+                <DockPanel
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock 
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Text="Set the Planning Unit Cost" />
+
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center"
+                            GroupName="cost" 
+                            Command="{Binding CmdConstantOption}" 
+                            IsChecked="{Binding ConstantCostIsChecked}"
+                            Content="Use Constant Cost Value:" />
+
+                        <TextBox
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Width="50"
+                            HorizontalContentAlignment="Right"
+                            IsEnabled="{Binding ConstantCostIsChecked}"
+                            Text="{Binding ConstantCost}" />
+
                     </DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdAreaOption}" IsChecked="{Binding AreaCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Left">Use Planning Unit Area</RadioButton>
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        Margin="0" 
+                        LastChildFill="False">
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center"
+                            GroupName="cost" 
+                            Command="{Binding CmdAreaOption}" 
+                            IsChecked="{Binding AreaCostIsChecked}"
+                            Content="Use Planning Unit Area" />
+
                     </DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                        <RadioButton Margin="5" GroupName="cost" Command="{Binding CmdImportOption}" IsChecked="{Binding ImportCostIsChecked}" VerticalAlignment="Center" VerticalContentAlignment="Center" DockPanel.Dock="Top">Import Cost from Table</RadioButton>
-                        <DockPanel DockPanel.Dock="Top" Margin="0" LastChildFill="False">
-                            <Button Margin="40, 5, 5, 5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdImportTable}" IsEnabled="{Binding ImportCostIsChecked}">
-                                <Image IsEnabled="{Binding ImportCostIsChecked}" Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/Table32.png" Stretch="None" />
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <RadioButton
+                            DockPanel.Dock="Top"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center"
+                            GroupName="cost" 
+                            Command="{Binding CmdImportOption}" 
+                            IsChecked="{Binding ImportCostIsChecked}"
+                            Content="Import Cost from Table" />
+                        
+                        <DockPanel
+                            DockPanel.Dock="Top" 
+                            LastChildFill="False">
+                        
+                            <Button 
+                                DockPanel.Dock="Left"
+                                Margin="40, 5, 5, 5" 
+                                Padding="0"  
+                                Command="{Binding CmdImportTable}" 
+                                IsEnabled="{Binding ImportCostIsChecked}">
+                                
+                                <Image
+                                    Margin="3"
+                                    IsEnabled="{Binding ImportCostIsChecked}" 
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/Table32.png" 
+                                    Stretch="None" />
+                            
                             </Button>
-                            <TextBlock IsEnabled="{Binding ImportCostIsChecked}" Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Left">Import Table</TextBlock>
+
+                            <TextBlock 
+                                DockPanel.Dock="Left"
+                                Margin="0,0,5,0" 
+                                VerticalAlignment="Center" 
+                                Style="{DynamicResource Esri_TextBlockRegular}" 
+                                IsEnabled="{Binding ImportCostIsChecked}" 
+                                Text="Import Table" />
+
                         </DockPanel>
-                        <TextBlock IsEnabled="{Binding ImportCostIsChecked}" Margin="40, 5, 5, 5" Text="{Binding ImportTablePath}" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center" DockPanel.Dock="Bottom"></TextBlock>
+
+                        <TextBlock 
+                            DockPanel.Dock="Bottom"
+                            Margin="40, 5, 5, 5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            IsEnabled="{Binding ImportCostIsChecked}" 
+                            Text="{Binding ImportTablePath}" />
+
                     </DockPanel>
                 </DockPanel>
             </Border>
-            <Border Grid.Row="1" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                <DockPanel LastChildFill="False" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    <Button Margin="5" Height="25" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Left" Command="{Binding CmdCalculateCost}">CALCULATE COST!</Button>
-                    <Button Margin="5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">---</Button>
-                    <Button Margin="5,5,0,5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">---</Button>
-                    <Button Margin="5,5,0,5" Style="{DynamicResource Esri_Button}" Padding="5,0,5,0" DockPanel.Dock="Right" IsEnabled="False">EXISTING INFO</Button>
+            
+            <!--Inner Border #2-->
+            <Border 
+                Grid.Row="1" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                
+                <DockPanel 
+                    LastChildFill="False" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Height="25" 
+                        Style="{DynamicResource Esri_Button}"   
+                        Command="{Binding CmdCalculateCost}"
+                        Content="CALCULATE COST!" />
+
+                    <Button 
+                        DockPanel.Dock="Right" 
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"  
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"  
+                        Style="{DynamicResource Esri_Button}" 
+                        IsEnabled="False"
+                        Content="EXISTING INFO" />
+
                 </DockPanel>
             </Border>
-            <Border Grid.Row="2" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="False">
-                        <TextBlock Margin="5" DockPanel.Dock="Left" Style="{DynamicResource Esri_TextBlockH4}">Calculator Log</TextBlock>
-                        <Button Margin="5" Command="{Binding CmdClearLog}" Style="{DynamicResource Esri_Button}" DockPanel.Dock="Right">Clear Log</Button>
+            
+            <!--Inner Border #3-->
+            <Border 
+                Grid.Row="2" 
+                Margin="0"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}" >
+                
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <TextBlock 
+                            DockPanel.Dock="Left" 
+                            Margin="5" 
+                            Style="{DynamicResource Esri_TextBlockH4}"
+                            Text="Calculator Log" />
+
+                        <Button 
+                            DockPanel.Dock="Right"
+                            Margin="5" 
+                            Style="{DynamicResource Esri_Button}" 
+                            Command="{Binding CmdClearLog}" 
+                            Content="Clear Log" />
+
                     </DockPanel>
-                    <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding PM.Min}" Maximum="{Binding PM.Max}" Value="{Binding PM.Current}" />
-                    <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding PM.Message}" FontFamily="Courier New" FontSize="10"></TextBlock>
+                    
+                    <ProgressBar 
+                        DockPanel.Dock="Top"
+                        Margin="5,0,5,0" 
+                        Height="10"  
+                        Minimum="{Binding PM.Min}" 
+                        Maximum="{Binding PM.Max}" 
+                        Value="{Binding PM.Current}" />
+                    
+                    <ScrollViewer 
+                        Margin="0" 
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
+
+                        <TextBlock 
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"                              
+                            Text="{Binding PM.Message}" />
+
                     </ScrollViewer>
                 </DockPanel>
             </Border>
