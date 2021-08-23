@@ -152,8 +152,7 @@
                                 Margin="10, 5"
                                 VerticalContentAlignment="Center"
                                 GroupName="WSContents"
-                                Command="{Binding CmdDisplayContent}" 
-                                CommandParameter="DIR" 
+                                Command="{Binding CmdDisplayFolderContent}" 
                                 IsChecked="{Binding FolderChecked}"
                                 Content="Folder" />
 
@@ -162,8 +161,7 @@
                                 Margin="10, 5"
                                 VerticalContentAlignment="Center"
                                 GroupName="WSContents" 
-                                Command="{Binding CmdDisplayContent}" 
-                                CommandParameter="GDB" 
+                                Command="{Binding CmdDisplayGDBContent}" 
                                 IsChecked="{Binding GeodatabaseChecked}"
                                 Content="Geodatabase"/>
 
@@ -172,8 +170,7 @@
                                 Margin="10, 5"
                                 VerticalContentAlignment="Center"
                                 GroupName="WSContents" 
-                                Command="{Binding CmdDisplayContent}" 
-                                CommandParameter="LOG" 
+                                Command="{Binding CmdDisplayLogContent}" 
                                 IsChecked="{Binding LogChecked}"
                                 Content="Log"/>
 

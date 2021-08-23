@@ -133,12 +133,12 @@ namespace NCC.PRZTools
 
         #region Methods
 
-        public async void OnProWinLoaded()
+        public void OnProWinLoaded()
         {
             try
             {
-                //// Initialize the Progress Bar & Log
-                //PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+                // Initialize the Progress Bar & Log
+                PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 //// Set the Conflict Override value default
                 //SelectedOverrideOption = c_OVERRIDE_INCLUDE;

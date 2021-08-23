@@ -79,8 +79,7 @@
                     </DockPanel>
                     
                     <DockPanel 
-                        DockPanel.Dock="Top" 
-                        Margin="0" 
+                        DockPanel.Dock="Top"
                         LastChildFill="False">
 
                         <RadioButton
@@ -200,7 +199,6 @@
             <!--Inner Border #3-->
             <Border 
                 Grid.Row="2" 
-                Margin="0"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}" >
                 

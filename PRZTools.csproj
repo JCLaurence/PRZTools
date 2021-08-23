@@ -134,7 +134,7 @@
     <Compile Include="Models\StatusConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\ConservationFeaturesVM.cs" />
-    <Compile Include="ViewModels\PlanningUnitsVM.cs" />
+    <Compile Include="ViewModels\PUGeneratorVM.cs" />
     <Compile Include="ViewModels\PUCostVM.cs" />
     <Compile Include="ViewModels\PUStatusVM.cs" />
     <Compile Include="Views\BoundaryLengths.xaml.cs">
@@ -154,10 +154,10 @@
     <Compile Include="Widgets\Button_PUStatus.cs" />
     <Compile Include="Widgets\Button_PUCost.cs" />
     <Compile Include="Widgets\Button_WorkspaceSettings.cs" />
-    <Compile Include="Views\PlanningUnits.xaml.cs">
-      <DependentUpon>PlanningUnits.xaml</DependentUpon>
+    <Compile Include="Views\PUGenerator.xaml.cs">
+      <DependentUpon>PUGenerator.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Widgets\Button_PlanningUnits.cs" />
+    <Compile Include="Widgets\Button_PUGenerator.cs" />
     <Compile Include="Widgets\Button_LoadPRZLayers.cs" />
     <Compile Include="PRZConstants.cs" />
     <Compile Include="Module_Main.cs" />
@@ -213,7 +213,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\PlanningUnits.xaml">
+    <Page Include="Views\PUGenerator.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

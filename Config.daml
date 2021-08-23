@@ -22,7 +22,7 @@
         <group id="prz_group_configuration" caption="Configuration" keytip="z">
           <button refID="prz_button_workspacesettings" size="large" />
           <button refID="prz_button_loadprzlayers" size="large" />
-          <button refID="prz_button_planningunits" size="large" />
+          <button refID="prz_button_pugenerator" size="large" />
           <button refID="prz_button_pustatus" size="large" />
           <button refID="prz_button_pucost" size="large" />
           <button refID="prz_button_boundarylengths" size="large" />
@@ -40,7 +40,7 @@
           <tooltip heading="Load Layers">
             Loads or refreshes the Prioritization Group Layer and all child layers.<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
-        <button id="prz_button_planningunits" caption="Planning Units" className="Button_PlanningUnits" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_pugenerator" caption="Planning Units" className="Button_PUGenerator" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Generator">Tools to generate a Planning Unit Feature Class, based on a grid definition or an existing Polygon Feature Class.<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
         <button id="prz_button_pustatus" caption="Planning Unit Status" className="Button_PUStatus" keytip="z" loadOnClick="true" smallImage="Images\PUStatus16.png" largeImage="Images\PUStatus32.png" condition="esri_mapping_mapPane">

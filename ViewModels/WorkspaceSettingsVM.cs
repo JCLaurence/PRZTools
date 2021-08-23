@@ -93,8 +93,15 @@ namespace NCC.PRZTools
         public ICommand CmdOpenCurrentWorkspace => _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspace(), () => true));
 
 
-        private ICommand _cmdDisplayContent;
-        public ICommand CmdDisplayContent => _cmdDisplayContent ?? (_cmdDisplayContent = new RelayCommand(async (paramType) => await DisplayContent(paramType.ToString()), () => true));
+
+        private ICommand _cmdDisplayFolderContent;
+        public ICommand CmdDisplayFolderContent => _cmdDisplayFolderContent ?? (_cmdDisplayFolderContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.DIR), () => true));
+
+        private ICommand _cmdDisplayGDBContent;
+        public ICommand CmdDisplayGDBContent => _cmdDisplayGDBContent ?? (_cmdDisplayGDBContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.GDB), () => true));
+
+        private ICommand _cmdDisplayLogContent;
+        public ICommand CmdDisplayLogContent => _cmdDisplayLogContent ?? (_cmdDisplayLogContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.LOG), () => true));
 
         #endregion
 
@@ -232,6 +239,20 @@ namespace NCC.PRZTools
                     });
                 }
 
+                // Refresh the Display
+                if (FolderChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.DIR);
+                }
+                else if (GeodatabaseChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.GDB);
+                }
+                else if (LogChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.LOG);
+                }
+
                 ProMsgBox.Show("Workspace Initialization Succeeded");
 
                 return true;
@@ -334,6 +355,20 @@ namespace NCC.PRZTools
                     });
                 }
 
+                // Refresh the Display
+                if (FolderChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.DIR);
+                }
+                else if (GeodatabaseChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.GDB);
+                }
+                else if (LogChecked)
+                {
+                    await DisplayContent(WorkspaceDisplayMode.LOG);
+                }
+
                 ProMsgBox.Show("Workspace Reset Succeeded");
 
                 return true;
@@ -377,19 +412,19 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task DisplayContent(string WSType)
+        private async Task DisplayContent(WorkspaceDisplayMode displayMode)
         {
             StringBuilder contents = new StringBuilder("");
 
             try
             {
                 // Save the latest display type
-                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = WSType;
+                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = displayMode.ToString();
                 Properties.Settings.Default.Save();
 
                 string wspath = CurrentWorkspacePath;
 
-                if (WSType == WorkspaceDisplayMode.DIR.ToString())
+                if (displayMode == WorkspaceDisplayMode.DIR)
                 {
                     // Validate the Project Folder
                     if (!Directory.Exists(wspath))
@@ -499,7 +534,7 @@ namespace NCC.PRZTools
                         }
                     }
                 }
-                else if (WSType == WorkspaceDisplayMode.GDB.ToString())
+                else if (displayMode == WorkspaceDisplayMode.GDB)
                 {
                     string gdbpath = PRZH.GetProjectGDBPath();
                     bool gdbExists = await PRZH.ProjectGDBExists();
@@ -575,7 +610,7 @@ namespace NCC.PRZTools
 
                     contents.AppendLine();
                 }
-                else if (WSType == WorkspaceDisplayMode.LOG.ToString())
+                else if (displayMode == WorkspaceDisplayMode.LOG)
                 {
                     if (PRZH.ProjectLogExists())
                     {
@@ -611,21 +646,23 @@ namespace NCC.PRZTools
                 if (wdm == WorkspaceDisplayMode.DIR.ToString())
                 {
                     this.FolderChecked = true;
+                    await DisplayContent(WorkspaceDisplayMode.DIR);
                 }
                 else if (wdm == WorkspaceDisplayMode.GDB.ToString())
                 {
                     this.GeodatabaseChecked = true;
+                    await DisplayContent(WorkspaceDisplayMode.GDB);
                 }
                 else if (wdm == WorkspaceDisplayMode.LOG.ToString())
                 {
                     this.LogChecked = true;
+                    await DisplayContent(WorkspaceDisplayMode.LOG);
                 }
                 else
                 {
-
+                    this.FolderChecked = true;
+                    await DisplayContent(WorkspaceDisplayMode.DIR);
                 }
-
-                await DisplayContent(wdm);
             }
             catch (Exception ex)
             {
