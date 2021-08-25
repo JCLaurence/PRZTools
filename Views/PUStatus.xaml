@@ -23,63 +23,229 @@
         </ResourceDictionary>
     </controls:ProWindow.Resources>
 
-    <Border Margin="5" Padding="5" Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" BorderBrush="{DynamicResource Esri_BorderBrush}"  BorderThickness="1.5">
+    <!--Outer Border-->
+    <Border 
+        Margin="5" 
+        Padding="5" 
+        BorderThickness="1.5"
+        BorderBrush="{DynamicResource Esri_BorderBrush}"  
+        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" >
+        
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
-            <Border Grid.Row="0" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0,0,0,5">
-                <DockPanel Margin="0" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" Height="Auto" LastChildFill="False">
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="0">
-                        <TextBlock DockPanel.Dock="Left" Margin="5" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Constraint Threshold:</TextBlock>
-                        <TextBox Text="{Binding DefaultThreshold}" Margin="5" Width="30" DockPanel.Dock="Left"></TextBox>
-                        <TextBlock DockPanel.Dock="Left" Margin="5" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Conflict Override: </TextBlock>
-                        <ComboBox Width="110" Margin="5,3,5,3" DockPanel.Dock="Left" ItemsSource="{Binding OverrideOptions}" SelectedItem="{Binding SelectedOverrideOption}" ></ComboBox>
+            
+            <!--Inner Border #1-->
+            <Border
+                Grid.Row="0" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                
+                <DockPanel 
+                    Margin="0" 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <TextBlock
+                            DockPanel.Dock="Left" 
+                            Margin="5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="Constraint Threshold:" />
+
+                        <TextBox 
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Width="30"
+                            Text="{Binding DefaultThreshold}" />
+
+                        <TextBlock 
+                            DockPanel.Dock="Left" 
+                            Margin="5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="Conflict Override:" />
+
+                        <ComboBox
+                            DockPanel.Dock="Left"
+                            Margin="5,3,5,3"
+                            Width="110"   
+                            ItemsSource="{Binding OverrideOptions}" 
+                            SelectedItem="{Binding SelectedOverrideOption}" />
+
                     </DockPanel>
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
-                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdCalculateStatus}">
-                            <Image Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus32.png" Stretch="None" />
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="True" >
+                        
+                        <Button
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Padding="0"
+                            Command="{Binding CmdCalculateStatus}">
+                        
+                            <Image 
+                                Margin="3" 
+                                Stretch="None"
+                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus32.png" />
+                        
                         </Button>
-                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Calculate the Planning Unit Status</TextBlock>
+
+                        <TextBlock 
+                            Margin="5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="Calculate the Planning Unit Status" />
+
                     </DockPanel>
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="True" Margin="0">
-                        <Button Margin="5" Padding="0" DockPanel.Dock="Left" Command="{Binding CmdDeleteStatusInfoTable}">
-                            <Image Margin="3" Source="pack://application:,,,/PRZTools;component/ImagesWPF/TableDelete32.png" Stretch="None" />
+                    
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="True">
+                        
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            Padding="0"  
+                            Command="{Binding CmdDeleteStatusInfoTable}">
+                        
+                            <Image 
+                                Margin="3" 
+                                Stretch="None"
+                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/TableDelete32.png" />
+                        
                         </Button>
-                        <TextBlock Margin="0,0,5,0" Style="{DynamicResource Esri_TextBlockRegular}" VerticalAlignment="Center">Delete Planning Unit Status Info</TextBlock>
+
+                        <TextBlock 
+                            Margin="5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="Delete Planning Unit Status Info" />
+
                     </DockPanel>
                 </DockPanel>
             </Border>
-            <Border Grid.Row="1" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    <TextBlock Margin="5" DockPanel.Dock="Top" Style="{DynamicResource Esri_TextBlockH4}" Text="{Binding ConflictGridCaption}"></TextBlock>
-                    <DataGrid Margin="5" IsReadOnly="True" ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict}"
-                              SelectionMode="Single" SelectionUnit="FullRow" AutoGenerateColumns="False"
-                              Style="{DynamicResource Esri_DataGrid}" ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" CellStyle="{DynamicResource Esri_DataGridCell}">
+
+            <!--Inner Border #2-->
+            <Border 
+                Grid.Row="1" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock 
+                        DockPanel.Dock="Top"
+                        Margin="5"  
+                        Style="{DynamicResource Esri_TextBlockH4}" 
+                        Text="{Binding ConflictGridCaption}" />
+
+                    <DataGrid 
+                        Margin="5" 
+                        IsReadOnly="True" 
+                        SelectionMode="Single" 
+                        SelectionUnit="FullRow" 
+                        AutoGenerateColumns="False"
+                        Style="{DynamicResource Esri_DataGrid}" 
+                        ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" 
+                        CellStyle="{DynamicResource Esri_DataGridCell}"
+                        ItemsSource="{Binding Conflicts}" 
+                        SelectedItem="{Binding SelectedConflict}">
+                        
                         <DataGrid.InputBindings>
                             <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdConstraintDoubleClick}" />
                         </DataGrid.InputBindings>
+                        
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Conflict #" Binding="{Binding conflict_num}" CanUserReorder="False" CanUserSort="False" />
-                            <DataGridTextColumn Header="'Include' Layer" Binding="{Binding include_layer_name}" CanUserReorder="False" CanUserSort="False" />
-                            <DataGridTextColumn Header="'Exclude' Layer" Binding="{Binding exclude_layer_name}" CanUserReorder="False" CanUserSort="False" />
-                            <DataGridTextColumn Header="Planning Unit Count" Binding="{Binding pu_count}" CanUserReorder="False" CanUserSort="False" />
+                            <DataGridTextColumn 
+                                Header="Conflict #" 
+                                Binding="{Binding conflict_num}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+                            
+                            <DataGridTextColumn 
+                                Header="'Include' Layer" 
+                                Binding="{Binding include_layer_name}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+                            
+                            <DataGridTextColumn 
+                                Header="'Exclude' Layer" 
+                                Binding="{Binding exclude_layer_name}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+                            
+                            <DataGridTextColumn 
+                                Header="Planning Unit Count" 
+                                Binding="{Binding pu_count}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+                        
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
             </Border>
-            <Border Grid.Row="2" BorderBrush="{DynamicResource Esri_BorderBrush}" BorderThickness="1.5" Margin="0">
-                <DockPanel LastChildFill="True" Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    <DockPanel DockPanel.Dock="Top" LastChildFill="False">
-                        <TextBlock Margin="5" DockPanel.Dock="Left" Style="{DynamicResource Esri_TextBlockH4}">Calculator Log</TextBlock>
-                        <Button Margin="5" Command="{Binding CmdClearLog}" Style="{DynamicResource Esri_Button}" DockPanel.Dock="Right">Clear Log</Button>
+
+            <!--Inner Border #3-->
+            <Border
+                Grid.Row="2" 
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="5"  
+                            Style="{DynamicResource Esri_TextBlockH4}"
+                            Text="Calculator Log" />
+
+                        <Button
+                            DockPanel.Dock="Right"
+                            Margin="5" 
+                            Style="{DynamicResource Esri_Button}"
+                            Command="{Binding CmdClearLog}"
+                            Content="Clear Log" />
+
                     </DockPanel>
-                    <ProgressBar Margin="5,0,5,0" Height="10" DockPanel.Dock="Top" Minimum="{Binding PM.Min}" Maximum="{Binding PM.Max}" Value="{Binding PM.Current}" />
-                    <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Style="{DynamicResource Esri_TextBlockRegular}" Margin="5" Text="{Binding PM.Message}" FontFamily="Courier New" FontSize="10"></TextBlock>
+                    
+                    <ProgressBar 
+                        DockPanel.Dock="Top"
+                        Margin="5,0,5,0" 
+                        Height="10"  
+                        Minimum="{Binding PM.Min}" 
+                        Maximum="{Binding PM.Max}" 
+                        Value="{Binding PM.Current}" />
+                    
+                    <ScrollViewer 
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
+
+                        <TextBlock 
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding PM.Message}" />
+
                     </ScrollViewer>
+                
                 </DockPanel>
             </Border>
         </Grid>

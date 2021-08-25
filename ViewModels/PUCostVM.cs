@@ -1,5 +1,6 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
@@ -43,6 +44,31 @@ namespace NCC.PRZTools
         #endregion
 
         #region Properties
+
+        private List<RasterLayer> _costLayerList;
+        public List<RasterLayer> CostLayerList
+        {
+            get => _costLayerList; set => SetProperty(ref _costLayerList, value, () => CostLayerList);
+        }
+
+        private RasterLayer _selectedCostLayer;
+        public RasterLayer SelectedCostLayer
+        {
+            get => _selectedCostLayer; set => SetProperty(ref _selectedCostLayer, value, () => SelectedCostLayer);
+        }
+
+        private List<string> _costStatisticList;
+        public List<string> CostStatisticList
+        {
+            get => _costStatisticList; set => SetProperty(ref _costStatisticList, value, () => CostStatisticList);
+        }
+
+        private string _selectedCostStatistic = "";
+        public string SelectedCostStatistic
+        {
+            get => _selectedCostStatistic; set => SetProperty(ref _selectedCostStatistic, value, () => SelectedCostStatistic);
+        }
+
 
         private string _importFieldPUID;
         public string ImportFieldPUID
@@ -90,6 +116,18 @@ namespace NCC.PRZTools
             get => _importCostIsChecked; set => SetProperty(ref _importCostIsChecked, value, () => ImportCostIsChecked);
         }
 
+        private bool _deriveCostIsChecked = false;
+        public bool DeriveCostIsChecked
+        {
+            get => _deriveCostIsChecked; set => SetProperty(ref _deriveCostIsChecked, value, () => DeriveCostIsChecked);
+        }
+
+        private bool _deriveCostIsEnabled = false;
+        public bool DeriveCostIsEnabled
+        {
+            get => _deriveCostIsEnabled; set => SetProperty(ref _deriveCostIsEnabled, value, () => DeriveCostIsEnabled);
+        }
+
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
         {
@@ -113,22 +151,6 @@ namespace NCC.PRZTools
         private ICommand _cmdImportTable;
         public ICommand CmdImportTable => _cmdImportTable ?? (_cmdImportTable = new RelayCommand(() => ImportTable(), () => true));
 
-
-
-        public ICommand cmdOK => new RelayCommand((paramProWin) =>
-        {
-            // TODO: set dialog result and close the window
-            (paramProWin as ProWindow).DialogResult = true;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-
-        public ICommand cmdCancel => new RelayCommand((paramProWin) =>
-        {
-            // TODO: set dialog result and close the window
-            (paramProWin as ProWindow).DialogResult = false;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-
         #endregion
 
         #region Methods
@@ -140,11 +162,28 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                //// Set the Conflict Override value default
-                //SelectedOverrideOption = c_OVERRIDE_INCLUDE;
+                // Populate the Statistics combo
+                CostStatisticList = new List<string>()
+                { 
+                    CostStatistics.MEAN.ToString(),
+                    CostStatistics.MEDIAN.ToString(),
+                    CostStatistics.MAXIMUM.ToString(),
+                    CostStatistics.MINIMUM.ToString(),
+                    CostStatistics.SUM.ToString()
+                };
 
-                //// Populate the Grid
-                //bool Populated = await PopulateConflictGrid();
+                SelectedCostStatistic = CostStatistics.MEAN.ToString();
+
+                // Populate the list of Cost Layers
+                Map map = MapView.Active.Map;
+
+                List<RasterLayer> costLayers = PRZH.GetRasterLayers_COST(map);
+
+                DeriveCostIsEnabled = costLayers != null && costLayers.Count > 0;
+
+                CostLayerList = costLayers;
+
+
 
             }
             catch (Exception ex)
@@ -515,6 +554,16 @@ namespace NCC.PRZTools
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Cost Calculator..."), false, max, ++val);
 
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
+
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetProjectGDBPath();
                 if (!await PRZH.ProjectGDBExists())
@@ -650,8 +699,137 @@ namespace NCC.PRZTools
                     ProMsgBox.Show("Still working on this one...");
 
                 }
+                else if (DeriveCostIsChecked)
+                {
+                    if (SelectedCostLayer is null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost Layer not specified...", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("You must specify a Cost Layer");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Cost Layer: {SelectedCostLayer.Name}"), true, ++val);
+                    }
+
+                    if (SelectedCostStatistic == "")
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost Statistic not specified...", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("You must specify a Cost Statistic");
+                        return false;
+                    }
+
+                    //// Validation: Prompt User for permission to proceed
+                    //if (ProMsgBox.Show("If you proceed, the contents of the Cost field in the Planning Unit Feature Class will be overwritten." +
+                    //   Environment.NewLine + Environment.NewLine +
+                    //   Environment.NewLine + Environment.NewLine +
+                    //   "Do you wish to proceed?" +
+                    //   Environment.NewLine + Environment.NewLine +
+                    //   "Choose wisely...",
+                    //   "COLUMN OVERWRITE WARNING",
+                    //   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                    //   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                    //{
+                    //    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Cost Calculation."), true, ++val);
+                    //    return false;
+                    //}
+
+
+
+                    // Get the PUFC SR and Extent
+                    SpatialReference PUFC_SR = null;
+                    Envelope PUFC_Extent = null;
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (FeatureClass fc = await PRZH.GetPlanningUnitFC())
+                        using (FeatureClassDefinition fcDef = fc.GetDefinition())
+                        {
+                            PUFC_SR = fcDef.GetSpatialReference();
+
+                            PUFC_Extent = fc.GetExtent();
+                        }
+                    });
+
+                    // Get the PU Feature Layer and its Spatial Reference
+                    FeatureLayer PUFL = null;
+                    SpatialReference PUFL_SR = null;
+                    await QueuedTask.Run(() =>
+                    {
+                        PUFL = PRZH.GetFeatureLayer_PU(map);
+                        PUFL_SR = PUFL.GetSpatialReference();
+                    });
+
+                    // Get the Cost Raster Layer and its SRs
+                    RasterLayer CostRL = SelectedCostLayer; // not necessary
+                    SpatialReference CostRL_SR = null;
+                    SpatialReference CostR_SR = null;
+
+                    await QueuedTask.Run(() =>
+                    {
+                        CostRL_SR = SelectedCostLayer.GetSpatialReference();
+
+                        using (Raster costRaster = SelectedCostLayer.GetRaster())
+                        {
+                            CostR_SR = costRaster.GetSpatialReference();
+                        }
+                    });
+
+                    // Delete the cost stats table if present
+                    string cost_stats_path = PRZH.GetCostStatsTablePath();
+
+                    if (await PRZH.CostStatsTableExists())
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Cost Stats table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(cost_stats_path);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Cost Stats table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully deleted the Cost Stats table."), true, ++val);
+                        }
+                    }
+
+                    // Calculate Zonal Statistics as Table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Zonal Statistics as Table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_PUFC_ID, CostRL, cost_stats_path);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
+                    toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing the Zonal Statistics as Table tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Zonal Statistics as Table tool completed successfully."), true, ++val);
+                    }
+
+                    // Cost Stats Table is now calculated
+                    // The user specified a stat (mean, median, etc)
+                    // based on the specified stat, transfer the stat values to PUFC for each planning unit id
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                }
                 else
                 {
+                    // don't think I could get here...
                     return false;
                 }
 

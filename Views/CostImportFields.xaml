@@ -29,8 +29,8 @@
         Width="300"
         Padding="5" 
         BorderThickness="1.5"
-        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" 
-        BorderBrush="{DynamicResource Esri_BorderBrush}">
+        BorderBrush="{DynamicResource Esri_BorderBrush}"
+        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}">
 
         <!--Grid Definition-->
         <Grid>
@@ -48,7 +48,6 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
-                    Margin="0" 
                     LastChildFill="False" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
                     
@@ -57,15 +56,13 @@
                         DockPanel.Dock="Top"
                         Margin="5"
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="{Binding HeaderText}">
-                    </TextBlock>
+                        Text="{Binding HeaderText}" />
 
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5"
                         Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Available Numeric Fields">
-                    </TextBlock>
+                        Text="Available Numeric Fields" />
 
                 </DockPanel>
             </Border>
@@ -78,7 +75,6 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
-                    Margin="0" 
                     LastChildFill="False" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
@@ -86,42 +82,36 @@
                         DockPanel.Dock="Top"
                         Margin="5" 
                         Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Specify the Planning Unit ID Field">
-                    </TextBlock>
+                        Text="Specify the Planning Unit ID Field" />
 
                     <ComboBox 
                         DockPanel.Dock="Top" 
                         Margin="5,3,5,3" 
                         ItemsSource="{Binding IntFields}" 
-                        SelectedItem="{Binding SelectedPUIDField}">
-                    </ComboBox>
-                    
+                        SelectedItem="{Binding SelectedPUIDField}" />
+
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5"
                         Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Specify the Cost Field">
-                    </TextBlock>
+                        Text="Specify the Cost Field" />
 
                     <ComboBox 
                         DockPanel.Dock="Top" 
                         Margin="5,3,5,3" 
                         ItemsSource="{Binding NumericFields}" 
-                        SelectedItem="{Binding SelectedCostField}">
-                    </ComboBox>
-                    
+                        SelectedItem="{Binding SelectedCostField}" />
+
                 </DockPanel>
             </Border>
 
             <!--Inner Border #3-->
             <Border 
-                Grid.Row="2" 
-                Margin="0"
+                Grid.Row="2"
                 BorderThickness="1.5" 
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
-                    Margin="0" 
                     LastChildFill="False" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
@@ -135,9 +125,8 @@
                         Command="{Binding CmdOK}" 
                         CommandParameter="{Binding ElementName=CostImportFieldsDlg}"
                         IsEnabled="{Binding CmdOKIsEnabled}"
-                        Content="OK">
-                    </Button>
-                    
+                        Content="OK" />
+
                     <Button
                         DockPanel.Dock="Right" 
                         Margin="5" 
@@ -147,9 +136,8 @@
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdCancel}" 
                         CommandParameter="{Binding ElementName=CostImportFieldsDlg}"
-                        Content="Cancel">
-                    </Button>
-                    
+                        Content="Cancel" />
+
                 </DockPanel>
             </Border>
         </Grid>

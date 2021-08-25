@@ -64,7 +64,6 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center"
                             GroupName="cost" 
-                            Command="{Binding CmdConstantOption}" 
                             IsChecked="{Binding ConstantCostIsChecked}"
                             Content="Use Constant Cost Value:" />
 
@@ -88,7 +87,6 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center"
                             GroupName="cost" 
-                            Command="{Binding CmdAreaOption}" 
                             IsChecked="{Binding AreaCostIsChecked}"
                             Content="Use Planning Unit Area" />
 
@@ -104,7 +102,6 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center"
                             GroupName="cost" 
-                            Command="{Binding CmdImportOption}" 
                             IsChecked="{Binding ImportCostIsChecked}"
                             Content="Import Cost from Table" />
                         
@@ -145,6 +142,56 @@
                             IsEnabled="{Binding ImportCostIsChecked}" 
                             Text="{Binding ImportTablePath}" />
 
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <DockPanel
+                        DockPanel.Dock="Top" 
+                        LastChildFill="True">
+
+                            <RadioButton
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center"
+                                GroupName="cost" 
+                                IsChecked="{Binding DeriveCostIsChecked}"
+                                IsEnabled="{Binding DeriveCostIsEnabled}"
+                                Content="Derive Cost from Cost Layer:" />
+
+                            <ComboBox 
+                                Margin="5,3,5,3" 
+                                ItemsSource="{Binding CostLayerList}" 
+                                SelectedItem="{Binding SelectedCostLayer}"
+                                IsEnabled="{Binding DeriveCostIsChecked}" />
+
+
+                        </DockPanel>
+
+                        <DockPanel
+                            DockPanel.Dock="Top" 
+                            LastChildFill="False">
+
+                            <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="40, 5, 5, 5" 
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            IsEnabled="{Binding DeriveCostIsChecked}" 
+                            Text="Cost Statistic:" />
+
+                            <ComboBox
+                                DockPanel.Dock="Left"
+                                Margin="5,3,5,3" 
+                                Width="100"
+                                ItemsSource="{Binding CostStatisticList}" 
+                                SelectedItem="{Binding SelectedCostStatistic}" 
+                                IsEnabled="{Binding DeriveCostIsChecked}" />
+
+                        </DockPanel>
                     </DockPanel>
                 </DockPanel>
             </Border>

@@ -229,7 +229,20 @@ namespace NCC.PRZTools
                 bool safcexists = await PRZH.StudyAreaFCExists();
                 bool sabfcexists = await PRZH.StudyAreaBufferFCExists();
 
-                int i = 3;
+                int i = 0;
+
+                if (pufcexists)
+                {
+                    string pufcpath = PRZH.GetPlanningUnitFCPath();
+
+                    Uri uri = new Uri(pufcpath);
+                    await QueuedTask.Run(async () =>
+                    {
+                        var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_PLANNING_UNITS);
+                        await PRZH.ApplyLegend_PU_Basic(puFL);
+                        puFL.SetVisibility(true);
+                    });
+                }
 
                 if (sabfcexists)
                 {
@@ -257,18 +270,6 @@ namespace NCC.PRZTools
                     });
                 }
 
-                if (pufcexists)
-                {
-                    string pufcpath = PRZH.GetPlanningUnitFCPath();
-
-                    Uri uri = new Uri(pufcpath);
-                    await QueuedTask.Run(async () =>
-                    {
-                        var puFL = LayerFactory.Instance.CreateFeatureLayer(uri, GL_PRZ, i++, PRZC.c_LAYER_PLANNING_UNITS);
-                        await PRZH.ApplyLegend_PU_Basic(puFL);
-                        puFL.SetVisibility(true);
-                    });
-                }
 
                 // ***************************************************************
 

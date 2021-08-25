@@ -44,6 +44,15 @@
         SAB
     }
 
+    public enum CostStatistics
+    {
+        MEAN,
+        MAXIMUM,
+        MEDIAN,
+        MINIMUM,
+        SUM
+    }
+
     public static class PRZConstants
     {
         // LAYER NAMES
@@ -57,7 +66,7 @@
         public const string c_LAYER_STUDY_AREA = "Study Area";
         public const string c_LAYER_STUDY_AREA_BUFFER = "Study Area Buffer";
 
-        // MAJOR OBJECTS
+        // FILES
         public const string c_TEMP_FILEGDB_NAME = "PRZTemp.gdb";
         public const string c_FILENAME_MARXAN = "Marxan.exe";
         public const string c_FILENAME_MARXAN32 = "Marxan_v243_x32.exe";
@@ -88,18 +97,32 @@
         public const string c_SUFFIX_PUCOMP_DSLV = "_Dslv";
 
         // TABLE NAMES
-        public const string c_TABLENAME_STATUSINFO = "PU_Status";
-        public const string c_TABLENAME_BOUNDARYLENGTH = "PU_Boundary";
-        public const string c_TABLENAME_EXTERIORTILES = "PU_OuterTiles";
-        public const string c_TABLENAME_CF = "CF";
-        public const string c_TABLENAME_PUVCF = "PU_CF";
-        public const string c_TABLENAME_BESTSOLUTION = "MXN_BestSolution";
-        public const string c_TABLENAME_SUMSOLUTION = "MXN_SummedSolution";
-        public const string c_TABLENAME_RUNSUMMARY = "MXN_RunSummary";
-        public const string c_TABLENAME_MISSINGVALUES = "MXN_BestSolution_MV";
-        public const string c_TABLENAME_SOLUTIONPREFIX = "MXN_Solution_";
+        public const string c_TABLE_STATUSINFO = "PU_Status";
+        public const string c_TABLE_BOUNDARYLENGTH = "PU_Boundary";
+        public const string c_TABLE_EXTERIORTILES = "PU_OuterTiles";
+        public const string c_TABLE_CF = "CF";
+        public const string c_TABLE_PUVCF = "PU_CF";
+        public const string c_TABLE_BESTSOLUTION = "MXN_BestSolution";
+        public const string c_TABLE_SUMSOLUTION = "MXN_SummedSolution";
+        public const string c_TABLE_RUNSUMMARY = "MXN_RunSummary";
+        public const string c_TABLE_MISSINGVALUES = "MXN_BestSolution_MV";
+        public const string c_TABLE_SOLUTIONPREFIX = "MXN_Solution_";
+        public const string c_TABLE_COSTSTATS = "PU_CostStats";
 
         // FIELD NAMES
+
+        // Cost Stats
+        public const string c_FLD_COST_ID = c_FLD_PUFC_ID;
+        public const string c_FLD_COST_COUNT = "COUNT";
+        public const string c_FLD_COST_AREA = "AREA";
+        public const string c_FLD_COST_MIN = "MIN";
+        public const string c_FLD_COST_MAX = "MAX";
+        public const string c_FLD_COST_RANGE = "RANGE";
+        public const string c_FLD_COST_MEAN = "MEAN";
+        public const string c_FLD_COST_SUM = "SUM";
+        public const string c_FLD_COST_STD = "STD";
+        public const string c_FLD_COST_MEDIAN = "MEDIAN";
+
         // Run Summary
         public const string c_FLD_RUNSUM_RUNID = "Run_Number";
         public const string c_FLD_RUNSUM_SCORE = "Score";

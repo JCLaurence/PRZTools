@@ -328,6 +328,8 @@ namespace NCC.PRZTools
                 this.SRMapIsEnabled = isMapSRProjM;
                 this.SRUserIsEnabled = false;
 
+                #endregion
+
                 // Graphics Layers having selected Polygon Graphics
                 var glyrs = map.GetLayersAsFlattenedList().OfType<GraphicsLayer>().ToList();
                 var polygraphicList = new List<CIMPolygonGraphic>();
@@ -384,7 +386,6 @@ namespace NCC.PRZTools
                 sb.AppendLine("Map Name: " + map.Name);
                 sb.AppendLine("Spatial Reference: " + _mapSR.Name);
 
-                #endregion
             }
             catch (Exception ex)
             {

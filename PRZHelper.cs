@@ -285,22 +285,6 @@ namespace NCC.PRZTools
             }
         }
 
-        public static string GetStudyAreaMultiFCPath()
-        {
-            try
-            {
-                string gdbpath = GetProjectGDBPath();
-                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI);
-
-                return fcpath;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
         public static string GetStudyAreaBufferFCPath()
         {
             try
@@ -317,14 +301,14 @@ namespace NCC.PRZTools
             }
         }
 
-        public static string GetStudyAreaBufferMultiFCPath()
+        public static string GetStatusInfoTablePath()
         {
             try
             {
                 string gdbpath = GetProjectGDBPath();
-                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI_BUFFERED);
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_STATUSINFO);
 
-                return fcpath;
+                return path;
             }
             catch (Exception ex)
             {
@@ -333,12 +317,12 @@ namespace NCC.PRZTools
             }
         }
 
-        public static string GetStatusInfoTablePath()
+        public static string GetCostStatsTablePath()
         {
             try
             {
                 string gdbpath = GetProjectGDBPath();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLENAME_STATUSINFO);
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_COSTSTATS);
 
                 return path;
             }
@@ -489,7 +473,28 @@ namespace NCC.PRZTools
                         return false;
                     }
 
-                    return await TableExists(gdb, PRZC.c_TABLENAME_STATUSINFO);
+                    return await TableExists(gdb, PRZC.c_TABLE_STATUSINFO);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> CostStatsTableExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLE_COSTSTATS);
                 }
             }
             catch (Exception ex)
@@ -637,7 +642,37 @@ namespace NCC.PRZTools
                     {
                         Table tab = await QueuedTask.Run(() =>
                         {
-                            return gdb.OpenDataset<Table>(PRZC.c_TABLENAME_STATUSINFO);
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_STATUSINFO);
+                        });
+
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<Table> GetCostStatsTable()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_COSTSTATS);
                         });
 
                         return tab;
@@ -1429,6 +1464,54 @@ namespace NCC.PRZTools
                 // retrieve all matches (name and type = featurelayer)
                 GroupLayer GL = GetGroupLayer_COST(map);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<RasterLayer> GetRasterLayers_COST(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_COST(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (type = rasterlayer)
+                GroupLayer GL = GetGroupLayer_COST(map);
+                List<RasterLayer> LIST_layers = GL.Layers.Where(l => l is RasterLayer).Cast<RasterLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<Layer> GetLayers_COST(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_COST(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (type = featurelayer or rasterlayer)
+                GroupLayer GL = GetGroupLayer_COST(map);
+                List<Layer> LIST_layers = GL.Layers.Where(l => l is RasterLayer | l is FeatureLayer).ToList();
 
                 return LIST_layers;
             }
