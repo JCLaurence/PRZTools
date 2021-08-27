@@ -41,12 +41,51 @@ namespace NCC.PRZTools
 
         #region Properties
 
+        private bool _cfTableExists;
+        public bool CFTableExists
+        {
+            get => _cfTableExists;
+            set => SetProperty(ref _cfTableExists, value, () => CFTableExists);
+        }
+
+        private bool _puvcfTableExists;
+        public bool PUVCFTableExists
+        {
+            get => _puvcfTableExists;
+            set => SetProperty(ref _puvcfTableExists, value, () => PUVCFTableExists);
+        }
+
         private string _gridCaption;
         public string GridCaption
         {
             get => _gridCaption; set => SetProperty(ref _gridCaption, value, () => GridCaption);
         }
 
+        private string _defaultThreshold = Properties.Settings.Default.DEFAULT_CF_THRESHOLD;
+        public string DefaultThreshold
+        {
+            get => _defaultThreshold;
+
+            set
+            {
+                SetProperty(ref _defaultThreshold, value, () => DefaultThreshold);
+                Properties.Settings.Default.DEFAULT_CF_THRESHOLD = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        private string _defaultTarget = Properties.Settings.Default.DEFAULT_CF_TARGET;
+        public string DefaultTarget
+        {
+            get => _defaultTarget;
+
+            set
+            {
+                SetProperty(ref _defaultTarget, value, () => DefaultTarget);
+                Properties.Settings.Default.DEFAULT_CF_TARGET = value;
+                Properties.Settings.Default.Save();
+            }
+        }
 
         private ObservableCollection<ConservationFeature> _conservationFeatures = new ObservableCollection<ConservationFeature>();
         public ObservableCollection<ConservationFeature> ConservationFeatures
@@ -100,6 +139,10 @@ namespace NCC.PRZTools
             {
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+
+                // checkboxes
+                CFTableExists = await PRZH.CFTableExists();
+                PUVCFTableExists = await PRZH.PUVCFTableExists();
 
                 // Populate the Grid
                 bool Populated = await PopulateCFGrid();
@@ -333,7 +376,6 @@ namespace NCC.PRZTools
 
             try
             {
-
                 #region INITIALIZATION AND USER INPUT VALIDATION
 
                 // Initialize a few thingies
@@ -373,25 +415,54 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
                 }
 
-                //// Validation: Ensure the Default Status Threshold is valid
-                //string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
+                // Validation: Ensure that the Planning Unit Feature Layer exists
+                if (!PRZH.FeatureLayerExists_PU(map))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Layer not found in the map.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Planning Unit Feature Layer not present in the map.  Please reload PRZ layers");
+                    return false;
+                }
 
-                //if (!double.TryParse(threshold_text, out double threshold_double))
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                //    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
-                //    return false;
-                //}
-                //else if (threshold_double < 0 | threshold_double > 100)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                //    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
-                //    return false;
-                //}
-                //else
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Threshold = " + threshold_text), true, ++val);
-                //}
+                // Validation: Ensure the Default Threshold is valid
+                string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
+
+                if (!double.TryParse(threshold_text, out double threshold_double))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    return false;
+                }
+                else if (threshold_double < 0 | threshold_double > 100)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Threshold = " + threshold_text), true, ++val);
+                }
+
+                // Validation: Ensure the Default Target is valid
+                string target_text = string.IsNullOrEmpty(DefaultTarget) ? "0" : ((DefaultTarget.Trim() == "") ? "0" : DefaultTarget.Trim());
+
+                if (!double.TryParse(target_text, out double target_double))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Target value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Target value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    return false;
+                }
+                else if (target_double < 0 | target_double > 100)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Target value", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Target value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Target = " + target_text), true, ++val);
+                }
+
 
                 //// Validation: Ensure three required Layers are present
                 //if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.PU))

@@ -47,7 +47,6 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
-                    Margin="0" 
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
@@ -60,7 +59,7 @@
                             Margin="5" 
                             VerticalAlignment="Center"
                             Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Constraint Threshold:" />
+                            Text="Default Minimum Threshold (%):" />
 
                         <TextBox 
                             DockPanel.Dock="Left"
@@ -68,69 +67,40 @@
                             Width="30"
                             Text="{Binding DefaultThreshold}" />
 
-                        <TextBlock 
+                        <TextBlock
                             DockPanel.Dock="Left" 
                             Margin="5" 
                             VerticalAlignment="Center"
                             Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Conflict Override:" />
+                            Text="Default Target (%):" />
 
-                        <ComboBox
-                            DockPanel.Dock="Left"
-                            Margin="5,3,5,3"
-                            Width="110"   
-                            ItemsSource="{Binding OverrideOptions}" 
-                            SelectedItem="{Binding SelectedOverrideOption}" />
-
-                    </DockPanel>
-
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="True" >
-
-                        <Button
+                        <TextBox 
                             DockPanel.Dock="Left"
                             Margin="5"
-                            Padding="0"
-                            Command="{Binding CmdCalculateStatus}">
-
-                            <Image 
-                                Margin="3" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus32.png" />
-
-                        </Button>
-
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Calculate the Planning Unit Status" />
+                            Width="30"
+                            Text="{Binding DefaultTarget}" />
 
                     </DockPanel>
 
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="True">
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="False">
 
-                        <Button 
+                        <CheckBox
                             DockPanel.Dock="Left"
-                            Margin="5" 
-                            Padding="0"  
-                            Command="{Binding CmdDeleteStatusInfoTable}">
+                            Margin="5"
+                            VerticalContentAlignment="Center"
+                            IsChecked="{Binding CFTableExists}"
+                            IsEnabled="False"
+                            Content="Conservation Features Table Exists" />
 
-                            <Image 
-                                Margin="3" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/TableDelete32.png" />
-
-                        </Button>
-
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Delete Planning Unit Status Info" />
+                        <CheckBox
+                            DockPanel.Dock="Left"
+                            Margin="10,5,5,5"
+                            VerticalContentAlignment="Center"
+                            IsChecked="{Binding PUVCFTableExists}"
+                            IsEnabled="False"
+                            Content="PUvCF Table Exists" />
 
                     </DockPanel>
                 </DockPanel>

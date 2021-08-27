@@ -14,5 +14,11 @@
     <Setting Name="COST_CONSTANT_VALUE" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
+    <Setting Name="DEFAULT_CF_THRESHOLD" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="DEFAULT_CF_TARGET" Type="System.String" Scope="User">
+      <Value Profile="(Default)">50</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

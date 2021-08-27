@@ -70,5 +70,29 @@ namespace NCC.PRZTools.Properties {
                 this["COST_CONSTANT_VALUE"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string DEFAULT_CF_THRESHOLD {
+            get {
+                return ((string)(this["DEFAULT_CF_THRESHOLD"]));
+            }
+            set {
+                this["DEFAULT_CF_THRESHOLD"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public string DEFAULT_CF_TARGET {
+            get {
+                return ((string)(this["DEFAULT_CF_TARGET"]));
+            }
+            set {
+                this["DEFAULT_CF_TARGET"] = value;
+            }
+        }
     }
 }
