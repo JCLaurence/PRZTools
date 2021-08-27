@@ -47,7 +47,7 @@ namespace NCC.PRZTools
         private ObservableCollection<StatusConflict> _conflicts = new ObservableCollection<StatusConflict>();
         public ObservableCollection<StatusConflict> Conflicts
         {
-            get { return _conflicts; }
+            get => _conflicts;
             set
             {
                 _conflicts = value;
@@ -111,7 +111,6 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        //CmdDeleteStatusInfoTable
         private ICommand _cmdDeleteStatusInfoTable;
         public ICommand CmdDeleteStatusInfoTable => _cmdDeleteStatusInfoTable ?? (_cmdDeleteStatusInfoTable = new RelayCommand(() => DeleteStatusInfoTable(), () => true));
 
@@ -119,8 +118,8 @@ namespace NCC.PRZTools
         public ICommand CmdConstraintDoubleClick => _cmdConstraintDoubleClick ?? (_cmdConstraintDoubleClick = new RelayCommand(() => ConstraintDoubleClick(), () => true));
 
 
-        private ICommand _calculateStatus;
-        public ICommand CmdCalculateStatus => _calculateStatus ?? (_calculateStatus = new RelayCommand(() => CalculateStatus(), () => true));
+        private ICommand _cmdCalculateStatus;
+        public ICommand CmdCalculateStatus => _cmdCalculateStatus ?? (_cmdCalculateStatus = new RelayCommand(() => CalculateStatus(), () => true));
 
         public ICommand cmdOK => new RelayCommand((paramProWin) =>
         {

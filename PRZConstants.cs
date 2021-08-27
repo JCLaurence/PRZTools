@@ -53,6 +53,12 @@
         SUM
     }
 
+    public enum CFLayerType
+    {
+        RASTER,
+        VECTOR
+    }
+
     public static class PRZConstants
     {
         // LAYER NAMES
@@ -110,6 +116,23 @@
         public const string c_TABLE_COSTSTATS = "PU_CostStats";
 
         // FIELD NAMES
+
+        // Conservation Features table
+        public const string c_FLD_CF_ID = "id";                     // THE CONSERVATION FEATURE ID
+        public const string c_FLD_CF_NAME = "name";                 // THE CONSERVATION FEATURE NAME
+        public const string c_FLD_CF_TARGET = "target";             // THE TARGET (DOUBLE)
+        public const string c_FLD_CF_TARGETPROP = "prop";           // THE PROPORTIONAL TARGET (INT 0 TO 100)
+        public const string c_FLD_CF_TARGETOCC = "targetocc";       // THE NUMBER OF PLANNING UNITS THAT MUST CONTAIN THE CF (LONG - alternative to target)
+        public const string c_FLD_CF_SPF = "spf";                   // SPECIES PENALTY FACTOR (>0)
+        public const string c_FLD_CF_THRESHOLD = "threshold";
+        public const string c_FLD_CF_LAYERINDEX = "layerindex"; //layer index in group layer
+        public const string c_FLD_CF_LAYERNAME = "layername";   //layer name in group layer
+        public const string c_FLD_CF_WHERECLAUSE = "whereclause";   //whereclause (may be blank)
+        public const string c_FLD_CF_TOTALAREA_M2 = "totalarea_m2";
+        public const string c_FLD_CF_TOTALAREA_HA = "totalarea_ha";
+        public const string c_FLD_CF_TOTALAREA_KM2 = "totalarea_km2";
+        public const string c_FLD_CF_TILECOUNT = "tilecount";
+        public const string c_FLD_CF_USE = "use";               //use this field in marxan - "yes", "no"
 
         // Cost Stats
         public const string c_FLD_COST_ID = c_FLD_PUFC_ID;
@@ -186,7 +209,7 @@
         public const string c_FLD_DATATABLE_STATUS_STATUS = "status";
 
         // Status Info table
-        public const string c_FLD_STATUSINFO_ID = "id";
+        public const string c_FLD_STATUSINFO_ID = c_FLD_PUFC_ID;
         public const string c_FLD_STATUSINFO_QUICKSTATUS = "quickstatus";
         public const string c_FLD_STATUSINFO_CONFLICT = "conflict";
 
@@ -205,22 +228,6 @@
         public const string c_FLD_PUVCF_ID = "id";
         public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
 
-        // Conservation Features table
-        public const string c_FLD_CF_ID = "id";         //THE CONSERVATION FEATURE ID
-        public const string c_FLD_CF_NAME = "name";     //THE CONSERVATION FEATURE NAME
-        public const string c_FLD_CF_TARGET = "target";     //THE TARGET (DOUBLE)
-        public const string c_FLD_CF_TARGETPROP = "prop";   //THE PROPORTIONAL TARGET (INT 0 TO 100)
-        public const string c_FLD_CF_TARGETOCC = "targetocc";  // THE NUMBER OF PLANNING UNITS THAT MUST CONTAIN THE CF (LONG - alternative to target)
-        public const string c_FLD_CF_SPF = "spf";           //SPECIES PENALTY FACTOR (>0)
-        public const string c_FLD_CF_THRESHOLD = "threshold";
-        public const string c_FLD_CF_LAYERINDEX = "layerindex"; //layer index in group layer
-        public const string c_FLD_CF_LAYERNAME = "layername";   //layer name in group layer
-        public const string c_FLD_CF_WHERECLAUSE = "whereclause";   //whereclause (may be blank)
-        public const string c_FLD_CF_TOTALAREA_M2 = "totalarea_m2";
-        public const string c_FLD_CF_TOTALAREA_HA = "totalarea_ha";
-        public const string c_FLD_CF_TOTALAREA_KM2 = "totalarea_km2";
-        public const string c_FLD_CF_TILECOUNT = "tilecount";
-        public const string c_FLD_CF_USE = "use";               //use this field in marxan - "yes", "no"
 
         public const string c_FLD_CFDT_LAYERINDEX = "index";
         public const string c_FLD_CFDT_LAYERNAME = "name";

@@ -26,7 +26,7 @@
           <button refID="prz_button_pustatus" size="large" />
           <button refID="prz_button_pucost" size="large" />
           <button refID="prz_button_boundarylengths" size="large" />
-          <button refID="prz_button_conservationfeatures" size="large" />
+          <button refID="prz_button_cfgenerator" size="large" />
         </group>
         <group id="prz_group_output" caption="Output" keytip="z">
           <menu refID="prz_menu_legends" size="large" />
@@ -55,7 +55,7 @@
           <tooltip heading="Boundary Length Table Generator">
             Build a boundary length table from your planning units.<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>
-        <button id="prz_button_conservationfeatures" caption="Conservation Features" className="Button_ConservationFeatures" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_cfgenerator" caption="Conservation Features" className="Button_CFGenerator" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Conservation Features">
             Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers<disabledText>Active Pane must be a Map</disabledText></tooltip>
         </button>

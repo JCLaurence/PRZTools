@@ -813,27 +813,196 @@ namespace NCC.PRZTools
                     // The user specified a stat (mean, median, etc)
                     // based on the specified stat, transfer the stat values to PUFC for each planning unit id
 
+                    string cost_field = "";
+                    string puid_field = PRZC.c_FLD_COST_ID;
 
+                    if (SelectedCostStatistic == CostStatistics.MAXIMUM.ToString())
+                    {
+                        cost_field = PRZC.c_FLD_COST_MAX;
+                    }
+                    else if (SelectedCostStatistic == CostStatistics.MINIMUM.ToString())
+                    {
+                        cost_field = PRZC.c_FLD_COST_MIN;
+                    }
+                    else if (SelectedCostStatistic == CostStatistics.MEAN.ToString())
+                    {
+                        cost_field = PRZC.c_FLD_COST_MEAN;
+                    }
+                    else if (SelectedCostStatistic == CostStatistics.MEDIAN.ToString())
+                    {
+                        cost_field = PRZC.c_FLD_COST_MEDIAN;
+                    }
+                    else if (SelectedCostStatistic == CostStatistics.SUM.ToString())
+                    {
+                        cost_field = PRZC.c_FLD_COST_SUM;
+                    }
+                    else
+                    {
+                        ProMsgBox.Show("Invalid Selected Cost Statistic");
+                        return false;
+                    }
 
+                    // Configure Dictionaries
+                    Dictionary<int, double> DICT_PUFC_PUID_and_cost = new Dictionary<int, double>();    // (PUID => Cost) from the Planning Unit FC
+                    Dictionary<int, double?> DICT_COSTSTATS_PUID_and_cost = new Dictionary<int, double?>();    // (PUID => Cost) from the Cost Stats table
+                    List<int> LIST_DS_PUID_multiple_costs = new List<int>();
 
+                    int nullCostStatsPUIDCount = 0;
+                    int nullCostStatsCostCount = 0;
 
+                    // Populate the PUFC dictionary
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Planning Unit Feature Class..."), true, ++val);
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetPlanningUnitFC())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                    double cost = (double)row[PRZC.c_FLD_PUFC_COST];
 
+                                    DICT_PUFC_PUID_and_cost.Add(puid, cost);
+                                }
+                            }
+                        }
+                    });
 
+                    // Populate the CostStats dictionary
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Cost Stats table"), true, ++val);
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetCostStatsTable())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int? puid_nullable = (int?)row[puid_field];
+                                    double? cost_nullable = (double?)row[cost_field];
 
+                                    // If PUID is null, skip this row
+                                    if (!puid_nullable.HasValue)
+                                    {
+                                        nullCostStatsPUIDCount++;
+                                        continue;
+                                    }
 
+                                    int puid = puid_nullable.Value;
 
+                                    if (DICT_COSTSTATS_PUID_and_cost.ContainsKey(puid))
+                                    {
+                                        double? existing_cost = DICT_COSTSTATS_PUID_and_cost[puid];
 
+                                        if (!cost_nullable.Equals(existing_cost))
+                                        {
+                                            LIST_DS_PUID_multiple_costs.Add(puid);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        DICT_COSTSTATS_PUID_and_cost.Add(puid, cost_nullable);
+                                    }
+                                }
+                            }
+                        }
+                    });
 
+                    // Review the PU FC Dictionary (Do I need to do this?)
+                    var PUFCKeys = DICT_PUFC_PUID_and_cost.Keys.ToList();
+                    var PUFCValues = DICT_PUFC_PUID_and_cost.Values.ToList();
 
+                    int PUFC_minPUID = PUFCKeys.Min();  // should be 1
+                    int PUFC_maxPUID = PUFCKeys.Max();
+                    int PUFC_Count = PUFCKeys.Count;
+                    double PUFC_minCost = PUFCValues.Min();
+                    double PUFC_maxCost = PUFCValues.Max();
 
+                    // Review the CostStats Dictionary (Definitely need to do this!)
+                    var CostStatsKeys = DICT_COSTSTATS_PUID_and_cost.Keys.ToList();
+                    var CostStatsValues = DICT_COSTSTATS_PUID_and_cost.Values.ToList();
+
+                    int CostStats_minPUID = CostStatsKeys.Min();
+                    int CostStats_maxPUID = CostStatsKeys.Max();
+                    int CostStats_Count = CostStatsKeys.Count;
+                    double CostStats_minCost = CostStatsValues.Min().GetValueOrDefault();
+                    double CostStats_maxCost = CostStatsValues.Max().GetValueOrDefault();
+
+                    // I need to fill a dictionary of PUID => cost values that I will use to
+                    // update PU FC cost field.
+
+                    // Only PUIDs existing in both DICT can be added.
+                    Dictionary<int, double> DICT_Updator = new Dictionary<int, double>();
+
+                    foreach (var kvp in DICT_PUFC_PUID_and_cost)
+                    {
+                        int puid = kvp.Key;
+
+                        if (DICT_COSTSTATS_PUID_and_cost.ContainsKey(puid))
+                        {
+                            double c = DICT_COSTSTATS_PUID_and_cost[puid].GetValueOrDefault();
+                            DICT_Updator.Add(puid, c);
+                        }
+                    }
+
+                    // Verify that at least 1 KVP was added to dict
+                    if (DICT_Updator.Count == 0)
+                    {
+                        ProMsgBox.Show("No matching PUID values were found in the specified Dataset...");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Stats Table has no matching PU ID values.  This is very strange. Exiting Cost Calculation.", LogMessageType.ERROR), true, ++val);
+                        return false;
+                    }
+
+                    // Prompt User to proceed or cancel
+                    //string match_count = (DICT_Updator.Count == 1) ? "1 matching planning unit ID found." : DICT_Updator.Count.ToString() + " matching planning unit IDs found.";
+                    //if (ProMsgBox.Show(match_count +
+                    //   Environment.NewLine + Environment.NewLine +
+                    //   "Click OK to update the Planning Unit Feature Class cost field with matching values." +
+                    //   Environment.NewLine + Environment.NewLine +
+                    //   "Choose wisely...",
+                    //   "FIELD CALCULATE WARNING",
+                    //   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                    //   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                    //{
+                    //    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Cost Import Process."), true, ++val);
+                    //    return false;
+                    //}
+
+                    // Do the update
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating FC: Setting cost value for {DICT_Updator.Count} feature(s)."), true, ++val);
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                        using (RowCursor rowCursor = featureClass.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+
+                                    if (DICT_Updator.ContainsKey(puid))
+                                    {
+                                        row[PRZC.c_FLD_PUFC_COST] = DICT_Updator[puid];
+                                        row.Store();
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Cost values successfully derived from raster."), true, ++val);
+                    ProMsgBox.Show("Cost successfully derived from raster.");
                 }
                 else
                 {
                     // don't think I could get here...
                     return false;
                 }
-
-
 
 
                 return true;

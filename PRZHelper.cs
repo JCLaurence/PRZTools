@@ -333,6 +333,38 @@ namespace NCC.PRZTools
             }
         }
 
+        public static string GetCFTablePath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_CF);
+
+                return path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static string GetPUVCFTablePath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUVCF);
+
+                return path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         // *** Path + Object Existence
         public static bool ProjectWSExists()
@@ -495,6 +527,48 @@ namespace NCC.PRZTools
                     }
 
                     return await TableExists(gdb, PRZC.c_TABLE_COSTSTATS);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> CFTableExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLE_CF);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> PUVCFTableExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLE_PUVCF);
                 }
             }
             catch (Exception ex)
@@ -689,6 +763,67 @@ namespace NCC.PRZTools
                 return null;
             }
         }
+
+        public static async Task<Table> GetCFTable()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_CF);
+                        });
+
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<Table> GetPUVCFTable()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUVCF);
+                        });
+
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         public static async Task<Table> GetTable(Geodatabase gdb, string table_name)
         {

@@ -1,6 +1,6 @@
 ﻿<controls:ProWindow 
-    x:Class="NCC.PRZTools.ConservationFeatures"
-    x:Name="ConservationFeaturesDlg"
+    x:Class="NCC.PRZTools.CFGenerator"
+    x:Name="CFGeneratorDlg"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:controls="clr-namespace:ArcGIS.Desktop.Framework.Controls;assembly=ArcGIS.Desktop.Framework"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -33,6 +33,7 @@
 
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
@@ -143,6 +144,55 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True" 
+                        Command="{Binding CmdBuildCFTable}"
+                        Content="GENERATE CF TABLE" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="BANANARAMA" />
+
+                </DockPanel>
+            </Border>
+
+
+            <!--Inner Border #3-->
+            <Border 
+                Grid.Row="2" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
                     LastChildFill="True" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
@@ -150,57 +200,69 @@
                         DockPanel.Dock="Top"
                         Margin="5"  
                         Style="{DynamicResource Esri_TextBlockH4}" 
-                        Text="{Binding ConflictGridCaption}" />
+                        Text="{Binding GridCaption}" />
 
                     <DataGrid 
                         Margin="5" 
                         IsReadOnly="True" 
-                        SelectionMode="Single" 
-                        SelectionUnit="FullRow" 
+                        SelectionMode="Single"
+                        SelectionUnit="Cell"
                         AutoGenerateColumns="False"
                         Style="{DynamicResource Esri_DataGrid}" 
                         ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" 
                         CellStyle="{DynamicResource Esri_DataGridCell}"
-                        ItemsSource="{Binding Conflicts}" 
-                        SelectedItem="{Binding SelectedConflict}">
+                        ItemsSource="{Binding ConservationFeatures}" 
+                        SelectedItem="{Binding SelectedConservationFeature}">
 
                         <DataGrid.InputBindings>
-                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdConstraintDoubleClick}" />
+                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdGridDoubleClick}" />
                         </DataGrid.InputBindings>
 
                         <DataGrid.Columns>
                             <DataGridTextColumn 
-                                Header="Conflict #" 
-                                Binding="{Binding conflict_num}" 
+                                Header="CF ID" 
+                                Binding="{Binding cf_id}" 
                                 CanUserReorder="False" 
-                                CanUserSort="False" />
+                                CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="'Include' Layer" 
-                                Binding="{Binding include_layer_name}" 
+                                Header="Conservation Feature Name" 
+                                Binding="{Binding cf_name}" 
                                 CanUserReorder="False" 
-                                CanUserSort="False" />
+                                CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="'Exclude' Layer" 
-                                Binding="{Binding exclude_layer_name}" 
+                                Header="Total Area (m&#x00B2;)" 
+                                Binding="{Binding area_m2}" 
                                 CanUserReorder="False" 
-                                CanUserSort="False" />
+                                CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="Planning Unit Count" 
-                                Binding="{Binding pu_count}" 
+                                Header="Total Area (ac)" 
+                                Binding="{Binding area_ac}" 
                                 CanUserReorder="False" 
-                                CanUserSort="False" />
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Total Area (ha)" 
+                                Binding="{Binding area_ha}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Total Area (km&#x00B2;)" 
+                                Binding="{Binding area_km2}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
 
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #3-->
+            <!--Inner Border #4-->
             <Border
-                Grid.Row="2" 
+                Grid.Row="3" 
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 

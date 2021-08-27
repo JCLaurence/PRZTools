@@ -123,6 +123,7 @@
     <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
+    <Compile Include="Models\ConservationFeature.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
@@ -133,15 +134,15 @@
     <Compile Include="Models\ProgressManager.cs" />
     <Compile Include="Models\StatusConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
-    <Compile Include="ViewModels\ConservationFeaturesVM.cs" />
+    <Compile Include="ViewModels\CFGeneratorVM.cs" />
     <Compile Include="ViewModels\PUGeneratorVM.cs" />
     <Compile Include="ViewModels\PUCostVM.cs" />
     <Compile Include="ViewModels\PUStatusVM.cs" />
     <Compile Include="Views\BoundaryLengths.xaml.cs">
       <DependentUpon>BoundaryLengths.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ConservationFeatures.xaml.cs">
-      <DependentUpon>ConservationFeatures.xaml</DependentUpon>
+    <Compile Include="Views\CFGenerator.xaml.cs">
+      <DependentUpon>CFGenerator.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\PUCost.xaml.cs">
       <DependentUpon>PUCost.xaml</DependentUpon>
@@ -149,7 +150,7 @@
     <Compile Include="Views\PUStatus.xaml.cs">
       <DependentUpon>PUStatus.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Widgets\Button_ConservationFeatures.cs" />
+    <Compile Include="Widgets\Button_CFGenerator.cs" />
     <Compile Include="Widgets\Button_BoundaryLengths.cs" />
     <Compile Include="Widgets\Button_PUStatus.cs" />
     <Compile Include="Widgets\Button_PUCost.cs" />
@@ -205,7 +206,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ConservationFeatures.xaml">
+    <Page Include="Views\CFGenerator.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

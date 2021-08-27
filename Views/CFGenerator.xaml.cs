@@ -16,12 +16,12 @@ using System.Windows.Shapes;
 namespace NCC.PRZTools
 {
     /// <summary>
-    /// Interaction logic for ConservationFeatures.xaml
+    /// Interaction logic for CFGenerator.xaml
     /// </summary>
-    public partial class ConservationFeatures : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class CFGenerator : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal ConservationFeaturesVM vm = new ConservationFeaturesVM();
-        public ConservationFeatures()
+        internal CFGeneratorVM vm = new CFGeneratorVM();
+        public CFGenerator()
         {
             InitializeComponent();
             this.DataContext = vm;

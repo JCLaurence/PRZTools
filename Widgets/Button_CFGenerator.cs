@@ -6,14 +6,13 @@ using ArcGIS.Desktop.Mapping;
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
 using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    internal class Button_PUCost : Button
+    internal class Button_CFGenerator : Button
     {
 
         protected override async void OnClick()
@@ -89,16 +88,23 @@ namespace NCC.PRZTools
                     return;
                 }
 
+                // Ensure the Planning Unit Feature Layer is present
+                if (!PRZH.FeatureLayerExists_PU(map))
+                {
+                    ProMsgBox.Show("Planning Unit Feature Layer is not present in the map.  Please reload the PRZ Layers");
+                    return;
+                }
+
                 // Ensure that the active map has an acceptable spatial reference
                 // TODO: Determine what constitutes a valid SR
                 SpatialReference SR = map.SpatialReference;
 
                 #endregion
 
-                #region Configure and Show the Planning Unit Cost Dialog
+                #region Configure and Show the CF Dialog
 
-                PUCost dlg = new PUCost();                              // View
-                PUCostVM vm = (PUCostVM)dlg.DataContext;                // View Model
+                CFGenerator dlg = new CFGenerator();                      // View
+                CFGeneratorVM vm = (CFGeneratorVM)dlg.DataContext;        // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 
