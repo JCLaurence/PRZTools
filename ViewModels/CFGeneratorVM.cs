@@ -463,50 +463,102 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Target = " + target_text), true, ++val);
                 }
 
+                // Validation: Ensure the Conservation Features group layer is present
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.CF))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> CF Group Layer is missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("CF Group Layer is missing.  Please reload the PRZ Layers and try again.", "Validation");
+                    return false;
+                }
 
-                //// Validation: Ensure three required Layers are present
-                //if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Layers are missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                //    ProMsgBox.Show("PRZ Layers are missing.  Please reload the PRZ Layers and try again.", "Validation");
-                //    return false;
-                //}
+                // Validation: Ensure that at least 1 FL or RL is present within the CF Group Layer
+                var FLs = PRZH.GetFeatureLayers_CF(map);
+                var RLs = PRZH.GetRasterLayers_CF(map);
 
-                //// Validation: Ensure that at least one Feature Layer is present in either of the two group layers
-                //var LIST_IncludeFL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
-                //var LIST_ExcludeFL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
+                if (FLs is null || RLs is null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unable to retrieve contents of Conservation Features Group Layer.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve contents of Conservation Features Group Layer.  Please reload the PRZ Layers and try again.", "Validation");
+                    return false;
+                }
 
-                //if (LIST_IncludeFL == null || LIST_ExcludeFL == null)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                //    ProMsgBox.Show("Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload the PRZ Layers and try again.", "Validation");
-                //    return false;
-                //}
+                if (FLs.Count == 0 && RLs.Count == 0)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Feature or Raster Layers found within Conservation Feature Group Layer.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("There must be at least one Feature Layer or Raster Layer within the Conservation Features Group Layer.", "Validation");
+                    return false;
+                }
 
-                //if (LIST_IncludeFL.Count == 0 && LIST_ExcludeFL.Count == 0)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Feature Layers found within Status Include or Status Exclude group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                //    ProMsgBox.Show("There must be at least one Feature Layer within either the Status INCLUDE or the Status EXCLUDE group layers.", "Validation");
-                //    return false;
-                //}
-
-                //// Validation: Prompt User for permission to proceed
-                //if (ProMsgBox.Show("If you proceed, the Planning Unit Status table will be overwritten if it exists in the Project Geodatabase." +
-                //   Environment.NewLine + Environment.NewLine +
-                //   "Additionally, the contents of the 'status' field in the Planning Unit Feature Class will be updated." +
-                //   Environment.NewLine + Environment.NewLine +
-                //   "Do you wish to proceed?" +
-                //   Environment.NewLine + Environment.NewLine +
-                //   "Choose wisely...",
-                //   "TABLE OVERWRITE WARNING",
-                //   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
-                //   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Status Calculation."), true, ++val);
-                //    return false;
-                //}
+                // Validation: Prompt User for permission to proceed
+                if (ProMsgBox.Show("If you proceed, the CF and PUvCF tables will be overwritten if they exist in the Project Geodatabase." +
+                   Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "TABLE OVERWRITE WARNING",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Conservation Feature Generation."), true, ++val);
+                    return false;
+                }
 
                 #endregion
+
+                #region CONSTRUCT THE CF DATATABLE
+
+                // Create the empty DataTable
+                DataTable DT = new DataTable();
+
+                DT.Columns.Add(PRZC.c_FLD_CFDT_LAYER, typeof(Layer));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_LAYERINDEX, typeof(int));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_LAYERNAME, typeof(string));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_LAYERTHRESHOLD, typeof(double));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_TARGETPROP, typeof(double));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_CFID, typeof(int));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_CFNAME, typeof(string));
+                DT.Columns.Add(PRZC.c_FLD_CFDT_WHERECLAUSE, typeof(string));
+
+                bool success = await PopulateCFDataTable(DT);
+
+
+                if (DT is null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to construct the Conservation Features DataTable", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to construct the Conservation Features DataTable");
+                    return false;
+                }
+                else if (DT.Rows.Count == 0)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("No valid Conservation Features layers found", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("No valid Conservation Feature layers found", "Validation");
+                    return false;
+                }
+
+
+
+
+                #endregion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 //#region PREPARE THE LAYER DATATABLES
 
@@ -957,7 +1009,442 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> PopulateCFDataTable(DataTable DT)
+        {
+            try
+            {
+                Map map = MapView.Active.Map;
 
+                List<Layer> LIST_L = PRZH.GetLayers_CF(map);
+                List<FeatureLayer> LIST_FL = PRZH.GetFeatureLayers_CF(map);
+                List<RasterLayer> LIST_RL = PRZH.GetRasterLayers_CF(map);
+
+                for (int i = 0; i < LIST_L.Count; i++)
+                {
+                    Layer L = LIST_L[i];
+
+                    // Evaluate layers differently by their type
+                    if (L is FeatureLayer FL)
+                    {
+                        // Ensure that FL is valid (i.e. has valid source data)
+                        if (!await QueuedTask.Run(() =>
+                        {
+                            using (FeatureClass FC = FL.GetFeatureClass())
+                            {
+                                return FC != null;
+                            }
+                        }))
+                        {
+                            if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' has no Data Source.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                                "Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // Ensure that FL has a valid spatial reference
+                        if (!await QueuedTask.Run(() =>
+                        {
+                            SpatialReference SR = FL.GetSpatialReference();
+                            return SR != null && !SR.IsUnknown;
+                        }))
+                        {
+                            if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' has a NULL or UNKNOWN Spatial Reference.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                                "Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // Ensure that FL is Polygon layer
+                        if (FL.ShapeType != esriGeometryType.esriGeometryPolygon)
+                        {
+                            if (ProMsgBox.Show("The Feature Layer '" + FL.Name + "' is NOT a Polygon Feature Layer.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                                "Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // Inspect the Layer Name for a Threshold pattern
+                        string original_layer_name = FL.Name;
+                        string layer_name;
+                        int threshold_int;
+
+                        //string pattern_start = @"^\[\d{1,3}\]"; // start of string
+                        //string pattern_end = @"$\[\d{1,3}\]";   // end of string
+                        string pattern = @"\[\d{1,3}\]";        // anywhere in string
+
+                        Regex regex = new Regex(pattern);
+                        Match match = regex.Match(original_layer_name);
+
+                        if (match.Success)
+                        {
+                            string matched_pattern = match.Value;   // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
+                            layer_name = original_layer_name.Replace(matched_pattern, "");  // layer name minus the [n], [nn], or [nnn] substring
+                            string threshold_text = matched_pattern.Replace("[", "").Replace("]", "");  // leaves just the 1, 2, or 3 numeric digits, no more brackets
+
+                            threshold_int = int.Parse(threshold_text);  // integer value
+
+                            if (threshold_int < 0 | threshold_int > 100)
+                            {
+                                string message = "An invalid threshold of " + threshold_int.ToString() + " has been specified for:" +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Layer: " + original_layer_name + Environment.NewLine +
+                                                 "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // check the name length
+                            if (layer_name.Length == 0)
+                            {
+                                string message = "Layer '" + original_layer_name + "' has a zero-length name once the threshold value is removed." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            layer_name = original_layer_name;
+
+                            // check the name length
+                            if (layer_name.Length == 0)
+                            {
+                                string message = "Layer '" + original_layer_name + "' has a zero-length name." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // get the default threshold for this layer
+                            threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_THRESHOLD);   // use default value
+                        }
+
+                        double threshold_double = threshold_int / 100.0;    // convert threshold to a double between 0 and 1 inclusive
+
+
+                        // EXAMINE FL LEGEND FOR UNIQUE VALUE RENDERER CLASSES
+                        bool OneCF = true;
+
+                        bool result = await QueuedTask.Run(() =>
+                        {
+                            var rend = FL.GetRenderer();
+
+                            if (rend is CIMUniqueValueRenderer UVRend)
+                            {
+                                bool hasJoins = FL.HasJoins;    // might need this?
+
+                                // Populate the Field and Field Type Dictionary
+                                string[] rendFields = UVRend.Fields;
+                                int rendFieldCount = rendFields.Length;
+                                Dictionary<string, string> DICT_RendFieldName_and_type = new Dictionary<string, string>();
+                                Dictionary<FieldDescription, string> DICT_RendFieldDescription_and_type = new Dictionary<FieldDescription, string>();
+                                List<FieldDescription> LIST_RendFieldDescriptions = new List<FieldDescription>();
+                                List<UVConservationFeature> LIST_UVConservationFeatures = new List<UVConservationFeature>();
+
+                                // fieldDescriptions: all fields in FL, including joined fields
+                                List<FieldDescription> fieldDescriptions = FL.GetFieldDescriptions();
+
+                                foreach (string rendField in rendFields)
+                                {
+                                    foreach (FieldDescription fieldDescription in fieldDescriptions)
+                                    {
+                                        if (rendField == fieldDescription.Name)
+                                        {
+                                            LIST_RendFieldDescriptions.Add(fieldDescription);
+                                        }
+                                    }
+                                }
+
+                                if (rendFields.Length != LIST_RendFieldDescriptions.Count)
+                                {
+                                    ProMsgBox.Show("Not all renderer fields found within FL.");
+                                    return false;
+                                }
+
+                                // I now have a list of Field Descriptions for each field used in the UV renderer, in the correct order.
+
+                                // Cycle through each Legend Group, retrieve Group heading...
+                                CIMUniqueValueGroup[] groups = UVRend.Groups;
+
+                                foreach (CIMUniqueValueGroup group in groups)
+                                {
+                                    // Retrieve the Classes in this Group
+                                    CIMUniqueValueClass[] UVClasses = group.Classes;
+ 
+                                    // Each UVClass will become a Conservation Feature
+                                    foreach (CIMUniqueValueClass UVClass in UVClasses)
+                                    {
+                                        // Create and populate the UV CF object
+                                        UVConservationFeature cf = new UVConservationFeature();
+                                        cf.GroupHeading = group.Heading;
+                                        cf.ClassLabel = UVClass.Label;
+
+                                        // Retrieve the "Tuples" associated with this UVClass
+                                        // A "Tuple" is a collection of 1, 2, or 3 specific field values (from the 1, 2 or 3 fields in the UV Renderer)
+                                        // A UVClass can consist of 1 or more "Tuples".  By default, 1, but if the user groups together 2 or more classes into a single class,
+                                        // the UVClass will consist of those 2 or more "Tuples".
+
+                                        CIMUniqueValue[] UVClassTuples = UVClass.Values;
+                                        int tupleCount = UVClassTuples.Length;
+
+                                        for (int uv = 0; uv < tupleCount; uv++)
+                                        {
+                                            CIMUniqueValue value = UVClassTuples[uv];
+
+                                            string[] fieldValues = value.FieldValues;
+                                            int fieldValueCount = fieldValues.Length;
+
+                                            for (int fv = 0; fv < fieldValues.Length; fv++)
+                                            {
+                                                string fieldValue = fieldValues[fv];
+
+                                            }
+                                        }
+
+
+                                        LIST_UVConservationFeatures.Add(cf);
+                                    }
+                                }
+
+
+
+
+                            }
+
+                            return true;
+                        });
+
+
+
+
+
+
+
+
+
+
+                        // ADD ROW TO DATATABLE
+                        DataRow DR = DT.NewRow();
+                        //DR[PRZC.c_FLD_DATATABLE_STATUS_LAYER] = FL;
+                        //DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX] = i;
+                        //DR[PRZC.c_FLD_DATATABLE_STATUS_NAME] = layer_name;
+                        //DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD] = threshold_double;
+                        //DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS] = status_val;
+
+                        DT.Rows.Add(DR);
+                    }
+                    else if (L is RasterLayer RL)
+                    {
+                        // Ensure that RL is valid (i.e. has valid source data)
+                        if (!await QueuedTask.Run(() =>
+                        {
+                            using (Raster R = RL.GetRaster())
+                            {
+                                return R != null;
+                            }
+                        }))
+                        {
+                            if (ProMsgBox.Show("The Raster Layer '" + RL.Name + "' has no Data Source.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                                "Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+                        // Ensure that RL has a valid spatial reference
+                        if (!await QueuedTask.Run(() =>
+                        {
+                            SpatialReference SR = RL.GetSpatialReference();
+                            return SR != null && !SR.IsUnknown;
+                        }))
+                        {
+                            if (ProMsgBox.Show("The Raster Layer '" + RL.Name + "' has a NULL or UNKNOWN Spatial Reference.  Click OK to skip this layer and continue, or click CANCEL to quit.",
+                                "Layer Validation", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                == System.Windows.MessageBoxResult.Cancel)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                continue;
+                            }
+                        }
+
+
+
+                    }
+                }
+
+
+
+
+
+
+
+                //    // NOW CHECK THE LAYER NAME FOR A USER-SUPPLIED THRESHOLD
+                //    string original_layer_name = FL.Name;
+                //    string layer_name;
+                //    int threshold_int;
+
+                //    //string pattern_start = @"^\[\d{1,3}\]"; // start of string
+                //    //string pattern_end = @"$\[\d{1,3}\]";   // end of string
+                //    string pattern = @"\[\d{1,3}\]";        // anywhere in string
+
+                //    Regex regex = new Regex(pattern);
+                //    Match match = regex.Match(original_layer_name);
+
+                //    if (match.Success)
+                //    {
+                //        string matched_pattern = match.Value;   // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
+                //        //layer_name = original_layer_name.Substring(matched_pattern.Length).Trim();  // layer name minus the [n], [nn], or [nnn] substring
+                //        layer_name = original_layer_name.Replace(matched_pattern, "");  // layer name minus the [n], [nn], or [nnn] substring
+                //        string threshold_text = matched_pattern.Replace("[", "").Replace("]", "");  // leaves just the 1, 2, or 3 numeric digits, no more brackets
+
+                //        threshold_int = int.Parse(threshold_text);  // integer value
+
+                //        if (threshold_int < 0 | threshold_int > 100)
+                //        {
+                //            string message = "An invalid threshold of " + threshold_int.ToString() + " has been specified for:" +
+                //                             Environment.NewLine + Environment.NewLine +
+                //                             "Layer: " + original_layer_name + Environment.NewLine +
+                //                             "Group Layer: " + group + Environment.NewLine + Environment.NewLine +
+                //                             "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                //                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                //            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                //                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                //                == System.Windows.MessageBoxResult.Cancel)
+                //            {
+                //                return false;
+                //            }
+                //            else
+                //            {
+                //                continue;
+                //            }
+                //        }
+
+                //        // check the name length
+                //        if (layer_name.Length == 0)
+                //        {
+                //            string message = "Layer '" + original_layer_name + "' has a zero-length name once the threshold value is removed." +
+                //                             Environment.NewLine + Environment.NewLine +
+                //                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                //            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                //                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                //                == System.Windows.MessageBoxResult.Cancel)
+                //            {
+                //                return false;
+                //            }
+                //            else
+                //            {
+                //                continue;
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        layer_name = original_layer_name;
+
+                //        // check the name length
+                //        if (layer_name.Length == 0)
+                //        {
+                //            string message = "Layer '" + original_layer_name + "' has a zero-length name." +
+                //                             Environment.NewLine + Environment.NewLine +
+                //                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                //            if (ProMsgBox.Show(message, group + " Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                //                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                //                == System.Windows.MessageBoxResult.Cancel)
+                //            {
+                //                return false;
+                //            }
+                //            else
+                //            {
+                //                continue;
+                //            }
+                //        }
+
+                //        // get the default threshold for this layer
+                //        threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_STATUS_THRESHOLD);   // use default value
+                //    }
+
+                //    double threshold_double = threshold_int / 100.0;    // convert threshold to a double between 0 and 1 inclusive
+
+                //    // ADD ROW TO DATATABLE
+                //    DataRow DR = DT.NewRow();
+                //    DR[PRZC.c_FLD_DATATABLE_STATUS_LAYER] = FL;
+                //    DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX] = i;
+                //    DR[PRZC.c_FLD_DATATABLE_STATUS_NAME] = layer_name;
+                //    DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD] = threshold_double;
+                //    DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS] = status_val;
+
+                //    DT.Rows.Add(DR);
+                //}
+
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         private async Task<bool> GridDoubleClick()
         {

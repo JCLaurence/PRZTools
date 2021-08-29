@@ -124,6 +124,7 @@
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\ConservationFeature.cs" />
+    <Compile Include="Models\UVConservationFeature.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>

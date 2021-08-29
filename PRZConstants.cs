@@ -62,7 +62,7 @@
     public static class PRZConstants
     {
         // LAYER NAMES
-        public const string c_GROUPLAYER_PRZ = "PRZ";
+        public const string c_GROUPLAYER_PRZ = "PRIORITIZATION TOOLS";
         public const string c_GROUPLAYER_COST = "COST";
         public const string c_GROUPLAYER_STATUS = "STATUS";
         public const string c_GROUPLAYER_STATUS_INCLUDE = "INCLUDE";
@@ -133,6 +133,16 @@
         public const string c_FLD_CF_TOTALAREA_KM2 = "totalarea_km2";
         public const string c_FLD_CF_TILECOUNT = "tilecount";
         public const string c_FLD_CF_USE = "use";               //use this field in marxan - "yes", "no"
+
+        // Conservation Feature DataTable
+        public const string c_FLD_CFDT_LAYER = "layer";
+        public const string c_FLD_CFDT_LAYERINDEX = "index";
+        public const string c_FLD_CFDT_LAYERNAME = "name";
+        public const string c_FLD_CFDT_LAYERTHRESHOLD = "threshold";
+        public const string c_FLD_CFDT_TARGETPROP = "targetprop";
+        public const string c_FLD_CFDT_WHERECLAUSE = "whereclause";
+        public const string c_FLD_CFDT_CFID = "cfid";
+        public const string c_FLD_CFDT_CFNAME = "cfname";
 
         // Cost Stats
         public const string c_FLD_COST_ID = c_FLD_PUFC_ID;
@@ -229,13 +239,6 @@
         public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
 
 
-        public const string c_FLD_CFDT_LAYERINDEX = "index";
-        public const string c_FLD_CFDT_LAYERNAME = "name";
-        public const string c_FLD_CFDT_LAYERTHRESHOLD = "threshold";
-        public const string c_FLD_CFDT_TARGETPROP = "targetprop";
-        public const string c_FLD_CFDT_WHERECLAUSE = "whereclause";
-        public const string c_FLD_CFDT_CFID = "cfid";
-        public const string c_FLD_CFDT_CFNAME = "cfname";
 
         public const int c_ADJACENTFEATURECOUNT_HEXAGON = 6;    //number of features adjacent to a completely encircled hexagon feature
         public const int c_ADJACENTFEATURECOUNT_SQUARE = 4;     //number of features adjacent to a completely encirled square or diamond feature

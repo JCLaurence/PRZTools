@@ -1670,6 +1670,7 @@ namespace NCC.PRZTools
 
                 // retrieve all matches (name and type = featurelayer)
                 GroupLayer GL = GetGroupLayer_CF(map);
+
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
 
                 return LIST_layers;
@@ -1680,6 +1681,55 @@ namespace NCC.PRZTools
                 return null;
             }
         }
+
+        public static List<RasterLayer> GetRasterLayers_CF(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_CF(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (name and type = featurelayer)
+                GroupLayer GL = GetGroupLayer_CF(map);
+                List<RasterLayer> LIST_layers = GL.Layers.Where(l => l is RasterLayer).Cast<RasterLayer>().ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static List<Layer> GetLayers_CF(Map map)
+        {
+            try
+            {
+                // Verify that layer exists in map
+                bool exists = GroupLayerExists_CF(map);
+                if (!exists)
+                {
+                    return null;
+                }
+
+                // retrieve all matches (type = featurelayer or rasterlayer)
+                GroupLayer GL = GetGroupLayer_CF(map);
+                List<Layer> LIST_layers = GL.Layers.Where(l => l is RasterLayer | l is FeatureLayer).ToList();
+
+                return LIST_layers;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         #endregion
 
