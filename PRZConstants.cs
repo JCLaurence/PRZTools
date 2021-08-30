@@ -4,6 +4,16 @@
     /// <summary>
     /// Used on the WorkspaceSettings dialog to indicate the content listing mode
     /// </summary>
+    
+    public enum FieldCategory
+    {
+        NUMERIC,
+        STRING,
+        DATE,
+        OTHER,
+        UNKNOWN
+    }
+
     public enum WorkspaceDisplayMode
     {
         DIR,    // Workspace Folder contents

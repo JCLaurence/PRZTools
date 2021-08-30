@@ -2312,6 +2312,53 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region TABLES AND FIELDS
+
+        public static FieldCategory GetFieldCategory(ArcGIS.Desktop.Mapping.FieldDescription fieldDescription)
+        {
+            try
+            {
+                FieldCategory fc;
+
+                switch (fieldDescription.Type)
+                {
+                    // Field values require single quotes
+                    case FieldType.String:
+                    case FieldType.GUID:
+                    case FieldType.GlobalID:
+                        fc = FieldCategory.STRING;
+                        break;
+
+                    // Field values require datestamp ''
+                    case FieldType.Date:
+                        fc = FieldCategory.DATE;
+                        break;
+
+                    // Field values require nothing, just the value
+                    case FieldType.Double:
+                    case FieldType.Integer:
+                    case FieldType.OID:
+                    case FieldType.Single:
+                    case FieldType.SmallInteger:
+                        fc = FieldCategory.NUMERIC;
+                        break;
+
+                    // Everything else...
+                    default:
+                        fc = FieldCategory.OTHER;
+                        break;
+                }
+
+                return fc;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return FieldCategory.UNKNOWN;
+            }
+        }
+
+        #endregion
 
 
         public static string GetUserWSPath()

@@ -1172,44 +1172,38 @@ namespace NCC.PRZTools
 
                         // EXAMINE FL LEGEND FOR UNIQUE VALUE RENDERER CLASSES
                         bool OneCF = true;
-
                         bool result = await QueuedTask.Run(() =>
                         {
                             var rend = FL.GetRenderer();
 
                             if (rend is CIMUniqueValueRenderer UVRend)
                             {
-                                bool hasJoins = FL.HasJoins;    // might need this?
+                                // Create the List of Conservation Features to extract from this UV Renderer
+                                List<UVConservationFeature> LIST_ConservationFeaturesUV = new List<UVConservationFeature>();
 
-                                // Populate the Field and Field Type Dictionary
-                                string[] rendFields = UVRend.Fields;
-                                int rendFieldCount = rendFields.Length;
-                                Dictionary<string, string> DICT_RendFieldName_and_type = new Dictionary<string, string>();
-                                Dictionary<FieldDescription, string> DICT_RendFieldDescription_and_type = new Dictionary<FieldDescription, string>();
-                                List<FieldDescription> LIST_RendFieldDescriptions = new List<FieldDescription>();
-                                List<UVConservationFeature> LIST_UVConservationFeatures = new List<UVConservationFeature>();
+                                // Get the field index plus the field type, for each of the 1, 2, or 3 fields
+                                Dictionary<int, FieldCategory> DICT_FieldIndex_and_category = new Dictionary<int, FieldCategory>();
 
-                                // fieldDescriptions: all fields in FL, including joined fields
-                                List<FieldDescription> fieldDescriptions = FL.GetFieldDescriptions();
-
-                                foreach (string rendField in rendFields)
+                                for (int b = 0; b < UVRend.Fields.Length; b++)
                                 {
-                                    foreach (FieldDescription fieldDescription in fieldDescriptions)
+                                    string uvrend_fieldname = UVRend.Fields[b];
+
+                                    foreach (FieldDescription fieldDescription in FL.GetFieldDescriptions())
                                     {
-                                        if (rendField == fieldDescription.Name)
+                                        if (uvrend_fieldname == fieldDescription.Name)
                                         {
-                                            LIST_RendFieldDescriptions.Add(fieldDescription);
+                                            FieldCategory fcat = PRZH.GetFieldCategory(fieldDescription);
+                                            DICT_FieldIndex_and_category.Add(b, fcat);
                                         }
                                     }
                                 }
 
-                                if (rendFields.Length != LIST_RendFieldDescriptions.Count)
+                                // Make sure we picked up a DICT entry for each UVRend field name
+                                if (UVRend.Fields.Length != DICT_FieldIndex_and_category.Count)
                                 {
-                                    ProMsgBox.Show("Not all renderer fields found within FL.");
+                                    ProMsgBox.Show($"Not all renderer fields were found within the {FL.Name} feature layer.");
                                     return false;
                                 }
-
-                                // I now have a list of Field Descriptions for each field used in the UV renderer, in the correct order.
 
                                 // Cycle through each Legend Group, retrieve Group heading...
                                 CIMUniqueValueGroup[] groups = UVRend.Groups;
@@ -1231,32 +1225,88 @@ namespace NCC.PRZTools
                                         // A "Tuple" is a collection of 1, 2, or 3 specific field values (from the 1, 2 or 3 fields in the UV Renderer)
                                         // A UVClass can consist of 1 or more "Tuples".  By default, 1, but if the user groups together 2 or more classes into a single class,
                                         // the UVClass will consist of those 2 or more "Tuples".
-
                                         CIMUniqueValue[] UVClassTuples = UVClass.Values;
-                                        int tupleCount = UVClassTuples.Length;
 
-                                        for (int uv = 0; uv < tupleCount; uv++)
+                                        string classClause = "";
+
+                                        // For Each Tuple (could be 1 to many many)
+                                        for (int tupIx = 0; tupIx < UVClassTuples.Length; tupIx++)
                                         {
-                                            CIMUniqueValue value = UVClassTuples[uv];
+                                            CIMUniqueValue tuple = UVClassTuples[tupIx];
 
-                                            string[] fieldValues = value.FieldValues;
-                                            int fieldValueCount = fieldValues.Length;
+                                            string tupleClause = "";
 
-                                            for (int fv = 0; fv < fieldValues.Length; fv++)
+                                            // For each field value in the tuple (could be 1, 2, or 3)
+                                            for (int fldIx = 0; fldIx < tuple.FieldValues.Length; fldIx++)
                                             {
-                                                string fieldValue = fieldValues[fv];
+                                                string fieldValue = tuple.FieldValues[fldIx];
+                                                bool IsNull = fieldValue == "<Null>";
 
+                                                string Expression = "";
+
+                                                switch (DICT_FieldIndex_and_category[fldIx])
+                                                {
+                                                    case FieldCategory.STRING:
+                                                        Expression = (IsNull) ? "IS NULL" : "= '" + fieldValue.Replace("'", "''") + "'";
+                                                        break;
+
+                                                    case FieldCategory.NUMERIC:
+                                                        Expression = (IsNull) ? "IS NULL" : "= " + fieldValue;
+                                                        break;
+
+                                                    case FieldCategory.DATE:
+                                                        //TODO: Do this date stuff correctly or eliminate dates as an option entirely
+                                                        Expression = (IsNull) ? "IS NULL" : "= date '1973-02-20'";
+                                                        break;
+
+                                                    default:
+                                                        break;
+                                                }
+
+                                                // Assemble the unit clause - the building block of the main where clause
+                                                string unitClause = "(" + UVRend.Fields[fldIx] + " " + Expression + ")";
+
+                                                // Assemble the tuple clause - the where clause of this particular tuple
+                                                if (fldIx == 0)
+                                                {
+                                                    tupleClause = unitClause;
+                                                }
+                                                else
+                                                {
+                                                    tupleClause += " And " + unitClause;
+                                                }
+                                            }
+
+                                            tupleClause = "(" + tupleClause + ")";
+
+                                            if (tupIx == 0)
+                                            {
+                                                classClause = tupleClause;
+                                            }
+                                            else
+                                            {
+                                                classClause += " Or " + tupleClause;
                                             }
                                         }
 
+                                        classClause = "(" + classClause + ")";
+                                        cf.WhereClause = classClause;
 
-                                        LIST_UVConservationFeatures.Add(cf);
+                                        LIST_ConservationFeaturesUV.Add(cf);
                                     }
                                 }
 
+                                // this works!
+                                foreach (var a in LIST_ConservationFeaturesUV)
+                                {
+                                    StringBuilder mess = new StringBuilder();
 
+                                    mess.AppendLine(a.GroupHeading);
+                                    mess.AppendLine(a.ClassLabel);
+                                    mess.AppendLine(a.WhereClause);
 
-
+                                    ProMsgBox.Show(mess.ToString());
+                                }
                             }
 
                             return true;
