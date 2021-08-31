@@ -1,10 +1,6 @@
 ﻿namespace NCC.PRZTools
 {
 
-    /// <summary>
-    /// Used on the WorkspaceSettings dialog to indicate the content listing mode
-    /// </summary>
-    
     public enum FieldCategory
     {
         NUMERIC,
@@ -125,7 +121,7 @@
         public const string c_TABLE_SOLUTIONPREFIX = "MXN_Solution_";
         public const string c_TABLE_COSTSTATS = "PU_CostStats";
 
-        // FIELD NAMES
+        #region COLUMN NAMES
 
         // Conservation Features table
         public const string c_FLD_CF_ID = "id";                     // THE CONSERVATION FEATURE ID
@@ -137,8 +133,10 @@
         public const string c_FLD_CF_THRESHOLD = "threshold";
         public const string c_FLD_CF_LAYERINDEX = "layerindex"; //layer index in group layer
         public const string c_FLD_CF_LAYERNAME = "layername";   //layer name in group layer
+        public const string c_FLD_CF_LAYERTYPE = "layertype";
         public const string c_FLD_CF_WHERECLAUSE = "whereclause";   //whereclause (may be blank)
         public const string c_FLD_CF_TOTALAREA_M2 = "totalarea_m2";
+        public const string c_FLD_CF_TOTALAREA_AC = "totalarea_ac";
         public const string c_FLD_CF_TOTALAREA_HA = "totalarea_ha";
         public const string c_FLD_CF_TOTALAREA_KM2 = "totalarea_km2";
         public const string c_FLD_CF_TILECOUNT = "tilecount";
@@ -146,13 +144,6 @@
 
         // Conservation Feature DataTable
         public const string c_FLD_CFDT_LAYER = "layer";
-        public const string c_FLD_CFDT_LAYERINDEX = "index";
-        public const string c_FLD_CFDT_LAYERNAME = "name";
-        public const string c_FLD_CFDT_LAYERTHRESHOLD = "threshold";
-        public const string c_FLD_CFDT_TARGETPROP = "targetprop";
-        public const string c_FLD_CFDT_WHERECLAUSE = "whereclause";
-        public const string c_FLD_CFDT_CFID = "cfid";
-        public const string c_FLD_CFDT_CFNAME = "cfname";
 
         // Cost Stats
         public const string c_FLD_COST_ID = c_FLD_PUFC_ID;
@@ -244,6 +235,9 @@
         public const string c_FLD_EXTILE_EXTERIOR = "exterior";
         public const string c_FLD_EXTILE_OPENSIDES = "opensides";
 
+        #endregion
+
+
         // Planning Unit Versus CF (PUVCF) table		
         public const string c_FLD_PUVCF_ID = "id";
         public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
@@ -263,6 +257,10 @@
         public const string c_PRZ_PROJECT_FGDB = "PRZ.gdb";
         public const string c_USER_PROFILE_WORKDIR = "PRZTools";
 
+        // MISCELLANEOUS
+        public const string c_REGEX_PERCENT_PATTERN_ANY = @"\[\d{1,3}\]";       // [n], [nn], or [nnn] anywhere in string
+        public const string c_REGEX_PERCENT_PATTERN_START = @"^\[\d{1,3}\]";    // [n], [nn], or [nnn] start of string
+        public const string c_REGEX_PERCENT_PATTERN_END = @"$\[\d{1,3}\]";      // [n], [nn], or [nnn] end of string
 
     }
 }

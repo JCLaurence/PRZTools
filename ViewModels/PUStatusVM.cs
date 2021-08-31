@@ -909,7 +909,7 @@ namespace NCC.PRZTools
                     // Some GP variables
                     IReadOnlyList<string> toolParams;
                     IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                    GPExecuteToolFlags flags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                    GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                     string toolOutput;
 
                     // some paths
@@ -967,7 +967,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersecting " + group + " layer " + layer_number.ToString() + ": " + layer_name), true);
                         toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_fc_path, "ALL", "", "INPUT");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);                        
-                        toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, flags);
+                        toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, toolFlags);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting " + group + " layer " + layer_number.ToString() + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
@@ -985,7 +985,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Dissolving on Planning Unit ID..."), true);
                         toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_PUFC_ID, "", "MULTI_PART", "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, flags);
+                        toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, toolFlags);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Error dissolving " + intersect_fc_name + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
@@ -1074,7 +1074,7 @@ namespace NCC.PRZTools
                         string inputs2= String.Join(";", e2);
                         toolParams = Geoprocessing.MakeValueArray(inputs2, "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, flags);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temp feature classes.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);

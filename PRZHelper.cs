@@ -25,6 +25,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading.Tasks;
 //using System.Windows.Forms;
@@ -2357,6 +2358,47 @@ namespace NCC.PRZTools
                 return FieldCategory.UNKNOWN;
             }
         }
+
+        #endregion
+
+        #region MISCELLANEOUS
+
+        public static (bool ValueFound, int Value, string AdjustedString) ExtractValueFromString(string string_to_search, string regex_pattern)
+        {
+            (bool, int, string) errTuple = (false, 0, "");
+
+            try
+            {
+                Regex regex = new Regex(regex_pattern);
+                Match match = regex.Match(string_to_search);
+
+                if (match.Success)
+                {
+                    string matched_pattern = match.Value;                                       // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
+                    string string_adjusted = string_to_search.Replace(matched_pattern, "");     // string to search minus the [n], [nn], or [nnn] substring
+                    string value_string = matched_pattern.Replace("[", "").Replace("]", "");    // leaves just the 1, 2, or 3 numeric digits, no more brackets
+
+                    // convert text value to int
+                    if (!int.TryParse(value_string, out int value_int))
+                    {
+                        return errTuple;
+                    }
+
+                    return (true, value_int, string_adjusted);
+                }
+                else
+                {
+                    return errTuple;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return errTuple;
+            }
+        }
+
+
 
         #endregion
 

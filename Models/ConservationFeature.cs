@@ -15,9 +15,13 @@ namespace NCC.PRZTools
 
         }
 
-        public int cf_id { get; set; }                   // unique ID
+        public int cf_id { get; set; }                  // unique ID
 
-        public string cf_name { get; set; }                // unique CF name
+        public string cf_name { get; set; }             // unique CF name
+
+        public int threshold_layer { get; set; }        // layer minimum threshold
+
+        public int threshold_cf { get; set; }           // cf minimum threshold
 
         public double area_m2 { get; set; }             // Area (m2) of CF across all Planning Units
 
@@ -29,22 +33,20 @@ namespace NCC.PRZTools
 
         public Layer layer { get; set; }                // Source Layer object
 
-        public int layer_index { get; set; }            // Unique layer index, for sorting
-
         public string layer_name { get; set; }          // Source Layer Name
 
-        public CFLayerType layer_type { get; set; }     // Source Layer Type (Raster or Vector)
+        public string layer_type { get; set; }          // Source Layer Type (Raster or Vector)
 
         public string where_clause { get; set; }        // Filter for CF based on specific feature subset of Source Layer (Vector only)
 
         public bool in_use { get; set; }                // Indicates if the CF should be included in any calculations
 
+        public int target_layer { get; set; }           // Layer-level default target
 
-        public double target { get; set; }              // 
+        public int target_cf { get; set; }              // CF-level specific target
 
 
 
-        
 
 
 

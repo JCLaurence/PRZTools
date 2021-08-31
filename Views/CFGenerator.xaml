@@ -202,6 +202,24 @@
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
+                                Header="Where Clause" 
+                                Binding="{Binding where_clause}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Layer Name" 
+                                Binding="{Binding layer_name}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Layer Type" 
+                                Binding="{Binding layer_type}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
                                 Header="Total Area (m&#x00B2;)" 
                                 Binding="{Binding area_m2}" 
                                 CanUserReorder="False" 
