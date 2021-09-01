@@ -119,8 +119,8 @@ namespace NCC.PRZTools
         private ICommand _cmdConstraintDoubleClick;
         public ICommand CmdGridDoubleClick => _cmdConstraintDoubleClick ?? (_cmdConstraintDoubleClick = new RelayCommand(() => GridDoubleClick(), () => true));
 
-        private ICommand _cmdBuildCFTable;
-        public ICommand CmdBuildCFTable => _cmdBuildCFTable ?? (_cmdBuildCFTable = new RelayCommand(() => BuildCFTable(), () => true));
+        private ICommand _cmdGenerateCF;
+        public ICommand CmdGenerateCF => _cmdGenerateCF ?? (_cmdGenerateCF = new RelayCommand(() => GenerateCF(), () => true));
 
         private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
@@ -179,14 +179,29 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                ConservationFeature CF = new ConservationFeature
-                                {
-                                    cf_name = (row[PRZC.c_FLD_CF_NAME] == null) ? "" : row[PRZC.c_FLD_CF_NAME].ToString(),
-                                    layer_name = (row[PRZC.c_FLD_CF_LAYERNAME] == null) ? "" : row[PRZC.c_FLD_CF_LAYERNAME].ToString(),
-                                    where_clause = (row[PRZC.c_FLD_CF_WHERECLAUSE] == null) ? "" : row[PRZC.c_FLD_CF_WHERECLAUSE].ToString(),
-                                    layer_type = (row[PRZC.c_FLD_CF_LAYERTYPE] == null) ? "" : row[PRZC.c_FLD_CF_LAYERTYPE].ToString(),
-                                    cf_id = (row[PRZC.c_FLD_CF_ID] == null) ? -1 : (int)row[PRZC.c_FLD_CF_ID]
-                                };
+                                ConservationFeature CF = new ConservationFeature();
+
+                                CF.cf_id = (row[PRZC.c_FLD_CF_ID] == null) ? -1 : (int)row[PRZC.c_FLD_CF_ID];
+                                CF.cf_name = (row[PRZC.c_FLD_CF_NAME] == null) ? "" : row[PRZC.c_FLD_CF_NAME].ToString();
+                                CF.cf_whereclause = (row[PRZC.c_FLD_CF_WHERECLAUSE] == null) ? "" : row[PRZC.c_FLD_CF_WHERECLAUSE].ToString();
+                                CF.cf_min_threshold_pct = (row[PRZC.c_FLD_CF_MIN_THRESHOLD_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_CF_MIN_THRESHOLD_PCT];
+                                CF.cf_target_pct = (row[PRZC.c_FLD_CF_TARGET_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_CF_TARGET_PCT];
+
+                                CF.lyr_name = (row[PRZC.c_FLD_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_CF_LYR_NAME].ToString();
+                                CF.lyr_type = (row[PRZC.c_FLD_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_CF_LYR_TYPE].ToString();
+                                CF.lyr_json = (row[PRZC.c_FLD_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_CF_LYR_JSON].ToString();
+
+                                object o = row[PRZC.c_FLD_CF_IN_USE];
+                                bool? b;
+
+                                if (o == null)
+                                    b = null;
+                                else if (o.ToString() == "Yes")
+                                    b = true;
+                                else
+                                    b = false;
+
+                                CF.cf_in_use = b;
 
                                 LIST_CF.Add(CF);
                             }
@@ -376,7 +391,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> BuildCFTable()
+        private async Task<bool> GenerateCF()
         {
             int val = 0;
 
@@ -516,19 +531,6 @@ namespace NCC.PRZTools
                 // Create the empty list of future Conservation Features
                 List<ConservationFeature> LIST_CF = new List<ConservationFeature>();
 
-                //// Create the empty DataTable
-                //DataTable DT = new DataTable();
-
-                //DT.Columns.Add(PRZC.c_FLD_CF_ID, typeof(int));
-                //DT.Columns.Add(PRZC.c_FLD_CF_NAME, typeof(string));
-                //DT.Columns.Add(PRZC.c_FLD_CF_WHERECLAUSE, typeof(string));
-                //DT.Columns.Add(PRZC.c_FLD_CF_TARGETPROP, typeof(double));
-                //DT.Columns.Add(PRZC.c_FLD_CFDT_LAYER, typeof(Layer));
-                //DT.Columns.Add(PRZC.c_FLD_CF_LAYERINDEX, typeof(int));
-                //DT.Columns.Add(PRZC.c_FLD_CF_LAYERNAME, typeof(string));
-                //DT.Columns.Add(PRZC.c_FLD_CF_THRESHOLD, typeof(double));
-                //DT.Columns.Add(PRZC.c_FLD_CF_LAYERTYPE, typeof(string));
-
                 if (!await GetConservationFeaturesFromLayers(LIST_CF))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error retrieving Conservation Features from Layers", LogMessageType.ERROR), true, ++val);
@@ -596,20 +598,33 @@ namespace NCC.PRZTools
                 // Add fields to the table
                 string fldCFID = PRZC.c_FLD_CF_ID + " LONG 'Conservation Feature ID' # # #;";
                 string fldCFName = PRZC.c_FLD_CF_NAME + " TEXT 'Conservation Feature Name' 255 # #;";
-                string fldCFTarget = PRZC.c_FLD_CF_TARGET + " DOUBLE 'Target' # 0 #;";
-                string fldCFTargetProp = PRZC.c_FLD_CF_TARGETPROP + " DOUBLE 'Target (%)' # 0 #;";
-                string fldCFThreshold = PRZC.c_FLD_CF_THRESHOLD + " DOUBLE 'Minimum Threshold' # 0 #;";
-                string fldCFLayerName = PRZC.c_FLD_CF_LAYERNAME + " TEXT 'Layer Name' 255 # #;";
-                string fldCFLayerType = PRZC.c_FLD_CF_LAYERTYPE + " TEXT 'Layer Type' 50 # #;";
-                string fldCFWhereClause = PRZC.c_FLD_CF_WHERECLAUSE + " TEXT 'Where Clause' 500 # #;";
-                string fldCFTotalArea_m2 = PRZC.c_FLD_CF_TOTALAREA_M2 + " DOUBLE 'Total Area (m2)' # 0, #;";
-                string fldCFTotalArea_ac = PRZC.c_FLD_CF_TOTALAREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
-                string fldCFTotalArea_ha = PRZC.c_FLD_CF_TOTALAREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
-                string fldCFTotalArea_km2 = PRZC.c_FLD_CF_TOTALAREA_KM2 + " DOUBLE 'Total Area (km2)' # 0, #;";
-                string fldCFPUCount = PRZC.c_FLD_CF_TILECOUNT + " LONG 'Planning Unit Count' # 0 #;";
+                string fldCFThresholdPct = PRZC.c_FLD_CF_MIN_THRESHOLD_PCT + " LONG 'Min Threshold (%)' # 0 #;";
+                string fldCFTargetPct = PRZC.c_FLD_CF_TARGET_PCT + " LONG 'Target (%)' # 0 #;";
+                string fldCFWhereClause = PRZC.c_FLD_CF_WHERECLAUSE + " TEXT 'WHERE Clause' 1000 # #;";
+                string fldCFInUse = PRZC.c_FLD_CF_IN_USE + " TEXT 'In Use' 3 'Yes' #;";
+                string fldCFArea_m2 = PRZC.c_FLD_CF_AREA_M2 + " DOUBLE 'Total Area (m2)' # 0, #;";
+                string fldCFArea_ac = PRZC.c_FLD_CF_AREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
+                string fldCFArea_ha = PRZC.c_FLD_CF_AREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
+                string fldCFArea_km2 = PRZC.c_FLD_CF_AREA_KM2 + " DOUBLE 'Total Area (km2)' # 0, #;";
+                string fldCFPUCount = PRZC.c_FLD_CF_PUCOUNT + " LONG 'Planning Unit Count' # 0 #;";
+                string fldCFLayerName = PRZC.c_FLD_CF_LYR_NAME + " TEXT 'Source Layer Name' 300 # #;";
+                string fldCFLayerType = PRZC.c_FLD_CF_LYR_TYPE + " TEXT 'Source Layer Type' 50 # #;";
+                string fldCFLayerJSON = PRZC.c_FLD_CF_LYR_JSON + " TEXT 'Source Layer JSON' 100000 # #;";
 
-                string flds = fldCFID + fldCFName + fldCFTarget + fldCFTargetProp + fldCFThreshold + fldCFLayerName + fldCFLayerType + fldCFWhereClause
-                              + fldCFTotalArea_m2 + fldCFTotalArea_ac + fldCFTotalArea_ha + fldCFTotalArea_km2 + fldCFPUCount;
+                string flds = fldCFID +
+                              fldCFName +
+                              fldCFThresholdPct +
+                              fldCFTargetPct +
+                              fldCFWhereClause +
+                              fldCFInUse +
+                              fldCFArea_m2 +
+                              fldCFArea_ac +
+                              fldCFArea_ha +
+                              fldCFArea_km2 +
+                              fldCFPUCount +
+                              fldCFLayerName +
+                              fldCFLayerType +
+                              fldCFLayerJSON;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to CF table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(cfpath, flds);
@@ -625,6 +640,10 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("CF table fields added successfully..."), true, ++val);
                 }
 
+                #endregion
+
+                #region POPULATE THE CONSERVATION FEATURES TABLE
+
                 // Populate CF Table from LIST_CF
                 await QueuedTask.Run(async () =>
                 {
@@ -632,18 +651,41 @@ namespace NCC.PRZTools
                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                     {
-                        // Iterate through each DataRow
+                        // Iterate through each CF
                         foreach (ConservationFeature CF in LIST_CF)
                         {
-                            // Set the values from the datarow
+                            // Set the row values from the CF object
                             rowBuffer[PRZC.c_FLD_CF_ID] = CF.cf_id;
                             rowBuffer[PRZC.c_FLD_CF_NAME] = CF.cf_name;
-                            rowBuffer[PRZC.c_FLD_CF_LAYERNAME] = CF.layer_name;
-                            rowBuffer[PRZC.c_FLD_CF_LAYERTYPE] = CF.layer_type;
-                            rowBuffer[PRZC.c_FLD_CF_THRESHOLD] = CF.threshold_layer;
-                            rowBuffer[PRZC.c_FLD_CF_WHERECLAUSE] = CF.where_clause;
 
-                            // Finally, insert the table row
+                            // min threshold
+                            rowBuffer[PRZC.c_FLD_CF_MIN_THRESHOLD_PCT] = (CF.cf_min_threshold_pct == -1) ? Convert.ToInt32(threshold_double) : CF.cf_min_threshold_pct;
+
+                            // target
+                            rowBuffer[PRZC.c_FLD_CF_TARGET_PCT] = (CF.cf_target_pct == -1) ? Convert.ToInt32(target_double) : CF.cf_target_pct;
+
+                            rowBuffer[PRZC.c_FLD_CF_WHERECLAUSE] = CF.cf_whereclause;
+
+                            // In use
+                            if (!CF.cf_in_use.HasValue)
+                                rowBuffer[PRZC.c_FLD_CF_IN_USE] = "";
+                            else if (CF.cf_in_use == true)
+                                rowBuffer[PRZC.c_FLD_CF_IN_USE] = "Yes";
+                            else
+                                rowBuffer[PRZC.c_FLD_CF_IN_USE] = "No";
+                            
+                            
+                            //rowBuffer[PRZC.c_FLD_CF_AREA_M2] = CF.cf_area_m2;                       // maybe not yet
+                            //rowBuffer[PRZC.c_FLD_CF_AREA_AC] = CF.cf_area_ac;                       // maybe not yet
+                            //rowBuffer[PRZC.c_FLD_CF_AREA_HA] = CF.cf_area_ha;                       // maybe not yet
+                            //rowBuffer[PRZC.c_FLD_CF_AREA_KM2] = CF.cf_area_km2;                     // maybe not yet
+                            //rowBuffer[PRZC.c_FLD_CF_PUCOUNT] = CF.cf_pucount;                       // maybe not yet
+
+                            rowBuffer[PRZC.c_FLD_CF_LYR_NAME] = CF.lyr_name;
+                            rowBuffer[PRZC.c_FLD_CF_LYR_TYPE] = CF.lyr_type;
+                            rowBuffer[PRZC.c_FLD_CF_LYR_JSON] = CF.lyr_json;
+
+                            // Finally, insert the row
                             insertCursor.Insert(rowBuffer);
                             insertCursor.Flush();
                         }
@@ -651,6 +693,8 @@ namespace NCC.PRZTools
                 });
 
                 #endregion
+
+
 
                 //#region INTERSECT THE VARIOUS LAYERS
 
@@ -901,6 +945,8 @@ namespace NCC.PRZTools
                 Map map = MapView.Active.Map;
 
                 int cfid = 1;
+                int default_threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_THRESHOLD);     // retrieve default threshold value
+                int default_target_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_TARGET);           // retrieve default target value
 
                 List<Layer> LIST_L = PRZH.GetLayers_CF(map);
 
@@ -911,6 +957,8 @@ namespace NCC.PRZTools
                     // Process the Layer if it is a FeatureLayer
                     if (L is FeatureLayer FL)
                     {
+                        #region BASIC FL VALIDATION
+
                         // Ensure that FL is valid (i.e. has valid source data)
                         if (!await QueuedTask.Run(() =>
                         {
@@ -966,16 +1014,22 @@ namespace NCC.PRZTools
                             }
                         }
 
-                        // Inspect the Layer Name for a Threshold pattern
-                        (bool ValueFound, int threshold_int, string final_layer_name) = PRZH.ExtractValueFromString(FL.Name, PRZC.c_REGEX_PERCENT_PATTERN_ANY);
+                        #endregion
 
-                        // If the Layer Name contains a number...
-                        if (ValueFound)
+                        string layer_name = ""; // layer name, optionally with thresholds and/or targets excised
+
+                        #region Layer-Level Minimum Threshold
+
+                        // Inspect the Layer Name for a Minimum Threshold number
+                        (bool ThresholdFound, int lyr_threshold_int, string layer_name_no_thresh) = PRZH.ExtractValueFromString(FL.Name, PRZC.c_REGEX_THRESHOLD_PERCENT_PATTERN_ANY);
+
+                        // If the Layer Name contains a Threshold number...
+                        if (ThresholdFound)
                         {
                             // ensure threshold is 0 to 100 inclusive
-                            if (threshold_int < 0 | threshold_int > 100)
+                            if (lyr_threshold_int < 0 | lyr_threshold_int > 100)
                             {
-                                string message = "An invalid threshold of " + threshold_int.ToString() + " has been specified for:" +
+                                string message = "An invalid threshold of " + lyr_threshold_int.ToString() + " has been specified for:" +
                                                  Environment.NewLine + Environment.NewLine +
                                                  "Layer: " + FL.Name + Environment.NewLine +
                                                  "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
@@ -994,7 +1048,7 @@ namespace NCC.PRZTools
                             }
 
                             // ensure adjusted name length is not zero
-                            if (final_layer_name.Length == 0)
+                            if (layer_name_no_thresh.Length == 0)
                             {
                                 string message = "Layer '" + FL.Name + "' has a zero-length name once the threshold value is removed." +
                                                  Environment.NewLine + Environment.NewLine +
@@ -1011,17 +1065,21 @@ namespace NCC.PRZTools
                                     continue;
                                 }
                             }
+
+                            // My new layer name (threshold excised)
+                            layer_name = layer_name_no_thresh;
                         }
 
                         // Layer Name does not contain a number
                         else
                         {
-                            final_layer_name = FL.Name;
+                            // My layer name should remain unchanged
+                            layer_name = FL.Name;
 
                             // check the name length
-                            if (final_layer_name.Length == 0)
+                            if (layer_name.Length == 0)
                             {
-                                string message = "Layer '" + FL.Name + "' has a zero-length name." +
+                                string message = "Layer '" + layer_name + "' has a zero-length name." +
                                                  Environment.NewLine + Environment.NewLine +
                                                  "Click OK to skip this layer and continue, or click CANCEL to quit";
 
@@ -1038,10 +1096,98 @@ namespace NCC.PRZTools
                             }
 
                             // get the default threshold for this layer
-                            threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_THRESHOLD);   // use default value
+                            lyr_threshold_int = default_threshold_int;   // use default value
                         }
 
-                        double threshold_double = threshold_int / 100.0;    // convert threshold to a double between 0 and 1 inclusive
+                        #endregion
+
+                        #region Layer-Level Target
+
+                        // Inspect the Layer Name for a Target number
+                        (bool TargetFound, int lyr_target_int, string layer_name_no_tgt) = PRZH.ExtractValueFromString(layer_name, PRZC.c_REGEX_TARGET_PERCENT_PATTERN_ANY);
+
+                        // If the Layer Name contains a Target number...
+                        if (TargetFound)
+                        {
+                            // ensure target is 0 to 100 inclusive
+                            if (lyr_target_int < 0 | lyr_target_int > 100)
+                            {
+                                string message = "An invalid target of " + lyr_target_int.ToString() + " has been specified for:" +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Layer: " + layer_name + Environment.NewLine +
+                                                 "Target must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // ensure adjusted name length is not zero
+                            if (layer_name_no_tgt.Length == 0)
+                            {
+                                string message = "Layer '" + layer_name + "' has a zero-length name once the target value is removed." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // My new layer name (target excised)
+                            layer_name = layer_name_no_tgt;
+                        }
+
+                        // Layer Name does not contain a number
+                        else
+                        {
+                            // check the name length
+                            if (layer_name.Length == 0)
+                            {
+                                string message = "Layer '" + layer_name + "' has a zero-length name." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // get the default target for this layer
+                            lyr_target_int = default_target_int;   // use default value
+                        }
+
+                        #endregion
+
+                        // Get the JSON from the Feature Layer
+                        string flJson = "";
+                        await QueuedTask.Run(() =>
+                        {
+                            CIMBaseLayer cimbl = FL.GetDefinition();
+                            flJson = cimbl.ToJson();
+                        });
 
                         // Examine the FL Renderer to identify specific classes, each of which will be its own CF
                         // Create the List of Conservation Features to extract from UVRenderer (if applicable)
@@ -1093,9 +1239,176 @@ namespace NCC.PRZTools
                                     return false;
                                 }
 
-
                                 foreach (CIMUniqueValueGroup UVGroup in UVGroups)
                                 {
+                                    // Process the Group Heading looking for Group-level threshold and target
+                                    string group_heading = ""; // group heading, optionally with thresholds and/or targets excised
+
+                                    #region Group-Level Minimum Threshold
+
+                                    // Inspect the Group Heading for a Minimum Threshold number
+                                    (bool GroupThresholdFound, int group_threshold_int, string group_heading_no_thresh) = PRZH.ExtractValueFromString(UVGroup.Heading, PRZC.c_REGEX_THRESHOLD_PERCENT_PATTERN_ANY);
+
+                                    // If the group heading contains a Threshold number...
+                                    if (GroupThresholdFound)
+                                    {
+                                        // ensure threshold is 0 to 100 inclusive
+                                        if (group_threshold_int < 0 | group_threshold_int > 100)
+                                        {
+                                            string message = "An invalid threshold of " + group_threshold_int.ToString() + " has been specified for:" +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Legend Group: " + UVGroup.Heading + " of " + Environment.NewLine + Environment.NewLine +
+                                                             "Layer: " + FL.Name + Environment.NewLine +
+                                                             "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this group and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // ensure adjusted heading length is not zero
+                                        if (group_heading_no_thresh.Length == 0)
+                                        {
+                                            string message = "Legend Group '" + UVGroup.Heading + "' has a zero-length heading once the threshold value is removed." +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this Legend Group and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // My new group heading (threshold excised)
+                                        group_heading = group_heading_no_thresh;
+                                    }
+
+                                    // Group heading does not contain a number
+                                    else
+                                    {
+                                        // My layer name should remain unchanged
+                                        group_heading = UVGroup.Heading;
+
+                                        // check the name length
+                                        if (group_heading.Length == 0)
+                                        {
+                                            string message = "Legend Group '" + group_heading + "' has a zero-length name." +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this Legend Group and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // get the default threshold for this layer
+                                        group_threshold_int = lyr_threshold_int;   // use layer or default value
+                                    }
+
+                                    #endregion
+
+                                    #region Group-Level Target
+
+                                    // Inspect the Group Heading for a Target number
+                                    (bool GroupTargetFound, int group_target_int, string group_heading_no_tgt) = PRZH.ExtractValueFromString(group_heading, PRZC.c_REGEX_TARGET_PERCENT_PATTERN_ANY);
+
+                                    // If the group heading contains a Target number...
+                                    if (GroupTargetFound)
+                                    {
+                                        // ensure target is 0 to 100 inclusive
+                                        if (group_target_int < 0 | group_target_int > 100)
+                                        {
+                                            string message = "An invalid target of " + group_target_int.ToString() + " has been specified for:" +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Legend Group: " + UVGroup.Heading + " of " + Environment.NewLine + Environment.NewLine +
+                                                             "Layer: " + layer_name + Environment.NewLine +
+                                                             "Target must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // ensure adjusted heading length is not zero
+                                        if (group_heading_no_tgt.Length == 0)
+                                        {
+                                            string message = "Legend Group '" + UVGroup.Heading + "' has a zero-length heading once the target value is removed." +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this Legend Group and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // My new group heading (target excised)
+                                        group_heading = group_heading_no_tgt;
+                                    }
+
+                                    // Group heading does not contain a number
+                                    else
+                                    {
+                                        // check the name length
+                                        if (group_heading.Length == 0)
+                                        {
+                                            string message = "Legend Group '" + group_heading + "' has a zero-length name." +
+                                                             Environment.NewLine + Environment.NewLine +
+                                                             "Click OK to skip this Legend Group and continue, or click CANCEL to quit";
+
+                                            if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                                == System.Windows.MessageBoxResult.Cancel)
+                                            {
+                                                return false;
+                                            }
+                                            else
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        // get the default target for this group heading
+                                        group_target_int = lyr_target_int;   // use default value
+                                    }
+
+                                    #endregion
+
                                     // Retrieve the Classes in this Group
                                     CIMUniqueValueClass[] UVClasses = UVGroup.Classes;
  
@@ -1217,32 +1530,19 @@ namespace NCC.PRZTools
                                 ConservationFeature consFeat = new ConservationFeature();
 
                                 consFeat.cf_id = cfid++;
-                                consFeat.cf_name = final_layer_name + " - " + CF.GroupHeading + " - " + CF.ClassLabel;
-                                consFeat.where_clause = CF.WhereClause;
-                                consFeat.threshold_layer = threshold_int;
-                                consFeat.threshold_cf = 25; //TODO: implement this
-                                consFeat.layer = FL;
-                                consFeat.layer_type = "FeatureLayer";
-                                consFeat.layer_name = FL.Name;
-                                consFeat.target_layer = 75;    //TODO: Implement this
-                                consFeat.target_cf = 45;       //TODO: Implement this
-                                consFeat.in_use = true;
+                                consFeat.cf_name = layer_name + " - " + CF.GroupHeading + " - " + CF.ClassLabel;
+                                consFeat.cf_whereclause = CF.WhereClause;
+                                consFeat.lyr_min_threshold_pct = lyr_threshold_int;
+                                consFeat.cf_min_threshold_pct = lyr_threshold_int;  // TODO: cf_threshold_int
+                                consFeat.lyr_object = FL;
+                                consFeat.lyr_type = "FeatureLayer";
+                                consFeat.lyr_name = FL.Name;
+                                consFeat.lyr_json = flJson;
+                                consFeat.lyr_target_pct = lyr_target_int;
+                                consFeat.cf_target_pct = lyr_target_int;    // TODO: cf_target_int
+                                consFeat.cf_in_use = true;
 
                                 LIST_CF.Add(consFeat);
-
-                                //DataRow DR = DT.NewRow();
-
-                                //DR[PRZC.c_FLD_CFDT_LAYER] = FL;
-                                //DR[PRZC.c_FLD_CF_LAYERNAME] = FL.Name;
-                                //DR[PRZC.c_FLD_CF_LAYERTYPE] = "FeatureLayer";
-                                //DR[PRZC.c_FLD_CF_WHERECLAUSE] = CF.WhereClause;
-                                //DR[PRZC.c_FLD_CF_NAME] = FL.Name + " - " + CF.GroupHeading + " - " + CF.ClassLabel;
-                                //DR[PRZC.c_FLD_CF_ID] = cfid++;
-                                //DR[PRZC.c_FLD_CF_THRESHOLD] = threshold_int;
-                                //DR[PRZC.c_FLD_CF_TARGETPROP] = 0.8;
-
-
-                                //DT.Rows.Add(DR);
                             }
                         }
 
@@ -1252,33 +1552,19 @@ namespace NCC.PRZTools
                             ConservationFeature consFeat = new ConservationFeature();
 
                             consFeat.cf_id = cfid++;
-                            consFeat.cf_name = final_layer_name;
-                            consFeat.where_clause = "";
-                            consFeat.threshold_layer = threshold_int;
-                            consFeat.threshold_cf = 25; //TODO: implement this
-                            consFeat.layer = FL;
-                            consFeat.layer_type = "FeatureLayer";
-                            consFeat.layer_name = FL.Name;
-                            consFeat.target_layer = 75;    //TODO: Implement this
-                            consFeat.target_cf = 45;       //TODO: Implement this
-                            consFeat.in_use = true;
+                            consFeat.cf_name = layer_name;
+                            consFeat.cf_whereclause = "";
+                            consFeat.lyr_min_threshold_pct = lyr_threshold_int;
+                            consFeat.cf_min_threshold_pct = lyr_threshold_int;
+                            consFeat.lyr_object = FL;
+                            consFeat.lyr_type = "FeatureLayer";
+                            consFeat.lyr_name = FL.Name;
+                            consFeat.lyr_json = flJson;
+                            consFeat.lyr_target_pct = lyr_target_int;
+                            consFeat.cf_target_pct = lyr_target_int;
+                            consFeat.cf_in_use = true;
 
                             LIST_CF.Add(consFeat);
-
-
-
-                            //DataRow DR = DT.NewRow();
-
-                            //DR[PRZC.c_FLD_CFDT_LAYER] = FL;
-                            //DR[PRZC.c_FLD_CF_LAYERNAME] = FL.Name;
-                            //DR[PRZC.c_FLD_CF_LAYERTYPE] = "FeatureLayer";
-                            //DR[PRZC.c_FLD_CF_WHERECLAUSE] = "";
-                            //DR[PRZC.c_FLD_CF_NAME] = final_layer_name;
-                            //DR[PRZC.c_FLD_CF_ID] = cfid++;
-                            //DR[PRZC.c_FLD_CF_THRESHOLD] = threshold_int;
-                            //DR[PRZC.c_FLD_CF_TARGETPROP] = 1.0;
-
-                            //DT.Rows.Add(DR);
                         }
                     }
 

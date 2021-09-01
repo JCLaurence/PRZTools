@@ -124,8 +124,8 @@
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
-                        Command="{Binding CmdBuildCFTable}"
-                        Content="GENERATE CF TABLE" />
+                        Command="{Binding CmdGenerateCF}"
+                        Content="GENERATE CONSERVATION FEATURES" />
 
                     <Button 
                         DockPanel.Dock="Right"
@@ -174,7 +174,6 @@
 
                     <DataGrid 
                         Margin="5" 
-                        IsReadOnly="True" 
                         SelectionMode="Single"
                         SelectionUnit="Cell"
                         AutoGenerateColumns="False"
@@ -202,47 +201,83 @@
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="Where Clause" 
-                                Binding="{Binding where_clause}" 
+                                Header="Min CF Threshold (%)" 
+                                Binding="{Binding cf_min_threshold_pct}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="Layer Name" 
-                                Binding="{Binding layer_name}" 
+                                Header="CF Target (%)"
+                                Binding="{Binding cf_target_pct}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="Layer Type" 
-                                Binding="{Binding layer_type}" 
+                                Header="CF WHERE Clause" 
+                                Binding="{Binding cf_whereclause}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="CF In Use" 
+                                Binding="{Binding cf_in_use}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (m&#x00B2;)" 
-                                Binding="{Binding area_m2}" 
+                                Binding="{Binding cf_area_m2}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ac)" 
-                                Binding="{Binding area_ac}" 
+                                Binding="{Binding cf_area_ac}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ha)" 
-                                Binding="{Binding area_ha}" 
+                                Binding="{Binding cf_area_ha}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (km&#x00B2;)" 
-                                Binding="{Binding area_km2}" 
+                                Binding="{Binding cf_area_km2}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
+                            <DataGridTextColumn 
+                                Header="Source Layer Name" 
+                                Binding="{Binding lyr_name}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Source Layer Type" 
+                                Binding="{Binding lyr_type}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <!--<DataGridTextColumn 
+                                Header="Layer JSON" 
+                                Binding="{Binding lyr_json}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Layer Min Thresh (%)" 
+                                Binding="{Binding lyr_min_threshold_pct}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
+                                Header="Layer Target (%)" 
+                                Binding="{Binding lyr_target_pct}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />-->
+                            
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

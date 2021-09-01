@@ -2376,7 +2376,7 @@ namespace NCC.PRZTools
                 {
                     string matched_pattern = match.Value;                                       // match.Value is the [n], [nn], or [nnn] substring includng the square brackets
                     string string_adjusted = string_to_search.Replace(matched_pattern, "");     // string to search minus the [n], [nn], or [nnn] substring
-                    string value_string = matched_pattern.Replace("[", "").Replace("]", "");    // leaves just the 1, 2, or 3 numeric digits, no more brackets
+                    string value_string = matched_pattern.Replace("[", "").Replace("]", "").Replace("{", "").Replace("}", "");    // leaves just the 1, 2, or 3 numeric digits, no more brackets
 
                     // convert text value to int
                     if (!int.TryParse(value_string, out int value_int))

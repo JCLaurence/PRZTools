@@ -124,23 +124,22 @@
         #region COLUMN NAMES
 
         // Conservation Features table
-        public const string c_FLD_CF_ID = "id";                     // THE CONSERVATION FEATURE ID
-        public const string c_FLD_CF_NAME = "name";                 // THE CONSERVATION FEATURE NAME
-        public const string c_FLD_CF_TARGET = "target";             // THE TARGET (DOUBLE)
-        public const string c_FLD_CF_TARGETPROP = "prop";           // THE PROPORTIONAL TARGET (INT 0 TO 100)
-        public const string c_FLD_CF_TARGETOCC = "targetocc";       // THE NUMBER OF PLANNING UNITS THAT MUST CONTAIN THE CF (LONG - alternative to target)
-        public const string c_FLD_CF_SPF = "spf";                   // SPECIES PENALTY FACTOR (>0)
-        public const string c_FLD_CF_THRESHOLD = "threshold";
-        public const string c_FLD_CF_LAYERINDEX = "layerindex"; //layer index in group layer
-        public const string c_FLD_CF_LAYERNAME = "layername";   //layer name in group layer
-        public const string c_FLD_CF_LAYERTYPE = "layertype";
-        public const string c_FLD_CF_WHERECLAUSE = "whereclause";   //whereclause (may be blank)
-        public const string c_FLD_CF_TOTALAREA_M2 = "totalarea_m2";
-        public const string c_FLD_CF_TOTALAREA_AC = "totalarea_ac";
-        public const string c_FLD_CF_TOTALAREA_HA = "totalarea_ha";
-        public const string c_FLD_CF_TOTALAREA_KM2 = "totalarea_km2";
-        public const string c_FLD_CF_TILECOUNT = "tilecount";
-        public const string c_FLD_CF_USE = "use";               //use this field in marxan - "yes", "no"
+        public const string c_FLD_CF_ID = "cf_id";
+        public const string c_FLD_CF_NAME = "cf_name";
+        public const string c_FLD_CF_MIN_THRESHOLD_PCT = "cf_min_threshold_pct";
+        public const string c_FLD_CF_TARGET_PCT = "cf_target_pct";
+        public const string c_FLD_CF_WHERECLAUSE = "cf_whereclause";
+        public const string c_FLD_CF_IN_USE = "cf_in_use";
+        public const string c_FLD_CF_AREA_M2 = "cf_area_m2";
+        public const string c_FLD_CF_AREA_AC = "cf_area_ac";
+        public const string c_FLD_CF_AREA_HA = "cf_area_ha";
+        public const string c_FLD_CF_AREA_KM2 = "cf_area_km2";
+        public const string c_FLD_CF_PUCOUNT = "cf_pucount";
+        public const string c_FLD_CF_LYR_NAME = "lyr_name";
+        public const string c_FLD_CF_LYR_TYPE = "lyr_type";
+        public const string c_FLD_CF_LYR_JSON = "lyr_json";
+        public const string c_FLD_CF_LYR_MIN_THRESHOLD_PCT = "lyr_min_threshold_pct";   // Probably not necessary
+        public const string c_FLD_CF_LYR_TARGET_PCT = "lyr_target_pct";                 // Probably not necessary
 
         // Conservation Feature DataTable
         public const string c_FLD_CFDT_LAYER = "layer";
@@ -258,9 +257,12 @@
         public const string c_USER_PROFILE_WORKDIR = "PRZTools";
 
         // MISCELLANEOUS
-        public const string c_REGEX_PERCENT_PATTERN_ANY = @"\[\d{1,3}\]";       // [n], [nn], or [nnn] anywhere in string
-        public const string c_REGEX_PERCENT_PATTERN_START = @"^\[\d{1,3}\]";    // [n], [nn], or [nnn] start of string
-        public const string c_REGEX_PERCENT_PATTERN_END = @"$\[\d{1,3}\]";      // [n], [nn], or [nnn] end of string
+        public const string c_REGEX_THRESHOLD_PERCENT_PATTERN_ANY = @"\[\d{1,3}\]";       // [n], [nn], or [nnn] anywhere in string
+        public const string c_REGEX_THRESHOLD_PERCENT_PATTERN_START = @"^\[\d{1,3}\]";    // [n], [nn], or [nnn] start of string
+        public const string c_REGEX_THRESHOLD_PERCENT_PATTERN_END = @"$\[\d{1,3}\]";      // [n], [nn], or [nnn] end of string
+        public const string c_REGEX_TARGET_PERCENT_PATTERN_ANY = @"{\d{1,3}}";       // {n}, {nn}, or {nnn} anywhere in string
+        public const string c_REGEX_TARGET_PERCENT_PATTERN_START = @"^{\d{1,3}}";    // {n}, {nn}, or {nnn} start of string
+        public const string c_REGEX_TARGET_PERCENT_PATTERN_END = @"${\d{1,3}}";      // {n}, {nn}, or {nnn} end of string
 
     }
 }
