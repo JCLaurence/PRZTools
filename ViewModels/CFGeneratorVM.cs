@@ -38,7 +38,6 @@ namespace NCC.PRZTools
         {
         }
 
-
         #region Properties
 
         private bool _cfTableExists;
@@ -822,17 +821,17 @@ namespace NCC.PRZTools
                     int cf_id = CF.cf_id;
 
                     // CF Name field
-                    string fldCFNAME_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_POSTFIX_NAME;
+                    string fldCFNAME_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_NAME;
                     string fldCFNAME_alias = "CF " + cf_id.ToString() + " Name";
                     string fCFName = fldCFNAME_name + " TEXT '" + fldCFNAME_alias + "' 200 # #;";
 
                     // CF Area field
-                    string fldCFAREA_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_POSTFIX_AREA;
+                    string fldCFAREA_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_AREA;
                     string fldCFAREA_alias = "CF " + cf_id.ToString() + " Area (m2)";
                     string fCFArea = fldCFAREA_name + " DOUBLE '" + fldCFAREA_alias + "' # 0 #;";
 
                     // PU Proportion field
-                    string fldCFPUPROP_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_POSTFIX_PROP;
+                    string fldCFPUPROP_name = PRZC.c_FLD_PUVCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_PROP;
                     string fldCFPUPROP_alias = "CF " + cf_id.ToString() + " PU %";
                     string fCFPUProp = fldCFPUPROP_name + " DOUBLE '" + fldCFPUPROP_alias + "' # 0 #;";
 
@@ -911,9 +910,10 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region UPDATE PUVCF PUCOUNT FIELD
+                #region UPDATE PUVCF CFCOUNT FIELD
 
                 List<string> LIST_AreaFieldNames = new List<string>();      // All the PUVCF area field names
+                Dictionary<int, int> DICT_PUID_and_cf_count = new Dictionary<int, int>();
 
                 await QueuedTask.Run(async () =>
                 {
@@ -921,13 +921,13 @@ namespace NCC.PRZTools
                     using (TableDefinition tDef = table.GetDefinition())
                     {
                         // Get list of CF Area fields
-                        List<Field> areaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_PUVCF_PREFIX_CF) && f.Name.EndsWith(PRZC.c_FLD_PUVCF_POSTFIX_AREA)).ToList();
+                        List<Field> areaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_PUVCF_PREFIX_CF) && f.Name.EndsWith(PRZC.c_FLD_PUVCF_SUFFIX_AREA)).ToList();
 
                         foreach (var fld in tDef.GetFields())
                         {
                             string name = fld.Name;
 
-                            if (name.StartsWith(PRZC.c_FLD_PUVCF_PREFIX_CF) && name.EndsWith(PRZC.c_FLD_PUVCF_POSTFIX_AREA))
+                            if (name.StartsWith(PRZC.c_FLD_PUVCF_PREFIX_CF) && name.EndsWith(PRZC.c_FLD_PUVCF_SUFFIX_AREA))
                             {
                                 LIST_AreaFieldNames.Add(fld.Name);
                             }
@@ -940,6 +940,7 @@ namespace NCC.PRZTools
                                 using (Row row = rowCursor.Current)
                                 {
                                     int CFCount = 0;
+                                    int puid = (int)row[PRZC.c_FLD_PUVCF_ID];
 
                                     foreach(string fldname in LIST_AreaFieldNames)
                                     {
@@ -953,6 +954,8 @@ namespace NCC.PRZTools
 
                                     row[PRZC.c_FLD_PUVCF_CFCOUNT] = CFCount;
                                     row.Store();
+
+                                    DICT_PUID_and_cf_count.Add(puid, CFCount);
                                 }
                             }
                         }
@@ -981,7 +984,7 @@ namespace NCC.PRZTools
                                 foreach (string f in LIST_AreaFieldNames)
                                 {
 
-                                    string idstring = f.Replace(PRZC.c_FLD_PUVCF_PREFIX_CF, "").Replace(PRZC.c_FLD_PUVCF_POSTFIX_AREA, "");
+                                    string idstring = f.Replace(PRZC.c_FLD_PUVCF_PREFIX_CF, "").Replace(PRZC.c_FLD_PUVCF_SUFFIX_AREA, "");
 
                                     if (idstring == cf_id.ToString())
                                     {
@@ -1031,6 +1034,31 @@ namespace NCC.PRZTools
                         }
                     }
                 });
+
+                #endregion
+
+                #region UPDATE PUFC CFCOUNT FIELD
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetPlanningUnitFC())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                int cfcount = DICT_PUID_and_cf_count[puid];
+
+                                row[PRZC.c_FLD_PUFC_CFCOUNT] = cfcount;
+                                row.Store();
+                            }
+                        }
+
+                    }
+                });
+
 
                 #endregion
 
@@ -2108,8 +2136,8 @@ namespace NCC.PRZTools
                             int cf_min_thresh = CF.cf_min_threshold_pct;
                             int cf_tgt = CF.cf_target_pct;
 
-                            string fnArea = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_POSTFIX_AREA;
-                            string fnProp = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_POSTFIX_PROP;
+                            string fnArea = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_AREA;
+                            string fnProp = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_PROP;
 
                             foreach (KeyValuePair<int, double> KVP in DICT_PUID_area_dslv)
                             {
@@ -2158,8 +2186,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp Feature Classes deleted successfully."), true);
                             }
 
-
-
+                            FL.ClearSelection();
                         }
                         else if (CF.lyr_object is RasterLayer RL)
                         {

@@ -133,14 +133,15 @@
         public const string c_FLD_PUFC_AREA_HA = "hectares";
         public const string c_FLD_PUFC_AREA_KM = "square_km";
         public const string c_FLD_PUFC_CONFLICT = "conflict";
+        public const string c_FLD_PUFC_CFCOUNT = "cf_count";
 
         // Planning Unit Versus CF (PUVCF) table		
         public const string c_FLD_PUVCF_ID = c_FLD_PUFC_ID;
-        public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
+        public const string c_FLD_PUVCF_CFCOUNT = c_FLD_PUFC_CFCOUNT;
         public const string c_FLD_PUVCF_PREFIX_CF = "CF_";
-        public const string c_FLD_PUVCF_POSTFIX_NAME = "_NAME";
-        public const string c_FLD_PUVCF_POSTFIX_AREA = "_AREA";
-        public const string c_FLD_PUVCF_POSTFIX_PROP = "_PROP";
+        public const string c_FLD_PUVCF_SUFFIX_NAME = "_NAME";
+        public const string c_FLD_PUVCF_SUFFIX_AREA = "_AREA";
+        public const string c_FLD_PUVCF_SUFFIX_PROP = "_PROP";
 
         // Conservation Features table
         public const string c_FLD_CF_ID = "cf_id";

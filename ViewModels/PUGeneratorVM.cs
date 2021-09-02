@@ -796,8 +796,9 @@ namespace NCC.PRZTools
                 string fldPUAreaAC = PRZC.c_FLD_PUFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
                 string fldPUAreaHA = PRZC.c_FLD_PUFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
                 string fldPUAreaKM = PRZC.c_FLD_PUFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+                string fldCFCount = PRZC.c_FLD_PUFC_CFCOUNT + " LONG 'Conservation Feature Count' # 0 #;";
 
-                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM;
+                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);

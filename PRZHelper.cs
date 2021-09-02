@@ -2120,6 +2120,65 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> ApplyLegend_PU_CFCount(FeatureLayer FL)
+        {
+            try
+            {
+                // What's the highest number of CF within a single planning unit?
+                int maxCF = 0;
+                await QueuedTask.Run(() =>
+                {
+                    using (Table table = FL.GetFeatureClass())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int max = Convert.ToInt32(row[PRZC.c_FLD_PUFC_CFCOUNT]);
+
+                                if (max > maxCF)
+                                {
+                                    maxCF = max;
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Create the polygon fill template
+                CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+
+                // Create the color ramp
+                CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
+                {
+                    FromColor = GetNamedColor(Color.LightGray),
+                    ToColor = GetNamedColor(Color.ForestGreen)
+                };
+
+                // Create the Unclassed Renderer
+                UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
+
+                ucDef.Field = PRZC.c_FLD_PUFC_CFCOUNT;
+                ucDef.ColorRamp = ramp;
+                ucDef.LowerColorStop = 0;
+                ucDef.LowerLabel = "0";
+                ucDef.UpperColorStop = maxCF;
+                ucDef.UpperLabel = maxCF.ToString();
+                ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
+
+                CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
+                FL.SetRenderer(rend);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
         public static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
         {
             try
