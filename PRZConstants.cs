@@ -108,7 +108,7 @@
         public const string c_SUFFIX_PUCOMP_INT = "_Int";
         public const string c_SUFFIX_PUCOMP_DSLV = "_Dslv";
 
-        // TABLE NAMES
+        // TABLES
         public const string c_TABLE_STATUSINFO = "PU_Status";
         public const string c_TABLE_BOUNDARYLENGTH = "PU_Boundary";
         public const string c_TABLE_EXTERIORTILES = "PU_OuterTiles";
@@ -122,6 +122,25 @@
         public const string c_TABLE_COSTSTATS = "PU_CostStats";
 
         #region COLUMN NAMES
+
+        // Planning Unit Feature Class
+        public const string c_FLD_PUFC_ID = "id";
+        public const string c_FLD_PUFC_STATUS = "status";
+        public const string c_FLD_PUFC_COST = "cost";
+        public const string c_FLD_PUFC_NCC_ID = "ncc_id";
+        public const string c_FLD_PUFC_AREA_M = "square_m";
+        public const string c_FLD_PUFC_AREA_AC = "acres";
+        public const string c_FLD_PUFC_AREA_HA = "hectares";
+        public const string c_FLD_PUFC_AREA_KM = "square_km";
+        public const string c_FLD_PUFC_CONFLICT = "conflict";
+
+        // Planning Unit Versus CF (PUVCF) table		
+        public const string c_FLD_PUVCF_ID = c_FLD_PUFC_ID;
+        public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
+        public const string c_FLD_PUVCF_PREFIX_CF = "CF_";
+        public const string c_FLD_PUVCF_POSTFIX_NAME = "_NAME";
+        public const string c_FLD_PUVCF_POSTFIX_AREA = "_AREA";
+        public const string c_FLD_PUVCF_POSTFIX_PROP = "_PROP";
 
         // Conservation Features table
         public const string c_FLD_CF_ID = "cf_id";
@@ -195,17 +214,6 @@
         public const string c_FLD_SUMSOLN_PUID = "PUID";
         public const string c_FLD_SUMSOLN_FREQUENCY = "frequency";
 
-        // Planning Unit Feature Class		
-        public const string c_FLD_PUFC_ID = "id";
-        public const string c_FLD_PUFC_STATUS = "status";
-        public const string c_FLD_PUFC_COST = "cost";
-        public const string c_FLD_PUFC_NCC_ID = "ncc_id";
-        public const string c_FLD_PUFC_AREA_M = "square_m";
-        public const string c_FLD_PUFC_AREA_AC = "acres";
-        public const string c_FLD_PUFC_AREA_HA = "hectares";
-        public const string c_FLD_PUFC_AREA_KM = "square_km";
-        public const string c_FLD_PUFC_CONFLICT = "conflict";
-
         // Study Area Feature Class
         public const string c_FLD_SAFC_AREA_AC = "acres";
         public const string c_FLD_SAFC_AREA_HA = "hectares";
@@ -237,9 +245,6 @@
         #endregion
 
 
-        // Planning Unit Versus CF (PUVCF) table		
-        public const string c_FLD_PUVCF_ID = "id";
-        public const string c_FLD_PUVCF_CFCOUNT = "cf_count";
 
 
 

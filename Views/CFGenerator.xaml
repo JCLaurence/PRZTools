@@ -249,6 +249,12 @@
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
+                                Header="Planning Unit Count" 
+                                Binding="{Binding cf_pucount}" 
+                                CanUserReorder="False" 
+                                CanUserSort="True" />
+
+                            <DataGridTextColumn 
                                 Header="Source Layer Name" 
                                 Binding="{Binding lyr_name}" 
                                 CanUserReorder="False" 
@@ -260,6 +266,7 @@
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
+                            
                             <!--<DataGridTextColumn 
                                 Header="Layer JSON" 
                                 Binding="{Binding lyr_json}" 

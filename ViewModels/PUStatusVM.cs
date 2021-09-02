@@ -688,9 +688,8 @@ namespace NCC.PRZTools
                     await QueuedTask.Run(async () =>
                     {
                         using (Table table = await PRZH.GetStatusInfoTable())
+                        using (TableDefinition tDef = table.GetDefinition())
                         {
-                            TableDefinition tDef = table.GetDefinition();
-
                             // Get list of INCLUDE layer Area fields
                             var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith("IN") && f.Name.EndsWith("_Area")).ToList();
 

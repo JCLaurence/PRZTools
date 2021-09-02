@@ -19,5 +19,13 @@ namespace NCC.PRZTools
         
         public string WhereClause { get; set; }
 
+        public int GroupThreshold { get; set; }
+
+        public int GroupTarget { get; set; }
+
+        public int ClassThreshold { get; set; }
+
+        public int ClassTarget { get; set; }
+
     }
 }
