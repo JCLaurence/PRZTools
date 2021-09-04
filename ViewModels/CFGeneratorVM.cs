@@ -872,10 +872,7 @@ namespace NCC.PRZTools
                             }
                         }
                     });
-
-
                 }
-
 
                 #endregion
 
@@ -890,10 +887,10 @@ namespace NCC.PRZTools
                     {
                         while (rowCursor1.MoveNext())
                         {
-                            using (Row row = rowCursor1.Current)
+                            using (Row row1 = rowCursor1.Current)
                             {
-                                int pu_id = (int)row[PRZC.c_FLD_PUFC_ID];
-                                double a = (double)row[PRZC.c_FLD_PUFC_AREA_M];
+                                int pu_id = (int)row1[PRZC.c_FLD_PUFC_ID];
+                                double a = (double)row1[PRZC.c_FLD_PUFC_AREA_M];
 
                                 DICT_PUID_and_area_m2.Add(pu_id, a);
                             }
@@ -901,7 +898,7 @@ namespace NCC.PRZTools
                     }
                 });
 
-                if (!await IntersectConservationFeatures(LIST_CF, DICT_PUID_and_area_m2))
+                if (!await IntersectConservationFeatures(LIST_CF, DICT_PUID_and_area_m2, val))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the Conservation Feature layers.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("Error intersecting the CF layers.", "");
@@ -1166,8 +1163,8 @@ namespace NCC.PRZTools
                 {
                     Layer L = LIST_L[i];
 
-                    // Process the Layer if it is a FeatureLayer
-                    if (L is FeatureLayer FL)
+                    // Process the Layer based on type
+                    if (L is FeatureLayer FL)                   // Layer is FeatureLayer
                     {
                         #region BASIC FL VALIDATION
 
@@ -1919,7 +1916,7 @@ namespace NCC.PRZTools
                                 consFeat.lyr_min_threshold_pct = lyr_threshold_int;
                                 consFeat.cf_min_threshold_pct = CF.ClassThreshold;
                                 consFeat.lyr_object = FL;
-                                consFeat.lyr_type = "FeatureLayer";
+                                consFeat.lyr_type = "Feature";
                                 consFeat.lyr_name = FL.Name;
                                 consFeat.lyr_json = flJson;
                                 consFeat.lyr_target_pct = lyr_target_int;
@@ -1941,7 +1938,7 @@ namespace NCC.PRZTools
                             consFeat.lyr_min_threshold_pct = lyr_threshold_int;
                             consFeat.cf_min_threshold_pct = lyr_threshold_int;
                             consFeat.lyr_object = FL;
-                            consFeat.lyr_type = "FeatureLayer";
+                            consFeat.lyr_type = "Feature";
                             consFeat.lyr_name = FL.Name;
                             consFeat.lyr_json = flJson;
                             consFeat.lyr_target_pct = lyr_target_int;
@@ -1953,7 +1950,7 @@ namespace NCC.PRZTools
                     }
 
                     // Process the layer if it is a RasterLayer
-                    else if (L is RasterLayer RL)
+                    else if (L is RasterLayer RL)           // Layer is RasterLayer
                     {
                         // Ensure that RL is valid (i.e. has valid source data)
                         if (!await QueuedTask.Run(() =>
@@ -1994,6 +1991,197 @@ namespace NCC.PRZTools
                                 continue;
                             }
                         }
+
+                        string layer_name = ""; // layer name, optionally with thresholds and/or targets excised
+
+                        #region Layer-Level Minimum Threshold
+
+                        // Inspect the Layer Name for a Minimum Threshold number
+                        (bool ThresholdFound, int lyr_threshold_int, string layer_name_no_thresh) = PRZH.ExtractValueFromString(RL.Name, PRZC.c_REGEX_THRESHOLD_PERCENT_PATTERN_ANY);
+
+                        // If the Layer Name contains a Threshold number...
+                        if (ThresholdFound)
+                        {
+                            // ensure threshold is 0 to 100 inclusive
+                            if (lyr_threshold_int < 0 | lyr_threshold_int > 100)
+                            {
+                                string message = "An invalid threshold of " + lyr_threshold_int.ToString() + " has been specified for:" +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Layer: " + RL.Name + Environment.NewLine +
+                                                 "Threshold must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // ensure adjusted name length is not zero
+                            if (layer_name_no_thresh.Length == 0)
+                            {
+                                string message = "Layer '" + RL.Name + "' has a zero-length name once the threshold value is removed." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // My new layer name (threshold excised)
+                            layer_name = layer_name_no_thresh;
+                        }
+
+                        // Layer Name does not contain a number
+                        else
+                        {
+                            // My layer name should remain unchanged
+                            layer_name = RL.Name;
+
+                            // check the name length
+                            if (layer_name.Length == 0)
+                            {
+                                string message = "Layer '" + layer_name + "' has a zero-length name." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // get the default threshold for this layer
+                            lyr_threshold_int = default_threshold_int;   // use default value
+                        }
+
+                        #endregion
+
+                        #region Layer-Level Target
+
+                        // Inspect the Layer Name for a Target number
+                        (bool TargetFound, int lyr_target_int, string layer_name_no_tgt) = PRZH.ExtractValueFromString(layer_name, PRZC.c_REGEX_TARGET_PERCENT_PATTERN_ANY);
+
+                        // If the Layer Name contains a Target number...
+                        if (TargetFound)
+                        {
+                            // ensure target is 0 to 100 inclusive
+                            if (lyr_target_int < 0 | lyr_target_int > 100)
+                            {
+                                string message = "An invalid target of " + lyr_target_int.ToString() + " has been specified for:" +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Layer: " + layer_name + Environment.NewLine +
+                                                 "Target must be in the range 0 to 100." + Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // ensure adjusted name length is not zero
+                            if (layer_name_no_tgt.Length == 0)
+                            {
+                                string message = "Layer '" + layer_name + "' has a zero-length name once the target value is removed." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // My new layer name (target excised)
+                            layer_name = layer_name_no_tgt;
+                        }
+
+                        // Layer Name does not contain a number
+                        else
+                        {
+                            // check the name length
+                            if (layer_name.Length == 0)
+                            {
+                                string message = "Layer '" + layer_name + "' has a zero-length name." +
+                                                 Environment.NewLine + Environment.NewLine +
+                                                 "Click OK to skip this layer and continue, or click CANCEL to quit";
+
+                                if (ProMsgBox.Show(message, "Layer Validation", System.Windows.MessageBoxButton.OKCancel,
+                                                    System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.OK)
+                                    == System.Windows.MessageBoxResult.Cancel)
+                                {
+                                    return false;
+                                }
+                                else
+                                {
+                                    continue;
+                                }
+                            }
+
+                            // get the default target for this layer
+                            lyr_target_int = default_target_int;   // use default value
+                        }
+
+                        #endregion
+
+                        // Get the JSON from the Raster Layer
+                        string rlJson = "";
+                        await QueuedTask.Run(() =>
+                        {
+                            CIMBaseLayer cimbl = RL.GetDefinition();
+                            rlJson = cimbl.ToJson();
+                        });
+
+                        // Create a new CF for this raster layer
+                        ConservationFeature consFeat = new ConservationFeature();
+
+                        consFeat.cf_id = cfid++;
+                        consFeat.cf_name = layer_name;
+                        consFeat.cf_whereclause = "";
+                        consFeat.lyr_min_threshold_pct = lyr_threshold_int;
+                        consFeat.cf_min_threshold_pct = lyr_threshold_int;
+                        consFeat.lyr_object = RL;
+                        consFeat.lyr_type = "Raster";
+                        consFeat.lyr_name = RL.Name;
+                        consFeat.lyr_json = rlJson;
+                        consFeat.lyr_target_pct = lyr_target_int;
+                        consFeat.cf_target_pct = lyr_target_int;
+                        consFeat.cf_in_use = true;
+
+                        LIST_CF.Add(consFeat);
                     }
                 }
 
@@ -2006,7 +2194,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> IntersectConservationFeatures(List<ConservationFeature> LIST_CF, Dictionary<int, double> DICT_PUID_area_total)
+        private async Task<bool> IntersectConservationFeatures(List<ConservationFeature> LIST_CF, Dictionary<int, double> DICT_PUID_area_total, int val)
         {
             try
             {
@@ -2188,8 +2376,140 @@ namespace NCC.PRZTools
 
                             FL.ClearSelection();
                         }
+
+                        // If RasterLayer...
                         else if (CF.lyr_object is RasterLayer RL)
                         {
+                            // Get the PUFC SR and Extent
+                            SpatialReference PUFC_SR = null;
+                            Envelope PUFC_Extent = null;
+                            await QueuedTask.Run(async () =>
+                            {
+                                using (FeatureClass fc = await PRZH.GetPlanningUnitFC())
+                                using (FeatureClassDefinition fcDef = fc.GetDefinition())
+                                {
+                                    PUFC_SR = fcDef.GetSpatialReference();
+                                    PUFC_Extent = fc.GetExtent();
+                                }
+                            });
+
+                            // Get the Cost Raster Layer and its SRs
+                            SpatialReference CostRL_SR = null;
+                            SpatialReference CostR_SR = null;
+
+                            await QueuedTask.Run(() =>
+                            {
+                                CostRL_SR = RL.GetSpatialReference();               // do I need this one...
+
+                                using (Raster costRaster = RL.GetRaster())
+                                {
+                                    CostR_SR = costRaster.GetSpatialReference();    // or this one... ?
+                                }
+                            });
+
+                            // prepare the temporary zonal stats table
+                            string tabname = "cf_zonal_temp";
+
+                            // Calculate Zonal Statistics as Table
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for CF {CF.cf_id}..."), true, ++val);
+                            toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_PUFC_ID, RL, tabname);
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
+                            toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing the Zonal Statistics as Table tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Zonal Statistics as Table tool completed successfully."), true, ++val);
+                            }
+
+                            // Retrieve info from the zonal stats table.
+                            // Each record in the zonal stats table represents a single PU ID
+
+                            // for each PU ID, I need the following:
+                            //  > COUNT field value     -- this is the number of raster cells found within the zone (the PU)
+                            //  > AREA field value      -- this is the total area of all cells within zone (cell area * count)
+
+                            // *** COUNT is based on all cells having a non-NODATA value ***
+                            // *** This is a business rule that PRZ Tools users will need to be aware of when supplying CF rasters
+
+                            Dictionary<int, Tuple<int, double>> DICT_PUID_and_count_area = new Dictionary<int, Tuple<int, double>>();
+
+                            await QueuedTask.Run(async () =>
+                            {
+                                using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                                using (Table table = await PRZH.GetTable(geodatabase, tabname))
+                                using (RowCursor rowCursor = table.Search(null, false))
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_ZONALSTATS_ID]);
+                                            int count = Convert.ToInt32(row[PRZC.c_FLD_ZONALSTATS_COUNT]);
+                                            double area = Convert.ToDouble(row[PRZC.c_FLD_ZONALSTATS_AREA]);
+
+                                            if (puid > 0)
+                                            {
+                                                DICT_PUID_and_count_area.Add(puid, Tuple.Create(count, area));
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            // Delete the temp zonal stats table (I no longer need it, I think...)
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tabname} Table..."), true, ++val);
+                            toolParams = Geoprocessing.MakeValueArray(tabname, "");
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                            toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {tabname} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleted the {tabname} Table..."), true, ++val);
+                            }
+
+                            // Finally, write the dictionary info to PUVCF table
+                            string fnArea = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_AREA;
+                            string fnProp = PRZC.c_FLD_PUVCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_PUVCF_SUFFIX_PROP;
+
+                            foreach (KeyValuePair<int, Tuple<int, double>> KVP in DICT_PUID_and_count_area)
+                            {
+                                int PUID = KVP.Key;
+                                Tuple<int, double> tuple = KVP.Value;
+
+                                int count_ras = tuple.Item1;
+                                double area_ras = tuple.Item2;
+
+                                double area_total = DICT_PUID_area_total[PUID];
+                                double percent_cf_coverage = area_ras / area_total;
+
+                                QueryFilter QF = new QueryFilter
+                                {
+                                    WhereClause = PRZC.c_FLD_PUVCF_ID + " = " + PUID.ToString()
+                                };
+
+                                using (Table table = await PRZH.GetPUVCFTable())
+                                using (RowCursor rowCursor = table.Search(QF, false))
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            row[fnArea] = area_ras;
+                                            row[fnProp] = percent_cf_coverage * 100.0;
+
+                                            row.Store();
+                                        }
+                                    }
+                                }
+                            }
 
                         }
                         else

@@ -176,6 +176,18 @@
         public const string c_FLD_COST_STD = "STD";
         public const string c_FLD_COST_MEDIAN = "MEDIAN";
 
+        // Zonal Stats
+        public const string c_FLD_ZONALSTATS_ID = c_FLD_PUFC_ID;
+        public const string c_FLD_ZONALSTATS_COUNT = "COUNT";
+        public const string c_FLD_ZONALSTATS_AREA = "AREA";
+        public const string c_FLD_ZONALSTATS_MIN = "MIN";
+        public const string c_FLD_ZONALSTATS_MAX = "MAX";
+        public const string c_FLD_ZONALSTATS_RANGE = "RANGE";
+        public const string c_FLD_ZONALSTATS_MEAN = "MEAN";
+        public const string c_FLD_ZONALSTATS_SUM = "SUM";
+        public const string c_FLD_ZONALSTATS_STD = "STD";
+        public const string c_FLD_ZONALSTATS_MEDIAN = "MEDIAN";
+
         // Run Summary
         public const string c_FLD_RUNSUM_RUNID = "Run_Number";
         public const string c_FLD_RUNSUM_SCORE = "Score";
