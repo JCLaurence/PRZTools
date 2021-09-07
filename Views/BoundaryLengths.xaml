@@ -9,13 +9,11 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Boundary Length Table Generator"
-    Height="300" Width="300"
+    Width="500" Height="300" MinWidth="500" MinHeight="300"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/BoundaryLengths32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
-    ShowMinButton="False"
-    ShowMaxRestoreButton="False"
-    ShowCloseButton="True"
-    ResizeMode="CanResizeWithGrip"
+    ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
+    ResizeMode="CanResize"
     >
     <controls:ProWindow.Resources>
         <ResourceDictionary>
@@ -24,20 +22,149 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </controls:ProWindow.Resources>
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
-        </Grid.RowDefinitions>
-        <TextBlock Padding="5" Height="200">The rain in Spain falls mainly on the play</TextBlock>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" MinWidth="200" Height="Auto">
-            <Button Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding cmdOK}" CommandParameter="{Binding ElementName=BoundaryLengthsDlg}">OK</Button>
-            <Button IsDefault="True" Style="{DynamicResource Esri_Button}" MaxWidth="90" MaxHeight="25" Command="{Binding cmdCancel}" CommandParameter="{Binding ElementName=BoundaryLengthsDlg}">CANCEL</Button>
-        </StackPanel>
-        <Border Grid.Row="2" BorderBrush="BlueViolet" BorderThickness="2">
 
-        </Border>
+    <!--Outer Border-->
+    <Border 
+        Margin="5" 
+        Padding="5" 
+        BorderThickness="1.5"
+        BorderBrush="{DynamicResource Esri_BorderBrush}"  
+        Background="{DynamicResource Esri_DialogFrameBackgroundBrush}" >
 
-    </Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="*"></RowDefinition>
+            </Grid.RowDefinitions>
+
+            <!--Inner Border #1-->
+            <Border
+                Grid.Row="0" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    Margin="0" 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="False">
+
+                        <CheckBox
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            VerticalContentAlignment="Center"
+                            IsChecked="{Binding BoundaryTableExists}"
+                            IsEnabled="False"
+                            Content="Planning Unit Boundary Table Exists" />
+
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #2-->
+            <Border 
+                Grid.Row="1" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True" 
+                        Command="{Binding CmdBuildBoundaryTable}"
+                        Content="GENERATE BOUNDARY TABLE" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="EXISTING INFO" />
+
+                </DockPanel>
+            </Border>
+
+
+            <!--Inner Border #3-->
+            <Border
+                Grid.Row="2" 
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="5"  
+                            Style="{DynamicResource Esri_TextBlockH4}"
+                            Text="Calculator Log" />
+
+                        <Button
+                            DockPanel.Dock="Right"
+                            Margin="5" 
+                            Style="{DynamicResource Esri_Button}"
+                            Command="{Binding CmdClearLog}"
+                            Content="Clear Log" />
+
+                    </DockPanel>
+
+                    <ProgressBar 
+                        DockPanel.Dock="Top"
+                        Margin="5,0,5,0" 
+                        Height="10"  
+                        Minimum="{Binding PM.Min}" 
+                        Maximum="{Binding PM.Max}" 
+                        Value="{Binding PM.Current}" />
+
+                    <ScrollViewer 
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
+
+                        <TextBlock 
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding PM.Message}" />
+
+                    </ScrollViewer>
+
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
 </controls:ProWindow>

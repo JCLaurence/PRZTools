@@ -134,6 +134,8 @@
         public const string c_FLD_PUFC_AREA_KM = "square_km";
         public const string c_FLD_PUFC_CONFLICT = "conflict";
         public const string c_FLD_PUFC_CFCOUNT = "cf_count";
+        public const string c_FLD_PUFC_SHARED_PERIM = "shared_perimeter_m";
+        public const string c_FLD_PUFC_HAS_UNSHARED_EDGE = "has_unshared_edge";
 
         // Planning Unit Versus CF (PUVCF) table		
         public const string c_FLD_PUVCF_ID = c_FLD_PUFC_ID;
@@ -142,6 +144,12 @@
         public const string c_FLD_PUVCF_SUFFIX_NAME = "_NAME";
         public const string c_FLD_PUVCF_SUFFIX_AREA = "_AREA";
         public const string c_FLD_PUVCF_SUFFIX_PROP = "_PROP";
+
+        // Boundary Length table		
+        public const string c_FLD_BL_ID1 = "id1";
+        public const string c_FLD_BL_ID2 = "id2";
+        public const string c_FLD_BL_BOUNDARY = "boundary";
+        public const string c_FLD_BL_EXTERNAL = "external";
 
         // Conservation Features table
         public const string c_FLD_CF_ID = "cf_id";
@@ -243,12 +251,6 @@
         public const string c_FLD_STATUSINFO_ID = c_FLD_PUFC_ID;
         public const string c_FLD_STATUSINFO_QUICKSTATUS = "quickstatus";
         public const string c_FLD_STATUSINFO_CONFLICT = "conflict";
-
-        // Boundary Length table		
-        public const string c_FLD_BL_ID1 = "id1";
-        public const string c_FLD_BL_ID2 = "id2";
-        public const string c_FLD_BL_BOUNDARY = "boundary";
-        public const string c_FLD_BL_EXTERNAL = "external";
 
         // Exterior Tiles table
         public const string c_FLD_EXTILE_ID = "id";

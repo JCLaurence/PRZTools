@@ -1133,6 +1133,10 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
+                // update checkboxes
+                CFTableExists = await PRZH.CFTableExists();
+                PUVCFTableExists = await PRZH.PUVCFTableExists();
+
                 ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
 
                 return true;

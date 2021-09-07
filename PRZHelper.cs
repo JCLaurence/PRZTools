@@ -366,6 +366,22 @@ namespace NCC.PRZTools
             }
         }
 
+        public static string GetBoundaryTablePath()
+        {
+            try
+            {
+                string gdbpath = GetProjectGDBPath();
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_BOUNDARYLENGTH);
+
+                return path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         // *** Path + Object Existence
         public static bool ProjectWSExists()
@@ -570,6 +586,27 @@ namespace NCC.PRZTools
                     }
 
                     return await TableExists(gdb, PRZC.c_TABLE_PUVCF);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> BoundaryTableExists()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLE_BOUNDARYLENGTH);
                 }
             }
             catch (Exception ex)
@@ -825,6 +862,35 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<Table> GetBoundaryTable()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        Table tab = await QueuedTask.Run(() =>
+                        {
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_BOUNDARYLENGTH);
+                        });
+
+                        return tab;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
 
         public static async Task<Table> GetTable(Geodatabase gdb, string table_name)
         {

@@ -797,8 +797,10 @@ namespace NCC.PRZTools
                 string fldPUAreaHA = PRZC.c_FLD_PUFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
                 string fldPUAreaKM = PRZC.c_FLD_PUFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
                 string fldCFCount = PRZC.c_FLD_PUFC_CFCOUNT + " LONG 'Conservation Feature Count' # 0 #;";
+                string fldSharedPerim = PRZC.c_FLD_PUFC_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
+                string fldHasUnshared = PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE + " LONG 'Has Unshared Edge' # 0 #;";
 
-                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount;
+                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldHasUnshared;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -994,93 +996,6 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region CREATE STUDY AREA (MULTI) FC - *** UNUSED ***
-
-                //string samultifcpath = PRZH.GetStudyAreaMultiFCPath();
-
-                //// Build the new empty Multi Study Area FC
-                //UpdateProgress(PRZH.WriteLog("Creating Multi-part Study Area Feature Class..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                //toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
-                //if (toolOutput == null)
-                //{
-                //    UpdateProgress(PRZH.WriteLog("Error creating multi-part Study Area Feature Class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add Fields to Multi Study Area FC
-                //string fldMultiArea_ac = PRZC.c_FLD_SAFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
-                //string fldMultiArea_ha = PRZC.c_FLD_SAFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
-                //string fldMultiArea_km = PRZC.c_FLD_SAFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
-                //string SAMultiflds = fldMultiArea_ac + fldMultiArea_ha + fldMultiArea_km;
-
-                //UpdateProgress(PRZH.WriteLog("Adding fields to multi-part Study Area Feature Class..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(samultifcpath, SAMultiflds);
-                //toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
-                //if (toolOutput == null)
-                //{
-                //    UpdateProgress(PRZH.WriteLog("Error adding fields to multi-part Study Area FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add Features to Multi Study Area FC
-                //if (!await QueuedTask.Run(async () =>
-                //{
-                //    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                //    using (FeatureClass samFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MULTI))
-                //    using (RowBuffer rowBuffer = samFC.CreateRowBuffer())
-                //    using (InsertCursor insertCursor = samFC.CreateInsertCursor())
-                //    {
-                //        try
-                //        {
-                //            // Get the Definition
-                //            FeatureClassDefinition fcDef = samFC.GetDefinition();
-
-                //            // Field Indexes
-                //            int ixShape = fcDef.FindField(fcDef.GetShapeField());
-                //            int ixAcres = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_AC);
-                //            int ixHectares = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_HA);
-                //            int ixKm2 = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_KM);
-
-                //            foreach (Polygon sapoly in LIST_SA_polys)
-                //            {
-                //                // Prepare area values
-                //                double ac = sapoly.Area * PRZC.c_CONVERT_M2_TO_AC;
-                //                double ha = sapoly.Area * PRZC.c_CONVERT_M2_TO_HA;
-                //                double km2 = sapoly.Area * PRZC.c_CONVERT_M2_TO_KM2;
-
-                //                rowBuffer[ixShape] = sapoly;
-                //                rowBuffer[ixAcres] = ac;
-                //                rowBuffer[ixHectares] = ha;
-                //                rowBuffer[ixKm2] = km2;
-
-                //                insertCursor.Insert(rowBuffer);
-                //                insertCursor.Flush();
-                //            }
-
-                //            return true;
-                //        }
-                //        catch (Exception)
-                //        {
-                //            return false;
-                //        }
-                //    }
-                //}))
-                //{
-                //    // it did not work
-                //    UpdateProgress(PRZH.WriteLog("Error loading polygon feature into multi-part Study Area Feature Class.", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-                //else
-                //{
-                //    // it did work, yay.
-                //    UpdateProgress(PRZH.WriteLog("Loaded polygon feature into multi-part Study Area Feature Class"), true, ++val);
-                //}
-
-
-#endregion
-
                 #region CREATE BUFFERED STUDY AREA FC
 
                 string sabufffcpath = PRZH.GetStudyAreaBufferFCPath();
@@ -1164,92 +1079,6 @@ namespace NCC.PRZTools
                     // it did work, yay.
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Loaded polygon feature into Buffered Study Area Feature Class"), true, ++val);
                 }
-
-                #endregion
-
-                #region CREATE BUFFERED STUDY AREA (MULTI) FC - *** UNUSED ***
-
-                //string multibfcpath = PRZH.GetStudyAreaBufferMultiFCPath();
-
-                //// Build the new empty Buffered Multi Study Area FC
-                //UpdateProgress(PRZH.WriteLog("Creating Multi-part Buffered Study Area Feature Class..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MULTI_BUFFERED, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                //toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
-                //if (toolOutput == null)
-                //{
-                //    UpdateProgress(PRZH.WriteLog("Error creating multi-part buffered Study Area Feature Class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add Fields to Multi Buffered Study Area FC
-                //string fldMultiBArea_ac = PRZC.c_FLD_SAFC_AREA_AC + " DOUBLE 'Acres' # 1 #;";
-                //string fldMultiBArea_ha = PRZC.c_FLD_SAFC_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
-                //string fldMultiBArea_km = PRZC.c_FLD_SAFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
-                //string SAMultiBflds = fldMultiBArea_ac + fldMultiBArea_ha + fldMultiBArea_km;
-
-                //UpdateProgress(PRZH.WriteLog("Adding fields to multi-part Buffered Study Area Feature Class..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(multibfcpath, SAMultiBflds);
-                //toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, GPExecuteToolFlags.RefreshProjectItems);
-                //if (toolOutput == null)
-                //{
-                //    UpdateProgress(PRZH.WriteLog("Error adding fields to multi-part Buffered Study Area FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add Features to Multi Buffered Study Area FC
-                //if (!await QueuedTask.Run(async () =>
-                //{
-                //    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                //    using (FeatureClass sambFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MULTI_BUFFERED))
-                //    using (RowBuffer rowBuffer = sambFC.CreateRowBuffer())
-                //    using (InsertCursor insertCursor = sambFC.CreateInsertCursor())
-                //    {
-                //        try
-                //        {
-                //            // Get the Definition
-                //            FeatureClassDefinition fcDef = sambFC.GetDefinition();
-
-                //            // Field Indexes
-                //            int ixShape = fcDef.FindField(fcDef.GetShapeField());
-                //            int ixAcres = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_AC);
-                //            int ixHectares = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_HA);
-                //            int ixKm2 = fcDef.FindField(PRZC.c_FLD_SAFC_AREA_KM);
-
-                //            foreach (Polygon c in LIST_BufferedPolys)
-                //            {
-                //                // Prepare area values
-                //                double ac = c.Area * PRZC.c_CONVERT_M2_TO_AC;
-                //                double ha = c.Area * PRZC.c_CONVERT_M2_TO_HA;
-                //                double km2 = c.Area * PRZC.c_CONVERT_M2_TO_KM2;
-
-                //                rowBuffer[ixShape] = c;
-                //                rowBuffer[ixAcres] = ac;
-                //                rowBuffer[ixHectares] = ha;
-                //                rowBuffer[ixKm2] = km2;
-
-                //                insertCursor.Insert(rowBuffer);
-                //                insertCursor.Flush();
-                //            }
-
-                //            return true;
-                //        }
-                //        catch (Exception)
-                //        {
-                //            return false;
-                //        }
-                //    }
-                //}))
-                //{
-                //    // it did not work
-                //    UpdateProgress(PRZH.WriteLog("Error loading polygon feature into multi-part Buffered Study Area Feature Class.", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-                //else
-                //{
-                //    // it did work, yay.
-                //    UpdateProgress(PRZH.WriteLog("Loaded polygon feature into multi-part Buffered Study Area Feature Class"), true, ++val);
-                //}
 
                 #endregion
 
@@ -1375,8 +1204,7 @@ namespace NCC.PRZTools
             {
                 await QueuedTask.Run(async () => 
                 {
-                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                    using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
+                    using (FeatureClass puFC = await PRZH.GetPlanningUnitFC())
                     using (RowBuffer rowBuffer = puFC.CreateRowBuffer())
                     using (InsertCursor insertCursor = puFC.CreateInsertCursor())
                     using (FeatureClassDefinition fcDef = puFC.GetDefinition())
@@ -1413,6 +1241,8 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_PUFC_STATUS] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
+                                            rowBuffer[PRZC.c_FLD_PUFC_SHARED_PERIM] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE] = 0;
 
                                             // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);
@@ -1451,6 +1281,8 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_PUFC_STATUS] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
+                                            rowBuffer[PRZC.c_FLD_PUFC_SHARED_PERIM] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE] = 0;
 
                                             // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);

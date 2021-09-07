@@ -25,8 +25,8 @@
           <button refID="prz_button_pugenerator" size="large" />
           <button refID="prz_button_pustatus" size="large" />
           <button refID="prz_button_pucost" size="large" />
-          <button refID="prz_button_boundarylengths" size="large" />
           <button refID="prz_button_cfgenerator" size="large" />
+          <button refID="prz_button_boundarylengths" size="large" />
         </group>
         <group id="prz_group_output" caption="Output" keytip="z">
           <menu refID="prz_menu_legends" size="large" />
