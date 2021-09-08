@@ -136,11 +136,16 @@
     <Compile Include="Models\YamlVariable.cs" />
     <Compile Include="Models\YamlWeight.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
+    <Compile Include="ViewModels\ExportWTWVM.cs" />
+    <Compile Include="ViewModels\SettingsWTWVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\ExportToWTW.xaml.cs">
-      <DependentUpon>ExportToWTW.xaml</DependentUpon>
+    <Compile Include="Views\ExportWTW.xaml.cs">
+      <DependentUpon>ExportWTW.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\SettingsWTW.xaml.cs">
+      <DependentUpon>SettingsWTW.xaml</DependentUpon>
     </Compile>
     <Compile Include="Widgets\Button_Export_WTW.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
@@ -170,7 +175,8 @@
     <Compile Include="Widgets\Button_BoundaryLengths.cs" />
     <Compile Include="Widgets\Button_PUStatus.cs" />
     <Compile Include="Widgets\Button_PUCost.cs" />
-    <Compile Include="Widgets\Button_WorkspaceSettings.cs" />
+    <Compile Include="Widgets\Button_Settings_WTW.cs" />
+    <Compile Include="Widgets\Button_Settings_WS.cs" />
     <Compile Include="Views\PUGenerator.xaml.cs">
       <DependentUpon>PUGenerator.xaml</DependentUpon>
     </Compile>
@@ -191,10 +197,10 @@
     </Compile>
     <Compile Include="PRZHelper.cs" />
     <Compile Include="PRZMethods.cs" />
-    <Compile Include="Views\WorkspaceSettings.xaml.cs">
-      <DependentUpon>WorkspaceSettings.xaml</DependentUpon>
+    <Compile Include="Views\SettingsWS.xaml.cs">
+      <DependentUpon>SettingsWS.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ViewModels\WorkspaceSettingsVM.cs" />
+    <Compile Include="ViewModels\SettingsWSVM.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -231,7 +237,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\ExportToWTW.xaml">
+    <Page Include="Views\ExportWTW.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -247,7 +253,11 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\WorkspaceSettings.xaml">
+    <Page Include="Views\SettingsWS.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\SettingsWTW.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -432,6 +442,18 @@
   <ItemGroup>
     <AddInContent Include="DarkImages\ExportToWTW16.png" />
     <AddInContent Include="DarkImages\ExportToWTW32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\Settings_WTW16.png" />
+    <AddInContent Include="Images\Settings_WTW32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\Settings_WTW16.png" />
+    <AddInContent Include="DarkImages\Settings_WTW32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Settings_WTW16.png" />
+    <Resource Include="ImagesWPF\Settings_WTW32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

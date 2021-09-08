@@ -21,9 +21,9 @@ using PRZH = NCC.PRZTools.PRZHelper;
 
 namespace NCC.PRZTools
 {
-    public class WorkspaceSettingsVM : PropertyChangedBase
+    public class SettingsWSVM : PropertyChangedBase
     {
-        public WorkspaceSettingsVM()
+        public SettingsWSVM()
         {
         }
 

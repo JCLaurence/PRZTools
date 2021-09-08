@@ -5,6 +5,7 @@ using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Mapping;
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
 using PRZM = NCC.PRZTools.PRZMethods;
@@ -18,7 +19,8 @@ namespace NCC.PRZTools
         {
             try
             {
-                #region Project Workspace Check
+
+                #region VALIDATE PROJECT WORKSPACE AND CONTENTS
 
                 // Check that WS exists
                 bool wsexists = PRZH.ProjectWSExists();
@@ -38,89 +40,32 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region MapView Check
+                #region SHOW EXPORT WTW DIALOG
 
-                // Ensure that there is an active MapView
-                var mapView = MapView.Active;
-                if (mapView == null)
+                ExportWTW dlg = new ExportWTW();                    // View
+                ExportWTWVM vm = (ExportWTWVM)dlg.DataContext;      // View Model
+
+                dlg.Owner = FrameworkApplication.Current.MainWindow;
+
+                // Closed Event Handler
+                dlg.Closed += (o, e) =>
                 {
-                    ProMsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
-                    return;
-                }
+                    // Event Handler for Dialog close in case I need to do things...
+                    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+                };
 
-                // Ensure that MapView is ready to work with
-                if (!mapView.IsReady)
+                // Loaded Event Handler
+                dlg.Loaded += (sender, e) =>
                 {
-                    ProMsgBox.Show("The Map View is not ready!  Try again later.");
-                    return;
-                }
+                    if (vm != null)
+                    {
+                        vm.OnProWinLoaded();
+                    }
+                };
 
-                // Ensure that the MapView is a regular 2D MapView
-                if (mapView.ViewingMode != MapViewingMode.Map)
-                {
-                    ProMsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
-                    return;
-                }
-
-                Map map = mapView.Map;
-                if (map.MapType != MapType.Map)
-                {
-                    ProMsgBox.Show("The Map must be of type 'Map'");
-                    return;
-                }
-
-                #endregion
-
-                #region Layers Check
-
-                // Ensure the PRZ Group Layer is set up
-                //if (!await PRZM.ValidatePRZGroupLayers())
-                //{
-                //    ProMsgBox.Show("Unable to Validate PRZ Layers");
-                //    return;
-                //}
-
-                // Ensure the Planning Unit Layer is present
-                if (!await PRZH.PlanningUnitFCExists())
-                {
-                    ProMsgBox.Show("You must first construct a Planning Unit Feature Class.");
-                    return;
-                }
-
-                // Ensure that the active map has an acceptable spatial reference
-                // TODO: Determine what constitutes a valid SR
-                SpatialReference SR = map.SpatialReference;
-
-                #endregion
-
-                #region Configure and Show the Export to WTW Dialog
-
-                ProMsgBox.Show("Hi");
-
-                //PUStatus dlg = new PUStatus();                  // View
-                //PUStatusVM vm = (PUStatusVM)dlg.DataContext;    // View Model
-
-                //dlg.Owner = FrameworkApplication.Current.MainWindow;
-
-                //// Closed Event Handler
-                //dlg.Closed += (o, e) =>
-                //{
-                //    // Event Handler for Dialog close in case I need to do things...
-                //    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
-                //};
-
-                //// Loaded Event Handler
-                //dlg.Loaded += (sender, e) =>
-                //{
-                //    if (vm != null)
-                //    {
-                //        vm.OnProWinLoaded();
-                //    }
-                //};
-
-                //var result = dlg.ShowDialog();
-                //// Take whatever action required here once the dialog is closed (true or false)
-                //// do stuff here!
+                var result = dlg.ShowDialog();
+                // Take whatever action required here once the dialog is closed (true or false)
+                // do stuff here!
 
                 #endregion
             }

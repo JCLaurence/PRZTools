@@ -6,15 +6,15 @@ using System.Reflection;
 
 namespace NCC.PRZTools
 {
-    internal class Button_WorkspaceSettings : Button
+    internal class Button_Settings_WS : Button
     {
 
         protected override void OnClick()
         {
             try
             {
-                WorkspaceSettings dlg = new WorkspaceSettings();                        // View
-                WorkspaceSettingsVM vm = (WorkspaceSettingsVM)dlg.DataContext;          // View Model
+                SettingsWS dlg = new SettingsWS();                        // View
+                SettingsWSVM vm = (SettingsWSVM)dlg.DataContext;          // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 

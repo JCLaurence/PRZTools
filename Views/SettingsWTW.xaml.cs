@@ -16,16 +16,13 @@ using System.Windows.Shapes;
 namespace NCC.PRZTools
 {
     /// <summary>
-    /// Interaction logic for WorkspaceSettings.xaml
+    /// Interaction logic for SettingsWTW.xaml
     /// </summary>
-    public partial class WorkspaceSettings : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class SettingsWTW : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal WorkspaceSettingsVM vm = new WorkspaceSettingsVM();
-
-        public WorkspaceSettings()
+        public SettingsWTW()
         {
             InitializeComponent();
-            this.DataContext = vm;
         }
     }
 }
