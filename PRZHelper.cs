@@ -2081,7 +2081,6 @@ namespace NCC.PRZTools
                 // Create a new Renderer Definition
                 SimpleRendererDefinition rendDef = new SimpleRendererDefinition
                 {
-                    Label = "A lowly planning unit",
                     SymbolTemplate = fillSym.MakeSymbolReference()
                 };
 
@@ -2089,6 +2088,7 @@ namespace NCC.PRZTools
                 await QueuedTask.Run(() =>
                 {
                     CIMSimpleRenderer rend = (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
+                    rend.Patch = PatchShape.AreaRoundedRectangle;
                     FL.SetRenderer(rend);
                 });
 
@@ -2129,7 +2129,6 @@ namespace NCC.PRZTools
                 {
                     Editable = true,
                     Label = "Available",
-                    Patch = PatchShape.AreaRoundedRectangle,
                     Symbol = fillSym_Available.MakeSymbolReference(),
                     Description = "",
                     Visible = true,
@@ -2138,8 +2137,7 @@ namespace NCC.PRZTools
                 CIMUniqueValueClass uvcInclude = new CIMUniqueValueClass
                 {
                     Editable = true,
-                    Label = "Locked In",
-                    Patch = PatchShape.AreaRoundedRectangle,
+                    Label = "Included (Locked In)",
                     Symbol = fillSym_Include.MakeSymbolReference(),
                     Description = "",
                     Visible = true,
@@ -2148,8 +2146,7 @@ namespace NCC.PRZTools
                 CIMUniqueValueClass uvcExclude = new CIMUniqueValueClass
                 {
                     Editable = true,
-                    Label = "Locked Out",
-                    Patch = PatchShape.AreaRoundedRectangle,
+                    Label = "Excluded (Locked Out)",
                     Symbol = fillSym_Exclude.MakeSymbolReference(),
                     Description = "",
                     Visible = true,
@@ -2159,8 +2156,8 @@ namespace NCC.PRZTools
                 // CIM UNIQUE VALUE GROUP
                 CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
                 {
-                    Classes = new CIMUniqueValueClass[] { uvcAvailable, uvcInclude, uvcExclude },
-                    Heading = "Statorama"
+                    Classes = new CIMUniqueValueClass[] { uvcInclude, uvcExclude, uvcAvailable },
+                    Heading = "Status"
                 };
 
                 // UV RENDERER
@@ -2168,8 +2165,8 @@ namespace NCC.PRZTools
                 {
                     UseDefaultSymbol = false,
                     Fields = new string[] { PRZC.c_FLD_PUFC_STATUS },
-                    Groups = new CIMUniqueValueGroup[] { uvgMain }
-
+                    Groups = new CIMUniqueValueGroup[] { uvgMain },
+                    DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
                 };
 
                 await QueuedTask.Run(() =>
@@ -2185,6 +2182,85 @@ namespace NCC.PRZTools
                 return false;
             }
         }
+
+        public static async Task<bool> ApplyLegend_PU_Cost(FeatureLayer FL)
+        {
+            try
+            {
+                // get the lowest and highest cost values in PUCF
+                double minCost = 0;
+                double maxCost = 0;
+                bool seeded = false;
+
+                await QueuedTask.Run(() =>
+                {
+                    using (Table table = FL.GetFeatureClass())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                double cost = Convert.ToDouble(row[PRZC.c_FLD_PUFC_COST]);
+
+                                if (!seeded)
+                                {
+                                    minCost = cost;
+                                    maxCost = cost;
+
+                                    seeded = true;
+                                }
+                                else
+                                {
+                                    if (cost > maxCost)
+                                    {
+                                        maxCost = cost;
+                                    }
+
+                                    if (cost < minCost)
+                                    {
+                                        minCost = cost;
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                });
+
+                // Create the polygon fill template
+                CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
+                CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+
+                // Create the color ramp
+                CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
+                {
+                    FromColor = GetNamedColor(Color.LightGray),
+                    ToColor = GetNamedColor(Color.Red)
+                };
+
+                // Create the Unclassed Renderer
+                UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
+
+                ucDef.Field = PRZC.c_FLD_PUFC_COST;
+                ucDef.ColorRamp = ramp;
+                ucDef.LowerColorStop = minCost;
+                ucDef.LowerLabel = minCost.ToString();
+                ucDef.UpperColorStop = maxCost;
+                ucDef.UpperLabel = maxCost.ToString();
+                ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
+
+                CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
+                FL.SetRenderer(rend);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
 
         public static async Task<bool> ApplyLegend_PU_CFCount(FeatureLayer FL)
         {

@@ -115,6 +115,9 @@
       <HintPath>C:\Program Files\ArcGIS\Pro\bin\ESRI.ArcGIS.ItemIndex.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="YamlDotNet, Version=11.0.0.0, Culture=neutral, PublicKeyToken=ec19458f3c15af5e, processorArchitecture=MSIL">
+      <HintPath>packages\YamlDotNet.11.2.1\lib\net45\YamlDotNet.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <AddInContent Include="Config.daml" />
@@ -125,11 +128,23 @@
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\ConservationFeature.cs" />
     <Compile Include="Models\UVConservationFeature.cs" />
+    <Compile Include="Models\YamlFeature.cs" />
+    <Compile Include="Models\YamlInclude.cs" />
+    <Compile Include="Models\YamlLegend.cs" />
+    <Compile Include="Models\YamlPackage.cs" />
+    <Compile Include="Models\YamlTheme.cs" />
+    <Compile Include="Models\YamlVariable.cs" />
+    <Compile Include="Models\YamlWeight.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\ExportToWTW.xaml.cs">
+      <DependentUpon>ExportToWTW.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Widgets\Button_Export_WTW.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
+    <Compile Include="Widgets\Button_Legend_PU_Cost.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Status.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
     <Compile Include="Models\ProgressManager.cs" />
@@ -189,6 +204,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -212,6 +228,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\CostImportFields.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ExportToWTW.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -400,6 +420,18 @@
   <ItemGroup>
     <AddInContent Include="DarkImages\TableDelete16.png" />
     <AddInContent Include="DarkImages\TableDelete32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\ExportToWTW16.png" />
+    <Resource Include="ImagesWPF\ExportToWTW32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\ExportToWTW16.png" />
+    <AddInContent Include="Images\ExportToWTW32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\ExportToWTW16.png" />
+    <AddInContent Include="DarkImages\ExportToWTW32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

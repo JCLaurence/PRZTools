@@ -1,5 +1,15 @@
-﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.0" desktopVersion="2.8.29751">
+﻿<ArcGIS
+  defaultAssembly="PRZTools.dll" 
+  defaultNamespace="NCC.PRZTools" 
+  xmlns="http://schemas.esri.com/DADF/Registry" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+
+  <AddInInfo 
+    id="{da31f65d-d421-4389-8904-1ebf0789e957}" 
+    version="1.0" 
+    desktopVersion="2.8.29751">
+    
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset</Description>
     <Image>Images\PRZTools32.png</Image>
@@ -7,72 +17,396 @@
     <Company>NCC</Company>
     <Date>6/8/2021 10:29:56 AM</Date>
     <Subject>Framework</Subject>
-    <!-- Note subject can be one or more of these topics:
-                    Content, Framework, Editing, Geodatabase, Geometry, Geoprocessing, Layouts, Map Authoring, Map Exploration -->
+
   </AddInInfo>
+
   <modules>
-    <insertModule id="prz_module_main" className="Module_Main" autoLoad="false" caption="PRZ Tools">
+    <!--MAIN (ONLY) MODULE-->
+    <insertModule 
+      id="prz_module_main" 
+      className="Module_Main" 
+      autoLoad="false" 
+      caption="PRZ Tools">
+      
       <tabs>
-        <tab id="prz_tab_main" caption="PRZ Tools" keytip="z">
-          <group refID="prz_group_configuration" />
-          <group refID="prz_group_output" />
+        <!--MAIN (ONLY)TAB-->
+        <tab
+          id="prz_tab_main" 
+          caption="PRZ Tools" 
+          keytip="z">
+          
+          <group refID="prz_group_settings"/>
+          <group refID="prz_group_configuration"/>
+          <group refID="prz_group_export"/>
+          <group refID="prz_group_display"/>
+        
         </tab>
       </tabs>
+      
       <groups>
-        <group id="prz_group_configuration" caption="Configuration" keytip="z">
-          <button refID="prz_button_workspacesettings" size="large" />
-          <button refID="prz_button_loadprzlayers" size="large" />
-          <button refID="prz_button_pugenerator" size="large" />
-          <button refID="prz_button_pustatus" size="large" />
-          <button refID="prz_button_pucost" size="large" />
-          <button refID="prz_button_cfgenerator" size="large" />
-          <button refID="prz_button_boundarylengths" size="large" />
+        <!--SETTINGS GROUP-->
+        <group 
+          id="prz_group_settings" 
+          caption="Settings" 
+          keytip="z">
+          
+          <!--Workspace Settings Button-->
+          <button
+            refID="prz_button_settings_workspace" 
+            size="large" />
+
+          <!--Where to Work Settings Button-->
+          <button 
+            refID="prz_button_settings_wtw" 
+            size="large" />
+        
         </group>
-        <group id="prz_group_output" caption="Output" keytip="z">
-          <menu refID="prz_menu_legends" size="large" />
+
+        <!--CONFIGURATION GROUP-->
+        <group
+          id="prz_group_configuration" 
+          caption="Project Construction" 
+          keytip="z">
+
+          <!--Planning Unit Generator Dialog Button-->
+          <button
+            refID="prz_button_pugenerator" 
+            size="large" />
+          
+          <!--Planning Unit Status Dialog Button-->
+          <button 
+            refID="prz_button_pustatus" 
+            size="large" />
+
+          <!--Planning Unit Cost Dialog Button-->
+          <button 
+            refID="prz_button_pucost" 
+            size="large" />
+
+          <!--Conservation Feature Generator Dialog Button-->
+          <button 
+            refID="prz_button_cfgenerator" 
+            size="large" />
+
+          <!--Planning Unit Boundary Lengths Generator Dialog Button-->
+          <button 
+            refID="prz_button_boundarylengths" 
+            size="large" />
+
+        </group>
+
+        <!--EXPORT GROUP-->
+        <group
+          id="prz_group_export" 
+          caption="Export" 
+          keytip="z">
+        
+          <!--Export to "Where to Work" Dialog Button-->
+          <button 
+            refID="prz_button_export_wtw" 
+            size="large"/>
+
+        </group>
+
+        <!--DISPLAY GROUP-->
+        <group
+          id="prz_group_display" 
+          caption="Display Options" 
+          keytip="z">
+          
+          <!--Load PRZ Layers Button-->
+          <button
+            refID="prz_button_loadprzlayers" 
+            size="large" />
+          
+          <!--Legends Menu-->
+          <menu 
+            refID="prz_menu_legends" 
+            size="large" />
+
         </group>
       </groups>
+      
       <controls>
-        <button id="prz_button_workspacesettings" caption="Workspace Settings" className="Button_WorkspaceSettings" keytip="z" loadOnClick="true" smallImage="Images\WorkspaceSettings16.png" largeImage="Images\WorkspaceSettings32.png">
-          <tooltip heading="Workspace Settings">Specify the PRZ Tools Workspace Folder, and other neat stuff.<disabledText /></tooltip>
+
+        <!--SETTINGS CONTROLS-->
+
+        <!--Workspace Settings Dialog Button-->
+        <button
+          id="prz_button_settings_workspace" 
+          caption="Workspace" 
+          className="Button_WorkspaceSettings" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\WorkspaceSettings16.png" 
+          largeImage="Images\WorkspaceSettings32.png">
+          
+          <tooltip 
+            heading="Workspace Settings">
+            Specify the PRZ Tools Workspace Folder, and other neat stuff.
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_loadprzlayers" caption="Load Layers" className="Button_LoadPRZLayers" keytip="z" loadOnClick="true" smallImage="Images\LoadPRZLayers16.png" largeImage="Images\LoadPRZLayers32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Load Layers">
-            Loads or refreshes the Prioritization Group Layer and all child layers.<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--"Where to Work" Settings Dialog Button-->
+        <button
+          id="prz_button_settings_wtw" 
+          keytip="z" 
+          caption="Where to Work" 
+          className="Button_Settings_WTW" 
+          loadOnClick="true" 
+          smallImage="Images\ExportToWTW16.png" 
+          largeImage="Images\ExportToWTW32.png">
+          
+          <tooltip 
+            heading="Tooltip Heading">
+            Tooltip text
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_pugenerator" caption="Planning Units" className="Button_PUGenerator" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Generator">Tools to generate a Planning Unit Feature Class, based on a grid definition or an existing Polygon Feature Class.<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--CONFIGURATION CONTROLS-->
+
+        <!--Planning Unit Generator Dialog Button-->
+        <button
+          id="prz_button_pugenerator" 
+          caption="Planning Units" 
+          className="Button_PUGenerator" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\PlanningUnits16.png" 
+          largeImage="Images\PlanningUnits32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip
+            heading="Planning Unit Generator">
+            Tools to generate a Planning Unit Feature Class, based on a grid definition or an existing Polygon Feature Class.
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_pustatus" caption="Planning Unit Status" className="Button_PUStatus" keytip="z" loadOnClick="true" smallImage="Images\PUStatus16.png" largeImage="Images\PUStatus32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Status Calculator">
-            Update your planning unit statuses using various input layers.<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--Planning Unit Status Calculator Dialog Button-->
+        <button
+          id="prz_button_pustatus" 
+          caption="Planning Unit Status" 
+          className="Button_PUStatus" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\PUStatus16.png" 
+          largeImage="Images\PUStatus32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Planning Unit Status Calculator">
+            Update your planning unit statuses using various input layers.
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText></tooltip>
         </button>
-        <button id="prz_button_pucost" caption="Planning Unit Cost" className="Button_PUCost" keytip="z" loadOnClick="true" smallImage="Images\PUCost16.png" largeImage="Images\PUCost32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Cost Calculator">
-            Update your planning unit costs using various input layers.<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--Planning Unit Cost Calculator Dialog Button-->
+        <button
+          id="prz_button_pucost"
+          caption="Planning Unit Cost" 
+          className="Button_PUCost" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\PUCost16.png" 
+          largeImage="Images\PUCost32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Planning Unit Cost Calculator">
+            Update your planning unit costs using various input layers.
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_boundarylengths" caption="Boundary Length" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Boundary Length Table Generator">
-            Build a boundary length table from your planning units.<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--Conservation Feature Generator Dialog Button-->
+        <button
+          id="prz_button_cfgenerator" 
+          caption="Conservation Features" 
+          className="Button_CFGenerator" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\ConservationFeatures16.png" 
+          largeImage="Images\ConservationFeatures32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Conservation Features">
+            Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_cfgenerator" caption="Conservation Features" className="Button_CFGenerator" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Conservation Features">
-            Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers<disabledText>Active Pane must be a Map</disabledText></tooltip>
+
+        <!--Boundary Length Calculator Dialog Button-->
+        <button 
+          id="prz_button_boundarylengths" 
+          caption="Boundary Length" 
+          className="Button_BoundaryLengths" 
+          keytip="z" 
+          loadOnClick="true" 
+          smallImage="Images\BoundaryLengths16.png" 
+          largeImage="Images\BoundaryLengths32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Boundary Length Table Generator">
+            Build a boundary length table from your planning units.
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_legend_pu_basic" keytip="z" caption="Planning Units - Basic" className="Button_Legend_PU_Basic" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
+
+
+        <!--EXPORT CONTROLS-->
+        
+        <!--Export to "Where to Work" Dialog Button-->
+        <button
+          id="prz_button_export_wtw" 
+          keytip="z" 
+          caption="Where to Work" 
+          className="Button_Export_WTW" 
+          loadOnClick="true" 
+          smallImage="Images\ExportToWTW16.png" 
+          largeImage="Images\ExportToWTW32.png">
+          
+          <tooltip 
+            heading="Tooltip Heading">
+            Tooltip text
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_legend_pu_status" keytip="z" caption="Planning Units - Status and Conflicts" className="Button_Legend_PU_Status" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
+
+        <!--DISPLAY OPTIONS CONTROLS-->
+
+        <!--Load PRZ Layers Button-->
+        <button
+          id="prz_button_loadprzlayers"
+          caption="Load Layers"
+          className="Button_LoadPRZLayers"
+          keytip="z"
+          loadOnClick="true"
+          smallImage="Images\LoadPRZLayers16.png"
+          largeImage="Images\LoadPRZLayers32.png"
+          condition="esri_mapping_mapPane">
+
+          <tooltip
+            heading="Load Layers">
+            Loads or refreshes the Prioritization Group Layer and all child layers.
+            <disabledText>
+              Active Pane must be a Map
+            </disabledText>
+          </tooltip>
         </button>
-        <button id="prz_button_legend_pu_cf_count" keytip="z" caption="Planning Units - Conservation Feature Count" className="Button_Legend_PU_CFCount" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Legend">ToolTip<disabledText /></tooltip>
+
+        <!--Legend Button - Planning Unit Basic-->
+        <button
+          id="prz_button_legend_pu_basic" 
+          keytip="z" 
+          caption="Planning Units - Basic" 
+          className="Button_Legend_PU_Basic" 
+          loadOnClick="true" 
+          smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" 
+          largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Planning Unit Legend">
+            ToolTip
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
         </button>
+
+        <!--Legend Button - Planning Unit Status-->
+        <button 
+          id="prz_button_legend_pu_status" 
+          keytip="z" 
+          caption="Planning Units - Status" 
+          className="Button_Legend_PU_Status" 
+          loadOnClick="true" 
+          smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" 
+          largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip
+            heading="Planning Unit Legend">
+            ToolTip
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
+        </button>
+
+        <!--Legend Button - Planning Unit Cost-->
+        <button
+          id="prz_button_legend_pu_cost" 
+          keytip="z" 
+          caption="Planning Units - Cost" 
+          className="Button_Legend_PU_Cost" 
+          loadOnClick="true" 
+          smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" 
+          largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Planning Unit Legend">
+            ToolTip
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
+        </button>
+
+        <!--Legend Button - Planning Unit Conservation Feature Count-->
+        <button 
+          id="prz_button_legend_pu_cf_count" 
+          keytip="z" 
+          caption="Planning Units - Conservation Feature Count" 
+          className="Button_Legend_PU_CFCount" 
+          loadOnClick="true" 
+          smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" 
+          largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" 
+          condition="esri_mapping_mapPane">
+          
+          <tooltip 
+            heading="Planning Unit Legend">
+            ToolTip
+            <disabledText>
+              
+            </disabledText>
+          </tooltip>
+        </button>
+
       </controls>
+
       <menus>
-        <menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
+      <!--LEGEND MENU-->
+        <menu
+          id="prz_menu_legends" 
+          caption="Legends" 
+          smallImage="Images\Legend16.png" 
+          largeImage="Images\Legend32.png">
+          
           <button refID="prz_button_legend_pu_basic" />
           <button refID="prz_button_legend_pu_status" />
+          <button refID="prz_button_legend_pu_cost" />
           <button refID="prz_button_legend_pu_cf_count" />
         </menu>
       </menus>
