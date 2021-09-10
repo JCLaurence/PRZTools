@@ -798,9 +798,11 @@ namespace NCC.PRZTools
                 string fldPUAreaKM = PRZC.c_FLD_PUFC_AREA_KM + " DOUBLE 'Square km' # 1 #;";
                 string fldCFCount = PRZC.c_FLD_PUFC_CFCOUNT + " LONG 'Conservation Feature Count' # 0 #;";
                 string fldSharedPerim = PRZC.c_FLD_PUFC_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
-                string fldHasUnshared = PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE + " LONG 'Has Unshared Edge' # 0 #;";
+                string fldUnsharedPerim = PRZC.c_FLD_PUFC_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
 
-                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldHasUnshared;
+                string fldHasUnsharedPerim = PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
+
+                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -809,6 +811,10 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to Planning Unit FC.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                     return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                 }
 
                 // Assemble the Grid
@@ -1242,7 +1248,7 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
                                             rowBuffer[PRZC.c_FLD_PUFC_SHARED_PERIM] = 0;
-                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM] = 0;
 
                                             // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);
@@ -1282,7 +1288,7 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_PUFC_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_PUFC_COST] = 1;
                                             rowBuffer[PRZC.c_FLD_PUFC_SHARED_PERIM] = 0;
-                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_EDGE] = 0;
+                                            rowBuffer[PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM] = 0;
 
                                             // Finally, insert the row
                                             insertCursor.Insert(rowBuffer);

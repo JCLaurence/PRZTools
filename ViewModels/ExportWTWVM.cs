@@ -29,6 +29,8 @@ using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
 using PRZM = NCC.PRZTools.PRZMethods;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.Converters;
 
 
 namespace NCC.PRZTools
@@ -53,7 +55,7 @@ namespace NCC.PRZTools
         #region Commands
 
         private ICommand _cmdExport;
-        public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(() => Export(), () => true));
+        public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(() => ExportWTWPackage(), () => true));
 
         private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
@@ -103,16 +105,31 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> Export()
+        private async Task<bool> ExportWTWPackage()
         {
             int val = 0;
 
             try
             {
+                YamlLegend l = new YamlLegend();
+                l.colors = new string[] { "a", "b", "c" };
+                l.labels = new string[] { "label a", "label b", "label c" };
+                l.type = "manual";
 
+                ISerializer builder = new SerializerBuilder().DisableAliases().Build();
+                string s = builder.Serialize(l);
 
+                ProMsgBox.Show(s, "YAML!");
 
+                var builder2 = new SerializerBuilder().DisableAliases().JsonCompatible().Build();
+                string t = builder2.Serialize(l);
 
+                ProMsgBox.Show(t, "JSON!");
+
+                var builder3 = new SerializerBuilder().DisableAliases().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
+                string u = builder3.Serialize(l);
+
+                ProMsgBox.Show(u, "Yaml No Nulls!");
 
                 return true;
             }

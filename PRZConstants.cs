@@ -135,7 +135,8 @@
         public const string c_FLD_PUFC_CONFLICT = "conflict";
         public const string c_FLD_PUFC_CFCOUNT = "cf_count";
         public const string c_FLD_PUFC_SHARED_PERIM = "shared_perimeter_m";
-        public const string c_FLD_PUFC_HAS_UNSHARED_EDGE = "has_unshared_edge";
+        public const string c_FLD_PUFC_UNSHARED_PERIM = "unshared_perimeter_m";
+        public const string c_FLD_PUFC_HAS_UNSHARED_PERIM = "has_unshared_perimeter";
 
         // Planning Unit Versus CF (PUVCF) table		
         public const string c_FLD_PUVCF_ID = c_FLD_PUFC_ID;

@@ -2261,7 +2261,6 @@ namespace NCC.PRZTools
             }
         }
 
-
         public static async Task<bool> ApplyLegend_PU_CFCount(FeatureLayer FL)
         {
             try
@@ -2320,6 +2319,82 @@ namespace NCC.PRZTools
                 return false;
             }
         }
+
+        public static async Task<bool> ApplyLegend_PU_Boundary(FeatureLayer FL)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    // Colors
+                    CIMColor colorOutline = GetNamedColor(Color.Gray);
+                    CIMColor colorEdge = GetNamedColor(Color.Magenta);
+                    CIMColor colorNonEdge = GetNamedColor(Color.LightGray);
+
+                    // Symbols
+                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(colorOutline, 1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillEdge = SymbolFactory.Instance.ConstructPolygonSymbol(colorEdge, SimpleFillStyle.Solid, outlineSym);
+                    CIMPolygonSymbol fillNonEdge = SymbolFactory.Instance.ConstructPolygonSymbol(colorNonEdge, SimpleFillStyle.Solid, outlineSym);
+
+                    // fields array
+                    string[] fields = new string[] { PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM };
+
+                    // CIM Unique Values
+                    CIMUniqueValue uvEdge = new CIMUniqueValue { FieldValues = new string[] { "1" } };
+                    CIMUniqueValue uvNonEdge = new CIMUniqueValue { FieldValues = new string[] { "0" } };
+
+                    // CIM Unique Value Classes
+                    CIMUniqueValueClass uvcEdge = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Edge",
+                        Symbol = fillEdge.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uvEdge }
+                    };
+
+                    CIMUniqueValueClass uvcNonEdge = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Non Edge",
+                        Symbol = fillNonEdge.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uvNonEdge }
+                    };
+
+                    // CIM Unique Value Group
+                    CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
+                    {
+                        Classes = new CIMUniqueValueClass[] { uvcEdge, uvcNonEdge },
+                        Heading = "Has Unshared Perimeter"                        
+                    };
+
+
+                    // Unique Values Renderer
+                    CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
+                    {
+                        UseDefaultSymbol = false,
+                        Fields = fields,
+                        Groups = new CIMUniqueValueGroup[] { uvgMain },
+                        DefaultSymbolPatch = PatchShape.AreaSquare
+                    };
+
+                    FL.SetRenderer(UVRend);
+                });
+
+                await MapView.Active.RedrawAsync(false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
 
         public static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
         {

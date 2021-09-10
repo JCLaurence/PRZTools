@@ -149,6 +149,12 @@
             ToolTip
             <disabledText></disabledText></tooltip>
         </button>
+        <!--Legend Button - Planning Unit Boundary-->
+        <button id="prz_button_legend_pu_boundary" keytip="z" caption="Planning Units - Boundary" className="Button_Legend_PU_Boundary" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Legend">
+            ToolTip
+            <disabledText></disabledText></tooltip>
+        </button>
       </controls>
       <menus>
         <!--LEGEND MENU-->
@@ -157,6 +163,7 @@
           <button refID="prz_button_legend_pu_status" />
           <button refID="prz_button_legend_pu_cost" />
           <button refID="prz_button_legend_pu_cf_count" />
+          <button refID="prz_button_legend_pu_boundary" />
         </menu>
       </menus>
     </insertModule>
