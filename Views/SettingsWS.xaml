@@ -100,7 +100,25 @@
                         DockPanel.Dock="Left"
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdInitializeCurrentWorkspace}"
-                        Content="INITIALIZE" />
+                        Content="INITIALIZE">
+
+                        <Button.ToolTip>
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,5">Open file</TextBlock>
+                                <TextBlock>
+                        Search your computer or local network
+                        <LineBreak />
+                        for a file and open it for editing.
+                                </TextBlock>
+                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                <WrapPanel>
+                                    <Image Source="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" Margin="0,0,5,0" />
+                                    <TextBlock FontStyle="Italic">Press F1 for more help</TextBlock>
+                                </WrapPanel>
+                            </StackPanel>
+                            
+                        </Button.ToolTip>
+                    </Button>
 
                     <Button
                         Margin="5" 

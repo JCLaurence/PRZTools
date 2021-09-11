@@ -41,7 +41,7 @@ namespace NCC.PRZTools
         #region LOGGING AND NOTIFICATIONS
 
         // Write to log
-        public static string WriteLog(string message, LogMessageType type = LogMessageType.INFO)
+        public static string WriteLog(string message, LogMessageType type = LogMessageType.INFO, bool Append = true)
         {
             try
             {
@@ -62,11 +62,23 @@ namespace NCC.PRZTools
                                 + Environment.NewLine + message 
                                 + Environment.NewLine;
 
-                using (StreamWriter w = File.AppendText(logpath))
+                if (Append)
                 {
-                    w.WriteLine(lines);
-                    w.Flush();
-                    w.Close();
+                    using (StreamWriter w = File.AppendText(logpath))
+                    {
+                        w.WriteLine(lines);
+                        w.Flush();
+                        w.Close();
+                    }
+                }
+                else
+                {
+                    using (StreamWriter w = File.CreateText(logpath))
+                    {
+                        w.WriteLine(lines);
+                        w.Flush();
+                        w.Close();
+                    }
                 }
 
                 return lines;
@@ -206,9 +218,11 @@ namespace NCC.PRZTools
 
         #endregion LOGGING
 
-        #region RETRIEVING PATHS AND OBJECTS
+        #region PATHS
 
-        // *** Paths
+        // *** PROJECT FILE & FOLDER PATHS
+
+        // Project Workspace Folder Path
         public static string GetProjectWSPath()
         {
             try
@@ -222,6 +236,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Project Workspace GDB Path
         public static string GetProjectGDBPath()
         {
             try
@@ -238,6 +253,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Project Workspace Log File Path
         public static string GetProjectLogPath()
         {
             try
@@ -254,6 +270,60 @@ namespace NCC.PRZTools
             }
         }
 
+        // Project Workspace INPUT Subdirectory
+        public static string GetInputFolderPath()
+        {
+            try
+            {
+                string wspath = GetProjectWSPath();
+                string inputfolderpath = Path.Combine(wspath, PRZC.c_WS_INPUT);
+
+                return inputfolderpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        // Project Workspace OUTPUT Subdirectory
+        public static string GetOutputFolderPath()
+        {
+            try
+            {
+                string wspath = GetProjectWSPath();
+                string outputfolderpath = Path.Combine(wspath, PRZC.c_WS_OUTPUT);
+
+                return outputfolderpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        // Project Workspace EXPORT_WTW Subdirectory
+        public static string GetExportWTWFolderPath()
+        {
+            try
+            {
+                string wspath = GetProjectWSPath();
+                string exportwtwpath = Path.Combine(wspath, PRZC.c_WS_EXPORT_WTW);
+
+                return exportwtwpath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        // *** GEODATABASE OBJECT PATHS
+
+        // Planning Unit FC Path
         public static string GetPlanningUnitFCPath()
         {
             try
@@ -270,6 +340,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Study Area FC Path
         public static string GetStudyAreaFCPath()
         {
             try
@@ -286,6 +357,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Study Area Buffer FC Path
         public static string GetStudyAreaBufferFCPath()
         {
             try
@@ -302,6 +374,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Status Info Table Path
         public static string GetStatusInfoTablePath()
         {
             try
@@ -318,6 +391,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Cost Stats Table Path
         public static string GetCostStatsTablePath()
         {
             try
@@ -334,6 +408,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Conservation Features Table Path
         public static string GetCFTablePath()
         {
             try
@@ -350,6 +425,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // PUVCF Table Path
         public static string GetPUVCFTablePath()
         {
             try
@@ -366,6 +442,7 @@ namespace NCC.PRZTools
             }
         }
 
+        // Boundary Table Path
         public static string GetBoundaryTablePath()
         {
             try
@@ -382,8 +459,10 @@ namespace NCC.PRZTools
             }
         }
 
+        #endregion
 
-        // *** Path + Object Existence
+        #region OBJECT EXISTENCE
+
         public static bool ProjectWSExists()
         {
             try
@@ -402,31 +481,33 @@ namespace NCC.PRZTools
         {
             try
             {
-                string path = GetProjectGDBPath();
-
-                if (path == null)
+                bool result = await QueuedTask.Run(() =>
                 {
-                    return false;
-                }
+                    string gdbpath = GetProjectGDBPath();
 
-                Uri uri = new Uri(path);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-
-                try
-                {
-                    await QueuedTask.Run(() =>
+                    if (gdbpath == null)
                     {
-                        var gdb = new Geodatabase(pathConn);
-                    });
+                        return false;
+                    }
 
-                }
-                catch (GeodatabaseNotFoundOrOpenedException)
-                {
-                    return false;
-                }
+                    Uri u = new Uri(gdbpath);
+                    FileGeodatabaseConnectionPath fgcpath = new FileGeodatabaseConnectionPath(u);
 
-                // If I get to this point, the file gdb exists and was successfully opened
-                return true;
+                    try
+                    {
+                        using (Geodatabase gdb = new Geodatabase(fgcpath)) { }
+                    }
+                    catch (GeodatabaseNotFoundOrOpenedException)
+                    {
+                        return false;
+                    }
+
+                    // If I get to this point, the file gdb exists and was successfully opened
+                    return true;
+                });
+
+                return result;
+
             }
             catch (Exception)
             {
@@ -440,6 +521,48 @@ namespace NCC.PRZTools
             {
                 string path = GetProjectLogPath();
                 return File.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static bool InputFolderExists()
+        {
+            try
+            {
+                string path = GetInputFolderPath();
+                return Directory.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static bool OutputFolderExists()
+        {
+            try
+            {
+                string path = GetOutputFolderPath();
+                return Directory.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static bool ExportWTWFolderExists()
+        {
+            try
+            {
+                string path = GetExportWTWFolderPath();
+                return Directory.Exists(path);
             }
             catch (Exception ex)
             {
@@ -616,8 +739,32 @@ namespace NCC.PRZTools
             }
         }
 
+        #endregion
 
-        // *** Objects
+        #region RETRIEVE OBJECTS
+
+        public static (bool DirExists, DirectoryInfo Dir) GetInputDirectory()
+        {
+            try
+            {
+                string path = GetInputFolderPath();
+
+                if (Directory.Exists(path))
+                {
+                    DirectoryInfo dirinfo = new DirectoryInfo(path);
+                    return (true, dirinfo);
+                }
+                else
+                {
+                    return (false, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null);
+            }
+        }
 
         public static async Task<Geodatabase> GetProjectGDB()
         {
@@ -947,7 +1094,6 @@ namespace NCC.PRZTools
             }
         }
 
-
         #endregion
 
         #region RETRIEVING LAYERS AND STANDALONE TABLES
@@ -1039,7 +1185,6 @@ namespace NCC.PRZTools
                 return null;
             }
         }
-
 
         public static bool GroupLayerExists_MAIN(Map map)
         {
@@ -2070,27 +2215,28 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Colors
-                CIMColor outlineColor = GetRGBColor(0, 112, 255); // Blue-ish
-                CIMColor fillColor = CIMColor.NoColor();
-
-                // Symbols
-                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
-                CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
-
-                // Create a new Renderer Definition
-                SimpleRendererDefinition rendDef = new SimpleRendererDefinition
-                {
-                    SymbolTemplate = fillSym.MakeSymbolReference()
-                };
-
-                // Create and set the renderer
                 await QueuedTask.Run(() =>
                 {
+                    // Colors
+                    CIMColor outlineColor = GetRGBColor(0, 112, 255); // Blue-ish
+                    CIMColor fillColor = CIMColor.NoColor();
+
+                    // Symbols
+                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillSym = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor, SimpleFillStyle.Solid, outlineSym);
+
+                    // Create a new Renderer Definition
+                    SimpleRendererDefinition rendDef = new SimpleRendererDefinition
+                    {
+                        SymbolTemplate = fillSym.MakeSymbolReference()
+                    };
+
                     CIMSimpleRenderer rend = (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
-                    rend.Patch = PatchShape.AreaRoundedRectangle;
+                    rend.Patch = PatchShape.AreaSquare;
                     FL.SetRenderer(rend);
                 });
+
+                MapView.Active.Redraw(false);
 
                 return true;
             }
@@ -2105,74 +2251,74 @@ namespace NCC.PRZTools
         {
             try
             {
-                // I need 3 CIM Poly Symbols
-                
-                // COLORS
-                CIMColor outlineColor = GetRGBColor(60, 60, 60); // dark greyish?   // outline color for all 3 poly symbols
-                CIMColor fillColor_Available = GetNamedColor(Color.Bisque);
-                CIMColor fillColor_Include = GetNamedColor(Color.GreenYellow);
-                CIMColor fillColor_Exclude = GetNamedColor(Color.OrangeRed);
-
-                // SYMBOLS
-                CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
-                CIMPolygonSymbol fillSym_Available = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Available, SimpleFillStyle.Solid, outlineSym);
-                CIMPolygonSymbol fillSym_Include = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Include, SimpleFillStyle.Solid, outlineSym);
-                CIMPolygonSymbol fillSym_Exclude = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Exclude, SimpleFillStyle.Solid, outlineSym);
-
-                // CIM UNIQUE VALUES
-                CIMUniqueValue uv_Available = new CIMUniqueValue { FieldValues = new string[] { "0" } };
-                CIMUniqueValue uv_Include = new CIMUniqueValue { FieldValues = new string[] { "2" } };
-                CIMUniqueValue uv_Exclude = new CIMUniqueValue { FieldValues = new string[] { "3" } };
-
-                // CIM UNIQUE VALUE CLASSES
-                CIMUniqueValueClass uvcAvailable = new CIMUniqueValueClass
-                {
-                    Editable = true,
-                    Label = "Available",
-                    Symbol = fillSym_Available.MakeSymbolReference(),
-                    Description = "",
-                    Visible = true,
-                    Values = new CIMUniqueValue[] {uv_Available}
-                };
-                CIMUniqueValueClass uvcInclude = new CIMUniqueValueClass
-                {
-                    Editable = true,
-                    Label = "Included (Locked In)",
-                    Symbol = fillSym_Include.MakeSymbolReference(),
-                    Description = "",
-                    Visible = true,
-                    Values = new CIMUniqueValue[] { uv_Include }
-                };
-                CIMUniqueValueClass uvcExclude = new CIMUniqueValueClass
-                {
-                    Editable = true,
-                    Label = "Excluded (Locked Out)",
-                    Symbol = fillSym_Exclude.MakeSymbolReference(),
-                    Description = "",
-                    Visible = true,
-                    Values = new CIMUniqueValue[] { uv_Exclude }
-                };
-
-                // CIM UNIQUE VALUE GROUP
-                CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
-                {
-                    Classes = new CIMUniqueValueClass[] { uvcInclude, uvcExclude, uvcAvailable },
-                    Heading = "Status"
-                };
-
-                // UV RENDERER
-                CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
-                {
-                    UseDefaultSymbol = false,
-                    Fields = new string[] { PRZC.c_FLD_PUFC_STATUS },
-                    Groups = new CIMUniqueValueGroup[] { uvgMain },
-                    DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
-                };
-
                 await QueuedTask.Run(() =>
                 {
+                    // COLORS
+                    CIMColor outlineColor = GetNamedColor(Color.Gray); // outline color for all 3 poly symbols
+                    CIMColor fillColor_Available = GetNamedColor(Color.Bisque);
+                    CIMColor fillColor_Include = GetNamedColor(Color.GreenYellow);
+                    CIMColor fillColor_Exclude = GetNamedColor(Color.OrangeRed);
+
+                    // SYMBOLS
+                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillSym_Available = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Available, SimpleFillStyle.Solid, outlineSym);
+                    CIMPolygonSymbol fillSym_Include = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Include, SimpleFillStyle.Solid, outlineSym);
+                    CIMPolygonSymbol fillSym_Exclude = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Exclude, SimpleFillStyle.Solid, outlineSym);
+
+                    // CIM UNIQUE VALUES
+                    CIMUniqueValue uv_Available = new CIMUniqueValue { FieldValues = new string[] { "0" } };
+                    CIMUniqueValue uv_Include = new CIMUniqueValue { FieldValues = new string[] { "2" } };
+                    CIMUniqueValue uv_Exclude = new CIMUniqueValue { FieldValues = new string[] { "3" } };
+
+                    // CIM UNIQUE VALUE CLASSES
+                    CIMUniqueValueClass uvcAvailable = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Available",
+                        Symbol = fillSym_Available.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uv_Available }
+                    };
+                    CIMUniqueValueClass uvcInclude = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Included (Locked In)",
+                        Symbol = fillSym_Include.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uv_Include }
+                    };
+                    CIMUniqueValueClass uvcExclude = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Excluded (Locked Out)",
+                        Symbol = fillSym_Exclude.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uv_Exclude }
+                    };
+
+                    // CIM UNIQUE VALUE GROUP
+                    CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
+                    {
+                        Classes = new CIMUniqueValueClass[] { uvcInclude, uvcExclude, uvcAvailable },
+                        Heading = "Status"
+                    };
+
+                    // UV RENDERER
+                    CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
+                    {
+                        UseDefaultSymbol = false,
+                        Fields = new string[] { PRZC.c_FLD_PUFC_STATUS },
+                        Groups = new CIMUniqueValueGroup[] { uvgMain },
+                        DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
+                    };
+
                     FL.SetRenderer(UVRend);
                 });
+
+                MapView.Active.Redraw(false);
 
                 return true;
             }
@@ -2187,13 +2333,13 @@ namespace NCC.PRZTools
         {
             try
             {
-                // get the lowest and highest cost values in PUCF
-                double minCost = 0;
-                double maxCost = 0;
-                bool seeded = false;
-
                 await QueuedTask.Run(() =>
                 {
+                    // get the lowest and highest cost values in PUCF
+                    double minCost = 0;
+                    double maxCost = 0;
+                    bool seeded = false;
+
                     using (Table table = FL.GetFeatureClass())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
@@ -2226,32 +2372,35 @@ namespace NCC.PRZTools
                             }
                         }
                     }
+
+                    // Create the polygon fill template
+                    CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+
+                    // Create the color ramp
+                    CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
+                    {
+                        FromColor = GetNamedColor(Color.LightGray),
+                        ToColor = GetNamedColor(Color.Red)
+                    };
+
+                    // Create the Unclassed Renderer
+                    UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
+
+                    ucDef.Field = PRZC.c_FLD_PUFC_COST;
+                    ucDef.ColorRamp = ramp;
+                    ucDef.LowerColorStop = minCost;
+                    ucDef.LowerLabel = minCost.ToString();
+                    ucDef.UpperColorStop = maxCost;
+                    ucDef.UpperLabel = maxCost.ToString();
+                    ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
+
+                    CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
+                    FL.SetRenderer(rend);
                 });
 
-                // Create the polygon fill template
-                CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
-                CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+                await MapView.Active.RedrawAsync(false);
 
-                // Create the color ramp
-                CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
-                {
-                    FromColor = GetNamedColor(Color.LightGray),
-                    ToColor = GetNamedColor(Color.Red)
-                };
-
-                // Create the Unclassed Renderer
-                UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
-
-                ucDef.Field = PRZC.c_FLD_PUFC_COST;
-                ucDef.ColorRamp = ramp;
-                ucDef.LowerColorStop = minCost;
-                ucDef.LowerLabel = minCost.ToString();
-                ucDef.UpperColorStop = maxCost;
-                ucDef.UpperLabel = maxCost.ToString();
-                ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
-
-                CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
-                FL.SetRenderer(rend);
                 return true;
             }
             catch (Exception ex)
@@ -2265,10 +2414,11 @@ namespace NCC.PRZTools
         {
             try
             {
-                // What's the highest number of CF within a single planning unit?
-                int maxCF = 0;
                 await QueuedTask.Run(() =>
                 {
+                    // What's the highest number of CF within a single planning unit?
+                    int maxCF = 0;
+
                     using (Table table = FL.GetFeatureClass())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
@@ -2285,32 +2435,35 @@ namespace NCC.PRZTools
                             }
                         }
                     }
+
+                    // Create the polygon fill template
+                    CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+
+                    // Create the color ramp
+                    CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
+                    {
+                        FromColor = GetNamedColor(Color.LightGray),
+                        ToColor = GetNamedColor(Color.ForestGreen)
+                    };
+
+                    // Create the Unclassed Renderer
+                    UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
+
+                    ucDef.Field = PRZC.c_FLD_PUFC_CFCOUNT;
+                    ucDef.ColorRamp = ramp;
+                    ucDef.LowerColorStop = 0;
+                    ucDef.LowerLabel = "0";
+                    ucDef.UpperColorStop = maxCF;
+                    ucDef.UpperLabel = maxCF.ToString();
+                    ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
+
+                    CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
+                    FL.SetRenderer(rend);
                 });
 
-                // Create the polygon fill template
-                CIMStroke outline = SymbolFactory.Instance.ConstructStroke(GetNamedColor(Color.Gray), 0, SimpleLineStyle.Solid);
-                CIMPolygonSymbol fillWithOutline = SymbolFactory.Instance.ConstructPolygonSymbol(GetNamedColor(Color.White), SimpleFillStyle.Solid, outline);
+                await MapView.Active.RedrawAsync(false);
 
-                // Create the color ramp
-                CIMLinearContinuousColorRamp ramp = new CIMLinearContinuousColorRamp
-                {
-                    FromColor = GetNamedColor(Color.LightGray),
-                    ToColor = GetNamedColor(Color.ForestGreen)
-                };
-
-                // Create the Unclassed Renderer
-                UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
-
-                ucDef.Field = PRZC.c_FLD_PUFC_CFCOUNT;
-                ucDef.ColorRamp = ramp;
-                ucDef.LowerColorStop = 0;
-                ucDef.LowerLabel = "0";
-                ucDef.UpperColorStop = maxCF;
-                ucDef.UpperLabel = maxCF.ToString();
-                ucDef.SymbolTemplate = fillWithOutline.MakeSymbolReference();
-
-                CIMClassBreaksRenderer rend = (CIMClassBreaksRenderer)FL.CreateRenderer(ucDef);
-                FL.SetRenderer(rend);
                 return true;
             }
             catch (Exception ex)

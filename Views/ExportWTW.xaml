@@ -44,8 +44,36 @@
                 BorderThickness="1.5" 
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
-                <TextBlock>Hello</TextBlock>
-                
+                <DockPanel
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockRegular}"
+                        Text="PU FC Exists..." />
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockRegular}"
+                        Text="Conservation Feature Table Exists..." />
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockRegular}"
+                        Text="Boundary Table Exists..." />
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockRegular}"
+                        Text="Overall Export Status... Ready to Export!" />
+
+                </DockPanel>
+
             </Border>
 
             <!--Inner Border #2-->
@@ -66,6 +94,7 @@
                         Height="25" 
                         Style="{DynamicResource Esri_Button}"   
                         Command="{Binding CmdExport}"
+                        IsEnabled="{Binding ExportIsEnabled}"
                         Content="EXPORT!" />
 
                     <Button 

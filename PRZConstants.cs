@@ -78,6 +78,11 @@
         public const string c_LAYER_STUDY_AREA = "Study Area";
         public const string c_LAYER_STUDY_AREA_BUFFER = "Study Area Buffer";
 
+        // FOLDERS
+        public const string c_WS_INPUT = "INPUT";
+        public const string c_WS_OUTPUT = "OUTPUT";
+        public const string c_WS_EXPORT_WTW = "EXPORT_WTW";
+
         // FILES
         public const string c_TEMP_FILEGDB_NAME = "PRZTemp.gdb";
         public const string c_FILENAME_MARXAN = "Marxan.exe";

@@ -43,6 +43,11 @@ namespace NCC.PRZTools
 
         #region Properties
 
+        private bool _exportIsEnabled = false;
+        public bool ExportIsEnabled
+        {
+            get => _exportIsEnabled; set => SetProperty(ref _exportIsEnabled, value, () => ExportIsEnabled);
+        }
 
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
