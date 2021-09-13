@@ -96,6 +96,9 @@
         public const string c_FILENAME_OUTPUT_RUNSUMMARY = "_sum.txt";
         public const string c_FILENAME_OUTPUT_MISSINGVALUES = "_mvbest.txt";
 
+        // EXPORT WTW
+        public const string c_SHP_EXPORTWTW = "WTW.shp";
+
         // EXPORT TO FILE NAMES
         public const string c_FILENAME_EXPORT_PU = "pu.dat";
         public const string c_FILENAME_EXPORT_CF = "cf.dat";

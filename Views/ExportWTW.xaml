@@ -51,26 +51,59 @@
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="PU FC Exists..." />
+                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Text="Component Status" />
 
-                    <TextBlock
-                        DockPanel.Dock="Top"
-                        Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Conservation Feature Table Exists..." />
+                    <DockPanel
+                        DockPanel.Dock="Top">
 
-                    <TextBlock
-                        DockPanel.Dock="Top"
-                        Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Boundary Table Exists..." />
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_PUFC}"/>
 
-                    <TextBlock
-                        DockPanel.Dock="Top"
-                        Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Overall Export Status... Ready to Export!" />
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Planning Unit Feature Class" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_CF}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Conservation Feature Table" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Bounds}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Boundary Table" />
+
+                    </DockPanel>
 
                 </DockPanel>
 
