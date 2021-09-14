@@ -230,7 +230,7 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetProjectGDBPath();
                 string pufcpath = PRZH.GetPlanningUnitFCPath();
                 string exportdirpath = PRZH.GetExportWTWFolderPath();
-                string exportfcpath = Path.Combine(exportdirpath, PRZC.c_SHP_EXPORTWTW);
+                string exportfcpath = Path.Combine(exportdirpath, PRZC.c_EXPORTWTW_SHAPEFILE);
 
                 // Copy PUFC, project at the same time
                 string temppufc = "temppu_wtw";
@@ -327,15 +327,32 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile created successfully..."), true, ++val);
                 }
 
+                // Finally, delete the temp feature class
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature class..."), true);
+
+                toolParams = Geoprocessing.MakeValueArray(temppufc, "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temp feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp Feature Class deleted successfully."), true);
+                }
+
+
                 // Delete the two no-longer-required area and length fields from the shapefile
                 LIST_DeleteFields = new List<string>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     FileSystemConnectionPath fsConn = new FileSystemConnectionPath(new Uri(exportdirpath), FileSystemDatastoreType.Shapefile);
 
                     using (FileSystemDatastore fsDS = new FileSystemDatastore(fsConn))
-                    using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_SHP_EXPORTWTW))
+                    using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_EXPORTWTW_SHAPEFILE))
                     {
                         if (shpFC == null)
                         {
@@ -379,10 +396,19 @@ namespace NCC.PRZTools
 
                 #endregion
 
-
-
-
                 // STEP 2: Generate the Attribute file
+
+                // The Attribute CSV file contains information for 3 components of a Prioritizr Project: Conservation Features, Includes, and Weights (costs)
+                // Initially I will only insert Conservation Features
+                // Column 1 is PUID (name is 'id')
+                // Column 2-n are Conservation Features
+                // Rows = PUs
+                // Column Header is the CF Name
+                // Column values are the amount of CF in the PUs (rows)
+
+                // a)  Create Table with Column 1 = PUID, and one row per planning unit
+                // b)  From the PUVCF table, copy & paste (not really) each AREA column into new table
+
 
 
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
@@ -12,12 +13,10 @@ namespace NCC.PRZTools
         {
         }
 
-        public string name;                 // name of theme
+        // Theme Name (a label)
+        public string name;
 
-        public bool mandatory;              // not sure how this value gets used in web application
-
-        public string icon;                 // format appears to be map-marked-alt, probably web application specific icon
-
+        // Array of Features
         public YamlFeature[] feature;
 
     }

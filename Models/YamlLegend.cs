@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
@@ -12,11 +13,20 @@ namespace NCC.PRZTools
         {
         }
 
-        public string type;         // what are the acceptable values here.  Examples show 'categorical', 'continuous', and 'manual'
+        // Legend Type ('categorical', 'continuous', or 'manual')
+        public string type = WTWLegendType.continuous.ToString();
 
-        public string[] colors;     // array elements are color strings in the format #E41A1C
+        // Legend Class color array (hex format)
+        public string[] colors = new string[]
+        {
+            "#ffffff",
+            "#f7b740",
+            "#4e7a07",
+            "#05789c"
+        };
 
-        public string[] labels;     // only seem to be used in the YamlInclude object...
+        // Legend Class Labels (only for manual legends)
+        public string[] labels;
 
     }
 }

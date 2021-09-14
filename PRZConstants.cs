@@ -1,6 +1,29 @@
 ﻿namespace NCC.PRZTools
 {
 
+    // EXPORT WTW YAML ENUMERATIONS
+
+    public enum WTWLegendType
+    {
+        categorical,
+        continuous,
+        manual
+    }
+
+    public enum WTWModeType
+    {
+        beginner,
+        advanced,
+        missing
+    }
+
+    public enum WTWProvenanceType
+    {
+        regional,
+        national,
+        missing
+    }
+
     public enum FieldCategory
     {
         NUMERIC,
@@ -96,8 +119,11 @@
         public const string c_FILENAME_OUTPUT_RUNSUMMARY = "_sum.txt";
         public const string c_FILENAME_OUTPUT_MISSINGVALUES = "_mvbest.txt";
 
-        // EXPORT WTW
-        public const string c_SHP_EXPORTWTW = "WTW.shp";
+        // EXPORT WTW FILENAMES
+        public const string c_EXPORTWTW_SHAPEFILE = "WTW_GEOMETRY.shp";
+        public const string c_EXPORTWTW_ATTRIBUTE = "WTW_ATTRIBUTE.csv";
+        public const string c_EXPORTWTW_BOUNDARY = "WTW_BOUNDARY.csv";
+        public const string c_EXPORTWTW_CONFIG = "WTW_CONFIG.yaml";
 
         // EXPORT TO FILE NAMES
         public const string c_FILENAME_EXPORT_PU = "pu.dat";
