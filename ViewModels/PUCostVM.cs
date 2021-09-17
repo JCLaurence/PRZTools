@@ -394,8 +394,8 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
-                                double cost = (double)row[PRZC.c_FLD_PUFC_COST];
+                                int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                                double cost = (double)row[PRZC.c_FLD_FC_PU_COST];
 
                                 DICT_PUFC_PUID_and_cost.Add(puid, cost);
                             }
@@ -516,11 +516,11 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
 
                                 if (DICT_Updator.ContainsKey(puid))
                                 {
-                                    row[PRZC.c_FLD_PUFC_COST] = DICT_Updator[puid];
+                                    row[PRZC.c_FLD_FC_PU_COST] = DICT_Updator[puid];
                                     row.Store();
                                 }
                             }
@@ -643,7 +643,7 @@ namespace NCC.PRZTools
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    row[PRZC.c_FLD_PUFC_COST] = constant_cost_double;
+                                    row[PRZC.c_FLD_FC_PU_COST] = constant_cost_double;
                                     row.Store();
                                 }
                             }
@@ -684,7 +684,7 @@ namespace NCC.PRZTools
                                     Polygon p = (Polygon)feature.GetShape();
                                     double area = p.Area;
 
-                                    feature[PRZC.c_FLD_PUFC_COST] = area;
+                                    feature[PRZC.c_FLD_FC_PU_COST] = area;
                                     feature.Store();
                                 }
                             }
@@ -796,7 +796,7 @@ namespace NCC.PRZTools
 
                     // Calculate Zonal Statistics as Table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Zonal Statistics as Table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_PUFC_ID, CostRL, cost_stats_path);
+                    toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_FC_PU_ID, CostRL, cost_stats_path);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
                     toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
@@ -861,8 +861,8 @@ namespace NCC.PRZTools
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
-                                    double cost = (double)row[PRZC.c_FLD_PUFC_COST];
+                                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                                    double cost = (double)row[PRZC.c_FLD_FC_PU_COST];
 
                                     DICT_PUFC_PUID_and_cost.Add(puid, cost);
                                 }
@@ -983,11 +983,11 @@ namespace NCC.PRZTools
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
 
                                     if (DICT_Updator.ContainsKey(puid))
                                     {
-                                        row[PRZC.c_FLD_PUFC_COST] = DICT_Updator[puid];
+                                        row[PRZC.c_FLD_FC_PU_COST] = DICT_Updator[puid];
                                         row.Store();
                                     }
                                 }

@@ -204,7 +204,7 @@ namespace NCC.PRZTools
 
                 // Polygon Neighbors tool
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Polygon Neighbors geoprocessing tool..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PUFL, boundtemp, PRZC.c_FLD_PUFC_ID, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
+                toolParams = Geoprocessing.MakeValueArray(PUFL, boundtemp, PRZC.c_FLD_FC_PU_ID, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("PolygonNeighbors_analysis", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -264,7 +264,7 @@ namespace NCC.PRZTools
                         {
                             using (Feature feature = (Feature)rowCursor.Current)
                             {
-                                int puid = Convert.ToInt32(feature[PRZC.c_FLD_PUFC_ID]);
+                                int puid = Convert.ToInt32(feature[PRZC.c_FLD_FC_PU_ID]);
                                 Polygon polygon = (Polygon)feature.GetShape();
                                 double perim = polygon.Length;
 
@@ -331,7 +331,7 @@ namespace NCC.PRZTools
 
                 // Now create the new table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Bounary Length Table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_BOUNDARYLENGTH, "", "", "Boundary Lengths");
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_PUBOUNDARY, "", "", "Boundary Lengths");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -427,7 +427,7 @@ namespace NCC.PRZTools
                 // Index both id fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing both id fields..."), true, ++val);
                 List<string> LIST_ix = new List<string>() { PRZC.c_FLD_BL_ID1, PRZC.c_FLD_BL_ID2 };
-                toolParams = Geoprocessing.MakeValueArray(boundpath, LIST_ix, "ix" + PRZC.c_FLD_PUFC_ID, "", "");
+                toolParams = Geoprocessing.MakeValueArray(boundpath, LIST_ix, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -466,17 +466,17 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int puid = Convert.ToInt32(row[PRZC.c_FLD_PUFC_ID]);
+                                int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
 
                                 double sharedperim = DICT_PUID_and_shared_perim[puid];
                                 double selfintperim = DICT_PUID_and_selfint_perim[puid];
 
                                 // set the indicator field
-                                row[PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM] = (selfintperim > 0) ? 1 : 0;
+                                row[PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM] = (selfintperim > 0) ? 1 : 0;
 
                                 // set the two perim fields
-                                row[PRZC.c_FLD_PUFC_SHARED_PERIM] = sharedperim;
-                                row[PRZC.c_FLD_PUFC_UNSHARED_PERIM] = selfintperim;
+                                row[PRZC.c_FLD_FC_PU_SHARED_PERIM] = sharedperim;
+                                row[PRZC.c_FLD_FC_PU_UNSHARED_PERIM] = selfintperim;
 
                                 row.Store();
                             }

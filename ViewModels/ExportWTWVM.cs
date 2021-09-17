@@ -17,7 +17,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -31,6 +33,8 @@ using PRZH = NCC.PRZTools.PRZHelper;
 using PRZM = NCC.PRZTools.PRZMethods;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.Converters;
+using CsvHelper;
+using CsvHelper.Configuration;
 
 namespace NCC.PRZTools
 {
@@ -84,7 +88,6 @@ namespace NCC.PRZTools
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
-
 
         #endregion
 
@@ -158,7 +161,7 @@ namespace NCC.PRZTools
                 // Ensure the ExportWTW folder exists
                 if (!PRZH.ExportWTWFolderExists())
                 {
-                    ProMsgBox.Show($"The {PRZC.c_WS_EXPORT_WTW} folder does not exist in your project workspace." + Environment.NewLine + Environment.NewLine +
+                    ProMsgBox.Show($"The {PRZC.c_DIR_EXPORT_WTW} folder does not exist in your project workspace." + Environment.NewLine + Environment.NewLine +
                                     "Please Initialize or Reset your workspace");
                     return false;
                 }
@@ -205,14 +208,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region SHAPEFILE EXPORT
-
-                // STEP 1: Generate and format the shapefile
-                //          - Copy FC to a temp fgdb fc - Project as part of this to web mercator!
-                //          - Repair geometry (just in case)
-                //          - MakeFeatureLayer, remove all but a few fields
-                //          - CopyFeatures, set output location to folder (hence shapefile output)
-                //                  - set output location to a filedirectoryworkspace, which should make a shapefile (?)
+                #region GENERATE THE SHAPEFILE
 
                 // Start a stopwatch
                 Stopwatch stopwatch = new Stopwatch();
@@ -230,7 +226,7 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetProjectGDBPath();
                 string pufcpath = PRZH.GetPlanningUnitFCPath();
                 string exportdirpath = PRZH.GetExportWTWFolderPath();
-                string exportfcpath = Path.Combine(exportdirpath, PRZC.c_EXPORTWTW_SHAPEFILE);
+                string exportfcpath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_SHP);
 
                 // Copy PUFC, project at the same time
                 string temppufc = "temppu_wtw";
@@ -264,7 +260,7 @@ namespace NCC.PRZTools
 
                         FeatureClassDefinition fcDef = fc.GetDefinition();
                         List<Field> fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
-                                                                        && f.Name != PRZC.c_FLD_PUFC_ID
+                                                                        && f.Name != PRZC.c_FLD_FC_PU_ID
                                                                         && f.Name != fcDef.GetShapeField()
                                                                         && f.Name != fcDef.GetAreaField()
                                                                         && f.Name != fcDef.GetLengthField()
@@ -352,7 +348,7 @@ namespace NCC.PRZTools
                     FileSystemConnectionPath fsConn = new FileSystemConnectionPath(new Uri(exportdirpath), FileSystemDatastoreType.Shapefile);
 
                     using (FileSystemDatastore fsDS = new FileSystemDatastore(fsConn))
-                    using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_EXPORTWTW_SHAPEFILE))
+                    using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_FILE_WTW_EXPORT_SHP))
                     {
                         if (shpFC == null)
                         {
@@ -361,7 +357,7 @@ namespace NCC.PRZTools
 
                         FeatureClassDefinition fcDef = shpFC.GetDefinition();
                         List<Field> fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
-                                                                        && f.Name != PRZC.c_FLD_PUFC_ID
+                                                                        && f.Name != PRZC.c_FLD_FC_PU_ID
                                                                         && f.Name != fcDef.GetShapeField()
                                                                         ).ToList();
 
@@ -396,46 +392,276 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                // STEP 2: Generate the Attribute file
+                #region GENERATE AND ZIP THE ATTRIBUTE CSV
 
-                // The Attribute CSV file contains information for 3 components of a Prioritizr Project: Conservation Features, Includes, and Weights (costs)
-                // Initially I will only insert Conservation Features
-                // Column 1 is PUID (name is 'id')
-                // Column 2-n are Conservation Features
-                // Rows = PUs
-                // Column Header is the CF Name
-                // Column values are the amount of CF in the PUs (rows)
+                string attributepath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_ATTR);
 
-                // a)  Create Table with Column 1 = PUID, and one row per planning unit
-                // b)  From the PUVCF table, copy & paste (not really) each AREA column into new table
+                // If file exists, delete it
+                try
+                {
+                    if (File.Exists(attributepath))
+                    {
+                        File.Delete(attributepath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ProMsgBox.Show("Unable to delete the existing Export WTW Attribute file..." +
+                        Environment.NewLine + Environment.NewLine + ex.Message);
+                    return false;
+                }
+
+                // Retrieve Info from the CF Table
+                var DICT_CF = new Dictionary<int, (string name, string varname, double area, bool inuse, int goal, int thresh)>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetCFTable())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int cf_id = (int)row[PRZC.c_FLD_TAB_CF_ID];
+                                string cf_name = row[PRZC.c_FLD_TAB_CF_NAME].ToString();
+                                double area = (double)row[PRZC.c_FLD_TAB_CF_AREA_KM];          // total area, this may not really be important
+                                bool used = true; //row[PRZC.c_FLD_CF_IN_USE];
+                                int goal = (int)row[PRZC.c_FLD_TAB_CF_TARGET_PCT];
+                                int thresh = (int)row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT];
+                                string cf_varname = "CF_" + cf_id.ToString("D3");   // id 5 will look like '005'
+
+                                DICT_CF.Add(cf_id, (cf_name, cf_varname, area, used, goal, thresh));
+                            }
+                        }
+                    }
+                });
+
+
+                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = false, // this is default
+                    NewLine = Environment.NewLine
+                };
+
+                using (var writer = new StreamWriter(attributepath))
+                using (var csv = new CsvWriter(writer, csvConfig))
+                {
+                    // *** ROW 1 => COLUMN NAMES
+
+                    // CF Variable Name Columns
+                    foreach(int cfid in DICT_CF.Keys)
+                    {
+                        csv.WriteField(DICT_CF[cfid].varname);
+                    }
+
+                    // PU ID Column
+                    //csv.WriteField(PRZC.c_FLD_PUFC_ID);
+                    csv.WriteField("_index");               // PUID field must be called "_index" and must be the final column.
+
+                    csv.NextRecord();
+
+                    // *** ROWS 2 TO N => PLANNING UNIT RECORDS
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetPUVCFTable())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    foreach (int cfid in DICT_CF.Keys)
+                                    {
+                                        // Get the PUVCF area field for this CF
+                                        string fldname = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cfid.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
+
+                                        double area = (double)row[fldname]; // area in square meters
+
+                                        // If I want to report "amount" of each CF in a way different from Area (m2), this is where I should do it!
+
+                                        // *****
+
+                                        double area_ha = Math.Round((area * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
+                                        double area_km2 = Math.Round((area * PRZC.c_CONVERT_M2_TO_KM2), 3, MidpointRounding.AwayFromZero);
+
+                                        csv.WriteField(area_km2);
+                                        // *****
+
+                                    }
+
+                                    int puid = (int)row[PRZC.c_FLD_TAB_PUCF_ID];
+                                    csv.WriteField(puid);
+
+                                    csv.NextRecord();
+                                }
+                            }    
+                        }
+                    });
+                }
+
+                // Compress Attribute CSV to gzip format
+                FileInfo attribfi = new FileInfo(attributepath);
+                FileInfo attribzgipfi = new FileInfo(string.Concat(attribfi.FullName, ".gz"));
+
+                using (FileStream fileToBeZippedAsStream = attribfi.OpenRead())
+                using (FileStream gzipTargetAsStream = attribzgipfi.Create())
+                using (GZipStream gzipStream = new GZipStream(gzipTargetAsStream, CompressionMode.Compress))
+                {
+                    try
+                    {
+                        fileToBeZippedAsStream.CopyTo(gzipStream);
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show("Unable to compress the Attribute CSV file to GZIP..." + Environment.NewLine + Environment.NewLine + ex.Message);
+                        return false;
+                    }
+                }
+
+                #endregion
+
+                #region GENERATE AND ZIP THE BOUNDARY CSV
+
+                string bndpath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_BND);
+
+                // If file exists, delete it
+                try
+                {
+                    if (File.Exists(bndpath))
+                    {
+                        File.Delete(bndpath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ProMsgBox.Show("Unable to delete the existing Export WTW Boundary file..." +
+                        Environment.NewLine + Environment.NewLine + ex.Message);
+                    return false;
+                }
+
+                using (var writer = new StreamWriter(bndpath))
+                using (var csv = new CsvWriter(writer, csvConfig))
+                {
+                    // *** ROW 1 => COLUMN NAMES
+
+                    // PU ID Columns
+                    csv.WriteField(PRZC.c_FLD_BL_ID1);
+                    csv.WriteField(PRZC.c_FLD_BL_ID2);
+                    csv.WriteField(PRZC.c_FLD_BL_BOUNDARY);
+
+                    csv.NextRecord();
+
+                    // *** ROWS 2 TO N => Boundary Records
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetBoundaryTable())
+                        using (RowCursor rowCursor = table.Search(null, true))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int id1 = (int)row[PRZC.c_FLD_BL_ID1];
+                                    int id2 = (int)row[PRZC.c_FLD_BL_ID2];
+                                    double bnd = (double)row[PRZC.c_FLD_BL_BOUNDARY];
+
+                                    csv.WriteField(id1);
+                                    csv.WriteField(id2);
+                                    csv.WriteField(bnd);
+
+                                    csv.NextRecord();
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Compress Boundary CSV to gzip format
+                FileInfo bndfi = new FileInfo(bndpath);
+                FileInfo bndzgipfi = new FileInfo(string.Concat(bndfi.FullName, ".gz"));
+
+                using (FileStream fileToBeZippedAsStream = bndfi.OpenRead())
+                using (FileStream gzipTargetAsStream = bndzgipfi.Create())
+                using (GZipStream gzipStream = new GZipStream(gzipTargetAsStream, CompressionMode.Compress))
+                {
+                    try
+                    {
+                        fileToBeZippedAsStream.CopyTo(gzipStream);
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show("Unable to compress the Boundary CSV file to GZIP..." + Environment.NewLine + Environment.NewLine + ex.Message);
+                        return false;
+                    }
+                }
+
+                #endregion
+
+                #region GENERATE THE YAML CONFIG FILE
+
+                List<YamlTheme> LIST_YamlThemes = new List<YamlTheme>();
+
+                foreach (var KVP in DICT_CF)
+                {
+                    int cfid = KVP.Key;
+
+
+                    // Set goal between 0 and 1 inclusive
+                    int g = KVP.Value.goal; // g is between 0 and 100 inclusive
+                    double dg = Math.Round(g / 100.0, 2, MidpointRounding.AwayFromZero); // I need dg to be between 0 and 1 inclusive
+
+                    YamlLegend yamlLegend = new YamlLegend();
+                    yamlLegend.type = WTWLegendType.continuous.ToString();
+
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = KVP.Value.varname;
+                    yamlVariable.units = "km\xB2";
+                    yamlVariable.provenance = (cfid % 2 == 0) ? WTWProvenanceType.national.ToString() : WTWProvenanceType.regional.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    YamlFeature yamlFeature = new YamlFeature();
+                    yamlFeature.name = KVP.Value.name;
+                    yamlFeature.status = true;
+                    yamlFeature.visible = true;
+                    yamlFeature.goal = dg;
+                    yamlFeature.variable = yamlVariable;
+
+                    YamlTheme yamlTheme = new YamlTheme();
+                    yamlTheme.name = yamlFeature.name.Substring(0, 5).Trim();   // this is silly, come up with something better
+                    yamlTheme.feature = new YamlFeature[] { yamlFeature };
+                    LIST_YamlThemes.Add(yamlTheme);
+                }
+
+
+                // INCLUDES
 
 
 
+                YamlPackage yamlPackage = new YamlPackage();
+                yamlPackage.name = "TEMP PROJECT NAME";
+                yamlPackage.mode = WTWModeType.advanced.ToString();
+                yamlPackage.themes = LIST_YamlThemes.ToArray();
+                yamlPackage.includes = new YamlInclude[] { };
+                yamlPackage.weights = new YamlWeight[] { };
 
-                // STEP 3: Generate the Boundary file
+                ISerializer builder = new SerializerBuilder().DisableAliases().Build();
+                string the_yaml = builder.Serialize(yamlPackage);
 
+                string yamlpath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_YAML);
+                try
+                {
+                    File.WriteAllText(yamlpath, the_yaml);
+                }
+                catch (Exception ex)
+                {
+                    ProMsgBox.Show("Unable to write the Yaml Config File..." + Environment.NewLine + Environment.NewLine + ex.Message);
+                    return false;
+                }
 
+                #endregion
 
-
-                //YamlLegend l = new YamlLegend();
-                //l.colors = new string[] { "a", "b", "c" };
-                //l.labels = new string[] { "label a", "label b", "label c" };
-                //l.type = "manual";
-
-                //ISerializer builder = new SerializerBuilder().DisableAliases().Build();
-                //string s = builder.Serialize(l);
-
-                //ProMsgBox.Show(s, "YAML!");
-
-                //var builder2 = new SerializerBuilder().DisableAliases().JsonCompatible().Build();
-                //string t = builder2.Serialize(l);
-
-                //ProMsgBox.Show(t, "JSON!");
-
-                //var builder3 = new SerializerBuilder().DisableAliases().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
-                //string u = builder3.Serialize(l);
-
-                //ProMsgBox.Show(u, "Yaml No Nulls!");
+                ProMsgBox.Show("Done");
 
                 return true;
             }

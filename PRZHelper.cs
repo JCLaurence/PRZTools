@@ -242,7 +242,7 @@ namespace NCC.PRZTools
             try
             {
                 string wspath = GetProjectWSPath();
-                string gdbpath = Path.Combine(wspath, PRZC.c_PRZ_PROJECT_FGDB);
+                string gdbpath = Path.Combine(wspath, PRZC.c_FILE_PRZ_FGDB);
 
                 return gdbpath;
             }
@@ -259,7 +259,7 @@ namespace NCC.PRZTools
             try
             {
                 string ws = GetProjectWSPath();
-                string logpath = Path.Combine(ws, PRZC.c_PRZ_LOGFILE);
+                string logpath = Path.Combine(ws, PRZC.c_FILE_PRZ_LOG);
 
                 return logpath;
             }
@@ -276,7 +276,7 @@ namespace NCC.PRZTools
             try
             {
                 string wspath = GetProjectWSPath();
-                string inputfolderpath = Path.Combine(wspath, PRZC.c_WS_INPUT);
+                string inputfolderpath = Path.Combine(wspath, PRZC.c_DIR_INPUT);
 
                 return inputfolderpath;
             }
@@ -293,7 +293,7 @@ namespace NCC.PRZTools
             try
             {
                 string wspath = GetProjectWSPath();
-                string outputfolderpath = Path.Combine(wspath, PRZC.c_WS_OUTPUT);
+                string outputfolderpath = Path.Combine(wspath, PRZC.c_DIR_OUTPUT);
 
                 return outputfolderpath;
             }
@@ -310,7 +310,7 @@ namespace NCC.PRZTools
             try
             {
                 string wspath = GetProjectWSPath();
-                string exportwtwpath = Path.Combine(wspath, PRZC.c_WS_EXPORT_WTW);
+                string exportwtwpath = Path.Combine(wspath, PRZC.c_DIR_EXPORT_WTW);
 
                 return exportwtwpath;
             }
@@ -380,7 +380,7 @@ namespace NCC.PRZTools
             try
             {
                 string gdbpath = GetProjectGDBPath();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_STATUSINFO);
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUVSTATUS);
 
                 return path;
             }
@@ -448,7 +448,7 @@ namespace NCC.PRZTools
             try
             {
                 string gdbpath = GetProjectGDBPath();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_BOUNDARYLENGTH);
+                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUBOUNDARY);
 
                 return path;
             }
@@ -645,7 +645,7 @@ namespace NCC.PRZTools
                         return false;
                     }
 
-                    return await TableExists(gdb, PRZC.c_TABLE_STATUSINFO);
+                    return await TableExists(gdb, PRZC.c_TABLE_PUVSTATUS);
                 }
             }
             catch (Exception ex)
@@ -729,7 +729,7 @@ namespace NCC.PRZTools
                         return false;
                     }
 
-                    return await TableExists(gdb, PRZC.c_TABLE_BOUNDARYLENGTH);
+                    return await TableExists(gdb, PRZC.c_TABLE_PUBOUNDARY);
                 }
             }
             catch (Exception ex)
@@ -901,7 +901,7 @@ namespace NCC.PRZTools
                     {
                         Table tab = await QueuedTask.Run(() =>
                         {
-                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_STATUSINFO);
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUVSTATUS);
                         });
 
                         return tab;
@@ -1021,7 +1021,7 @@ namespace NCC.PRZTools
                     {
                         Table tab = await QueuedTask.Run(() =>
                         {
-                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_BOUNDARYLENGTH);
+                            return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUBOUNDARY);
                         });
 
                         return tab;
@@ -2310,7 +2310,7 @@ namespace NCC.PRZTools
                     CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
                     {
                         UseDefaultSymbol = false,
-                        Fields = new string[] { PRZC.c_FLD_PUFC_STATUS },
+                        Fields = new string[] { PRZC.c_FLD_FC_PU_STATUS },
                         Groups = new CIMUniqueValueGroup[] { uvgMain },
                         DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
                     };
@@ -2347,7 +2347,7 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                double cost = Convert.ToDouble(row[PRZC.c_FLD_PUFC_COST]);
+                                double cost = Convert.ToDouble(row[PRZC.c_FLD_FC_PU_COST]);
 
                                 if (!seeded)
                                 {
@@ -2387,7 +2387,7 @@ namespace NCC.PRZTools
                     // Create the Unclassed Renderer
                     UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
 
-                    ucDef.Field = PRZC.c_FLD_PUFC_COST;
+                    ucDef.Field = PRZC.c_FLD_FC_PU_COST;
                     ucDef.ColorRamp = ramp;
                     ucDef.LowerColorStop = minCost;
                     ucDef.LowerLabel = minCost.ToString();
@@ -2426,7 +2426,7 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int max = Convert.ToInt32(row[PRZC.c_FLD_PUFC_CFCOUNT]);
+                                int max = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_CFCOUNT]);
 
                                 if (max > maxCF)
                                 {
@@ -2450,7 +2450,7 @@ namespace NCC.PRZTools
                     // Create the Unclassed Renderer
                     UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
 
-                    ucDef.Field = PRZC.c_FLD_PUFC_CFCOUNT;
+                    ucDef.Field = PRZC.c_FLD_FC_PU_CFCOUNT;
                     ucDef.ColorRamp = ramp;
                     ucDef.LowerColorStop = 0;
                     ucDef.LowerLabel = "0";
@@ -2490,7 +2490,7 @@ namespace NCC.PRZTools
                     CIMPolygonSymbol fillNonEdge = SymbolFactory.Instance.ConstructPolygonSymbol(colorNonEdge, SimpleFillStyle.Solid, outlineSym);
 
                     // fields array
-                    string[] fields = new string[] { PRZC.c_FLD_PUFC_HAS_UNSHARED_PERIM };
+                    string[] fields = new string[] { PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM };
 
                     // CIM Unique Values
                     CIMUniqueValue uvEdge = new CIMUniqueValue { FieldValues = new string[] { "1" } };

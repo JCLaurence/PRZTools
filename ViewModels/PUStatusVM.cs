@@ -37,8 +37,8 @@ namespace NCC.PRZTools
 
         #region Fields
 
-        private const string c_OVERRIDE_INCLUDE = "LOCKED IN";
-        private const string c_OVERRIDE_EXCLUDE = "LOCKED OUT";
+        private const string c_OVERRIDE_INCLUDE = "INCLUDES";
+        private const string c_OVERRIDE_EXCLUDE = "EXCLUDES";
 
         #endregion
 
@@ -121,17 +121,6 @@ namespace NCC.PRZTools
         private ICommand _cmdCalculateStatus;
         public ICommand CmdCalculateStatus => _cmdCalculateStatus ?? (_cmdCalculateStatus = new RelayCommand(() => CalculateStatus(), () => true));
 
-        public ICommand cmdOK => new RelayCommand((paramProWin) =>
-        {
-            (paramProWin as ProWindow).DialogResult = true;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-        public ICommand cmdCancel => new RelayCommand((paramProWin) =>
-        {
-            (paramProWin as ProWindow).DialogResult = false;
-            (paramProWin as ProWindow).Close();
-        }, () => true);
-
         #endregion
 
         #region Methods
@@ -186,9 +175,9 @@ namespace NCC.PRZTools
                 await QueuedTask.Run(async () =>
                 {
                     using (Table table = await PRZH.GetStatusInfoTable())
+                    using (TableDefinition tDef = table.GetDefinition())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
-                        TableDefinition tDef = table.GetDefinition();
                         fields = tDef.GetFields().ToList();
 
                         // Get the first row (I only need one row)
@@ -201,15 +190,15 @@ namespace NCC.PRZTools
                                 {
                                     Field field = fields[i];
 
-                                    if (field.Name.EndsWith("_Name"))
+                                    if (field.Name.EndsWith(PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_NAME))
                                     {
                                         string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
 
-                                        if (field.Name.StartsWith("IN"))
+                                        if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE))
                                         {
                                             DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
                                         }
-                                        else if (field.Name.StartsWith("EX"))
+                                        else if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE))
                                         {
                                             DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
                                         }
@@ -453,7 +442,7 @@ namespace NCC.PRZTools
 
                 // Create Include and Exclude Data Tables
                 // Each DataTable will contain one row per layer in that category (e.g. Include DT might contain 3 rows, one row per layer within the INclude group layer)
-                DataTable DT_IncludeLayers = new DataTable("INCLUDE");    // doesn't really need a name
+                DataTable DT_IncludeLayers = new DataTable();
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_LAYER, typeof(Layer));
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_INDEX, Type.GetType("System.Int32"));
                 DT_IncludeLayers.Columns.Add(PRZC.c_FLD_DATATABLE_STATUS_NAME, Type.GetType("System.String"));
@@ -494,9 +483,8 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                    using (FeatureClass puFC = gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS))
-                    using (RowCursor rowCursor = puFC.Search(null, false))
+                    using (FeatureClass puFC = await PRZH.GetPlanningUnitFC())
+                    using (RowCursor rowCursor = puFC.Search(null, true))
                     {
                         // Get the Definition
                         FeatureClassDefinition fcDef = puFC.GetDefinition();
@@ -505,9 +493,9 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int puid = (int)row[PRZC.c_FLD_PUFC_ID];
-                                double a = (double)row[PRZC.c_FLD_PUFC_AREA_M];
-                                int status = (int)row[PRZC.c_FLD_PUFC_STATUS];
+                                int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                                double a = (double)row[PRZC.c_FLD_FC_PU_AREA_M];
+                                int status = (int)row[PRZC.c_FLD_FC_PU_STATUS];
 
                                 // store this id -> area KVP in the 1st dictionary
                                 DICT_PUID_and_assoc_area_m2.Add(puid, a);
@@ -528,11 +516,12 @@ namespace NCC.PRZTools
                 // Some GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                 string toolOutput;
 
                 #region BUILD THE STATUS INFO TABLE
 
-                string sipath = PRZH.GetStatusInfoTablePath();
+                string statuspath = PRZH.GetStatusInfoTablePath();
                 
                 // Delete the existing Status Info table, if it exists
 
@@ -540,9 +529,9 @@ namespace NCC.PRZTools
                 {
                     // Delete the existing Status Info table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Status Info Table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(sipath, "");
+                    toolParams = Geoprocessing.MakeValueArray(statuspath, "");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -556,9 +545,9 @@ namespace NCC.PRZTools
 
                 // Copy PU FC rows into new Status Info table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying Planning Unit FC Attributes into new Status Info table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(pufcpath, sipath, "");
+                toolParams = Geoprocessing.MakeValueArray(pufcpath, statuspath, "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("CopyRows_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                toolOutput = await PRZH.RunGPTool("CopyRows_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error copying PU FC rows to Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -572,30 +561,36 @@ namespace NCC.PRZTools
                 // Delete all fields but OID and PUID from Status Info table
                 List<string> LIST_DeleteFields = new List<string>();
 
-                using (Table tab = await PRZH.GetStatusInfoTable())
+                if (!await QueuedTask.Run(async () =>
                 {
-                    if (tab == null)
+                    using (Table tab = await PRZH.GetStatusInfoTable())
                     {
-                        ProMsgBox.Show("Error getting Status Info Table :(");
-                        return false;
-                    }
+                        if (tab == null)
+                        {
+                            ProMsgBox.Show("Error getting Status Info Table...");
+                            return false;
+                        }
 
-                    await QueuedTask.Run(() =>
-                    {
                         TableDefinition tDef = tab.GetDefinition();
-                        List<Field> fields = tDef.GetFields().Where(f => f.FieldType != FieldType.OID && f.Name != PRZC.c_FLD_PUFC_ID).ToList();
+                        List<Field> fields = tDef.GetFields().Where(f => f.Name != tDef.GetObjectIDField() && f.Name != PRZC.c_FLD_FC_PU_ID).ToList();
 
                         foreach (Field field in fields)
                         {
                             LIST_DeleteFields.Add(field.Name);
                         }
-                    });
+
+                        return true;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error retrieving delete field list", LogMessageType.ERROR), true, ++val);
+                    return false;
                 }
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Removing unnecessary fields from the Status Info table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(sipath, LIST_DeleteFields);
+                toolParams = Geoprocessing.MakeValueArray(statuspath, LIST_DeleteFields);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -608,9 +603,9 @@ namespace NCC.PRZTools
 
                 // Now index the PUID field in the Status Info table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing Planning Unit ID field in the Status Info table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(sipath, PRZC.c_FLD_PUFC_ID, "ix" + PRZC.c_FLD_PUFC_ID, "", "");
+                toolParams = Geoprocessing.MakeValueArray(statuspath, PRZC.c_FLD_TAB_PUSTATUS_ID, "ix" + PRZC.c_FLD_TAB_PUSTATUS_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -618,15 +613,15 @@ namespace NCC.PRZTools
                 }
 
                 // Add 2 additional fields to Status Info
-                string fldQuickStatus = PRZC.c_FLD_STATUSINFO_QUICKSTATUS + " LONG 'Quick Status' # # #;";
-                string fldConflict = PRZC.c_FLD_STATUSINFO_CONFLICT + " LONG 'Conflict' # # #;";
+                string fldQuickStatus = PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS + " LONG 'Quick Status' # # #;";
+                string fldConflict = PRZC.c_FLD_TAB_PUSTATUS_CONFLICT + " LONG 'Conflict' # # #;";
 
                 string flds = fldQuickStatus + fldConflict;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Status Info Table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(sipath, flds);
+                toolParams = Geoprocessing.MakeValueArray(statuspath, flds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -691,10 +686,10 @@ namespace NCC.PRZTools
                         using (TableDefinition tDef = table.GetDefinition())
                         {
                             // Get list of INCLUDE layer Area fields
-                            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith("IN") && f.Name.EndsWith("_Area")).ToList();
+                            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_AREA)).ToList();
 
                             // Get list of EXCLUDE layer Area fields
-                            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith("EX") && f.Name.EndsWith("_Area")).ToList();
+                            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_AREA)).ToList();
 
                             using (RowCursor rowCursor = table.Search(null, false))
                             {
@@ -702,7 +697,7 @@ namespace NCC.PRZTools
                                 {
                                     using (Row row = rowCursor.Current)
                                     {
-                                        int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                        int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
 
                                         bool hasIN = false;
                                         bool hasEX = false;
@@ -733,18 +728,18 @@ namespace NCC.PRZTools
                                         if (hasIN && hasEX)
                                         {
                                             // Flag as a conflicted planning unit
-                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 1;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_CONFLICT] = 1;
                                             DICT_PUID_and_Conflict.Add(puid, 1);
 
                                             // Set the 'winning' QuickStatus based on user-specified setting
                                             if (SelectedOverrideOption == c_OVERRIDE_INCLUDE)
                                             {
-                                                row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 2;
+                                                row[PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS] = 2;
                                                 DICT_PUID_and_QuickStatus.Add(puid, 2);
                                             }
                                             else if (SelectedOverrideOption == c_OVERRIDE_EXCLUDE)
                                             {
-                                                row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 3;
+                                                row[PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS] = 3;
                                                 DICT_PUID_and_QuickStatus.Add(puid, 3);
                                             }
 
@@ -754,11 +749,11 @@ namespace NCC.PRZTools
                                         else if (hasIN)
                                         {
                                             // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_CONFLICT] = 0;
                                             DICT_PUID_and_Conflict.Add(puid, 0);
 
                                             // Set the Status
-                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 2;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS] = 2;
                                             DICT_PUID_and_QuickStatus.Add(puid, 2);
                                         }
 
@@ -766,11 +761,11 @@ namespace NCC.PRZTools
                                         else if (hasEX)
                                         {
                                             // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_CONFLICT] = 0;
                                             DICT_PUID_and_Conflict.Add(puid, 0);
 
                                             // Set the Status
-                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 3;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS] = 3;
                                             DICT_PUID_and_QuickStatus.Add(puid, 3);
                                         }
 
@@ -778,11 +773,11 @@ namespace NCC.PRZTools
                                         else
                                         {
                                             // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_CONFLICT] = 0;
                                             DICT_PUID_and_Conflict.Add(puid, 0);
 
                                             // Set the Status
-                                            row[PRZC.c_FLD_STATUSINFO_QUICKSTATUS] = 0;
+                                            row[PRZC.c_FLD_TAB_PUSTATUS_QUICKSTATUS] = 0;
                                             DICT_PUID_and_QuickStatus.Add(puid, 0);
                                         }
 
@@ -819,24 +814,24 @@ namespace NCC.PRZTools
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
 
                                     if (DICT_PUID_and_QuickStatus.ContainsKey(puid))
                                     {
-                                        row[PRZC.c_FLD_PUFC_STATUS] = DICT_PUID_and_QuickStatus[puid];
+                                        row[PRZC.c_FLD_FC_PU_STATUS] = DICT_PUID_and_QuickStatus[puid];
                                     }
                                     else
                                     {
-                                        row[PRZC.c_FLD_PUFC_STATUS] = -1;
+                                        row[PRZC.c_FLD_FC_PU_STATUS] = -1;
                                     }
 
                                     if (DICT_PUID_and_Conflict.ContainsKey(puid))
                                     {
-                                        row[PRZC.c_FLD_PUFC_CONFLICT] = DICT_PUID_and_Conflict[puid];
+                                        row[PRZC.c_FLD_FC_PU_CONFLICT] = DICT_PUID_and_Conflict[puid];
                                     }
                                     else
                                     {
-                                        row[PRZC.c_FLD_PUFC_CONFLICT] = -1;
+                                        row[PRZC.c_FLD_FC_PU_CONFLICT] = -1;
                                     }
 
                                     row.Store();
@@ -914,7 +909,7 @@ namespace NCC.PRZTools
                     // some paths
                     string gdbpath = PRZH.GetProjectGDBPath();
                     string pufcpath = PRZH.GetPlanningUnitFCPath();
-                    string sipath = PRZH.GetStatusInfoTablePath();
+                    string statuspath = PRZH.GetStatusInfoTablePath();
 
                     // some other stuff
                     FeatureLayer PUFL = PRZH.GetFeatureLayer_PU(map);
@@ -929,12 +924,12 @@ namespace NCC.PRZTools
                         case PRZLayerNames.STATUS_INCLUDE:
                             LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
                             group = "INCLUDE";
-                            prefix = "IN";
+                            prefix = PRZC.c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE;
                             break;
                         case PRZLayerNames.STATUS_EXCLUDE:
                             LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
                             group = "EXCLUDE";
-                            prefix = "EX";
+                            prefix = PRZC.c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE;
                             break;
                         default:
                             return false;
@@ -982,7 +977,7 @@ namespace NCC.PRZTools
                         string dissolve_fc_path = Path.Combine(gdbpath, dissolve_fc_name);
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Dissolving on Planning Unit ID..."), true);
-                        toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_PUFC_ID, "", "MULTI_PART", "");
+                        toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_FC_PU_ID, "", "MULTI_PART", "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, toolFlags);
                         if (toolOutput == null)
@@ -1008,22 +1003,16 @@ namespace NCC.PRZTools
                                 return false;
                             }
 
-                            using (RowCursor rowCursor = fc.Search(null, false))
+                            using (RowCursor rowCursor = fc.Search(null, true))
                             {
                                 while (rowCursor.MoveNext())
                                 {
                                     using (Feature feature = (Feature)rowCursor.Current)
                                     {
-                                        // set up variables
-                                        int puid;
-                                        double area_m;
+                                        int puid = Convert.ToInt32(feature[PRZC.c_FLD_FC_PU_ID]);
 
-                                        // get the planning unit id
-                                        puid = (int)feature[PRZC.c_FLD_PUFC_ID];
-
-                                        // get the area
                                         Polygon poly = (Polygon)feature.GetShape();
-                                        area_m = poly.Area;
+                                        double area_m = poly.Area;
 
                                         DICT_PUID_and_dissolved_area.Add(puid, area_m);
                                     }
@@ -1043,9 +1032,9 @@ namespace NCC.PRZTools
                                 double area_constraint_m = kvp.Value;
                                 double area_planning_unit_m = DICT_PUID_area[puid];
                                 double percent_constrained = area_constraint_m / area_planning_unit_m;
-                                string area_field = prefix + layer_number.ToString() + "_Area";
+                                string area_field = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_AREA;
 
-                                QF.WhereClause = PRZC.c_FLD_PUFC_ID + " = " + kvp.Key;
+                                QF.WhereClause = PRZC.c_FLD_FC_PU_ID + " = " + kvp.Key;
 
                                 if (percent_constrained >= threshold_double)
                                 {
@@ -1108,10 +1097,11 @@ namespace NCC.PRZTools
                 // Some GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                 string toolOutput;
 
                 string gdbpath = PRZH.GetProjectGDBPath();
-                string sipath = PRZH.GetStatusInfoTablePath();
+                string statuspath = PRZH.GetStatusInfoTablePath();
 
                 List<FeatureLayer> LIST_FL = null;
                 string group = "";
@@ -1122,12 +1112,12 @@ namespace NCC.PRZTools
                     case PRZLayerNames.STATUS_INCLUDE:
                         LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
                         group = "INCLUDE";
-                        prefix = "IN";
+                        prefix = PRZC.c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE;
                         break;
                     case PRZLayerNames.STATUS_EXCLUDE:
                         LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
                         group = "EXCLUDE";
-                        prefix = "EX";
+                        prefix = PRZC.c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE;
                         break;
                     default:
                         return false;
@@ -1135,46 +1125,48 @@ namespace NCC.PRZTools
 
                 foreach (DataRow DR in DT.Rows)
                 {
-                    int layer_index = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX];
+                    int layer_index = Convert.ToInt32(DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX]);
                     string layer_name = DR[PRZC.c_FLD_DATATABLE_STATUS_NAME].ToString();
-                    //int layer_status = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS];
-                    double threshold_double = (double)DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD];
+                    double threshold_double = Convert.ToDouble(DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD]);
                     int layer_number = layer_index + 1; // not sure why I need this?  maybe zeros aren't cool as the first layer?
                     string layer_name_75 = (layer_name.Length > 75) ? layer_name.Substring(0, 75) : layer_name;
 
                     // Add all the fields for this layer
-                    string fldName = prefix + layer_number.ToString() + "_Name";
+                    string fldName = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_NAME;
                     string fldNameAlias = prefix + " " + layer_number.ToString() + " Name";
                     string fld1 = fldName + " TEXT '" + fldNameAlias + "'  75 # #;";
 
-                    string fldStatus = prefix + layer_number.ToString() + "_Status";
+                    string fldStatus = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_STATUS;
                     string fldStatusAlias = prefix + " " + layer_number.ToString() + " Status";
                     string fld2 = fldStatus + " LONG '" + fldStatusAlias + "' # # #;";
 
-                    string fldArea = prefix + layer_number.ToString() + "_Area";
+                    string fldArea = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_AREA;
                     string fldAreaAlias = prefix + " " + layer_number.ToString() + " Area (m2)";
                     string fld3 = fldArea + " DOUBLE '" + fldAreaAlias + "' # # #;";
 
-                    string fldThreshold = prefix + layer_number.ToString() + "_Threshold";
+                    string fldThreshold = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSTATUS_SUFFIX_THRESH;
                     string fldThresholdAlias = prefix + " " + layer_number.ToString() + " Threshold";
                     string fld4 = fldThreshold + " DOUBLE '" + fldThresholdAlias + "' # # #;";
 
                     string flds = fld1 + fld2 + fld3 + fld4;
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding " + group + " Layer fields to Status Info Table..."), true);
-                    toolParams = Geoprocessing.MakeValueArray(sipath, flds);
+                    toolParams = Geoprocessing.MakeValueArray(statuspath, flds);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, GPExecuteToolFlags.RefreshProjectItems);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding Layer fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
                         return false;
                     }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added."), true);
+                    }
 
                     // Now Calculate these fields
                     await QueuedTask.Run(async () =>
                     {
-                        using (Geodatabase gdb = await PRZH.GetProjectGDB())
                         using (Table table = await PRZH.GetStatusInfoTable())
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
@@ -1186,11 +1178,11 @@ namespace NCC.PRZTools
                                     row[fldName] = layer_name_75;
 
                                     // set the status
-                                    if (prefix == "IN")
+                                    if (prefix == PRZC.c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE)
                                     {
                                         row[fldStatus] = 2;
                                     }
-                                    else if (prefix == "EX")
+                                    else if (prefix == PRZC.c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE)
                                     {
                                         row[fldStatus] = 3;
                                     }
@@ -1450,7 +1442,7 @@ namespace NCC.PRZTools
                             ProMsgBox.Show("IN Field Name: " + area_field_IN + "    EX Field Name: " + area_field_EX);
 
                             QueryFilter QF = new QueryFilter();
-                            QF.SubFields = PRZC.c_FLD_PUFC_ID + "," + area_field_IN + "," + area_field_EX;
+                            QF.SubFields = PRZC.c_FLD_FC_PU_ID + "," + area_field_IN + "," + area_field_EX;
                             QF.WhereClause = area_field_IN + @" > 0 And " + area_field_EX + @" > 0";
 
                             using (RowCursor rowCursor = table.Search(QF, false))
@@ -1459,7 +1451,7 @@ namespace NCC.PRZTools
                                 {
                                     using (Row row = rowCursor.Current)
                                     {
-                                        int puid = (int)row[PRZC.c_FLD_PUFC_ID];
+                                        int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
                                         PlanningUnitIDs.Add(puid);
                                     }
                                 }
@@ -1488,7 +1480,7 @@ namespace NCC.PRZTools
                         // Build QueryFilter
                         QueryFilter QF = new QueryFilter();
                         string puid_list = string.Join(",", PlanningUnitIDs);
-                        QF.WhereClause = PRZC.c_FLD_PUFC_ID + " In (" + puid_list + ")";
+                        QF.WhereClause = PRZC.c_FLD_FC_PU_ID + " In (" + puid_list + ")";
 
                         // Do the actual selection
                         using (Selection selection = featureLayer.Select(QF, SelectionCombinationMethod.New))   // selection happens here
@@ -1579,8 +1571,8 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                row[PRZC.c_FLD_PUFC_STATUS] = 0;
-                                row[PRZC.c_FLD_STATUSINFO_CONFLICT] = 0;
+                                row[PRZC.c_FLD_FC_PU_STATUS] = 0;
+                                row[PRZC.c_FLD_TAB_PUSTATUS_CONFLICT] = 0;
 
                                 row.Store();
                             }
