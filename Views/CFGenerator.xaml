@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="Conservation Features"
+    Title="Feature Generator"
     Height="400" Width="500" MinHeight="400" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/ConservationFeatures32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
@@ -125,7 +125,7 @@
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
                         Command="{Binding CmdGenerateCF}"
-                        Content="GENERATE CONSERVATION FEATURES" />
+                        Content="GENERATE FEATURES" />
 
                     <Button 
                         DockPanel.Dock="Right"

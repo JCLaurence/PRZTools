@@ -27,6 +27,17 @@
     }
 
 
+    public enum SelectionRuleLayerType
+    {
+        RASTER,
+        VECTOR
+    }
+
+    public enum SelectionRuleType
+    {
+        INCLUDE,
+        EXCLUDE
+    }
 
     public enum FieldCategory
     {
@@ -65,7 +76,7 @@
         STATUS_INCLUDE,
         STATUS_EXCLUDE,
         COST,
-        CF,
+        FEATURE,
         PU,
         SA,
         SAB
@@ -80,12 +91,12 @@
         SUM
     }
 
-    public enum CFLayerType
+    public enum PRZLayerRetrievalType
     {
+        FEATURE,
         RASTER,
-        VECTOR
+        BOTH
     }
-
 
     #endregion
 
@@ -100,7 +111,7 @@
         public const string c_GROUPLAYER_STATUS = "STATUS";
         public const string c_GROUPLAYER_STATUS_INCLUDE = "INCLUDE";
         public const string c_GROUPLAYER_STATUS_EXCLUDE = "EXCLUDE";
-        public const string c_GROUPLAYER_CF = "FEATURES";
+        public const string c_GROUPLAYER_FEATURE = "FEATURES";
 
         // FEATURE LAYERS
         public const string c_LAYER_PLANNING_UNITS = "Planning Units";
@@ -140,12 +151,11 @@
         public const string c_FC_TEMP_PUVCF_SUFFIX_DSLV = "_dslv";
 
         // TABLES
-        public const string c_TABLE_STATUS = "status";
-        public const string c_TABLE_PUVSTATUS = "pu_status";
+        public const string c_TABLE_SELRULES = "status";
+        public const string c_TABLE_PUSELRULES = "pu_status";
         public const string c_TABLE_PUBOUNDARY = "pu_boundary";
-        public const string c_TABLE_EXTERIORTILES = "pu_outer";
-        public const string c_TABLE_CF = "features";
-        public const string c_TABLE_PUVCF = "pu_features";
+        public const string c_TABLE_FEATURES = "features";
+        public const string c_TABLE_PUFEATURES = "pu_features";
         public const string c_TABLE_COSTSTATS = "pu_cost";      // this will change soon
 
         #endregion
@@ -178,7 +188,7 @@
 
         #region TABLE COLUMN NAMES
 
-        // PU + CF
+        // PU + FEATURES
         public const string c_FLD_TAB_PUCF_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_TAB_PUCF_CFCOUNT = c_FLD_FC_PU_CFCOUNT;
         public const string c_FLD_TAB_PUCF_PREFIX_CF = "CF_";
@@ -186,16 +196,30 @@
         public const string c_FLD_TAB_PUCF_SUFFIX_AREA = "_AREA";
         public const string c_FLD_TAB_PUCF_SUFFIX_PROP = "_PROP";
 
-        // PU + STATUS
-        public const string c_FLD_TAB_PUSTATUS_ID = c_FLD_FC_PU_ID;
-        public const string c_FLD_TAB_PUSTATUS_QUICKSTATUS = "quickstatus";
-        public const string c_FLD_TAB_PUSTATUS_CONFLICT = "conflict";
-        public const string c_FLD_TAB_PUSTATUS_PREFIX_INCLUDE = "IN_";
-        public const string c_FLD_TAB_PUSTATUS_PREFIX_EXCLUDE = "EX_";
-        public const string c_FLD_TAB_PUSTATUS_SUFFIX_NAME = "_NAME";
-        public const string c_FLD_TAB_PUSTATUS_SUFFIX_STATUS = "_STATUS";
-        public const string c_FLD_TAB_PUSTATUS_SUFFIX_AREA = "_AREA";
-        public const string c_FLD_TAB_PUSTATUS_SUFFIX_THRESH = "_THRESHOLD";
+        // PU + SELECTION RULES
+        public const string c_FLD_TAB_PUSELRULES_ID = c_FLD_FC_PU_ID;
+        public const string c_FLD_TAB_PUSELRULES_QUICKSTATUS = "quickstatus";
+        public const string c_FLD_TAB_PUSELRULES_CONFLICT = "conflict";
+        public const string c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE = "IN_";
+        public const string c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE = "EX_";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_NAME = "_NAME";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_STATUS = "_STATUS";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_AREA = "_AREA";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_THRESH = "_THRESHOLD";
+
+        // SELECTION RULES
+        public const string c_FLD_TAB_SELRULES_ID = "sr_id";
+        public const string c_FLD_TAB_SELRULES_NAME = "sr_name";
+        public const string c_FLD_TAB_SELRULES_RULETYPE = "sr_rule_type";
+        public const string c_FLD_TAB_SELRULES_LAYERTYPE = "sr_layer_type";
+        public const string c_FLD_TAB_SELRULES_LAYERJSON = "sr_layer_json";
+        public const string c_FLD_TAB_SELRULES_MIN_THRESHOLD = "sr_min_threshold";
+        public const string c_FLD_TAB_SELRULES_ENABLED = "sr_enabled";
+        public const string c_FLD_TAB_SELRULES_AREA_M = "sr_area_m";
+        public const string c_FLD_TAB_SELRULES_AREA_AC = "sr_area_ac";
+        public const string c_FLD_TAB_SELRULES_AREA_HA = "sr_area_ha";
+        public const string c_FLD_TAB_SELRULES_AREA_KM = "sr_area_km";
+        public const string c_FLD_TAB_SELRULES_PUCOUNT = "sr_pucount";
 
         // FEATURES
         public const string c_FLD_TAB_CF_ID = "cf_id";
@@ -203,25 +227,24 @@
         public const string c_FLD_TAB_CF_MIN_THRESHOLD_PCT = "cf_min_threshold_pct";
         public const string c_FLD_TAB_CF_TARGET_PCT = "cf_target_pct";
         public const string c_FLD_TAB_CF_WHERECLAUSE = "cf_whereclause";
-        public const string c_FLD_TAB_CF_IN_USE = "cf_in_use";
+        public const string c_FLD_TAB_CF_ENABLED = "cf_enabled";
         public const string c_FLD_TAB_CF_AREA_M = "cf_area_m";
         public const string c_FLD_TAB_CF_AREA_AC = "cf_area_ac";
         public const string c_FLD_TAB_CF_AREA_HA = "cf_area_ha";
         public const string c_FLD_TAB_CF_AREA_KM = "cf_area_km";
-        public const string c_FLD_CF_PUCOUNT = "cf_pucount";
-        public const string c_FLD_CF_LYR_NAME = "lyr_name";
-        public const string c_FLD_CF_LYR_TYPE = "lyr_type";
-        public const string c_FLD_CF_LYR_JSON = "lyr_json";
-        public const string c_FLD_CF_LYR_MIN_THRESHOLD_PCT = "lyr_min_threshold_pct";   // Probably not necessary
-        public const string c_FLD_CF_LYR_TARGET_PCT = "lyr_target_pct";                 // Probably not necessary
+        public const string c_FLD_TAB_CF_PUCOUNT = "cf_pucount";
+        public const string c_FLD_TAB_CF_LYR_NAME = "lyr_name";
+        public const string c_FLD_TAB_CF_LYR_TYPE = "lyr_type";
+        public const string c_FLD_TAB_CF_LYR_JSON = "lyr_json";
+        public const string c_FLD_TAB_CF_LYR_MIN_THRESHOLD_PCT = "lyr_min_threshold_pct";   // Probably not necessary
+        public const string c_FLD_TAB_CF_LYR_TARGET_PCT = "lyr_target_pct";                 // Probably not necessary
 
-        // Boundary Length table		
-        public const string c_FLD_BL_ID1 = "id1";
-        public const string c_FLD_BL_ID2 = "id2";
-        public const string c_FLD_BL_BOUNDARY = "boundary";
-        public const string c_FLD_BL_EXTERNAL = "external";
+        // BOUNDARY
+        public const string c_FLD_TAB_BOUND_ID1 = "id1";
+        public const string c_FLD_TAB_BOUND_ID2 = "id2";
+        public const string c_FLD_TAB_BOUND_BOUNDARY = "boundary";
 
-        // Cost Stats
+        // COST ZONAL STATS
         public const string c_FLD_COST_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_COST_COUNT = "COUNT";
         public const string c_FLD_COST_AREA = "AREA";
@@ -233,7 +256,7 @@
         public const string c_FLD_COST_STD = "STD";
         public const string c_FLD_COST_MEDIAN = "MEDIAN";
 
-        // Zonal Stats
+        // FEATURE ZONAL STATS
         public const string c_FLD_ZONALSTATS_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_ZONALSTATS_COUNT = "COUNT";
         public const string c_FLD_ZONALSTATS_AREA = "AREA";
@@ -245,26 +268,9 @@
         public const string c_FLD_ZONALSTATS_STD = "STD";
         public const string c_FLD_ZONALSTATS_MEDIAN = "MEDIAN";
 
-        // Exterior Tiles table
-        public const string c_FLD_EXTILE_ID = "id";
-        public const string c_FLD_EXTILE_EXTERIOR = "exterior";
-        public const string c_FLD_EXTILE_OPENSIDES = "opensides";
-
         #endregion
 
         #region DATATABLE COLUMN NAMES
-
-
-
-        #endregion
-
-
-
-
-        // Conservation Feature DataTable
-        public const string c_FLD_CFDT_LAYER = "layer";
-
-
 
         // Status DataTable Fields
         public const string c_FLD_DATATABLE_STATUS_LAYER = "layer";
@@ -273,6 +279,7 @@
         public const string c_FLD_DATATABLE_STATUS_THRESHOLD = "threshold";
         public const string c_FLD_DATATABLE_STATUS_STATUS = "status";
 
+        #endregion
 
         #endregion
 

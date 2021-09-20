@@ -154,6 +154,7 @@
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\ConservationFeature.cs" />
+    <Compile Include="Models\SelectionRule.cs" />
     <Compile Include="Models\UVConservationFeature.cs" />
     <Compile Include="Models\YamlFeature.cs" />
     <Compile Include="Models\YamlInclude.cs" />

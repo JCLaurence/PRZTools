@@ -212,21 +212,21 @@ namespace NCC.PRZTools
                 #region SUBDIRECTORIES
 
                 // INPUT
-                string input_folder = PRZH.GetInputFolderPath();
+                string input_folder = PRZH.GetPath_InputFolder();
                 if (!Directory.Exists(input_folder))
                 {
                     Directory.CreateDirectory(input_folder);
                 }
 
                 // OUTPUT
-                string output_folder = PRZH.GetOutputFolderPath();
+                string output_folder = PRZH.GetPath_OutputFolder();
                 if (!Directory.Exists(output_folder))
                 {
                     Directory.CreateDirectory(output_folder);
                 }
 
                 // EXPORT WTW
-                string wtw_folder = PRZH.GetExportWTWFolderPath();
+                string wtw_folder = PRZH.GetPath_ExportWTWFolder();
                 if (!Directory.Exists(wtw_folder))
                 {
                     Directory.CreateDirectory(wtw_folder);
@@ -236,7 +236,7 @@ namespace NCC.PRZTools
 
                 #region LOG FILE
 
-                string logpath = PRZH.GetProjectLogPath();
+                string logpath = PRZH.GetPath_ProjectLog();
 
                 if (!File.Exists(logpath))
                 {
@@ -251,7 +251,7 @@ namespace NCC.PRZTools
 
                 #region GEODATABASE
 
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 bool gdbexists = await PRZH.ProjectGDBExists();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
@@ -337,7 +337,7 @@ namespace NCC.PRZTools
                 #region SUBDIRECTORIES
 
                 // INPUT
-                string input_folder = PRZH.GetInputFolderPath();
+                string input_folder = PRZH.GetPath_InputFolder();
                 if (Directory.Exists(input_folder))
                 {
                     Directory.Delete(input_folder, true);
@@ -347,7 +347,7 @@ namespace NCC.PRZTools
 
 
                 // OUTPUT
-                string output_folder = PRZH.GetOutputFolderPath();
+                string output_folder = PRZH.GetPath_OutputFolder();
                 if (Directory.Exists(output_folder))
                 {
                     Directory.Delete(output_folder, true);
@@ -356,7 +356,7 @@ namespace NCC.PRZTools
                 Directory.CreateDirectory(output_folder);
 
                 // EXPORT WTW
-                string wtw_folder = PRZH.GetExportWTWFolderPath();
+                string wtw_folder = PRZH.GetPath_ExportWTWFolder();
                 if (Directory.Exists(wtw_folder))
                 {
                     Directory.Delete(wtw_folder, true);
@@ -375,7 +375,7 @@ namespace NCC.PRZTools
 
                 #region GEODATABASE
 
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 bool gdbexists = await PRZH.ProjectGDBExists();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
@@ -552,7 +552,7 @@ namespace NCC.PRZTools
                     }
 
                     // INPUT Folder Contents, if present
-                    string inputdir = PRZH.GetInputFolderPath();
+                    string inputdir = PRZH.GetPath_InputFolder();
 
                     if (Directory.Exists(inputdir))
                     {
@@ -578,7 +578,7 @@ namespace NCC.PRZTools
                     }
 
                     // OUTPUT Folder Contents, if present
-                    string outputdir = PRZH.GetOutputFolderPath();
+                    string outputdir = PRZH.GetPath_OutputFolder();
 
                     if (Directory.Exists(outputdir))
                     {
@@ -604,7 +604,7 @@ namespace NCC.PRZTools
                     }
 
                     // EXPORT WTW Folder Contents, if present
-                    string wtwdir = PRZH.GetExportWTWFolderPath();
+                    string wtwdir = PRZH.GetPath_ExportWTWFolder();
 
                     if (Directory.Exists(wtwdir))
                     {
@@ -631,7 +631,7 @@ namespace NCC.PRZTools
                 }
                 else if (displayMode == WorkspaceDisplayMode.GDB)
                 {
-                    string gdbpath = PRZH.GetProjectGDBPath();
+                    string gdbpath = PRZH.GetPath_ProjectGDB();
                     bool gdbExists = await PRZH.ProjectGDBExists();
 
                     if (!gdbExists)
@@ -713,7 +713,7 @@ namespace NCC.PRZTools
                     }
                     else
                     {
-                        contents.AppendLine("Project Log File not found at path: " + PRZH.GetProjectLogPath());
+                        contents.AppendLine("Project Log File not found at path: " + PRZH.GetPath_ProjectLog());
                     }
                 }
                 else

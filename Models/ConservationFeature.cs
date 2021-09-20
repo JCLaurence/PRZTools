@@ -5,14 +5,12 @@ using System.Text;
 using System.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 
-
 namespace NCC.PRZTools
 {
     public class ConservationFeature
     {
         public ConservationFeature()
         {
-
         }
 
         // Conservation Feature Properties

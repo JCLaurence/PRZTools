@@ -49,8 +49,8 @@ namespace NCC.PRZTools
             try
             {
                 // Verify that the Project Workspace exists
-                string wspath = PRZH.GetProjectWSPath();
-                if (!PRZH.ProjectWSExists())
+                string wspath = PRZH.GetPath_ProjectFolder();
+                if (!PRZH.FolderExists_Project())
                 {
                     ProMsgBox.Show("Project Workspace does not exist at this path:" +
                                      Environment.NewLine + Environment.NewLine +
@@ -60,7 +60,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that Project GDB exists
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
                     ProMsgBox.Show("Project Workspace File Geodatabase does not exist at this path:" +
@@ -176,19 +176,19 @@ namespace NCC.PRZTools
                 // Insert or retrieve CF Group Layer in PRZ Group Layer
                 GroupLayer GL_CF = null;
 
-                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_CF, false).OfType<GroupLayer>().ToList();
+                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_FEATURE, false).OfType<GroupLayer>().ToList();
                 if (glyrs.Count == 0)
                 {
                     // CF GL not found in PRZ GL - add it
                     await QueuedTask.Run(() =>
                     {
-                        GL_CF = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 2, PRZC.c_GROUPLAYER_CF);
+                        GL_CF = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 2, PRZC.c_GROUPLAYER_FEATURE);
                         GL_CF.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
                 {
-                    MessageBox.Show(PRZC.c_GROUPLAYER_CF + " Group Layer appears more than once.  There can be only one.");
+                    MessageBox.Show(PRZC.c_GROUPLAYER_FEATURE + " Group Layer appears more than once.  There can be only one.");
                     return false;
                 }
                 else
@@ -208,7 +208,7 @@ namespace NCC.PRZTools
                 {
                     if (lyr is GroupLayer)
                     {
-                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_CF)
+                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURE)
                         {
                             LayersToDelete.Add(lyr);
                         }
@@ -225,15 +225,15 @@ namespace NCC.PRZTools
                 });
 
                 // Add the 2 study area layers and the planning unit layer
-                bool pufcexists = await PRZH.PlanningUnitFCExists();
-                bool safcexists = await PRZH.StudyAreaFCExists();
-                bool sabfcexists = await PRZH.StudyAreaBufferFCExists();
+                bool pufcexists = await PRZH.FCExists_PU();
+                bool safcexists = await PRZH.FCExists_StudyArea();
+                bool sabfcexists = await PRZH.FCExists_StudyAreaBuffer();
 
                 int i = 0;
 
                 if (pufcexists)
                 {
-                    string pufcpath = PRZH.GetPlanningUnitFCPath();
+                    string pufcpath = PRZH.GetPath_FC_PU();
 
                     Uri uri = new Uri(pufcpath);
                     await QueuedTask.Run(async () =>
@@ -246,7 +246,7 @@ namespace NCC.PRZTools
 
                 if (sabfcexists)
                 {
-                    string sabfcpath = PRZH.GetStudyAreaBufferFCPath();
+                    string sabfcpath = PRZH.GetPath_FC_StudyAreaBuffer();
 
                     Uri uri = new Uri(sabfcpath);
                     await QueuedTask.Run(() =>
@@ -259,7 +259,7 @@ namespace NCC.PRZTools
 
                 if (safcexists)
                 {
-                    string safcpath = PRZH.GetStudyAreaFCPath();
+                    string safcpath = PRZH.GetPath_FC_StudyArea();
 
                     Uri uri = new Uri(safcpath);
                     await QueuedTask.Run(() =>

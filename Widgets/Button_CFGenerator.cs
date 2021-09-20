@@ -22,7 +22,7 @@ namespace NCC.PRZTools
                 #region Project Workspace Check
 
                 // Check that WS exists
-                bool wsexists = PRZH.ProjectWSExists();
+                bool wsexists = PRZH.FolderExists_Project();
                 if (!wsexists)
                 {
                     ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
@@ -82,14 +82,14 @@ namespace NCC.PRZTools
                 //}
 
                 // Ensure the Planning Unit Layer is present
-                if (!await PRZH.PlanningUnitFCExists())
+                if (!await PRZH.FCExists_PU())
                 {
                     ProMsgBox.Show("You must first construct a Planning Unit Feature Class.");
                     return;
                 }
 
                 // Ensure the Planning Unit Feature Layer is present
-                if (!PRZH.FeatureLayerExists_PU(map))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     ProMsgBox.Show("Planning Unit Feature Layer is not present in the map.  Please reload the PRZ Layers");
                     return;

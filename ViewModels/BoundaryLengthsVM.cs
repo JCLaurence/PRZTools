@@ -80,7 +80,7 @@ namespace NCC.PRZTools
                 //// Populate the Grid
                 //bool Populated = await PopulateConflictGrid();
 
-                BoundaryTableExists = await PRZH.BoundaryTableExists();
+                BoundaryTableExists = await PRZH.TableExists_Boundary();
 
             }
             catch (Exception ex)
@@ -108,7 +108,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Boundary Table generator..."), false, max, ++val);
 
                 // Validation: Project Geodatabase
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
@@ -126,8 +126,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Planning Unit FC exists
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
-                if (!await PRZH.PlanningUnitFCExists())
+                string pufcpath = PRZH.GetPath_FC_PU();
+                if (!await PRZH.FCExists_PU())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
@@ -137,7 +137,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
                 }
 
-                if (!PRZH.FeatureLayerExists_PU(map))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Layer not found in the map.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
@@ -180,9 +180,9 @@ namespace NCC.PRZTools
                 #region GEOPROCESSING STEPS
 
                 // Delete the Boundary table if present
-                string boundpath = PRZH.GetBoundaryTablePath();
+                string boundpath = PRZH.GetPath_Table_Boundary();
 
-                if (await PRZH.BoundaryTableExists())
+                if (await PRZH.TableExists_Boundary())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Boundary Length table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(boundpath);
@@ -257,7 +257,7 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                    using (FeatureClass featureClass = await PRZH.GetFC_PU())
                     using (RowCursor rowCursor = featureClass.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -345,9 +345,9 @@ namespace NCC.PRZTools
                 }
 
                 // Add fields to the table
-                string fldPUID1 = PRZC.c_FLD_BL_ID1 + " LONG 'Planning Unit ID 1' # # #;";
-                string fldPUID2 = PRZC.c_FLD_BL_ID2 + " LONG 'Planning Unit ID 2' # # #;";
-                string fldBoundary = PRZC.c_FLD_BL_BOUNDARY + " DOUBLE 'Boundary Length' # # #;";
+                string fldPUID1 = PRZC.c_FLD_TAB_BOUND_ID1 + " LONG 'Planning Unit ID 1' # # #;";
+                string fldPUID2 = PRZC.c_FLD_TAB_BOUND_ID2 + " LONG 'Planning Unit ID 2' # # #;";
+                string fldBoundary = PRZC.c_FLD_TAB_BOUND_BOUNDARY + " DOUBLE 'Boundary Length' # # #;";
 
                 string flds = fldPUID1 + fldPUID2 + fldBoundary;
 
@@ -368,7 +368,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Writing records to final Boundary Lengths table.."), true, ++val);
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetBoundaryTable())
+                    using (Table table = await PRZH.GetTable_Boundary())
                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                     {
@@ -396,9 +396,9 @@ namespace NCC.PRZTools
                                         double perim = Convert.ToDouble(row["LENGTH"]);
 
                                         // Create the new record
-                                        rowBuffer[PRZC.c_FLD_BL_ID1] = srcid1;
-                                        rowBuffer[PRZC.c_FLD_BL_ID2] = srcid2;
-                                        rowBuffer[PRZC.c_FLD_BL_BOUNDARY] = perim;
+                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = srcid1;
+                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = srcid2;
+                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = perim;
 
                                         // Insert it
                                         insertCursor.Insert(rowBuffer);
@@ -414,9 +414,9 @@ namespace NCC.PRZTools
 
                             if (selfperim > 0)
                             {
-                                rowBuffer[PRZC.c_FLD_BL_ID1] = puid;
-                                rowBuffer[PRZC.c_FLD_BL_ID2] = puid;
-                                rowBuffer[PRZC.c_FLD_BL_BOUNDARY] = selfperim;
+                                rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = puid;
+                                rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = puid;
+                                rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = selfperim;
                                 insertCursor.Insert(rowBuffer);
                                 insertCursor.Flush();
                             }
@@ -426,7 +426,7 @@ namespace NCC.PRZTools
 
                 // Index both id fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing both id fields..."), true, ++val);
-                List<string> LIST_ix = new List<string>() { PRZC.c_FLD_BL_ID1, PRZC.c_FLD_BL_ID2 };
+                List<string> LIST_ix = new List<string>() { PRZC.c_FLD_TAB_BOUND_ID1, PRZC.c_FLD_TAB_BOUND_ID2 };
                 toolParams = Geoprocessing.MakeValueArray(boundpath, LIST_ix, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
@@ -459,7 +459,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating boundary columns in PU FC..."), true, ++val);
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetPlanningUnitFC())
+                    using (Table table = await PRZH.GetFC_PU())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -502,7 +502,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
-                BoundaryTableExists = await PRZH.BoundaryTableExists();
+                BoundaryTableExists = await PRZH.TableExists_Boundary();
                 ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
                 return true;
             }

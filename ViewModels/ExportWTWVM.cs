@@ -101,9 +101,9 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // Initialize the indicator images
-                bool PUFC_OK = await PRZH.PlanningUnitFCExists();
-                bool CF_OK = await PRZH.CFTableExists();
-                bool Bounds_OK = await PRZH.BoundaryTableExists();
+                bool PUFC_OK = await PRZH.FCExists_PU();
+                bool CF_OK = await PRZH.TableExists_Features();
+                bool Bounds_OK = await PRZH.TableExists_Boundary();
 
                 // Set the Component Status Images
                 if (PUFC_OK)
@@ -159,7 +159,7 @@ namespace NCC.PRZTools
                 #region VALIDATION
 
                 // Ensure the ExportWTW folder exists
-                if (!PRZH.ExportWTWFolderExists())
+                if (!PRZH.FolderExists_ExportWTW())
                 {
                     ProMsgBox.Show($"The {PRZC.c_DIR_EXPORT_WTW} folder does not exist in your project workspace." + Environment.NewLine + Environment.NewLine +
                                     "Please Initialize or Reset your workspace");
@@ -185,7 +185,7 @@ namespace NCC.PRZTools
                 #region PREPARATION
 
                 // Delete all existing files within export dir
-                string exportpath = PRZH.GetExportWTWFolderPath();
+                string exportpath = PRZH.GetPath_ExportWTWFolder();
                 DirectoryInfo di = new DirectoryInfo(exportpath);
 
                 try
@@ -223,9 +223,9 @@ namespace NCC.PRZTools
                 GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                 string toolOutput;
 
-                string gdbpath = PRZH.GetProjectGDBPath();
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
-                string exportdirpath = PRZH.GetExportWTWFolderPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string pufcpath = PRZH.GetPath_FC_PU();
+                string exportdirpath = PRZH.GetPath_ExportWTWFolder();
                 string exportfcpath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_SHP);
 
                 // Copy PUFC, project at the same time
@@ -416,7 +416,7 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetCFTable())
+                    using (Table table = await PRZH.GetTable_Features())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -464,7 +464,7 @@ namespace NCC.PRZTools
                     // *** ROWS 2 TO N => PLANNING UNIT RECORDS
                     await QueuedTask.Run(async () =>
                     {
-                        using (Table table = await PRZH.GetPUVCFTable())
+                        using (Table table = await PRZH.GetTable_PUFeatures())
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -546,25 +546,25 @@ namespace NCC.PRZTools
                     // *** ROW 1 => COLUMN NAMES
 
                     // PU ID Columns
-                    csv.WriteField(PRZC.c_FLD_BL_ID1);
-                    csv.WriteField(PRZC.c_FLD_BL_ID2);
-                    csv.WriteField(PRZC.c_FLD_BL_BOUNDARY);
+                    csv.WriteField(PRZC.c_FLD_TAB_BOUND_ID1);
+                    csv.WriteField(PRZC.c_FLD_TAB_BOUND_ID2);
+                    csv.WriteField(PRZC.c_FLD_TAB_BOUND_BOUNDARY);
 
                     csv.NextRecord();
 
                     // *** ROWS 2 TO N => Boundary Records
                     await QueuedTask.Run(async () =>
                     {
-                        using (Table table = await PRZH.GetBoundaryTable())
+                        using (Table table = await PRZH.GetTable_Boundary())
                         using (RowCursor rowCursor = table.Search(null, true))
                         {
                             while (rowCursor.MoveNext())
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    int id1 = (int)row[PRZC.c_FLD_BL_ID1];
-                                    int id2 = (int)row[PRZC.c_FLD_BL_ID2];
-                                    double bnd = (double)row[PRZC.c_FLD_BL_BOUNDARY];
+                                    int id1 = (int)row[PRZC.c_FLD_TAB_BOUND_ID1];
+                                    int id2 = (int)row[PRZC.c_FLD_TAB_BOUND_ID2];
+                                    double bnd = (double)row[PRZC.c_FLD_TAB_BOUND_BOUNDARY];
 
                                     csv.WriteField(id1);
                                     csv.WriteField(id2);

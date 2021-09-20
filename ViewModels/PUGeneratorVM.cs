@@ -410,7 +410,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Planning Unit Generator..."), false, max, ++val);
 
                 // Validation: Project Geodatabase
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
@@ -773,7 +773,7 @@ namespace NCC.PRZTools
 
                 #region CREATE PLANNING UNIT FC
 
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
+                string pufcpath = PRZH.GetPath_FC_PU();
 
                 // Build the new empty Planning Unit FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
@@ -917,7 +917,7 @@ namespace NCC.PRZTools
 
                 #region CREATE STUDY AREA FC
 
-                string safcpath = PRZH.GetStudyAreaFCPath();
+                string safcpath = PRZH.GetPath_FC_StudyArea();
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Main Study Area Feature Class..."), true, ++val);
@@ -1004,7 +1004,7 @@ namespace NCC.PRZTools
 
                 #region CREATE BUFFERED STUDY AREA FC
 
-                string sabufffcpath = PRZH.GetStudyAreaBufferFCPath();
+                string sabufffcpath = PRZH.GetPath_FC_StudyAreaBuffer();
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Buffered Study Area Feature Class..."), true, ++val);
@@ -1210,7 +1210,7 @@ namespace NCC.PRZTools
             {
                 await QueuedTask.Run(async () => 
                 {
-                    using (FeatureClass puFC = await PRZH.GetPlanningUnitFC())
+                    using (FeatureClass puFC = await PRZH.GetFC_PU())
                     using (RowBuffer rowBuffer = puFC.CreateRowBuffer())
                     using (InsertCursor insertCursor = puFC.CreateInsertCursor())
                     using (FeatureClassDefinition fcDef = puFC.GetDefinition())

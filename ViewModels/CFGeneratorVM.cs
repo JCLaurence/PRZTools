@@ -60,7 +60,7 @@ namespace NCC.PRZTools
             get => _gridCaption; set => SetProperty(ref _gridCaption, value, () => GridCaption);
         }
 
-        private string _defaultThreshold = Properties.Settings.Default.DEFAULT_CF_THRESHOLD;
+        private string _defaultThreshold = Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD;
         public string DefaultThreshold
         {
             get => _defaultThreshold;
@@ -68,12 +68,12 @@ namespace NCC.PRZTools
             set
             {
                 SetProperty(ref _defaultThreshold, value, () => DefaultThreshold);
-                Properties.Settings.Default.DEFAULT_CF_THRESHOLD = value;
+                Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD = value;
                 Properties.Settings.Default.Save();
             }
         }
 
-        private string _defaultTarget = Properties.Settings.Default.DEFAULT_CF_TARGET;
+        private string _defaultTarget = Properties.Settings.Default.DEFAULT_CF_GOAL;
         public string DefaultTarget
         {
             get => _defaultTarget;
@@ -81,7 +81,7 @@ namespace NCC.PRZTools
             set
             {
                 SetProperty(ref _defaultTarget, value, () => DefaultTarget);
-                Properties.Settings.Default.DEFAULT_CF_TARGET = value;
+                Properties.Settings.Default.DEFAULT_CF_GOAL = value;
                 Properties.Settings.Default.Save();
             }
         }
@@ -140,8 +140,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // checkboxes
-                CFTableExists = await PRZH.CFTableExists();
-                PUVCFTableExists = await PRZH.PUVCFTableExists();
+                CFTableExists = await PRZH.TableExists_Features();
+                PUVCFTableExists = await PRZH.TableExists_PUFeatures();
 
                 // Populate the Grid
                 bool Populated = await PopulateGrid();
@@ -165,13 +165,13 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async() =>
                 {
-                    if (!await PRZH.CFTableExists())
+                    if (!await PRZH.TableExists_Features())
                     {
                         caption = "Conservation Features Table not yet built...";
                         return;
                     }
 
-                    using (Table table = await PRZH.GetCFTable())
+                    using (Table table = await PRZH.GetTable_Features())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -190,13 +190,13 @@ namespace NCC.PRZTools
                                 CF.cf_area_ac = (row[PRZC.c_FLD_TAB_CF_AREA_AC] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_AC];
                                 CF.cf_area_ha = (row[PRZC.c_FLD_TAB_CF_AREA_HA] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_HA];
                                 CF.cf_area_km2 = (row[PRZC.c_FLD_TAB_CF_AREA_KM] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_KM];
-                                CF.cf_pucount = (row[PRZC.c_FLD_CF_PUCOUNT] == null) ? -1 : (int)row[PRZC.c_FLD_CF_PUCOUNT];
+                                CF.cf_pucount = (row[PRZC.c_FLD_TAB_CF_PUCOUNT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_PUCOUNT];
 
-                                CF.lyr_name = (row[PRZC.c_FLD_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_CF_LYR_NAME].ToString();
-                                CF.lyr_type = (row[PRZC.c_FLD_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_CF_LYR_TYPE].ToString();
-                                CF.lyr_json = (row[PRZC.c_FLD_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_CF_LYR_JSON].ToString();
+                                CF.lyr_name = (row[PRZC.c_FLD_TAB_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_NAME].ToString();
+                                CF.lyr_type = (row[PRZC.c_FLD_TAB_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_TYPE].ToString();
+                                CF.lyr_json = (row[PRZC.c_FLD_TAB_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_JSON].ToString();
 
-                                object o = row[PRZC.c_FLD_TAB_CF_IN_USE];
+                                object o = row[PRZC.c_FLD_TAB_CF_ENABLED];
                                 bool? b;
 
                                 if (o == null)
@@ -409,13 +409,13 @@ namespace NCC.PRZTools
 
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the CF Table Generator..."), false, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Features Generator..."), false, max, ++val);
 
                 // Validation: Ensure the Project Geodatabase Exists
-                string gdbpath = PRZH.GetProjectGDBPath();
+                string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
                                    Environment.NewLine +
                                    gdbpath +
@@ -426,23 +426,23 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase is OK: " + gdbpath), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase is OK: {gdbpath}"), true, ++val);
                 }
 
                 // Validation: Ensure the Planning Unit FC exists
-                string pufcpath = PRZH.GetPlanningUnitFCPath();
-                if (!await PRZH.PlanningUnitFCExists())
+                string pufcpath = PRZH.GetPath_FC_PU();
+                if (!await PRZH.FCExists_PU())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Planning Unit Feature Class is OK: {pufcpath}"), true, ++val);
                 }
 
                 // Validation: Ensure that the Planning Unit Feature Layer exists
-                if (!PRZH.FeatureLayerExists_PU(map))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Layer not found in the map.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Feature Layer not present in the map.  Please reload PRZ layers");
@@ -466,7 +466,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Threshold = " + threshold_text), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Default Threshold = {threshold_text}"), true, ++val);
                 }
 
                 // Validation: Ensure the Default Target is valid
@@ -489,17 +489,17 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Default Target = " + target_text), true, ++val);
                 }
 
-                // Validation: Ensure the Conservation Features group layer is present
-                if (!PRZH.PRZLayerExists(map, PRZLayerNames.CF))
+                // Validation: Ensure the Features group layer is present
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.FEATURE))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> CF Group Layer is missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("CF Group Layer is missing.  Please reload the PRZ Layers and try again.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Features Group Layer is missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Features Group Layer is missing.  Please reload the PRZ Layers and try again.", "Validation");
                     return false;
                 }
 
                 // Validation: Ensure that at least 1 FL or RL is present within the CF Group Layer
-                var FLs = PRZH.GetFeatureLayers_CF(map);
-                var RLs = PRZH.GetRasterLayers_CF(map);
+                var FLs = PRZH.GetFeatureLayers_FEATURE(map);
+                var RLs = PRZH.GetRasterLayers_FEATURE(map);
 
                 if (FLs is null || RLs is null)
                 {
@@ -516,7 +516,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Prompt User for permission to proceed
-                if (ProMsgBox.Show("If you proceed, the CF and PUvCF tables will be overwritten if they exist in the Project Geodatabase." +
+                if (ProMsgBox.Show($"If you proceed, the {PRZC.c_TABLE_FEATURES} and {PRZC.c_TABLE_PUFEATURES} tables will be overwritten if they exist in the Project Geodatabase." +
                    Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
@@ -525,7 +525,7 @@ namespace NCC.PRZTools
                    System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out of Conservation Feature Generation."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
                     return false;
                 }
 
@@ -563,11 +563,11 @@ namespace NCC.PRZTools
 
                 #region BUILD THE CONSERVATION FEATURES TABLE
 
-                string cfpath = PRZH.GetCFTablePath();
+                string cfpath = PRZH.GetPath_Table_Features();
 
                 // Delete the existing CF table, if it exists
 
-                if (await PRZH.CFTableExists())
+                if (await PRZH.TableExists_Features())
                 {
                     // Delete the existing CF table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Conservation Features Table..."), true, ++val);
@@ -587,7 +587,7 @@ namespace NCC.PRZTools
 
                 // Create the table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Conservation Features Table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_CF, "", "", "Conservation Features");
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_FEATURES, "", "", "Conservation Features");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -606,15 +606,15 @@ namespace NCC.PRZTools
                 string fldCFThresholdPct = PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT + " LONG 'Min Threshold (%)' # 0 #;";
                 string fldCFTargetPct = PRZC.c_FLD_TAB_CF_TARGET_PCT + " LONG 'Target (%)' # 0 #;";
                 string fldCFWhereClause = PRZC.c_FLD_TAB_CF_WHERECLAUSE + " TEXT 'WHERE Clause' 1000 # #;";
-                string fldCFInUse = PRZC.c_FLD_TAB_CF_IN_USE + " TEXT 'In Use' 3 'Yes' #;";
+                string fldCFInUse = PRZC.c_FLD_TAB_CF_ENABLED + " TEXT 'In Use' 3 'Yes' #;";
                 string fldCFArea_m2 = PRZC.c_FLD_TAB_CF_AREA_M + " DOUBLE 'Total Area (m2)' # 0, #;";
                 string fldCFArea_ac = PRZC.c_FLD_TAB_CF_AREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
                 string fldCFArea_ha = PRZC.c_FLD_TAB_CF_AREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
                 string fldCFArea_km2 = PRZC.c_FLD_TAB_CF_AREA_KM + " DOUBLE 'Total Area (km2)' # 0, #;";
-                string fldCFPUCount = PRZC.c_FLD_CF_PUCOUNT + " LONG 'Planning Unit Count' # 0 #;";
-                string fldCFLayerName = PRZC.c_FLD_CF_LYR_NAME + " TEXT 'Source Layer Name' 300 # #;";
-                string fldCFLayerType = PRZC.c_FLD_CF_LYR_TYPE + " TEXT 'Source Layer Type' 50 # #;";
-                string fldCFLayerJSON = PRZC.c_FLD_CF_LYR_JSON + " TEXT 'Source Layer JSON' 100000 # #;";
+                string fldCFPUCount = PRZC.c_FLD_TAB_CF_PUCOUNT + " LONG 'Planning Unit Count' # 0 #;";
+                string fldCFLayerName = PRZC.c_FLD_TAB_CF_LYR_NAME + " TEXT 'Source Layer Name' 300 # #;";
+                string fldCFLayerType = PRZC.c_FLD_TAB_CF_LYR_TYPE + " TEXT 'Source Layer Type' 50 # #;";
+                string fldCFLayerJSON = PRZC.c_FLD_TAB_CF_LYR_JSON + " TEXT 'Source Layer JSON' 100000 # #;";
 
                 string flds = fldCFID +
                               fldCFName +
@@ -652,7 +652,7 @@ namespace NCC.PRZTools
                 // Populate CF Table from LIST_CF
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetCFTable())
+                    using (Table table = await PRZH.GetTable_Features())
                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                     {
@@ -673,15 +673,15 @@ namespace NCC.PRZTools
 
                             // In use
                             if (!CF.cf_in_use.HasValue)
-                                rowBuffer[PRZC.c_FLD_TAB_CF_IN_USE] = "";
+                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "";
                             else if (CF.cf_in_use == true)
-                                rowBuffer[PRZC.c_FLD_TAB_CF_IN_USE] = "Yes";
+                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "Yes";
                             else
-                                rowBuffer[PRZC.c_FLD_TAB_CF_IN_USE] = "No";
+                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "No";
 
-                            rowBuffer[PRZC.c_FLD_CF_LYR_NAME] = CF.lyr_name;
-                            rowBuffer[PRZC.c_FLD_CF_LYR_TYPE] = CF.lyr_type;
-                            rowBuffer[PRZC.c_FLD_CF_LYR_JSON] = CF.lyr_json;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_NAME] = CF.lyr_name;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.lyr_type;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_JSON] = CF.lyr_json;
 
                             // Finally, insert the row
                             insertCursor.Insert(rowBuffer);
@@ -694,11 +694,11 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PUVCF TABLE
 
-                string puvcfpath = PRZH.GetPUVCFTablePath();
+                string puvcfpath = PRZH.GetPath_Table_PUFeatures();
 
                 // Delete the existing PUVCF table, if it exists
 
-                if (await PRZH.PUVCFTableExists())
+                if (await PRZH.TableExists_PUFeatures())
                 {
                     // Delete the existing PUVCF table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting PUVCF Table..."), true, ++val);
@@ -734,7 +734,7 @@ namespace NCC.PRZTools
                 // Delete all fields but OID and PUID from PUVCF table
                 List<string> LIST_DeleteFields = new List<string>();
 
-                using (Table tab = await PRZH.GetPUVCFTable())
+                using (Table tab = await PRZH.GetTable_PUFeatures())
                 {
                     if (tab == null)
                     {
@@ -854,7 +854,7 @@ namespace NCC.PRZTools
                     // Populate the new fields
                     await QueuedTask.Run(async () =>
                     {
-                        using (Table table = await PRZH.GetPUVCFTable())
+                        using (Table table = await PRZH.GetTable_PUFeatures())
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -882,7 +882,7 @@ namespace NCC.PRZTools
                 Dictionary<int, double> DICT_PUID_and_area_m2 = new Dictionary<int, double>();
                 await QueuedTask.Run(async () =>
                 {
-                    using (FeatureClass featureClass = await PRZH.GetPlanningUnitFC())
+                    using (FeatureClass featureClass = await PRZH.GetFC_PU())
                     using (RowCursor rowCursor1 = featureClass.Search(null, false))
                     {
                         while (rowCursor1.MoveNext())
@@ -914,7 +914,7 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetPUVCFTable())
+                    using (Table table = await PRZH.GetTable_PUFeatures())
                     using (TableDefinition tDef = table.GetDefinition())
                     {
                         // Get list of CF Area fields
@@ -967,7 +967,7 @@ namespace NCC.PRZTools
                 await QueuedTask.Run(async () =>
                 {
 
-                    using (Table table = await PRZH.GetCFTable())
+                    using (Table table = await PRZH.GetTable_Features())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())        // iterate through each Conservation Feature
@@ -999,7 +999,7 @@ namespace NCC.PRZTools
                                 int pucount = 0;        // Planning unit count for the CF
                                 double area_m2 = 0;     // Total area (m2) of CF
 
-                                using (Table table2 = await PRZH.GetPUVCFTable())
+                                using (Table table2 = await PRZH.GetTable_PUFeatures())
                                 using (RowCursor rowCursor2 = table2.Search(null, false))
                                 {
                                     while (rowCursor2.MoveNext())               // iterate through each record in PUVCF (each record is a planning unit)
@@ -1024,7 +1024,7 @@ namespace NCC.PRZTools
                                 row[PRZC.c_FLD_TAB_CF_AREA_AC] = area_m2 * PRZC.c_CONVERT_M2_TO_AC;
                                 row[PRZC.c_FLD_TAB_CF_AREA_HA] = area_m2 * PRZC.c_CONVERT_M2_TO_HA;
                                 row[PRZC.c_FLD_TAB_CF_AREA_KM] = area_m2 * PRZC.c_CONVERT_M2_TO_KM2;
-                                row[PRZC.c_FLD_CF_PUCOUNT] = pucount;
+                                row[PRZC.c_FLD_TAB_CF_PUCOUNT] = pucount;
 
                                 row.Store();
                             }
@@ -1038,7 +1038,7 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetPlanningUnitFC())
+                    using (Table table = await PRZH.GetFC_PU())
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -1134,8 +1134,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
                 // update checkboxes
-                CFTableExists = await PRZH.CFTableExists();
-                PUVCFTableExists = await PRZH.PUVCFTableExists();
+                CFTableExists = await PRZH.TableExists_Features();
+                PUVCFTableExists = await PRZH.TableExists_PUFeatures();
 
                 ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
 
@@ -1158,10 +1158,10 @@ namespace NCC.PRZTools
                 Map map = MapView.Active.Map;
 
                 int cfid = 1;
-                int default_threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_THRESHOLD);     // retrieve default threshold value
-                int default_target_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_TARGET);           // retrieve default target value
+                int default_threshold_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD);     // retrieve default threshold value
+                int default_target_int = int.Parse(Properties.Settings.Default.DEFAULT_CF_GOAL);           // retrieve default target value
 
-                List<Layer> LIST_L = PRZH.GetLayers_CF(map);
+                List<Layer> LIST_L = PRZH.GetLayers_FEATURE(map);
 
                 for (int i = 0; i < LIST_L.Count; i++)
                 {
@@ -2213,10 +2213,10 @@ namespace NCC.PRZTools
                     string toolOutput;
 
                     // some paths
-                    string gdbpath = PRZH.GetProjectGDBPath();
-                    string pufcpath = PRZH.GetPlanningUnitFCPath();
-                    string puvcfpath = PRZH.GetPUVCFTablePath();
-                    string cfpath = PRZH.GetCFTablePath();
+                    string gdbpath = PRZH.GetPath_ProjectGDB();
+                    string pufcpath = PRZH.GetPath_FC_PU();
+                    string puvcfpath = PRZH.GetPath_Table_PUFeatures();
+                    string cfpath = PRZH.GetPath_Table_Features();
 
                     // Get the PU FL ready (no selection)
                     FeatureLayer PUFL = PRZH.GetFeatureLayer_PU(map);
@@ -2343,7 +2343,7 @@ namespace NCC.PRZTools
                                     WhereClause = PRZC.c_FLD_TAB_PUCF_ID + " = " + PUID.ToString()
                                 };
 
-                                using (Table table = await PRZH.GetPUVCFTable())
+                                using (Table table = await PRZH.GetTable_PUFeatures())
                                 using (RowCursor rowCursor = table.Search(QF, false))
                                 {
                                     while (rowCursor.MoveNext())
@@ -2389,7 +2389,7 @@ namespace NCC.PRZTools
                             Envelope PUFC_Extent = null;
                             await QueuedTask.Run(async () =>
                             {
-                                using (FeatureClass fc = await PRZH.GetPlanningUnitFC())
+                                using (FeatureClass fc = await PRZH.GetFC_PU())
                                 using (FeatureClassDefinition fcDef = fc.GetDefinition())
                                 {
                                     PUFC_SR = fcDef.GetSpatialReference();
@@ -2499,7 +2499,7 @@ namespace NCC.PRZTools
                                     WhereClause = PRZC.c_FLD_TAB_PUCF_ID + " = " + PUID.ToString()
                                 };
 
-                                using (Table table = await PRZH.GetPUVCFTable())
+                                using (Table table = await PRZH.GetTable_PUFeatures())
                                 using (RowCursor rowCursor = table.Search(QF, false))
                                 {
                                     while (rowCursor.MoveNext())
@@ -2532,7 +2532,6 @@ namespace NCC.PRZTools
                 return false;
             }
         }
-
 
         private async Task<bool> GridDoubleClick()
         {

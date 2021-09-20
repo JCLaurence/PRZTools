@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="Planning Unit Status Calculator"
+    Title="Selection Rule Generator"
     Height="400" Width="500" MinHeight="400" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUStatus.ico" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
@@ -35,6 +35,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
             </Grid.RowDefinitions>
             
@@ -49,7 +51,29 @@
                     Margin="0" 
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="False">
+
+                        <CheckBox
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            VerticalContentAlignment="Center"
+                            IsChecked="{Binding SelRuleTableExists}"
+                            IsEnabled="False"
+                            Content="Selection Rules Table Exists" />
+
+                        <CheckBox
+                            DockPanel.Dock="Left"
+                            Margin="10,5,5,5"
+                            VerticalContentAlignment="Center"
+                            IsChecked="{Binding PUSelRuleTableExists}"
+                            IsEnabled="False"
+                            Content="PU + Selection Rules Table Exists" />
+
+                    </DockPanel>
+
                     <DockPanel 
                         DockPanel.Dock="Top" 
                         LastChildFill="False">
@@ -83,61 +107,116 @@
 
                     </DockPanel>
                     
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="True" >
-                        
-                        <Button
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Padding="0"
-                            Command="{Binding CmdCalculateStatus}">
-                        
-                            <Image 
-                                Margin="3" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CalculateStatus32.png" />
-                        
-                        </Button>
-
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Calculate the Planning Unit Status" />
-
-                    </DockPanel>
-                    
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="True">
-                        
-                        <Button 
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            Padding="0"  
-                            Command="{Binding CmdDeleteStatusInfoTable}">
-                        
-                            <Image 
-                                Margin="3" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/TableDelete32.png" />
-                        
-                        </Button>
-
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="Delete Planning Unit Status Info" />
-
-                    </DockPanel>
                 </DockPanel>
             </Border>
 
             <!--Inner Border #2-->
             <Border 
                 Grid.Row="1" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True" 
+                        Command="{Binding CmdGenerateRules}"
+                        Content="GENERATE SELECTION RULES" />
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="{Binding SelRulesExist}"
+                        Command="{Binding CmdClearRules}"
+                        Content="REMOVE ALL SELECTION RULES" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #3-->
+            <Border 
+                Grid.Row="2" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock 
+                        DockPanel.Dock="Top"
+                        Margin="5"  
+                        Style="{DynamicResource Esri_TextBlockH4}" 
+                        Text="{Binding SelRuleGridCaption}" />
+
+                    <DataGrid 
+                        Margin="5" 
+                        IsReadOnly="True" 
+                        SelectionMode="Single" 
+                        SelectionUnit="FullRow" 
+                        AutoGenerateColumns="False"
+                        Style="{DynamicResource Esri_DataGrid}" 
+                        ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" 
+                        CellStyle="{DynamicResource Esri_DataGridCell}"
+                        ItemsSource="{Binding SelectionRules}" 
+                        SelectedItem="{Binding SelectedSelectionRules}">
+
+                        <DataGrid.InputBindings>
+                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdSelRuleDoubleClick}" />
+                        </DataGrid.InputBindings>
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn 
+                                Header="COL A" 
+                                Binding="{Binding cola}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                            <DataGridTextColumn 
+                                Header="COL B" 
+                                Binding="{Binding colb}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                            <DataGridTextColumn 
+                                Header="COL C" 
+                                Binding="{Binding colc}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                            <DataGridTextColumn 
+                                Header="COL D" 
+                                Binding="{Binding cold}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #4-->
+            <Border 
+                Grid.Row="3" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -198,9 +277,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #3-->
+            <!--Inner Border #5-->
             <Border
-                Grid.Row="2" 
+                Grid.Row="4" 
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 

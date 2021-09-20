@@ -8,16 +8,16 @@
     <Setting Name="WORKSPACE_DISPLAY_MODE" Type="System.String" Scope="User">
       <Value Profile="(Default)">DIR</Value>
     </Setting>
-    <Setting Name="DEFAULT_STATUS_THRESHOLD" Type="System.String" Scope="User">
+    <Setting Name="DEFAULT_SELRULE_MIN_THRESHOLD" Type="System.String" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="COST_CONSTANT_VALUE" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
-    <Setting Name="DEFAULT_CF_THRESHOLD" Type="System.String" Scope="User">
+    <Setting Name="DEFAULT_CF_MIN_THRESHOLD" Type="System.String" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="DEFAULT_CF_TARGET" Type="System.String" Scope="User">
+    <Setting Name="DEFAULT_CF_GOAL" Type="System.String" Scope="User">
       <Value Profile="(Default)">50</Value>
     </Setting>
   </Settings>

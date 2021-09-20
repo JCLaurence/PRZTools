@@ -21,7 +21,7 @@ namespace NCC.PRZTools
                 #region Project Workspace  and PUFC Check
 
                 // Check that WS exists
-                bool wsexists = PRZH.ProjectWSExists();
+                bool wsexists = PRZH.FolderExists_Project();
                 if (!wsexists)
                 {
                     ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
@@ -37,7 +37,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check that Planning Unit FC exists
-                var pufcexists = await PRZH.PlanningUnitFCExists();
+                var pufcexists = await PRZH.FCExists_PU();
                 if (!pufcexists)
                 {
                     ProMsgBox.Show("Planning Unit Feature Class does not exist.  You must construct a Planning Unit Feature Class first.");

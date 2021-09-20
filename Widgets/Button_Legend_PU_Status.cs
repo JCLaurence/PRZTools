@@ -18,7 +18,7 @@ namespace NCC.PRZTools
                 #region Project Workspace Check
 
                 // Check that WS exists
-                bool wsexists = PRZH.ProjectWSExists();
+                bool wsexists = PRZH.FolderExists_Project();
                 if (!wsexists)
                 {
                     ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
@@ -72,10 +72,10 @@ namespace NCC.PRZTools
 
                 await QueuedTask.Run(async () =>
                 {
-                    if (PRZH.FeatureLayerExists_PU(map))
+                    if (PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                     {
                         FeatureLayer featureLayer = PRZH.GetFeatureLayer_PU(map);
-                        await PRZH.ApplyLegend_PU_Status(featureLayer);
+                        await PRZH.ApplyLegend_PU_SelRules(featureLayer);
                         featureLayer.SetVisibility(true);
                     }
                     else

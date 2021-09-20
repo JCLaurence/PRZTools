@@ -50,12 +50,12 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public string DEFAULT_STATUS_THRESHOLD {
+        public string DEFAULT_SELRULE_MIN_THRESHOLD {
             get {
-                return ((string)(this["DEFAULT_STATUS_THRESHOLD"]));
+                return ((string)(this["DEFAULT_SELRULE_MIN_THRESHOLD"]));
             }
             set {
-                this["DEFAULT_STATUS_THRESHOLD"] = value;
+                this["DEFAULT_SELRULE_MIN_THRESHOLD"] = value;
             }
         }
         
@@ -74,24 +74,24 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public string DEFAULT_CF_THRESHOLD {
+        public string DEFAULT_CF_MIN_THRESHOLD {
             get {
-                return ((string)(this["DEFAULT_CF_THRESHOLD"]));
+                return ((string)(this["DEFAULT_CF_MIN_THRESHOLD"]));
             }
             set {
-                this["DEFAULT_CF_THRESHOLD"] = value;
+                this["DEFAULT_CF_MIN_THRESHOLD"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("50")]
-        public string DEFAULT_CF_TARGET {
+        public string DEFAULT_CF_GOAL {
             get {
-                return ((string)(this["DEFAULT_CF_TARGET"]));
+                return ((string)(this["DEFAULT_CF_GOAL"]));
             }
             set {
-                this["DEFAULT_CF_TARGET"] = value;
+                this["DEFAULT_CF_GOAL"] = value;
             }
         }
     }

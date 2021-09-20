@@ -23,7 +23,7 @@ namespace NCC.PRZTools
                 #region VALIDATE PROJECT WORKSPACE AND CONTENTS
 
                 // Check that WS exists
-                bool wsexists = PRZH.ProjectWSExists();
+                bool wsexists = PRZH.FolderExists_Project();
                 if (!wsexists)
                 {
                     ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
