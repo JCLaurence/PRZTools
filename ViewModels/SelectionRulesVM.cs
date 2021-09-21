@@ -459,15 +459,15 @@ namespace NCC.PRZTools
 
                 if (include_layers == null || exclude_layers == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Unable to retrieve contents of {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} Group Layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to retrieve contents of {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} Group Layers.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Unable to retrieve contents of {PRZC.c_GROUPLAYER_SELRULES_INCLUDE} or {PRZC.c_GROUPLAYER_SELRULES_EXCLUDE} Group Layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve contents of {PRZC.c_GROUPLAYER_SELRULES_INCLUDE} or {PRZC.c_GROUPLAYER_SELRULES_EXCLUDE} Group Layers.", "Validation");
                     return false;
                 }
 
                 if (include_layers.Count == 0 && exclude_layers.Count == 0)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> No Raster or Feature Layers found within {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"There must be at least one Raster or Feature Layer within either the {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} group layers.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> No Raster or Feature Layers found within {PRZC.c_GROUPLAYER_SELRULES_INCLUDE} or {PRZC.c_GROUPLAYER_SELRULES_EXCLUDE} group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"There must be at least one Raster or Feature Layer within either the {PRZC.c_GROUPLAYER_SELRULES_INCLUDE} or {PRZC.c_GROUPLAYER_SELRULES_EXCLUDE} group layers.", "Validation");
                     return false;
                 }
 

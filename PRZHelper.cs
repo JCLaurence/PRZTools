@@ -1217,7 +1217,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -1243,7 +1243,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_INCLUDE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_INCLUDE && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -1269,7 +1269,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_EXCLUDE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_EXCLUDE && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -1495,7 +1495,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -1523,7 +1523,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_INCLUDE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_INCLUDE && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -1551,7 +1551,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_STATUS_EXCLUDE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_EXCLUDE && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {

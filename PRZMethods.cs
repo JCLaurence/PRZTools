@@ -120,19 +120,19 @@ namespace NCC.PRZTools
                 // Insert or retrieve Status Group Layer in PRZ Group Layer
                 GroupLayer GL_STATUS = null;
 
-                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_STATUS, false).OfType<GroupLayer>().ToList();
+                glyrs = GL_PRZ.FindLayers(PRZC.c_GROUPLAYER_SELRULES, false).OfType<GroupLayer>().ToList();
                 if (glyrs.Count == 0)
                 {
                     // Status GL not found in PRZ GL - add it
                     await QueuedTask.Run(() =>
                     {
-                        GL_STATUS = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 0, PRZC.c_GROUPLAYER_STATUS);
+                        GL_STATUS = LayerFactory.Instance.CreateGroupLayer(GL_PRZ, 0, PRZC.c_GROUPLAYER_SELRULES);
                         GL_STATUS.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
                 {
-                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS + " Group Layer appears more than once.  There can be only one.");
+                    MessageBox.Show(PRZC.c_GROUPLAYER_SELRULES + " Group Layer appears more than once.  There can be only one.");
                     return false;
                 }
                 else
@@ -208,7 +208,7 @@ namespace NCC.PRZTools
                 {
                     if (lyr is GroupLayer)
                     {
-                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURE)
+                        if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURE)
                         {
                             LayersToDelete.Add(lyr);
                         }
@@ -278,19 +278,19 @@ namespace NCC.PRZTools
                 // Status Include Group Layer
                 GroupLayer GL_STATUS_INCLUDE = null;
 
-                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_INCLUDE, false).OfType<GroupLayer>().ToList();
+                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_SELRULES_INCLUDE, false).OfType<GroupLayer>().ToList();
                 if (glyrs.Count == 0)
                 {
                     // Status Include GL not found in Status GL - add it
                     await QueuedTask.Run(() =>
                     {
-                        GL_STATUS_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 0, PRZC.c_GROUPLAYER_STATUS_INCLUDE);
+                        GL_STATUS_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
                         GL_STATUS_INCLUDE.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
                 {
-                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_INCLUDE + " Group Layer appears more than once.  There can be only one.");
+                    MessageBox.Show(PRZC.c_GROUPLAYER_SELRULES_INCLUDE + " Group Layer appears more than once.  There can be only one.");
                     return false;
                 }
                 else
@@ -306,19 +306,19 @@ namespace NCC.PRZTools
                 // Status Exclude Group Layer
                 GroupLayer GL_STATUS_EXCLUDE = null;
 
-                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_STATUS_EXCLUDE, false).OfType<GroupLayer>().ToList();
+                glyrs = GL_STATUS.FindLayers(PRZC.c_GROUPLAYER_SELRULES_EXCLUDE, false).OfType<GroupLayer>().ToList();
                 if (glyrs.Count == 0)
                 {
                     // Status Exclude GL not found in Status GL - add it
                     await QueuedTask.Run(() =>
                     {
-                        GL_STATUS_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 1, PRZC.c_GROUPLAYER_STATUS_EXCLUDE);
+                        GL_STATUS_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_STATUS, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
                         GL_STATUS_EXCLUDE.SetVisibility(true);
                     });
                 }
                 else if (glyrs.Count > 1)
                 {
-                    MessageBox.Show(PRZC.c_GROUPLAYER_STATUS_EXCLUDE + " Group Layer appears more than once.  There can be only one.");
+                    MessageBox.Show(PRZC.c_GROUPLAYER_SELRULES_EXCLUDE + " Group Layer appears more than once.  There can be only one.");
                     return false;
                 }
                 else
@@ -339,7 +339,7 @@ namespace NCC.PRZTools
                 {
                     if (lyr is GroupLayer)
                     {
-                        if (lyr.Name != PRZC.c_GROUPLAYER_STATUS_EXCLUDE && lyr.Name != PRZC.c_GROUPLAYER_STATUS_INCLUDE)
+                        if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE)
                         {
                             LayersToDelete.Add(lyr);
                         }

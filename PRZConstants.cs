@@ -108,9 +108,9 @@
         // GROUP LAYERS
         public const string c_GROUPLAYER_PRZ = "PRIORITIZATION TOOLS";
         public const string c_GROUPLAYER_COST = "COST";
-        public const string c_GROUPLAYER_STATUS = "STATUS";
-        public const string c_GROUPLAYER_STATUS_INCLUDE = "INCLUDE";
-        public const string c_GROUPLAYER_STATUS_EXCLUDE = "EXCLUDE";
+        public const string c_GROUPLAYER_SELRULES = "SELECTION RULES";
+        public const string c_GROUPLAYER_SELRULES_INCLUDE = "INCLUDE";
+        public const string c_GROUPLAYER_SELRULES_EXCLUDE = "EXCLUDE";
         public const string c_GROUPLAYER_FEATURE = "FEATURES";
 
         // FEATURE LAYERS
