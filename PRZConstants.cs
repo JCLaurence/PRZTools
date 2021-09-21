@@ -170,14 +170,14 @@
 
         // PLANNING UNITS
         public const string c_FLD_FC_PU_ID = "id";
-        public const string c_FLD_FC_PU_STATUS = "status";
+        public const string c_FLD_FC_PU_EFFECTIVE_RULE = "effective_rule";
         public const string c_FLD_FC_PU_COST = "cost";
         public const string c_FLD_FC_PU_NCC_ID = "ncc_id";
         public const string c_FLD_FC_PU_AREA_M = "area_m";
         public const string c_FLD_FC_PU_AREA_AC = "area_ac";
         public const string c_FLD_FC_PU_AREA_HA = "area_ha";
         public const string c_FLD_FC_PU_AREA_KM = "area_km";
-        public const string c_FLD_FC_PU_CONFLICT = "conflict";
+        public const string c_FLD_FC_PU_CONFLICT = "rule_conflict";
         public const string c_FLD_FC_PU_CFCOUNT = "cf_count";
         public const string c_FLD_FC_PU_SHARED_PERIM = "shared_perimeter_m";
         public const string c_FLD_FC_PU_UNSHARED_PERIM = "unshared_perimeter_m";
@@ -202,8 +202,8 @@
 
         // PU + SELECTION RULES
         public const string c_FLD_TAB_PUSELRULES_ID = c_FLD_FC_PU_ID;
-        public const string c_FLD_TAB_PUSELRULES_QUICKSTATUS = "quickstatus";
-        public const string c_FLD_TAB_PUSELRULES_CONFLICT = "conflict";
+        public const string c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE = "effective_rule";
+        public const string c_FLD_TAB_PUSELRULES_CONFLICT = "rule_conflict";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE = "IN_";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE = "EX_";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID = "_ID";

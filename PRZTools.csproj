@@ -182,7 +182,7 @@
     <Compile Include="Widgets\Button_Legend_PU_SelRules.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
     <Compile Include="Models\ProgressManager.cs" />
-    <Compile Include="Models\StatusConflict.cs" />
+    <Compile Include="Models\SelectionRuleConflict.cs" />
     <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\CFGeneratorVM.cs" />
     <Compile Include="ViewModels\PUGeneratorVM.cs" />

@@ -38,15 +38,12 @@ namespace NCC.PRZTools
 
         #region Fields
 
-        private const string c_OVERRIDE_INCLUDE = "INCLUDES";
-        private const string c_OVERRIDE_EXCLUDE = "EXCLUDES";
-
         private ObservableCollection<SelectionRule> _selectionRules = new ObservableCollection<SelectionRule>();
         private SelectionRule _selectedSelectionRule;
-        private ObservableCollection<StatusConflict> _conflicts = new ObservableCollection<StatusConflict>();
-        private StatusConflict _selectedConflict;
-        private List<string> _overrideOptions = new List<string> { c_OVERRIDE_INCLUDE, c_OVERRIDE_EXCLUDE };
-        private string _selectedOverrideOption = c_OVERRIDE_INCLUDE;
+        private ObservableCollection<SelectionRuleConflict> _conflicts = new ObservableCollection<SelectionRuleConflict>();
+        private SelectionRuleConflict _selectedConflict;
+        private List<string> _overrideOptions = new List<string> { SelectionRuleType.INCLUDE.ToString(), SelectionRuleType.EXCLUDE.ToString()};
+        private string _selectedOverrideOption;
         private string _conflictGridCaption;
         private string _defaultThreshold = Properties.Settings.Default.DEFAULT_SELRULE_MIN_THRESHOLD;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
@@ -80,7 +77,7 @@ namespace NCC.PRZTools
             get => _selectedSelectionRule; set => SetProperty(ref _selectedSelectionRule, value, () => SelectedSelectionRule);
         }
 
-        public ObservableCollection<StatusConflict> Conflicts
+        public ObservableCollection<SelectionRuleConflict> Conflicts
         {
             get => _conflicts;
             set
@@ -90,7 +87,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public StatusConflict SelectedConflict
+        public SelectionRuleConflict SelectedConflict
         {
             get => _selectedConflict; set => SetProperty(ref _selectedConflict, value, () => SelectedConflict);
         }
@@ -181,7 +178,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // Set the Conflict Override value default
-                SelectedOverrideOption = c_OVERRIDE_INCLUDE;
+                SelectedOverrideOption = SelectionRuleType.INCLUDE.ToString();
 
                 // Determine the presence of 2 tables
                 SelRuleTableExists = await PRZH.TableExists_SelRules();
@@ -211,11 +208,6 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Read records from the Status Info table
-                // convert each record to a Status Conflict object
-                // add to ObservableCollection
-                // call notifypropertychanged method
-
                 // Clear the contents of the Conflicts observable collection
                 Conflicts.Clear();
 
@@ -355,10 +347,10 @@ namespace NCC.PRZTools
 
                 // Finally, populate the Observable Collection
 
-                List<StatusConflict> l = new List<StatusConflict>();
+                List<SelectionRuleConflict> l = new List<SelectionRuleConflict>();
                 foreach (DataRowView DRV in DV)
                 {
-                    StatusConflict sc = new StatusConflict();
+                    SelectionRuleConflict sc = new SelectionRuleConflict();
 
                     sc.include_layer_name = DRV[c_LayerName_Include].ToString();
                     sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
@@ -374,7 +366,7 @@ namespace NCC.PRZTools
                 l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
 
                 // Set the property
-                _conflicts = new ObservableCollection<StatusConflict>(l);
+                _conflicts = new ObservableCollection<SelectionRuleConflict>(l);
                 NotifyPropertyChanged(() => Conflicts);
 
                 int count = DV.Count;
@@ -462,22 +454,20 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that at least one Feature Layer is present in either of the two group layers
-                var LIST_IncludeFL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
-                var LIST_IncludeRL = PRZH.GetRasterLayers_STATUS_EXCLUDE(map);
-                var LIST_ExcludeFL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
-                var LIST_ExcludeRL = PRZH.GetRasterLayers_STATUS_EXCLUDE(map);
+                var include_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_INCLUDE, PRZLayerRetrievalType.BOTH);
+                var exclude_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_EXCLUDE, PRZLayerRetrievalType.BOTH);
 
-                if (LIST_IncludeFL == null || LIST_ExcludeFL == null || LIST_IncludeRL == null || LIST_ExcludeRL == null)
+                if (include_layers == null || exclude_layers == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve contents of Status Include or Status Exclude Group Layers.  Please reload the PRZ Layers and try again.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Unable to retrieve contents of {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} Group Layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve contents of {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} Group Layers.", "Validation");
                     return false;
                 }
 
-                if (LIST_IncludeFL.Count == 0 && LIST_ExcludeFL.Count == 0 && LIST_IncludeRL.Count == 0 && LIST_ExcludeRL.Count == 0)
+                if (include_layers.Count == 0 && exclude_layers.Count == 0)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Raster or Feature Layers found within Status Include or Status Exclude group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("There must be at least one Raster or Feature Layer within either the Status INCLUDE or the Status EXCLUDE group layers.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> No Raster or Feature Layers found within {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} group layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"There must be at least one Raster or Feature Layer within either the {PRZC.c_GROUPLAYER_STATUS_INCLUDE} or {PRZC.c_GROUPLAYER_STATUS_EXCLUDE} group layers.", "Validation");
                     return false;
                 }
 
@@ -504,7 +494,7 @@ namespace NCC.PRZTools
                 // Validation: Prompt User for permission to proceed
                 if (ProMsgBox.Show($"If you proceed, the {PRZC.c_TABLE_SELRULES} and {PRZC.c_TABLE_PUSELRULES} tables will be overwritten if they exist in the Project Geodatabase." +
                    Environment.NewLine + Environment.NewLine +
-                   $"Additionally, the contents of the {PRZC.c_FLD_FC_PU_STATUS} field in the Planning Unit Feature Class will be updated." +
+                   $"Additionally, the contents of the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} field in the {PRZC.c_FC_PLANNING_UNITS} Feature Class will be updated." +
                    Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
@@ -827,10 +817,10 @@ namespace NCC.PRZTools
                 }
 
                 // Add 2 additional fields 
-                string fldQuickStatus = PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS + " LONG 'Quick Status' # # #;";
+                string fldEffectiveRule = PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE + " LONG 'Effective Rule' # # #;";
                 string fldConflict = PRZC.c_FLD_TAB_PUSELRULES_CONFLICT + " LONG 'Rule Conflict #' # # #;";
 
-                flds = fldQuickStatus + fldConflict;
+                flds = fldEffectiveRule + fldConflict;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding extra fields to {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pusrpath, flds);
@@ -960,7 +950,6 @@ namespace NCC.PRZTools
 
                 #region INTERSECT SELRULE LAYERS WITH PLANNING UNITS
 
-
                 if (!await IntersectRuleLayers(LIST_Rules, val))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the Selection Rule layers.", LogMessageType.ERROR), true, ++val);
@@ -974,7 +963,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region UPDATE QUICKSTATUS AND CONFLICT FIELDS
+                #region UPDATE EFFECTIVE RULE AND CONFLICT FIELDS
 
                 //Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
                 //Dictionary<int, int> DICT_PUID_and_Conflict = new Dictionary<int, int>();
@@ -1102,7 +1091,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region UPDATE PLANNING UNIT FC QUICKSTATUS AND CONFLICT COLUMNS
+                #region UPDATE PLANNING UNIT FC EFFECTIVE RULE AND CONFLICT COLUMNS
 
                 //PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
 
@@ -1155,7 +1144,7 @@ namespace NCC.PRZTools
 
                 #region WRAP THINGS UP
 
-                // Populate the Grid
+                // Populate the Grids
 //                bool Populated = await PopulateConflictGrid();
 
                 // Compact the Geodatabase
@@ -1172,13 +1161,6 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacted successfully..."), true, ++val);
                 }
-
-                // Refresh the Map & TOC
-                //if (!await PRZM.ValidatePRZGroupLayers())
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error validating PRZ layers...", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
 
                 // Wrap things up
                 stopwatch.Stop();
@@ -2139,10 +2121,6 @@ namespace NCC.PRZTools
                                 ProMsgBox.Show($"Error writing rule {srid} info to the {PRZC.c_TABLE_PUSELRULES} table.");
                                 return false;
                             }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Rule {srid} info written to the {PRZC.c_TABLE_PUSELRULES} table."), true, ++val);
-                            }
                         }
                     }
                     else
@@ -2614,7 +2592,7 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                row[PRZC.c_FLD_FC_PU_STATUS] = 0;
+                                row[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = 0;
                                 row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
 
                                 row.Store();

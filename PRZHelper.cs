@@ -2389,7 +2389,7 @@ namespace NCC.PRZTools
                     CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
                     {
                         UseDefaultSymbol = false,
-                        Fields = new string[] { PRZC.c_FLD_FC_PU_STATUS },
+                        Fields = new string[] { PRZC.c_FLD_FC_PU_EFFECTIVE_RULE },
                         Groups = new CIMUniqueValueGroup[] { uvgMain },
                         DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
                     };
