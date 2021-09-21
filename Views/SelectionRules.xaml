@@ -1,6 +1,6 @@
 ﻿<controls:ProWindow 
-    x:Class="NCC.PRZTools.PUStatus"
-    x:Name="PUStatusDlg"
+    x:Class="NCC.PRZTools.SelectionRules"
+    x:Name="SelectionRulesDlg"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:controls="clr-namespace:ArcGIS.Desktop.Framework.Controls;assembly=ArcGIS.Desktop.Framework"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -128,7 +128,7 @@
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
-                        Command="{Binding CmdGenerateRules}"
+                        Command="{Binding CmdGenerateSelRules}"
                         Content="GENERATE SELECTION RULES" />
 
                     <Button 
@@ -137,7 +137,7 @@
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="{Binding SelRulesExist}"
-                        Command="{Binding CmdClearRules}"
+                        Command="{Binding CmdClearSelRules}"
                         Content="REMOVE ALL SELECTION RULES" />
 
                     <Button 

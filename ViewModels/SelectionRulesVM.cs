@@ -30,9 +30,9 @@ using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    public class PUStatusVM : PropertyChangedBase
+    public class SelectionRulesVM : PropertyChangedBase
     {
-        public PUStatusVM()
+        public SelectionRulesVM()
         {
         }
 
@@ -189,16 +189,16 @@ namespace NCC.PRZTools
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
 
                 // Populate the Selection Rules Grid
-                if (!await PopulateSelRulesGrid())
-                {
-                    ProMsgBox.Show("Error populating the Selection Rules Grid...");
-                }
+                //if (!await PopulateSelRulesGrid())
+                //{
+                //    ProMsgBox.Show("Error populating the Selection Rules Grid...");
+                //}
 
-                // Populate the Conflicts Grid
-                if (!await PopulateConflictGrid())
-                {
-                    ProMsgBox.Show("Error populating the Conflicts Grid...");
-                }
+                //// Populate the Conflicts Grid
+                //if (!await PopulateConflictGrid())
+                //{
+                //    ProMsgBox.Show("Error populating the Conflicts Grid...");
+                //}
 
             }
             catch (Exception ex)
@@ -681,38 +681,38 @@ namespace NCC.PRZTools
 
                 #region POPULATE 2 DICTIONARIES:  PUID -> AREA_M, and PUID -> STATUS                    *** probably don't need this?
 
-                Dictionary<int, double> DICT_PUID_and_assoc_area_m2 = new Dictionary<int, double>();
-                Dictionary<int, int> DICT_PUID_and_assoc_status = new Dictionary<int, int>();
+                //Dictionary<int, double> DICT_PUID_and_assoc_area_m2 = new Dictionary<int, double>();
+                //Dictionary<int, int> DICT_PUID_and_assoc_status = new Dictionary<int, int>();
 
-                await QueuedTask.Run(async () =>
-                {
-                    using (FeatureClass puFC = await PRZH.GetFC_PU())
-                    using (RowCursor rowCursor = puFC.Search(null, true))
-                    {
-                        // Get the Definition
-                        FeatureClassDefinition fcDef = puFC.GetDefinition();
+                //await QueuedTask.Run(async () =>
+                //{
+                //    using (FeatureClass puFC = await PRZH.GetFC_PU())
+                //    using (RowCursor rowCursor = puFC.Search(null, true))
+                //    {
+                //        // Get the Definition
+                //        FeatureClassDefinition fcDef = puFC.GetDefinition();
 
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
-                                double a = (double)row[PRZC.c_FLD_FC_PU_AREA_M];
-                                int status = (int)row[PRZC.c_FLD_FC_PU_STATUS];
+                //        while (rowCursor.MoveNext())
+                //        {
+                //            using (Row row = rowCursor.Current)
+                //            {
+                //                int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                //                double a = (double)row[PRZC.c_FLD_FC_PU_AREA_M];
+                //                int status = (int)row[PRZC.c_FLD_FC_PU_STATUS];
 
-                                // store this id -> area KVP in the 1st dictionary
-                                DICT_PUID_and_assoc_area_m2.Add(puid, a);
+                //                // store this id -> area KVP in the 1st dictionary
+                //                DICT_PUID_and_assoc_area_m2.Add(puid, a);
 
-                                // store this id -> status KVP in the 2nd dictionary
-                                DICT_PUID_and_assoc_status.Add(puid, status);
-                            }
-                        }
-                    }
-                });
+                //                // store this id -> status KVP in the 2nd dictionary
+                //                DICT_PUID_and_assoc_status.Add(puid, status);
+                //            }
+                //        }
+                //    }
+                //});
 
                 #endregion
 
-                #region BUILD THE PU + SELRULES TABLE
+                #region BUILD THE PU + SELRULES TABLE - PART I
 
                 string pusrpath = PRZH.GetPath_Table_PUSelRules();
 
@@ -832,425 +832,331 @@ namespace NCC.PRZTools
 
                 flds = fldQuickStatus + fldConflict;
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding 2 lovely fields to {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding extra fields to {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pusrpath, flds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding lovely fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding extra fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error adding lovely fields.");
                     return false;
                 }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Extra fields added successfully."), true, ++val);
+                }
 
-                // Add Field Trios for each Selection Rule
+                #endregion
+
+                #region BUILD THE PU + SELRULES TABLE - PART II
+
+                // Cycle through each Selection Rule
                 foreach (SelectionRule SR in LIST_Rules)
                 {
-                    // I'M HERE!!!!!
+                    // Get the Selection Rule ID
+                    int srid = SR.sr_id;
 
-                    //int cf_id = CF.cf_id;
+                    // Get the Selection Rule Name (limited to 75 characters)
+                    string rule_name = (SR.sr_name.Length > 75) ? SR.sr_name.Substring(0, 75) : SR.sr_name;
 
-                    //// CF Name field
-                    //string fldCFNAME_name = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_NAME;
-                    //string fldCFNAME_alias = "CF " + cf_id.ToString() + " Name";
-                    //string fCFName = fldCFNAME_name + " TEXT '" + fldCFNAME_alias + "' 200 # #;";
+                    // Get the Selection Rule Type
+                    SelectionRuleType rule_type = SR.sr_rule_type;
+                    string prefix = "";
+                    string alias_prefix = "";
 
-                    //// CF Area field
-                    //string fldCFAREA_name = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
-                    //string fldCFAREA_alias = "CF " + cf_id.ToString() + " Area (m2)";
-                    //string fCFArea = fldCFAREA_name + " DOUBLE '" + fldCFAREA_alias + "' # 0 #;";
-
-                    //// PU Proportion field
-                    //string fldCFPUPROP_name = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_PROP;
-                    //string fldCFPUPROP_alias = "CF " + cf_id.ToString() + " PU %";
-                    //string fCFPUProp = fldCFPUPROP_name + " DOUBLE '" + fldCFPUPROP_alias + "' # 0 #;";
-
-                    //flds = fCFName + fCFArea + fCFPUProp;
-
-                    //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding CF{cf_id} fields to CF table..."), true, ++val);
-                    //toolParams = Geoprocessing.MakeValueArray(puvcfpath, flds);
-                    //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    //toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                    //if (toolOutput == null)
-                    //{
-                    //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    //    return false;
-                    //}
-                    //else
-                    //{
-                    //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully..."), true, ++val);
-                    //}
-
-                    //// Populate the new fields
-                    //await QueuedTask.Run(async () =>
-                    //{
-                    //    using (Table table = await PRZH.GetTable_PUFeatures())
-                    //    using (RowCursor rowCursor = table.Search(null, false))
-                    //    {
-                    //        while (rowCursor.MoveNext())
-                    //        {
-                    //            using (Row row = rowCursor.Current)
-                    //            {
-                    //                string cf_name = (CF.cf_name.Length > 100) ? CF.cf_name.Substring(0, 75) : CF.cf_name;
-                    //                row[fldCFNAME_name] = cf_name;
-
-                    //                row[fldCFAREA_name] = 0;
-                    //                row[fldCFPUPROP_name] = 0;
-
-                    //                row.Store();
-                    //            }
-                    //        }
-                    //    }
-                    //});
-                }
-
-                #endregion
-
-
-
-
-
-
-
-
-
-
-
-                #region BUILD THE STATUS INFO TABLE
-
-                //string statuspath = PRZH.GetPath_Table_PUSelRules();
-                
-                //// Delete the existing Status Info table, if it exists
-
-                //if (await PRZH.TableExists_PUSelRules())
-                //{
-                //    // Delete the existing Status Info table
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Status Info Table..."), true, ++val);
-                //    toolParams = Geoprocessing.MakeValueArray(statuspath, "");
-                //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                //    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                //    if (toolOutput == null)
-                //    {
-                //        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //        return false;
-                //    }
-                //    else
-                //    {
-                //        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleted the existing Status Info Table..."), true, ++val);
-                //    }
-                //}
-
-                //// Copy PU FC rows into new Status Info table
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying Planning Unit FC Attributes into new Status Info table..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(pufcpath, statuspath, "");
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                //toolOutput = await PRZH.RunGPTool("CopyRows_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error copying PU FC rows to Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-                //else
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Info Table successfully created and populated..."), true, ++val);
-                //}
-
-                //// Delete all fields but OID and PUID from Status Info table
-                //List<string> LIST_DeleteFields = new List<string>();
-
-                //if (!await QueuedTask.Run(async () =>
-                //{
-                //    using (Table tab = await PRZH.GetTable_PUSelRules())
-                //    {
-                //        if (tab == null)
-                //        {
-                //            ProMsgBox.Show("Error getting Status Info Table...");
-                //            return false;
-                //        }
-
-                //        TableDefinition tDef = tab.GetDefinition();
-                //        List<Field> fields = tDef.GetFields().Where(f => f.Name != tDef.GetObjectIDField() && f.Name != PRZC.c_FLD_FC_PU_ID).ToList();
-
-                //        foreach (Field field in fields)
-                //        {
-                //            LIST_DeleteFields.Add(field.Name);
-                //        }
-
-                //        return true;
-                //    }
-                //}))
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error retrieving delete field list", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Removing unnecessary fields from the Status Info table..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(statuspath, LIST_DeleteFields);
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                //toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from Status Info table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-                //else
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Info Table fields successfully deleted"), true, ++val);
-                //}
-
-                //// Now index the PUID field in the Status Info table
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing Planning Unit ID field in the Status Info table..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(statuspath, PRZC.c_FLD_TAB_PUSELRULES_ID, "ix" + PRZC.c_FLD_TAB_PUSELRULES_ID, "", "");
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                //toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add 2 additional fields to Status Info
-                //string fldQuickStatus = PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS + " LONG 'Quick Status' # # #;";
-                //string fldConflict = PRZC.c_FLD_TAB_PUSELRULES_CONFLICT + " LONG 'Conflict' # # #;";
-
-                //string flds = fldQuickStatus + fldConflict;
-
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Status Info Table..."), true, ++val);
-                //toolParams = Geoprocessing.MakeValueArray(statuspath, flds);
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                //toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                //    return false;
-                //}
-
-                //// Add INCLUDE & EXCLUDE layer-based columns to Status Info table
-                //if (!await AddLayerFields(PRZLayerNames.STATUS_INCLUDE, DT_IncludeLayers))
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding INCLUDE layer fields to Status Info Table.", LogMessageType.ERROR), true, ++val);
-                //    ProMsgBox.Show("Error adding the INCLUDE layer fields to the Status Info table.", "");
-                //    return false;
-                //}
-
-                //if (!await AddLayerFields(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers))
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding EXCLUDE layer fields to Status Info Table.", LogMessageType.ERROR), true, ++val);
-                //    ProMsgBox.Show("Error adding the EXCLUDE layer fields to the Status Info table.", "");
-                //    return false;
-                //}
-
-                #endregion
-
-                #region INTERSECT THE VARIOUS LAYERS
-
-                if (!await IntersectConstraintLayers(PRZLayerNames.STATUS_INCLUDE, DT_IncludeLayers, DICT_PUID_and_assoc_area_m2))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the INCLUDE layers.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error intersecting the INCLUDE layers.", "");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully intersected all INCLUDE layers (if any were present)."), true, ++val);
-                }
-
-                if (!await IntersectConstraintLayers(PRZLayerNames.STATUS_EXCLUDE, DT_ExcludeLayers, DICT_PUID_and_assoc_area_m2))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the EXCLUDE layers.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error intersecting the EXCLUDE layers.", "");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully disoolved all EXCLUDE layers (if any were present)."), true, ++val);
-                }
-
-                #endregion
-
-                #region UPDATE QUICKSTATUS AND CONFLICT FIELDS
-
-                Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
-                Dictionary<int, int> DICT_PUID_and_Conflict = new Dictionary<int, int>();
-
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Calculating Status Conflicts and QuickStatus"), true, ++val);
-
-                try
-                {
-                    await QueuedTask.Run(async () =>
+                    if (rule_type == SelectionRuleType.INCLUDE)
                     {
-                        using (Table table = await PRZH.GetTable_PUSelRules())
-                        using (TableDefinition tDef = table.GetDefinition())
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
+                        alias_prefix = "Include ";
+                    }
+                    else if (rule_type == SelectionRuleType.EXCLUDE)
+                    {
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
+                        alias_prefix = "Exclude ";
+                    }
+
+                    // Add 4 Fields: id, Name, Area, and Coverage
+
+                    // ID field
+                    string fId = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID;
+                    string fIdAlias = alias_prefix + srid.ToString() + " ID";
+                    string f1 = fId + " LONG '" + fIdAlias + "' # 0 #;";
+
+                    // Name field 
+                    string fName = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME;
+                    string fNameAlias = alias_prefix + srid.ToString() + " Name";
+                    string f2 = fName + " TEXT '" + fNameAlias + "' 200 # #;";
+
+                    // Area field
+                    string fArea = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                    string fAreaAlias = alias_prefix + srid.ToString() + " Area (m2)";
+                    string f3 = fArea + " DOUBLE '" + fAreaAlias + "' # 0 #;";
+
+                    // Coverage field
+                    string fCov = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+                    string fCovAlias = alias_prefix + srid.ToString() + " Coverage (%)";
+                    string f4 = fCov + " DOUBLE '" + fCovAlias + "' # 0 #;";
+
+                    flds = f1 + f2 + f3 + f4;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields for selection rule {srid}..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(pusrpath, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error adding fields...");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully..."), true, ++val);
+                    }
+
+                    // Populate the new fields
+                    if (!await QueuedTask.Run(async () =>
+                    {
+                        try
                         {
-                            // Get list of INCLUDE layer Area fields
-                            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
-
-                            // Get list of EXCLUDE layer Area fields
-                            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
-
+                            using (Table table = await PRZH.GetTable_PUSelRules())
                             using (RowCursor rowCursor = table.Search(null, false))
                             {
                                 while (rowCursor.MoveNext())
                                 {
                                     using (Row row = rowCursor.Current)
                                     {
-                                        int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                                        row[fId] = srid;
+                                        row[fName] = rule_name;
+                                        row[fArea] = 0;
+                                        row[fCov] = 0;
 
-                                        bool hasIN = false;
-                                        bool hasEX = false;
-
-                                        // Determine if there are any INCLUDE area fields having values > 0 for this PU ID
-                                        foreach (Field fld in INAreaFields)
-                                        {
-                                            double test = (double)row[fld.Name];
-                                            if (test > 0)
-                                            {
-                                                hasIN = true;
-                                            }
-                                        }
-
-                                        // Determine if there are any EXCLUDE area fields having values > 0 for this PU ID
-                                        foreach (Field fld in EXAreaFields)
-                                        {
-                                            double test = (double)row[fld.Name];
-                                            if (test > 0)
-                                            {
-                                                hasEX = true;
-                                            }
-                                        }
-
-                                        // Update the QuickStatus and Conflict information
-
-                                        // Both INCLUDE and EXCLUDE occur in PU:
-                                        if (hasIN && hasEX)
-                                        {
-                                            // Flag as a conflicted planning unit
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 1;
-                                            DICT_PUID_and_Conflict.Add(puid, 1);
-
-                                            // Set the 'winning' QuickStatus based on user-specified setting
-                                            if (SelectedOverrideOption == c_OVERRIDE_INCLUDE)
-                                            {
-                                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
-                                                DICT_PUID_and_QuickStatus.Add(puid, 2);
-                                            }
-                                            else if (SelectedOverrideOption == c_OVERRIDE_EXCLUDE)
-                                            {
-                                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
-                                                DICT_PUID_and_QuickStatus.Add(puid, 3);
-                                            }
-
-                                        }
-
-                                        // INCLUDE only:
-                                        else if (hasIN)
-                                        {
-                                            // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                                            DICT_PUID_and_Conflict.Add(puid, 0);
-
-                                            // Set the Status
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
-                                            DICT_PUID_and_QuickStatus.Add(puid, 2);
-                                        }
-
-                                        // EXCLUDE only:
-                                        else if (hasEX)
-                                        {
-                                            // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                                            DICT_PUID_and_Conflict.Add(puid, 0);
-
-                                            // Set the Status
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
-                                            DICT_PUID_and_QuickStatus.Add(puid, 3);
-                                        }
-
-                                        // Neither:
-                                        else
-                                        {
-                                            // Flag as a no-conflict planning unit
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                                            DICT_PUID_and_Conflict.Add(puid, 0);
-
-                                            // Set the Status
-                                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 0;
-                                            DICT_PUID_and_QuickStatus.Add(puid, 0);
-                                        }
-
-                                        // update the row
                                         row.Store();
                                     }
                                 }
                             }
-                        }
 
-                    });
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                            return false;
+                        }                        
+                    }))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table updated successfully."), true, ++val);
+                    }
                 }
-                catch (Exception ex)
+
+                #endregion
+
+                #region INTERSECT SELRULE LAYERS WITH PLANNING UNITS
+
+
+                if (!await IntersectRuleLayers(LIST_Rules, val))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting the Selection Rule layers.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error intersecting the Selection Rule layers.", "");
                     return false;
                 }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Selection Rule layers intersected successfully."), true, ++val);
+                }
+
+                #endregion
+
+                #region UPDATE QUICKSTATUS AND CONFLICT FIELDS
+
+                //Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
+                //Dictionary<int, int> DICT_PUID_and_Conflict = new Dictionary<int, int>();
+
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Calculating Status Conflicts and QuickStatus"), true, ++val);
+
+                //try
+                //{
+                //    await QueuedTask.Run(async () =>
+                //    {
+                //        using (Table table = await PRZH.GetTable_PUSelRules())
+                //        using (TableDefinition tDef = table.GetDefinition())
+                //        {
+                //            // Get list of INCLUDE layer Area fields
+                //            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
+
+                //            // Get list of EXCLUDE layer Area fields
+                //            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
+
+                //            using (RowCursor rowCursor = table.Search(null, false))
+                //            {
+                //                while (rowCursor.MoveNext())
+                //                {
+                //                    using (Row row = rowCursor.Current)
+                //                    {
+                //                        int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+
+                //                        bool hasIN = false;
+                //                        bool hasEX = false;
+
+                //                        // Determine if there are any INCLUDE area fields having values > 0 for this PU ID
+                //                        foreach (Field fld in INAreaFields)
+                //                        {
+                //                            double test = (double)row[fld.Name];
+                //                            if (test > 0)
+                //                            {
+                //                                hasIN = true;
+                //                            }
+                //                        }
+
+                //                        // Determine if there are any EXCLUDE area fields having values > 0 for this PU ID
+                //                        foreach (Field fld in EXAreaFields)
+                //                        {
+                //                            double test = (double)row[fld.Name];
+                //                            if (test > 0)
+                //                            {
+                //                                hasEX = true;
+                //                            }
+                //                        }
+
+                //                        // Update the QuickStatus and Conflict information
+
+                //                        // Both INCLUDE and EXCLUDE occur in PU:
+                //                        if (hasIN && hasEX)
+                //                        {
+                //                            // Flag as a conflicted planning unit
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 1;
+                //                            DICT_PUID_and_Conflict.Add(puid, 1);
+
+                //                            // Set the 'winning' QuickStatus based on user-specified setting
+                //                            if (SelectedOverrideOption == c_OVERRIDE_INCLUDE)
+                //                            {
+                //                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
+                //                                DICT_PUID_and_QuickStatus.Add(puid, 2);
+                //                            }
+                //                            else if (SelectedOverrideOption == c_OVERRIDE_EXCLUDE)
+                //                            {
+                //                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
+                //                                DICT_PUID_and_QuickStatus.Add(puid, 3);
+                //                            }
+
+                //                        }
+
+                //                        // INCLUDE only:
+                //                        else if (hasIN)
+                //                        {
+                //                            // Flag as a no-conflict planning unit
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
+                //                            DICT_PUID_and_Conflict.Add(puid, 0);
+
+                //                            // Set the Status
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
+                //                            DICT_PUID_and_QuickStatus.Add(puid, 2);
+                //                        }
+
+                //                        // EXCLUDE only:
+                //                        else if (hasEX)
+                //                        {
+                //                            // Flag as a no-conflict planning unit
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
+                //                            DICT_PUID_and_Conflict.Add(puid, 0);
+
+                //                            // Set the Status
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
+                //                            DICT_PUID_and_QuickStatus.Add(puid, 3);
+                //                        }
+
+                //                        // Neither:
+                //                        else
+                //                        {
+                //                            // Flag as a no-conflict planning unit
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
+                //                            DICT_PUID_and_Conflict.Add(puid, 0);
+
+                //                            // Set the Status
+                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 0;
+                //                            DICT_PUID_and_QuickStatus.Add(puid, 0);
+                //                        }
+
+                //                        // update the row
+                //                        row.Store();
+                //                    }
+                //                }
+                //            }
+                //        }
+
+                //    });
+                //}
+                //catch (Exception ex)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
+                //    return false;
+                //}
 
                 #endregion
 
                 #region UPDATE PLANNING UNIT FC QUICKSTATUS AND CONFLICT COLUMNS
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
 
-                try
-                {
-                    await QueuedTask.Run(async () =>
-                    {
-                        using (Table table = await PRZH.GetFC_PU())    // Get the Planning Unit FC attribute table
-                        using (RowCursor rowCursor = table.Search(null, false))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                //try
+                //{
+                //    await QueuedTask.Run(async () =>
+                //    {
+                //        using (Table table = await PRZH.GetFC_PU())    // Get the Planning Unit FC attribute table
+                //        using (RowCursor rowCursor = table.Search(null, false))
+                //        {
+                //            while (rowCursor.MoveNext())
+                //            {
+                //                using (Row row = rowCursor.Current)
+                //                {
+                //                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
 
-                                    if (DICT_PUID_and_QuickStatus.ContainsKey(puid))
-                                    {
-                                        row[PRZC.c_FLD_FC_PU_STATUS] = DICT_PUID_and_QuickStatus[puid];
-                                    }
-                                    else
-                                    {
-                                        row[PRZC.c_FLD_FC_PU_STATUS] = -1;
-                                    }
+                //                    if (DICT_PUID_and_QuickStatus.ContainsKey(puid))
+                //                    {
+                //                        row[PRZC.c_FLD_FC_PU_STATUS] = DICT_PUID_and_QuickStatus[puid];
+                //                    }
+                //                    else
+                //                    {
+                //                        row[PRZC.c_FLD_FC_PU_STATUS] = -1;
+                //                    }
 
-                                    if (DICT_PUID_and_Conflict.ContainsKey(puid))
-                                    {
-                                        row[PRZC.c_FLD_FC_PU_CONFLICT] = DICT_PUID_and_Conflict[puid];
-                                    }
-                                    else
-                                    {
-                                        row[PRZC.c_FLD_FC_PU_CONFLICT] = -1;
-                                    }
+                //                    if (DICT_PUID_and_Conflict.ContainsKey(puid))
+                //                    {
+                //                        row[PRZC.c_FLD_FC_PU_CONFLICT] = DICT_PUID_and_Conflict[puid];
+                //                    }
+                //                    else
+                //                    {
+                //                        row[PRZC.c_FLD_FC_PU_CONFLICT] = -1;
+                //                    }
 
-                                    row.Store();
-                                }
-                            }
-                        }
+                //                    row.Store();
+                //                }
+                //            }
+                //        }
 
-                    });
-                }
-                catch (Exception ex)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
-                    return false;
-                }
+                //    });
+                //}
+                //catch (Exception ex)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
+                //    return false;
+                //}
 
                 #endregion
 
                 #region WRAP THINGS UP
 
                 // Populate the Grid
-                bool Populated = await PopulateConflictGrid();
+//                bool Populated = await PopulateConflictGrid();
 
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the geodatabase..."), true, ++val);
@@ -1259,15 +1165,20 @@ namespace NCC.PRZTools
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error compacting the geodatabase...");
                     return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacted successfully..."), true, ++val);
                 }
 
                 // Refresh the Map & TOC
-                if (!await PRZM.ValidatePRZGroupLayers())
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error validating PRZ layers...", LogMessageType.ERROR), true, ++val);
-                    return false;
-                }
+                //if (!await PRZM.ValidatePRZGroupLayers())
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error validating PRZ layers...", LogMessageType.ERROR), true, ++val);
+                //    return false;
+                //}
 
                 // Wrap things up
                 stopwatch.Stop();
@@ -1275,7 +1186,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
-                ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
+                ProMsgBox.Show("Success!" + Environment.NewLine + Environment.NewLine + message);
 
                 return true;
 
@@ -1743,211 +1654,53 @@ namespace NCC.PRZTools
             }
         }
 
-
-
-
-
-
-        private async Task<bool> IntersectConstraintLayers(PRZLayerNames layer, DataTable DT, Dictionary<int, double> DICT_PUID_area)
+        private async Task<bool> IntersectRuleLayers(List<SelectionRule> rules, int val)
         {
             try
             {
-                var success = await QueuedTask.Run(async () =>
+                #region BUILD PUID AND TOTAL PU AREA DICTIONARY
+
+                Dictionary<int, double> DICT_PUID_Area_Total = new Dictionary<int, double>();
+
+                if (!await QueuedTask.Run(async () =>
                 {
-                    Map map = MapView.Active.Map;
-
-                    // Some GP variables
-                    IReadOnlyList<string> toolParams;
-                    IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                    GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                    string toolOutput;
-
-                    // some paths
-                    string gdbpath = PRZH.GetPath_ProjectGDB();
-                    string pufcpath = PRZH.GetPath_FC_PU();
-                    string statuspath = PRZH.GetPath_Table_PUSelRules();
-
-                    // some other stuff
-                    FeatureLayer PUFL = PRZH.GetFeatureLayer_PU(map);
-                    PUFL.ClearSelection();  // we don't want selected features only, we want all of them
-
-                    List<FeatureLayer> LIST_FL = null;
-                    string group = "";
-                    string prefix = "";
-
-                    switch (layer)
+                    try
                     {
-                        case PRZLayerNames.STATUS_INCLUDE:
-                            LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
-                            group = "INCLUDE";
-                            prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
-                            break;
-                        case PRZLayerNames.STATUS_EXCLUDE:
-                            LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
-                            group = "EXCLUDE";
-                            prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
-                            break;
-                        default:
-                            return false;
-                    }
-
-                    foreach (DataRow DR in DT.Rows)
-                    {
-                        FeatureLayer FL = (FeatureLayer)DR[PRZC.c_FLD_DATATABLE_STATUS_LAYER];
-                        FL.ClearSelection();    // get rid of any selection on this layer
-
-                        int layer_index = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX];
-                        string layer_name = DR[PRZC.c_FLD_DATATABLE_STATUS_NAME].ToString();
-                        int layer_status = (int)DR[PRZC.c_FLD_DATATABLE_STATUS_STATUS];
-                        double threshold_double = (double)DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD];
-                        int layer_number = layer_index + 1;
-
-                        string intersect_fc_name = prefix + layer_number.ToString() + "_Prelim1_Int";
-                        string intersect_fc_path = Path.Combine(gdbpath, intersect_fc_name);
-
-                        // Construct the inputs value array
-                        object[] a = { PUFL, 1 };   // prelim array -> combine the layer object and the Rank (PU layer)
-                        object[] b = { FL, 2 };     // prelim array -> combine the layer object and the Rank (layer from DT)
-
-                        var a2 = Geoprocessing.MakeValueArray(a);   // Let this method figure out how best to quote the layer info
-                        var b2 = Geoprocessing.MakeValueArray(b);   // Let this method figure out how best to quote the layer info
-
-                        string inputs_string = String.Join(" ", a2) + ";" + String.Join(" ", b2);   // my final inputs string
-
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersecting " + group + " layer " + layer_number.ToString() + ": " + layer_name), true);
-                        toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_fc_path, "ALL", "", "INPUT");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);                        
-                        toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, toolFlags);
-                        if (toolOutput == null)
+                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                        using (RowCursor rowCursor = featureClass.Search(null, false))
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error intersecting " + group + " layer " + layer_number.ToString() + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
-                            return false;
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Intersect was successful for " + group + " layer " + layer_number.ToString() + "."), true);
-                        }
-
-                        // Now dissolve the temp intersect layer on PUID
-                        string dissolve_fc_name = prefix + layer_number.ToString() + "_Prelim2_Dslv";
-                        string dissolve_fc_path = Path.Combine(gdbpath, dissolve_fc_name);
-
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Dissolving on Planning Unit ID..."), true);
-                        toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_FC_PU_ID, "", "MULTI_PART", "");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, toolFlags);
-                        if (toolOutput == null)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error dissolving " + intersect_fc_name + ".  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
-                            return false;
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog(intersect_fc_name + " was dissolved successfully."), true);
-                        }
-
-                        // Pass through the Dissolve Layer, and retrieve the PUID and area for each feature (store in DICT)
-                        Dictionary<int, double> DICT_PUID_and_dissolved_area = new Dictionary<int, double>();
-
-                        // get the puids and areas from the dissolved features first
-                        using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                        using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
-                        {
-                            if (fc == null)
+                            while (rowCursor.MoveNext())
                             {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to locate dissolve output: " + dissolve_fc_name, LogMessageType.ERROR), true);
-                                return false;
-                            }
-
-                            using (RowCursor rowCursor = fc.Search(null, true))
-                            {
-                                while (rowCursor.MoveNext())
+                                using (Row row1 = rowCursor.Current)
                                 {
-                                    using (Feature feature = (Feature)rowCursor.Current)
-                                    {
-                                        int puid = Convert.ToInt32(feature[PRZC.c_FLD_FC_PU_ID]);
+                                    int pu_id = (int)row1[PRZC.c_FLD_FC_PU_ID];
+                                    double a = (double)row1[PRZC.c_FLD_FC_PU_AREA_M];
 
-                                        Polygon poly = (Polygon)feature.GetShape();
-                                        double area_m = poly.Area;
-
-                                        DICT_PUID_and_dissolved_area.Add(puid, area_m);
-                                    }
+                                    DICT_PUID_Area_Total.Add(pu_id, a);
                                 }
                             }
                         }
 
-                        // Now write this puid and area information into the Status Info table
-                        using (Table table = await PRZH.GetTable_PUSelRules())
-                        {
-                            QueryFilter QF = new QueryFilter();
-                            QF.SubFields = "*";
-
-                            foreach (KeyValuePair<int, double> kvp in DICT_PUID_and_dissolved_area)
-                            {
-                                int puid = kvp.Key;
-                                double area_constraint_m = kvp.Value;
-                                double area_planning_unit_m = DICT_PUID_area[puid];
-                                double percent_constrained = area_constraint_m / area_planning_unit_m;
-                                string area_field = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
-
-                                QF.WhereClause = PRZC.c_FLD_FC_PU_ID + " = " + kvp.Key;
-
-                                if (percent_constrained >= threshold_double)
-                                {
-                                    using (RowCursor rowCursor = table.Search(QF, false))
-                                    {
-                                        while (rowCursor.MoveNext())
-                                        {
-                                            using (Row row = rowCursor.Current)
-                                            {
-                                                row[area_field] = area_constraint_m;
-                                                row.Store();
-                                            }
-                                        }
-
-                                    }
-                                }
-                            }
-                        }
-
-                        // Finally, delete the two temp feature classes
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature classes..."), true);
-
-                        object[] e = { intersect_fc_path, dissolve_fc_path };
-                        var e2 = Geoprocessing.MakeValueArray(e);   // Let this method figure out how best to quote the paths
-                        string inputs2= String.Join(";", e2);
-                        toolParams = Geoprocessing.MakeValueArray(inputs2, "");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                        if (toolOutput == null)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temp feature classes.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
-                            return false;
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp Feature Classes deleted successfully."), true);
-                        }
+                        return true;
                     }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error constructing PUID and Area dictionary...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error constructing PUID and Area dictionary.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dictionary constructed..."), true, ++val);
+                }
 
-                    return true;
+                #endregion
 
-                });
-
-                return success;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
-                return false;
-            }
-        }
-
-        private async Task<bool> AddLayerFields(PRZLayerNames layer, DataTable DT)
-        {
-            try
-            {
                 Map map = MapView.Active.Map;
 
                 // Some GP variables
@@ -1956,114 +1709,454 @@ namespace NCC.PRZTools
                 GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                 string toolOutput;
 
+                // some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string statuspath = PRZH.GetPath_Table_PUSelRules();
+                string pufcpath = PRZH.GetPath_FC_PU();
+                string pusrpath = PRZH.GetPath_Table_PUSelRules();
+                string srpath = PRZH.GetPath_Table_SelRules();
 
-                List<FeatureLayer> LIST_FL = null;
-                string group = "";
-                string prefix = "";
+                // some planning unit elements
+                FeatureLayer PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
+                SpatialReference PUFC_SR = null;
+                Envelope PUFC_Extent = null;
 
-                switch (layer)
+                if (!await QueuedTask.Run(async () =>
                 {
-                    case PRZLayerNames.STATUS_INCLUDE:
-                        LIST_FL = PRZH.GetFeatureLayers_STATUS_INCLUDE(map);
-                        group = "INCLUDE";
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
-                        break;
-                    case PRZLayerNames.STATUS_EXCLUDE:
-                        LIST_FL = PRZH.GetFeatureLayers_STATUS_EXCLUDE(map);
-                        group = "EXCLUDE";
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
-                        break;
-                    default:
+                    try
+                    {
+                        PUFL.ClearSelection();
+
+                        using (FeatureClass PUFC = await PRZH.GetFC_PU())
+                        using (FeatureClassDefinition fcDef = PUFC.GetDefinition())
+                        {
+                            PUFC_SR = fcDef.GetSpatialReference();
+                            PUFC_Extent = PUFC.GetExtent();
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
+                    }
+
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Spatial Reference and Extent...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Spatial Reference and Extent.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved spatial reference and extent."), true, ++val);
                 }
 
-                foreach (DataRow DR in DT.Rows)
+                foreach (SelectionRule SR in rules)
                 {
-                    int layer_index = Convert.ToInt32(DR[PRZC.c_FLD_DATATABLE_STATUS_INDEX]);
-                    string layer_name = DR[PRZC.c_FLD_DATATABLE_STATUS_NAME].ToString();
-                    double threshold_double = Convert.ToDouble(DR[PRZC.c_FLD_DATATABLE_STATUS_THRESHOLD]);
-                    int layer_number = layer_index + 1; // not sure why I need this?  maybe zeros aren't cool as the first layer?
-                    string layer_name_75 = (layer_name.Length > 75) ? layer_name.Substring(0, 75) : layer_name;
+                    // Get some Rule info
+                    int srid = SR.sr_id;
+                    string name = SR.sr_name;
+                    SelectionRuleType ruletype = SR.sr_rule_type;
+                    SelectionRuleLayerType layertype = SR.sr_layer_type;
+                    int threshold = SR.sr_min_threshold;
 
-                    // Add all the fields for this layer
-                    string fldName = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME;
-                    string fldNameAlias = prefix + " " + layer_number.ToString() + " Name";
-                    string fld1 = fldName + " TEXT '" + fldNameAlias + "'  75 # #;";
+                    string prefix = "";
 
-                    string fldStatus = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATUS;
-                    string fldStatusAlias = prefix + " " + layer_number.ToString() + " Status";
-                    string fld2 = fldStatus + " LONG '" + fldStatusAlias + "' # # #;";
-
-                    string fldArea = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
-                    string fldAreaAlias = prefix + " " + layer_number.ToString() + " Area (m2)";
-                    string fld3 = fldArea + " DOUBLE '" + fldAreaAlias + "' # # #;";
-
-                    string fldThreshold = prefix + layer_number.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_THRESH;
-                    string fldThresholdAlias = prefix + " " + layer_number.ToString() + " Threshold";
-                    string fld4 = fldThreshold + " DOUBLE '" + fldThresholdAlias + "' # # #;";
-
-                    string flds = fld1 + fld2 + fld3 + fld4;
-
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding " + group + " Layer fields to Status Info Table..."), true);
-                    toolParams = Geoprocessing.MakeValueArray(statuspath, flds);
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                    if (toolOutput == null)
+                    if (ruletype == SelectionRuleType.INCLUDE)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding Layer fields to Status Info Table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
-                        return false;
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
+                    }
+                    else if (ruletype == SelectionRuleType.EXCLUDE)
+                    {
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
+                    }
+                    else
+                    { 
+                        return false; 
+                    }
+
+                    // Process each rule layer
+                    if (SR.sr_layer_object is FeatureLayer FL)
+                    {
+                        // Clear selection on rule layer
+                        await QueuedTask.Run(() =>
+                        {
+                            FL.ClearSelection();
+                        });
+
+                        // Prepare for Intersection Prelim FCs
+                        string intersect_fc_name = PRZC.c_FC_TEMP_PUSELRULES_PREFIX + srid.ToString() + PRZC.c_FC_TEMP_PUSELRULES_SUFFIX_INT;
+                        string intersect_fc_path = Path.Combine(gdbpath, intersect_fc_name);
+
+                        // Construct the inputs value array
+                        object[] a = { PUFL, 1 };   // prelim array -> combine the layer object and the Rank (PU layer)
+                        object[] b = { FL, 2 };     // prelim array -> combine the layer object and the Rank (Rule layer)
+
+                        IReadOnlyList<string> a2 = Geoprocessing.MakeValueArray(a);   // Let this method figure out how best to quote the layer info
+                        IReadOnlyList<string> b2 = Geoprocessing.MakeValueArray(b);   // Let this method figure out how best to quote the layer info
+
+                        string inputs_string = string.Join(" ", a2) + ";" + string.Join(" ", b2);   // my final inputs string
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersecting selection rule {srid} layer ({name})."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_fc_path, "ALL", "", "INPUT");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: PUFC_SR);
+                        toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error intersecting selection rule {srid} layer.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error intersecting selection rule {srid} layer.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersection successful for selection rule {srid} layer."), true, ++val);
+                        }
+
+                        // Now dissolve the temp intersect layer on PUID
+                        string dissolve_fc_name = PRZC.c_FC_TEMP_PUSELRULES_PREFIX + srid.ToString() + PRZC.c_FC_TEMP_PUSELRULES_SUFFIX_DSLV;
+                        string dissolve_fc_path = Path.Combine(gdbpath, dissolve_fc_name);
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dissolving {intersect_fc_name} on {PRZC.c_FLD_FC_PU_ID}..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(intersect_fc_path, dissolve_fc_path, PRZC.c_FLD_FC_PU_ID, "", "MULTI_PART", "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: PUFC_SR);
+                        toolOutput = await PRZH.RunGPTool("Dissolve_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error dissolving {intersect_fc_name}.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error dissolving {intersect_fc_name}.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{intersect_fc_name} was dissolved successfully."), true, ++val);
+                        }
+
+                        // Extract the dissolved area for each puid into a second dictionary
+                        Dictionary<int, double> DICT_PUID_Area_Dissolved = new Dictionary<int, double>();
+
+                        if (!await QueuedTask.Run(async () =>
+                        {
+                            try
+                            {
+                                using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                                using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
+                                {
+                                    if (fc == null)
+                                    {
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to locate dissolve output: " + dissolve_fc_name, LogMessageType.ERROR), true, ++val);
+                                        return false;
+                                    }
+
+                                    using (RowCursor rowCursor = fc.Search(null, false))
+                                    {
+                                        while (rowCursor.MoveNext())
+                                        {
+                                            using (Feature feature = (Feature)rowCursor.Current)
+                                            {
+                                                int puid = Convert.ToInt32(feature[PRZC.c_FLD_FC_PU_ID]);
+
+                                                Polygon poly = (Polygon)feature.GetShape();
+                                                double area_m = poly.Area;
+
+                                                DICT_PUID_Area_Dissolved.Add(puid, area_m);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error constructing PUID and Dissolved Area dictionary...", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error constructing PUID and Dissolved Area dictionary.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dictionary constructed..."), true, ++val);
+                        }
+
+                        // Write this information to the PU SelRules table
+                        if (!await QueuedTask.Run(async () =>
+                        {
+                            try
+                            {
+                                // Get the Area and Coverage fields for this Selection Rule
+                                string AreaField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                                string CoverageField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+
+                                // Iterate through each PUID returned from the intersection (this dictionary might only have a few, or even no entries)
+                                foreach (KeyValuePair<int, double> KVP in DICT_PUID_Area_Dissolved)
+                                {
+                                    int PUID = KVP.Key;
+                                    double area_dslv = KVP.Value;
+                                    double area_total = DICT_PUID_Area_Total[PUID];
+                                    double coverage = area_dslv / area_total;    // write this to table later
+
+                                    double coverage_pct = (coverage > 1) ? 100 : coverage * 100.0;
+
+                                    coverage_pct = Math.Round(coverage_pct, 1, MidpointRounding.AwayFromZero);
+
+                                    QueryFilter QF = new QueryFilter
+                                    {
+                                        WhereClause = PRZC.c_FLD_TAB_PUSELRULES_ID + " = " + PUID.ToString()
+                                    };
+
+                                    using (Table table = await PRZH.GetTable_PUSelRules())
+                                    using (RowCursor rowCursor = table.Search(QF, false))
+                                    {
+                                        while (rowCursor.MoveNext())
+                                        {
+                                            using (Row row = rowCursor.Current)
+                                            {
+                                                row[AreaField] = area_dslv;
+                                                row[CoverageField] = coverage_pct;
+                                                row.Store();
+                                            }
+                                        }
+                                    }
+                                }
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing dissolve info to the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error writing dissolve info to the {PRZC.c_TABLE_PUSELRULES} table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dissolve info written to {PRZC.c_TABLE_PUSELRULES}..."), true, ++val);
+                        }
+
+                        // Finally, delete the two temp feature classes
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature classes..."), true, ++val);
+
+                        object[] e = { intersect_fc_path, dissolve_fc_path };
+                        var e2 = Geoprocessing.MakeValueArray(e);   // Let this method figure out how best to quote the paths
+                        string inputs2 = String.Join(";", e2);
+                        toolParams = Geoprocessing.MakeValueArray(inputs2, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temp feature classes.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show("Error deleting temp feature classes...");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp feature classes deleted successfully."), true, ++val);
+                        }
+                    }
+                    else if (SR.sr_layer_object is RasterLayer RL)
+                    {
+                        // Get the Raster Layer and its SRs
+                        SpatialReference RL_SR = null;
+                        SpatialReference R_SR = null;
+
+                        if (!await QueuedTask.Run(() =>
+                        {
+                            try
+                            {
+                                RL_SR = RL.GetSpatialReference();               // do I need this one...
+
+                                using (Raster costRaster = RL.GetRaster())
+                                {
+                                    R_SR = costRaster.GetSpatialReference();    // or this one... ?
+                                }
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Spatial Reference and Extent...", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error retrieving Spatial Reference and Extent.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved spatial reference and extent."), true, ++val);
+                        }
+
+                        // prepare the temporary zonal stats table
+                        string tabname = "sr_zonal_temp";
+
+                        // Calculate Zonal Statistics as Table
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for rule {srid} table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_FC_PU_ID, RL, tabname);  // TODO: Ensure I'm using the correct object: FL or FC?  Which one?
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing the Zonal Statistics as Table tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show("Error executing zonal statistics as table tool...");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Zonal Statistics as Table tool completed successfully."), true, ++val);
+                        }
+
+                        // Retrieve info from the zonal stats table.
+                        // Each record in the zonal stats table represents a single PU ID
+
+                        // for each PU ID, I need the following:
+                        //  > COUNT field value     -- this is the number of raster cells found within the zone (the PU)
+                        //  > AREA field value      -- this is the total area of all cells within zone (cell area * count)
+
+                        // *** COUNT is based on all cells having a non-NODATA value ***
+                        // *** This is a business rule that PRZ Tools users will need to be aware of when supplying CF rasters
+
+                        Dictionary<int, Tuple<int, double>> DICT_PUID_and_count_area = new Dictionary<int, Tuple<int, double>>();
+
+                        if (!await QueuedTask.Run(async () =>
+                        {
+                            try
+                            {
+                                using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                                using (Table table = await PRZH.GetTable(gdb, tabname))
+                                using (RowCursor rowCursor = table.Search(null, false))
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_ZONALSTATS_ID]);
+                                            int count = Convert.ToInt32(row[PRZC.c_FLD_ZONALSTATS_COUNT]);
+                                            double area = Convert.ToDouble(row[PRZC.c_FLD_ZONALSTATS_AREA]);
+
+                                            if (puid > 0)
+                                            {
+                                                DICT_PUID_and_count_area.Add(puid, Tuple.Create(count, area));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Zonal Stats...", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error retrieving Zonal Stats.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal stats retrieved."), true, ++val);
+                        }
+
+                        // Delete the temp zonal stats table (I no longer need it, I think...)
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tabname} Table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(tabname, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {tabname} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error deleting the {tabname} table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tabname} table deleted."), true, ++val);
+                        }
+
+                        // Get the Area and Coverage fields for this Selection Rule
+                        string AreaField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                        string CoverageField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+
+                        foreach (KeyValuePair<int, Tuple<int, double>> KVP in DICT_PUID_and_count_area)
+                        {
+                            int PUID = KVP.Key;
+                            Tuple<int, double> tuple = KVP.Value;
+
+                            int count_ras = tuple.Item1;
+                            double area_ras = tuple.Item2;
+                            double area_total = DICT_PUID_Area_Total[PUID];
+                            double coverage = area_ras / area_total;
+                            double coverage_pct = (coverage > 1) ? 100 : coverage * 100.0;
+
+                            coverage_pct = Math.Round(coverage_pct, 1, MidpointRounding.AwayFromZero);
+
+                            QueryFilter QF = new QueryFilter
+                            {
+                                WhereClause = PRZC.c_FLD_TAB_PUSELRULES_ID + " = " + PUID.ToString()
+                            };
+
+                            if (!await QueuedTask.Run(async () =>
+                            {
+                                try
+                                {
+                                    using (Table table = await PRZH.GetTable_PUSelRules())
+                                    using (RowCursor rowCursor = table.Search(QF, false))
+                                    {
+                                        while (rowCursor.MoveNext())
+                                        {
+                                            using (Row row = rowCursor.Current)
+                                            {
+                                                row[AreaField] = area_ras;
+                                                row[CoverageField] = coverage_pct;
+                                                row.Store();
+                                            }
+                                        }
+                                    }
+
+                                    return true;
+                                }
+                                catch (Exception ex)
+                                {
+                                    ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                    return false;
+                                }
+                            }))
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing rule {srid} info to the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
+                                ProMsgBox.Show($"Error writing rule {srid} info to the {PRZC.c_TABLE_PUSELRULES} table.");
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Rule {srid} info written to the {PRZC.c_TABLE_PUSELRULES} table."), true, ++val);
+                            }
+                        }
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added."), true);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Selection Rule {srid} layer is neither a FeatureLayer or a RasterLayer", LogMessageType.ERROR), true, ++val);
+                        return false;
                     }
-
-                    // Now Calculate these fields
-                    await QueuedTask.Run(async () =>
-                    {
-                        using (Table table = await PRZH.GetTable_PUSelRules())
-                        using (RowCursor rowCursor = table.Search(null, false))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    // set the name
-                                    row[fldName] = layer_name_75;
-
-                                    // set the status
-                                    if (prefix == PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE)
-                                    {
-                                        row[fldStatus] = 2;
-                                    }
-                                    else if (prefix == PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE)
-                                    {
-                                        row[fldStatus] = 3;
-                                    }
-                                    else
-                                    {
-                                        row[fldStatus] = 0;
-                                    }
-
-                                    // set the area to 0
-                                    row[fldArea] = 0;
-
-                                    // set the layer threshold
-                                    row[fldThreshold] = threshold_double;
-
-                                    row.Store();
-                                }
-                            }
-                        }
-                    });
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
@@ -2455,6 +2548,7 @@ namespace NCC.PRZTools
                 // Some GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                 string toolOutput;
 
                 // Initialize ProgressBar and Progress Log
@@ -2464,9 +2558,11 @@ namespace NCC.PRZTools
                 // Quit if table doesn't exist
                 if (!await PRZH.TableExists_PUSelRules())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Status Table does not exist in the Project Geodatabase."), true, ++val);
-                    ProMsgBox.Show("Status Info table does not exist in the Project Geodatabase.  There's nothing to delete.");
-                    return true;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_SELRULES} table not found in the Project Geodatabase."), true, ++val);
+                }
+                else
+                {
+                    // I'M HERE
                 }
 
                 // Validation: Prompt User for permission to proceed

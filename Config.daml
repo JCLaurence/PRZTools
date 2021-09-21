@@ -32,8 +32,8 @@
         <group id="prz_group_configuration" caption="Project Construction" keytip="z">
           <!--Planning Unit Generator Dialog Button-->
           <button refID="prz_button_pugenerator" size="large" />
-          <!--Planning Unit Status Dialog Button-->
-          <button refID="prz_button_pustatus" size="large" />
+          <!--Planning Unit Selection Rules Dialog Button-->
+          <button refID="prz_button_selectionrules" size="large" />
           <!--Planning Unit Cost Dialog Button-->
           <button refID="prz_button_pucost" size="large" />
           <!--Conservation Feature Generator Dialog Button-->
@@ -77,10 +77,10 @@
               Active Pane must be a Map
             </disabledText></tooltip>
         </button>
-        <!--Planning Unit Status Calculator Dialog Button-->
-        <button id="prz_button_pustatus" caption="Planning Unit Status" className="Button_PUStatus" keytip="z" loadOnClick="true" smallImage="Images\PUStatus16.png" largeImage="Images\PUStatus32.png" condition="esri_mapping_mapPane">
-          <tooltip heading="Planning Unit Status Calculator">
-            Update your planning unit statuses using various input layers.
+        <!--Planning Unit Selection Rules Dialog Button-->
+        <button id="prz_button_selectionrules" caption="Selection Rules" className="Button_SelectionRules" keytip="z" loadOnClick="true" smallImage="Images\PUStatus16.png" largeImage="Images\PUStatus32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Selection Rule Generator">
+            Update your planning unit selection rules using various input layers.
             <disabledText>
               Active Pane must be a Map
             </disabledText></tooltip>
@@ -131,8 +131,8 @@
             ToolTip
             <disabledText></disabledText></tooltip>
         </button>
-        <!--Legend Button - Planning Unit Status-->
-        <button id="prz_button_legend_pu_status" keytip="z" caption="Planning Units - Status" className="Button_Legend_PU_Status" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+        <!--Legend Button - Planning Unit Selection Rules-->
+        <button id="prz_button_legend_pu_selrules" keytip="z" caption="Planning Units - Selection Rules" className="Button_Legend_PU_SelRules" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Legend">
             ToolTip
             <disabledText></disabledText></tooltip>
@@ -160,7 +160,7 @@
         <!--LEGEND MENU-->
         <menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
           <button refID="prz_button_legend_pu_basic" />
-          <button refID="prz_button_legend_pu_status" />
+          <button refID="prz_button_legend_pu_selrules" />
           <button refID="prz_button_legend_pu_cost" />
           <button refID="prz_button_legend_pu_cf_count" />
           <button refID="prz_button_legend_pu_boundary" />

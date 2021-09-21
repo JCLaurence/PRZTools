@@ -150,9 +150,13 @@
         public const string c_FC_TEMP_PUVCF_SUFFIX_INT = "_int";
         public const string c_FC_TEMP_PUVCF_SUFFIX_DSLV = "_dslv";
 
+        public const string c_FC_TEMP_PUSELRULES_PREFIX = "pusr_tmp";
+        public const string c_FC_TEMP_PUSELRULES_SUFFIX_INT = "_int";
+        public const string c_FC_TEMP_PUSELRULES_SUFFIX_DSLV = "_dslv";
+
         // TABLES
-        public const string c_TABLE_SELRULES = "status";
-        public const string c_TABLE_PUSELRULES = "pu_status";
+        public const string c_TABLE_SELRULES = "selection_rules";
+        public const string c_TABLE_PUSELRULES = "pu_selection_rules";
         public const string c_TABLE_PUBOUNDARY = "pu_boundary";
         public const string c_TABLE_FEATURES = "features";
         public const string c_TABLE_PUFEATURES = "pu_features";
@@ -202,10 +206,10 @@
         public const string c_FLD_TAB_PUSELRULES_CONFLICT = "conflict";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE = "IN_";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE = "EX_";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID = "_ID";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_NAME = "_NAME";
-        public const string c_FLD_TAB_PUSELRULES_SUFFIX_STATUS = "_STATUS";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_AREA = "_AREA";
-        public const string c_FLD_TAB_PUSELRULES_SUFFIX_THRESH = "_THRESHOLD";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE = "_COV";
 
         // SELECTION RULES
         public const string c_FLD_TAB_SELRULES_ID = "sr_id";

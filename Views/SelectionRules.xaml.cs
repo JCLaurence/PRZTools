@@ -18,11 +18,11 @@ namespace NCC.PRZTools
     /// <summary>
     /// Interaction logic for PUStatus.xaml
     /// </summary>
-    public partial class PUStatus : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class SelectionRules : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        public PUStatusVM vm = new PUStatusVM();
+        public SelectionRulesVM vm = new SelectionRulesVM();
 
-        public PUStatus()
+        public SelectionRules()
         {
             InitializeComponent();
             this.DataContext = vm;

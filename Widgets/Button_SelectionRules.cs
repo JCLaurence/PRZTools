@@ -1,16 +1,19 @@
 ﻿using ArcGIS.Core.CIM;
+using ArcGIS.Core.Geometry;
+using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 using System;
 using System.Reflection;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
+using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    internal class Button_Legend_PU_Status : Button
+    internal class Button_SelectionRules : Button
     {
+
         protected override async void OnClick()
         {
             try
@@ -68,21 +71,54 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region Get the FL and update the legend
+                #region Layers Check
 
-                await QueuedTask.Run(async () =>
+                // Ensure the PRZ Group Layer is set up
+                //if (!await PRZM.ValidatePRZGroupLayers())
+                //{
+                //    ProMsgBox.Show("Unable to Validate PRZ Layers");
+                //    return;
+                //}
+
+                // Ensure the Planning Unit Layer is present
+                if (!await PRZH.FCExists_PU())
                 {
-                    if (PRZH.PRZLayerExists(map, PRZLayerNames.PU))
+                    ProMsgBox.Show("You must first construct a Planning Unit Feature Class.");
+                    return;
+                }
+
+                // Ensure that the active map has an acceptable spatial reference
+                // TODO: Determine what constitutes a valid SR
+                SpatialReference SR = map.SpatialReference;
+
+                #endregion
+
+                #region Configure and Show the Planning Unit Status Calculator Dialog
+
+                SelectionRules dlg = new SelectionRules();                  // View
+                SelectionRulesVM vm = (SelectionRulesVM)dlg.DataContext;    // View Model
+
+                dlg.Owner = FrameworkApplication.Current.MainWindow;
+
+                // Closed Event Handler
+                dlg.Closed += (o, e) =>
+                {
+                    // Event Handler for Dialog close in case I need to do things...
+                    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+                };
+
+                // Loaded Event Handler
+                dlg.Loaded += (sender, e) =>
+                {
+                    if (vm != null)
                     {
-                        FeatureLayer featureLayer = PRZH.GetFeatureLayer_PU(map);
-                        await PRZH.ApplyLegend_PU_SelRules(featureLayer);
-                        featureLayer.SetVisibility(true);
+                        vm.OnProWinLoaded();
                     }
-                    else
-                    {
-                        ProMsgBox.Show("Planning Unit Layer is not present.  Please reload the PRZ Layers");
-                    }
-                });
+                };
+
+                var result = dlg.ShowDialog();
+                // Take whatever action required here once the dialog is closed (true or false)
+                // do stuff here!
 
                 #endregion
             }
@@ -91,5 +127,6 @@ namespace NCC.PRZTools
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
+
     }
 }
