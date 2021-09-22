@@ -16,18 +16,13 @@ namespace NCC.PRZTools
 
         public YamlVariable variable;
 
-        public bool initial_status;
+        public bool status = true;
 
-        public bool initial_visible;
+        public bool visible = true;
 
-        public double initial_factor;
+        public bool hidden = false;
 
-        public double min_factor;
-
-        public double max_factor;
-
-        public double step_factor;
-
+        public double factor = 0.0;
 
     }
 }

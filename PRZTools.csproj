@@ -179,6 +179,7 @@
     <Compile Include="Widgets\Button_Legend_PU_Boundary.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Cost.cs" />
+    <Compile Include="Widgets\Button_Legend_PU_SelRuleConflicts.cs" />
     <Compile Include="Widgets\Button_Legend_PU_SelRules.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
     <Compile Include="Models\ProgressManager.cs" />

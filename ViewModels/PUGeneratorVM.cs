@@ -260,7 +260,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Methods
+        #region METHODS
 
         public async Task OnProWinLoaded()
         {
@@ -789,7 +789,7 @@ namespace NCC.PRZTools
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
                 string fldNCCID = PRZC.c_FLD_FC_PU_NCC_ID + " LONG 'NCC ID' # # #;";
-                string fldPUStatus = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " LONG 'Effective Rule' # 2 #;";
+                string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 50 # #;";
                 string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                 string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M + " DOUBLE 'Square m' # 1 #;";
@@ -802,7 +802,7 @@ namespace NCC.PRZTools
 
                 string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
 
-                string flds = fldPUID + fldNCCID + fldPUStatus + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+                string flds = fldPUID + fldNCCID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Planning Unit FC..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -1244,7 +1244,6 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM] = km;
 
                                             // Set common values
-                                            rowBuffer[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = 0;
                                             rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_FC_PU_COST] = 1;
                                             rowBuffer[PRZC.c_FLD_FC_PU_SHARED_PERIM] = 0;
@@ -1284,7 +1283,6 @@ namespace NCC.PRZTools
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM] = km;
 
                                             // Set common values
-                                            rowBuffer[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = 0;
                                             rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
                                             rowBuffer[PRZC.c_FLD_FC_PU_COST] = 1;
                                             rowBuffer[PRZC.c_FLD_FC_PU_SHARED_PERIM] = 0;

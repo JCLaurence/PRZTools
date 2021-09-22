@@ -16,11 +16,13 @@ namespace NCC.PRZTools
 
         public YamlVariable variable;
 
-        public bool mandatory;
+        public bool mandatory = false;
 
-        public bool initial_status;
+        public bool status = true;
 
-        public bool initial_visible;
+        public bool visible = true;
+
+        public bool hidden = false;
 
     }
 }

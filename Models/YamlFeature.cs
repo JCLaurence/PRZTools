@@ -22,8 +22,11 @@ namespace NCC.PRZTools
         // Indicates if this feature is to be "used" in the WTW calculations
         public bool status = true;
 
-        // Indicates if the feature's associated layer is visible in the WTW viewer
+        // Indicates if the feature's associated layer is initially visible in the WTW viewer's map control
         public bool visible = true;
+
+        // Indicates if the feature's associated layer is locked in the "visible=false" state.  Meant for scenarios with large numbers of features
+        public bool hidden = false;
 
         // Goal or target: ranges from 0 to 1, inclusive
         public double goal = 0;

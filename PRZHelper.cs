@@ -2339,15 +2339,15 @@ namespace NCC.PRZTools
                     CIMColor fillColor_Exclude = GetNamedColor(Color.OrangeRed);
 
                     // SYMBOLS
-                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 1, SimpleLineStyle.Solid);
+                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 0.3, SimpleLineStyle.Solid);
                     CIMPolygonSymbol fillSym_Available = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Available, SimpleFillStyle.Solid, outlineSym);
                     CIMPolygonSymbol fillSym_Include = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Include, SimpleFillStyle.Solid, outlineSym);
                     CIMPolygonSymbol fillSym_Exclude = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Exclude, SimpleFillStyle.Solid, outlineSym);
 
                     // CIM UNIQUE VALUES
-                    CIMUniqueValue uv_Available = new CIMUniqueValue { FieldValues = new string[] { "0" } };
-                    CIMUniqueValue uv_Include = new CIMUniqueValue { FieldValues = new string[] { "2" } };
-                    CIMUniqueValue uv_Exclude = new CIMUniqueValue { FieldValues = new string[] { "3" } };
+                    CIMUniqueValue uv_Available = new CIMUniqueValue { FieldValues = new string[] { "<Null>" } };
+                    CIMUniqueValue uv_Include = new CIMUniqueValue { FieldValues = new string[] { SelectionRuleType.INCLUDE.ToString() } };
+                    CIMUniqueValue uv_Exclude = new CIMUniqueValue { FieldValues = new string[] { SelectionRuleType.EXCLUDE.ToString() } };
 
                     // CIM UNIQUE VALUE CLASSES
                     CIMUniqueValueClass uvcAvailable = new CIMUniqueValueClass
@@ -2362,7 +2362,7 @@ namespace NCC.PRZTools
                     CIMUniqueValueClass uvcInclude = new CIMUniqueValueClass
                     {
                         Editable = true,
-                        Label = "Included (Locked In)",
+                        Label = "Included",
                         Symbol = fillSym_Include.MakeSymbolReference(),
                         Description = "",
                         Visible = true,
@@ -2371,7 +2371,7 @@ namespace NCC.PRZTools
                     CIMUniqueValueClass uvcExclude = new CIMUniqueValueClass
                     {
                         Editable = true,
-                        Label = "Excluded (Locked Out)",
+                        Label = "Excluded",
                         Symbol = fillSym_Exclude.MakeSymbolReference(),
                         Description = "",
                         Visible = true,
@@ -2382,7 +2382,7 @@ namespace NCC.PRZTools
                     CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
                     {
                         Classes = new CIMUniqueValueClass[] { uvcInclude, uvcExclude, uvcAvailable },
-                        Heading = "Status"
+                        Heading = "Effective Selection Rule"
                     };
 
                     // UV RENDERER
@@ -2390,6 +2390,76 @@ namespace NCC.PRZTools
                     {
                         UseDefaultSymbol = false,
                         Fields = new string[] { PRZC.c_FLD_FC_PU_EFFECTIVE_RULE },
+                        Groups = new CIMUniqueValueGroup[] { uvgMain },
+                        DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
+                    };
+
+                    FL.SetRenderer(UVRend);
+                });
+
+                MapView.Active.Redraw(false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> ApplyLegend_PU_SelRuleConflicts(FeatureLayer FL)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    // COLORS
+                    CIMColor outlineColor = GetNamedColor(Color.Gray); // outline color for all 3 poly symbols
+                    CIMColor fillColor_Conflict = GetNamedColor(Color.Magenta);
+                    CIMColor fillColor_NoConflict = GetNamedColor(Color.LightGray);
+
+                    // SYMBOLS
+                    CIMStroke outlineSym = SymbolFactory.Instance.ConstructStroke(outlineColor, 0.1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillSym_Conflict = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Conflict, SimpleFillStyle.Solid, outlineSym);
+                    CIMPolygonSymbol fillSym_NoConflict = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_NoConflict, SimpleFillStyle.Solid, outlineSym);
+
+                    // CIM UNIQUE VALUES
+                    CIMUniqueValue uv_Conflict = new CIMUniqueValue { FieldValues = new string[] { "1" } };
+                    CIMUniqueValue uv_NoConflict = new CIMUniqueValue { FieldValues = new string[] { "0" } };
+
+                    // CIM UNIQUE VALUE CLASSES
+                    CIMUniqueValueClass uvcConflict = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "Conflict",
+                        Symbol = fillSym_Conflict.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uv_Conflict }
+                    };
+                    CIMUniqueValueClass uvcNoConflict = new CIMUniqueValueClass
+                    {
+                        Editable = true,
+                        Label = "OK",
+                        Symbol = fillSym_NoConflict.MakeSymbolReference(),
+                        Description = "",
+                        Visible = true,
+                        Values = new CIMUniqueValue[] { uv_NoConflict }
+                    };
+
+                    // CIM UNIQUE VALUE GROUP
+                    CIMUniqueValueGroup uvgMain = new CIMUniqueValueGroup
+                    {
+                        Classes = new CIMUniqueValueClass[] { uvcConflict, uvcNoConflict },
+                        Heading = "Selection Rule Conflicts"
+                    };
+
+                    // UV RENDERER
+                    CIMUniqueValueRenderer UVRend = new CIMUniqueValueRenderer
+                    {
+                        UseDefaultSymbol = false,
+                        Fields = new string[] { PRZC.c_FLD_FC_PU_CONFLICT },
                         Groups = new CIMUniqueValueGroup[] { uvgMain },
                         DefaultSymbolPatch = PatchShape.AreaRoundedRectangle
                     };

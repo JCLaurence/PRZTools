@@ -36,7 +36,7 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Fields
+        #region FIELDS
 
         private ObservableCollection<SelectionRule> _selectionRules = new ObservableCollection<SelectionRule>();
         private SelectionRule _selectedSelectionRule;
@@ -60,7 +60,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Properties
+        #region PROPERTIES
 
         public ObservableCollection<SelectionRule> SelectionRules
         {
@@ -151,7 +151,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
@@ -168,7 +168,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Methods
+        #region METHODS
 
         public async Task OnProWinLoaded()
         {
@@ -180,7 +180,7 @@ namespace NCC.PRZTools
                 // Set the Conflict Override value default
                 SelectedOverrideOption = SelectionRuleType.INCLUDE.ToString();
 
-                // Determine the presence of 2 tables
+                // Determine the presence of 2 tables, and enable/disable the main button accordingly
                 SelRuleTableExists = await PRZH.TableExists_SelRules();
                 PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
@@ -201,201 +201,6 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        private async Task<bool> PopulateConflictGrid()
-        {
-            try
-            {
-                // Clear the contents of the Conflicts observable collection
-                Conflicts.Clear();
-
-                if (!await PRZH.TableExists_PUSelRules())
-                {
-                    // format stuff appropriately if no table exists
-                    ConflictGridCaption = "Planning Unit Status Conflict Listing (no Status Info Table)";
-
-                    return true;
-                }
-
-                // PUStatus Table exists, retrieve the data
-                Dictionary<int, string> DICT_IN = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = IN Constraint Layer to which it applies
-                Dictionary<int, string> DICT_EX = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = EX Constraint Layer to which it applies
-
-                List<Field> fields = null;  // List of Planning Unit Status table fields
-
-                // Populate the Dictionaries
-                await QueuedTask.Run(async () =>
-                {
-                    using (Table table = await PRZH.GetTable_PUSelRules())
-                    using (TableDefinition tDef = table.GetDefinition())
-                    using (RowCursor rowCursor = table.Search(null, false))
-                    {
-                        fields = tDef.GetFields().ToList();
-
-                        // Get the first row (I only need one row)
-                        if (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                // Now, get field info and row value info that's present in all rows exactly the same (that's why I only need one row)
-                                for (int i = 0; i < fields.Count; i++)
-                                {
-                                    Field field = fields[i];
-
-                                    if (field.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME))
-                                    {
-                                        string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
-
-                                        if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE))
-                                        {
-                                            DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
-                                        }
-                                        else if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE))
-                                        {
-                                            DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Build a List of Unique Combinations of IN and EX Layers
-                string c_ConflictNumber = "CONFLICT";
-                string c_LayerName_Include = "'INCLUDE' Constraint";
-                string c_LayerName_Exclude = "'EXCLUDE' Constraint";
-                string c_PUCount = "PLANNING UNIT COUNT";
-                string c_AreaFieldIndex_Include = "IndexIN";
-                string c_AreaFieldIndex_Exclude = "IndexEX";
-                string c_ConflictExists = "Exists";
-
-                DataTable DT = new DataTable();
-                DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_LayerName_Include, Type.GetType("System.String"));
-                DT.Columns.Add(c_LayerName_Exclude, Type.GetType("System.String"));
-                DT.Columns.Add(c_PUCount, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_AreaFieldIndex_Include, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_AreaFieldIndex_Exclude, Type.GetType("System.Int32"));
-                DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
-
-                foreach (int IN_AreaFieldIndex in DICT_IN.Keys)
-                {
-                    string IN_LayerName = DICT_IN[IN_AreaFieldIndex];
-
-                    foreach (int EX_AreaFieldIndex in DICT_EX.Keys)
-                    {
-                        string EX_LayerName = DICT_EX[EX_AreaFieldIndex];
-
-                        DataRow DR = DT.NewRow();
-
-                        DR[c_LayerName_Include] = IN_LayerName;
-                        DR[c_LayerName_Exclude] = EX_LayerName;
-                        DR[c_PUCount] = 0;
-                        DR[c_AreaFieldIndex_Include] = IN_AreaFieldIndex;
-                        DR[c_AreaFieldIndex_Exclude] = EX_AreaFieldIndex;
-                        DR[c_ConflictExists] = false;
-                        DT.Rows.Add(DR);
-                    }
-                }
-
-                // For each row in DataTable, query PU Status for pairs having area>0 in both IN and EX
-                int conflict_number = 1;
-                int IN_AreaField_Index;
-                int EX_AreaField_Index;
-                string IN_AreaField_Name = "";
-                string EX_AreaField_Name = "";
-
-                foreach (DataRow DR in DT.Rows)
-                {
-                    IN_AreaField_Index = (int)DR[c_AreaFieldIndex_Include];
-                    EX_AreaField_Index = (int)DR[c_AreaFieldIndex_Exclude];
-
-                    IN_AreaField_Name = fields[IN_AreaField_Index].Name;
-                    EX_AreaField_Name = fields[EX_AreaField_Index].Name;
-
-                    string where_clause = IN_AreaField_Name + @" > 0 And " + EX_AreaField_Name + @" > 0";
-
-                    QueryFilter QF = new QueryFilter();
-                    QF.SubFields = IN_AreaField_Name + "," + EX_AreaField_Name;
-                    QF.WhereClause = where_clause;
-
-                    int row_count = 0;
-
-                    await QueuedTask.Run(async () =>
-                    {
-                        using (Table table = await PRZH.GetTable_PUSelRules())
-                        {
-                            row_count = table.GetCount(QF);
-                        }
-                    });
-
-                    if (row_count > 0)
-                    {
-                        DR[c_ConflictNumber] = conflict_number++;
-                        DR[c_PUCount] = row_count;
-                        DR[c_ConflictExists] = true;
-                    }
-                }
-
-
-                // Filter out only those DataRows where conflict exists
-                DataView DV = DT.DefaultView;
-                DV.RowFilter = c_ConflictExists + " = true";
-
-                // Finally, populate the Observable Collection
-
-                List<SelectionRuleConflict> l = new List<SelectionRuleConflict>();
-                foreach (DataRowView DRV in DV)
-                {
-                    SelectionRuleConflict sc = new SelectionRuleConflict();
-
-                    sc.include_layer_name = DRV[c_LayerName_Include].ToString();
-                    sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
-                    sc.exclude_layer_name = DRV[c_LayerName_Exclude].ToString();
-                    sc.exclude_area_field_index = (int)DRV[c_AreaFieldIndex_Exclude];
-                    sc.conflict_num = (int)DRV[c_ConflictNumber];
-                    sc.pu_count = (int)DRV[c_PUCount];
-
-                    l.Add(sc);
-                }
-
-                // Sort them
-                l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
-
-                // Set the property
-                _conflicts = new ObservableCollection<SelectionRuleConflict>(l);
-                NotifyPropertyChanged(() => Conflicts);
-
-                int count = DV.Count;
-
-                ConflictGridCaption = "Planning Unit Status Conflict Listing (" + ((count == 1) ? "1 conflict)" : count.ToString() + " conflicts)");
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
-                return false;
-            }
-        }
-
-        private async Task<bool> PopulateSelRulesGrid()
-        {
-            try
-            {
-                ProMsgBox.Show("PopulateSelRulesGrid method goes here :)");
-
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
             }
         }
 
@@ -513,7 +318,7 @@ namespace NCC.PRZTools
 
                 // Retrieve the Selection Rules
                 var rule_getter = await GetRulesFromLayers();
-                
+
                 if (!rule_getter.success || rule_getter.rules == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error retrieving Selection Rules from Layers", LogMessageType.ERROR), true, ++val);
@@ -817,8 +622,8 @@ namespace NCC.PRZTools
                 }
 
                 // Add 2 additional fields 
-                string fldEffectiveRule = PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE + " LONG 'Effective Rule' # # #;";
-                string fldConflict = PRZC.c_FLD_TAB_PUSELRULES_CONFLICT + " LONG 'Rule Conflict #' # # #;";
+                string fldEffectiveRule = PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE + " TEXT 'Effective Rule' 50 # #;";
+                string fldConflict = PRZC.c_FLD_TAB_PUSELRULES_CONFLICT + " LONG 'Rule Conflict Exists' # 0 #;";
 
                 flds = fldEffectiveRule + fldConflict;
 
@@ -933,7 +738,7 @@ namespace NCC.PRZTools
                         {
                             ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                             return false;
-                        }                        
+                        }
                     }))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
@@ -963,189 +768,175 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region UPDATE EFFECTIVE RULE AND CONFLICT FIELDS
+                #region UPDATE EFFECTIVE RULE AND CONFLICT FIELDS IN PUSELRULES TABLE
 
-                //Dictionary<int, int> DICT_PUID_and_QuickStatus = new Dictionary<int, int>();
-                //Dictionary<int, int> DICT_PUID_and_Conflict = new Dictionary<int, int>();
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Determining conflicts and effective selection rules"), true, ++val);
 
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Calculating Status Conflicts and QuickStatus"), true, ++val);
+                Dictionary<int, (string rule, int conflict)> DICT_PUID_and_rule_conflict = new Dictionary<int, (string rule, int conflict)>();
 
-                //try
-                //{
-                //    await QueuedTask.Run(async () =>
-                //    {
-                //        using (Table table = await PRZH.GetTable_PUSelRules())
-                //        using (TableDefinition tDef = table.GetDefinition())
-                //        {
-                //            // Get list of INCLUDE layer Area fields
-                //            var INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        using (TableDefinition tDef = table.GetDefinition())
+                        {
+                            // Get list of INCLUDE layer Area fields
+                            List<Field> INAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
 
-                //            // Get list of EXCLUDE layer Area fields
-                //            var EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
+                            // Get list of EXCLUDE layer Area fields
+                            List<Field> EXAreaFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA)).ToList();
 
-                //            using (RowCursor rowCursor = table.Search(null, false))
-                //            {
-                //                while (rowCursor.MoveNext())
-                //                {
-                //                    using (Row row = rowCursor.Current)
-                //                    {
-                //                        int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                            using (RowCursor rowCursor = table.Search(null, false))
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int puid = (int)row[PRZC.c_FLD_TAB_PUSELRULES_ID];
 
-                //                        bool hasIN = false;
-                //                        bool hasEX = false;
+                                        bool hasIN = false;
+                                        bool hasEX = false;
 
-                //                        // Determine if there are any INCLUDE area fields having values > 0 for this PU ID
-                //                        foreach (Field fld in INAreaFields)
-                //                        {
-                //                            double test = (double)row[fld.Name];
-                //                            if (test > 0)
-                //                            {
-                //                                hasIN = true;
-                //                            }
-                //                        }
+                                        // Determine if there are any INCLUDE area fields having values > 0 for this PU ID
+                                        foreach (Field fld in INAreaFields)
+                                        {
+                                            double test = Convert.ToDouble(row[fld.Name]);
 
-                //                        // Determine if there are any EXCLUDE area fields having values > 0 for this PU ID
-                //                        foreach (Field fld in EXAreaFields)
-                //                        {
-                //                            double test = (double)row[fld.Name];
-                //                            if (test > 0)
-                //                            {
-                //                                hasEX = true;
-                //                            }
-                //                        }
+                                            if (test > 0)
+                                            {
+                                                hasIN = true;
+                                            }
+                                        }
 
-                //                        // Update the QuickStatus and Conflict information
+                                        // Determine if there are any EXCLUDE area fields having values > 0 for this PU ID
+                                        foreach (Field fld in EXAreaFields)
+                                        {
+                                            double test = Convert.ToDouble(row[fld.Name]);
 
-                //                        // Both INCLUDE and EXCLUDE occur in PU:
-                //                        if (hasIN && hasEX)
-                //                        {
-                //                            // Flag as a conflicted planning unit
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 1;
-                //                            DICT_PUID_and_Conflict.Add(puid, 1);
+                                            if (test > 0)
+                                            {
+                                                hasEX = true;
+                                            }
+                                        }
 
-                //                            // Set the 'winning' QuickStatus based on user-specified setting
-                //                            if (SelectedOverrideOption == c_OVERRIDE_INCLUDE)
-                //                            {
-                //                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
-                //                                DICT_PUID_and_QuickStatus.Add(puid, 2);
-                //                            }
-                //                            else if (SelectedOverrideOption == c_OVERRIDE_EXCLUDE)
-                //                            {
-                //                                row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
-                //                                DICT_PUID_and_QuickStatus.Add(puid, 3);
-                //                            }
+                                        // Update the effective rule and the conflict information
 
-                //                        }
+                                        int conflict = 0;
+                                        string effective_rule = "";
 
-                //                        // INCLUDE only:
-                //                        else if (hasIN)
-                //                        {
-                //                            // Flag as a no-conflict planning unit
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                //                            DICT_PUID_and_Conflict.Add(puid, 0);
+                                        if (hasIN && hasEX) // Planning Unit has both Include(s) and Exclude(s), = a conflict
+                                        {
+                                            conflict = 1;
+                                            effective_rule = SelectedOverrideOption;    // user-specified 'tie-breaker' in the event of a conflict
+                                        }
+                                        else if (hasIN)     // Planning Unit has only Include(s)
+                                        {
+                                            conflict = 0;
+                                            effective_rule = SelectionRuleType.INCLUDE.ToString();
+                                        }
+                                        else if (hasEX)     // Planning Unit has only Exclude(s)
+                                        {
+                                            conflict = 0;
+                                            effective_rule = SelectionRuleType.EXCLUDE.ToString();
+                                        }
+                                        else                // Planning Unit has neither Includes nor Excludes
+                                        {
+                                            conflict = 0;
+                                            effective_rule = "";
+                                        }
 
-                //                            // Set the Status
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 2;
-                //                            DICT_PUID_and_QuickStatus.Add(puid, 2);
-                //                        }
+                                        // update the row
+                                        row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = conflict;
+                                        row[PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE] = effective_rule;
+                                        row.Store();
 
-                //                        // EXCLUDE only:
-                //                        else if (hasEX)
-                //                        {
-                //                            // Flag as a no-conflict planning unit
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                //                            DICT_PUID_and_Conflict.Add(puid, 0);
+                                        // Add to dictionary
+                                        DICT_PUID_and_rule_conflict.Add(puid, (effective_rule, conflict));
+                                    }
+                                }
+                            }
+                        }
 
-                //                            // Set the Status
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 3;
-                //                            DICT_PUID_and_QuickStatus.Add(puid, 3);
-                //                        }
-
-                //                        // Neither:
-                //                        else
-                //                        {
-                //                            // Flag as a no-conflict planning unit
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_CONFLICT] = 0;
-                //                            DICT_PUID_and_Conflict.Add(puid, 0);
-
-                //                            // Set the Status
-                //                            row[PRZC.c_FLD_TAB_PUSELRULES_QUICKSTATUS] = 0;
-                //                            DICT_PUID_and_QuickStatus.Add(puid, 0);
-                //                        }
-
-                //                        // update the row
-                //                        row.Store();
-                //                    }
-                //                }
-                //            }
-                //        }
-
-                //    });
-                //}
-                //catch (Exception ex)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
-                //    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
-                //    return false;
-                //}
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating the {PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE} and {PRZC.c_FLD_TAB_PUSELRULES_CONFLICT} fields in the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error updating the {PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE} and {PRZC.c_FLD_TAB_PUSELRULES_CONFLICT} fields in the {PRZC.c_TABLE_PUSELRULES} table...");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FLD_TAB_PUSELRULES_EFFECTIVE_RULE} and {PRZC.c_FLD_TAB_PUSELRULES_CONFLICT} fields updated."), true, ++val);
+                }
 
                 #endregion
 
-                #region UPDATE PLANNING UNIT FC EFFECTIVE RULE AND CONFLICT COLUMNS
+                #region UPDATE EFFECTIVE RULE AND CONFLICT FIELDS IN PLANNING UNIT FC
 
-                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating Planning Unit FC Status Column"), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
 
-                //try
-                //{
-                //    await QueuedTask.Run(async () =>
-                //    {
-                //        using (Table table = await PRZH.GetFC_PU())    // Get the Planning Unit FC attribute table
-                //        using (RowCursor rowCursor = table.Search(null, false))
-                //        {
-                //            while (rowCursor.MoveNext())
-                //            {
-                //                using (Row row = rowCursor.Current)
-                //                {
-                //                    int puid = (int)row[PRZC.c_FLD_FC_PU_ID];
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    int conflict = 0;
+                                    object obj_rule = DBNull.Value;
 
-                //                    if (DICT_PUID_and_QuickStatus.ContainsKey(puid))
-                //                    {
-                //                        row[PRZC.c_FLD_FC_PU_STATUS] = DICT_PUID_and_QuickStatus[puid];
-                //                    }
-                //                    else
-                //                    {
-                //                        row[PRZC.c_FLD_FC_PU_STATUS] = -1;
-                //                    }
+                                    if (DICT_PUID_and_rule_conflict.ContainsKey(puid))
+                                    {
+                                        conflict = DICT_PUID_and_rule_conflict[puid].conflict;
 
-                //                    if (DICT_PUID_and_Conflict.ContainsKey(puid))
-                //                    {
-                //                        row[PRZC.c_FLD_FC_PU_CONFLICT] = DICT_PUID_and_Conflict[puid];
-                //                    }
-                //                    else
-                //                    {
-                //                        row[PRZC.c_FLD_FC_PU_CONFLICT] = -1;
-                //                    }
+                                        if (DICT_PUID_and_rule_conflict[puid].rule != "")
+                                        {
+                                            obj_rule = DICT_PUID_and_rule_conflict[puid].rule;
+                                        }
+                                    }
 
-                //                    row.Store();
-                //                }
-                //            }
-                //        }
+                                    row[PRZC.c_FLD_FC_PU_CONFLICT] = conflict;
+                                    row[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = obj_rule;
+                                    row.Store();
+                                }
+                            }
+                        }
 
-                //    });
-                //}
-                //catch (Exception ex)
-                //{
-                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error updating the Status Info Quickstatus and Conflict fields.", LogMessageType.ERROR), true, ++val);
-                //    ProMsgBox.Show("Error updating Status Info Table quickstatus and conflict fields" + Environment.NewLine + Environment.NewLine + ex.Message, "");
-                //    return false;
-                //}
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in the {PRZC.c_FC_PLANNING_UNITS} feature class...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error updating the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in the {PRZC.c_FC_PLANNING_UNITS} feature class...");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields updated."), true, ++val);
+                }
 
                 #endregion
 
                 #region WRAP THINGS UP
 
-                // Populate the Grids
-//                bool Populated = await PopulateConflictGrid();
+                // TODO: Populate the Grids
 
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the geodatabase..."), true, ++val);
@@ -1178,6 +969,201 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                return false;
+            }
+        }
+
+        private async Task<bool> PopulateConflictGrid()
+        {
+            try
+            {
+                // Clear the contents of the Conflicts observable collection
+                Conflicts.Clear();
+
+                if (!await PRZH.TableExists_PUSelRules())
+                {
+                    // format stuff appropriately if no table exists
+                    ConflictGridCaption = "Selection Rule Conflicts";
+
+                    return true;
+                }
+
+                // PUStatus Table exists, retrieve the data
+                Dictionary<int, string> DICT_IN = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = IN Constraint Layer to which it applies
+                Dictionary<int, string> DICT_EX = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = EX Constraint Layer to which it applies
+
+                List<Field> fields = null;  // List of Planning Unit Status table fields
+
+                // Populate the Dictionaries
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetTable_PUSelRules())
+                    using (TableDefinition tDef = table.GetDefinition())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        fields = tDef.GetFields().ToList();
+
+                        // Get the first row (I only need one row)
+                        if (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                // Now, get field info and row value info that's present in all rows exactly the same (that's why I only need one row)
+                                for (int i = 0; i < fields.Count; i++)
+                                {
+                                    Field field = fields[i];
+
+                                    if (field.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME))
+                                    {
+                                        string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
+
+                                        if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE))
+                                        {
+                                            DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                                        }
+                                        else if (field.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE))
+                                        {
+                                            DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Build a List of Unique Combinations of IN and EX Layers
+                string c_ConflictNumber = "CONFLICT";
+                string c_LayerName_Include = "'INCLUDE' Constraint";
+                string c_LayerName_Exclude = "'EXCLUDE' Constraint";
+                string c_PUCount = "PLANNING UNIT COUNT";
+                string c_AreaFieldIndex_Include = "IndexIN";
+                string c_AreaFieldIndex_Exclude = "IndexEX";
+                string c_ConflictExists = "Exists";
+
+                DataTable DT = new DataTable();
+                DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_LayerName_Include, Type.GetType("System.String"));
+                DT.Columns.Add(c_LayerName_Exclude, Type.GetType("System.String"));
+                DT.Columns.Add(c_PUCount, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_AreaFieldIndex_Include, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_AreaFieldIndex_Exclude, Type.GetType("System.Int32"));
+                DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
+
+                foreach (int IN_AreaFieldIndex in DICT_IN.Keys)
+                {
+                    string IN_LayerName = DICT_IN[IN_AreaFieldIndex];
+
+                    foreach (int EX_AreaFieldIndex in DICT_EX.Keys)
+                    {
+                        string EX_LayerName = DICT_EX[EX_AreaFieldIndex];
+
+                        DataRow DR = DT.NewRow();
+
+                        DR[c_LayerName_Include] = IN_LayerName;
+                        DR[c_LayerName_Exclude] = EX_LayerName;
+                        DR[c_PUCount] = 0;
+                        DR[c_AreaFieldIndex_Include] = IN_AreaFieldIndex;
+                        DR[c_AreaFieldIndex_Exclude] = EX_AreaFieldIndex;
+                        DR[c_ConflictExists] = false;
+                        DT.Rows.Add(DR);
+                    }
+                }
+
+                // For each row in DataTable, query PU Status for pairs having area>0 in both IN and EX
+                int conflict_number = 1;
+                int IN_AreaField_Index;
+                int EX_AreaField_Index;
+                string IN_AreaField_Name = "";
+                string EX_AreaField_Name = "";
+
+                foreach (DataRow DR in DT.Rows)
+                {
+                    IN_AreaField_Index = (int)DR[c_AreaFieldIndex_Include];
+                    EX_AreaField_Index = (int)DR[c_AreaFieldIndex_Exclude];
+
+                    IN_AreaField_Name = fields[IN_AreaField_Index].Name;
+                    EX_AreaField_Name = fields[EX_AreaField_Index].Name;
+
+                    string where_clause = IN_AreaField_Name + @" > 0 And " + EX_AreaField_Name + @" > 0";
+
+                    QueryFilter QF = new QueryFilter();
+                    QF.SubFields = IN_AreaField_Name + "," + EX_AreaField_Name;
+                    QF.WhereClause = where_clause;
+
+                    int row_count = 0;
+
+                    await QueuedTask.Run(async () =>
+                    {
+                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        {
+                            row_count = table.GetCount(QF);
+                        }
+                    });
+
+                    if (row_count > 0)
+                    {
+                        DR[c_ConflictNumber] = conflict_number++;
+                        DR[c_PUCount] = row_count;
+                        DR[c_ConflictExists] = true;
+                    }
+                }
+
+
+                // Filter out only those DataRows where conflict exists
+                DataView DV = DT.DefaultView;
+                DV.RowFilter = c_ConflictExists + " = true";
+
+                // Finally, populate the Observable Collection
+
+                List<SelectionRuleConflict> l = new List<SelectionRuleConflict>();
+                foreach (DataRowView DRV in DV)
+                {
+                    SelectionRuleConflict sc = new SelectionRuleConflict();
+
+                    sc.include_layer_name = DRV[c_LayerName_Include].ToString();
+                    sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
+                    sc.exclude_layer_name = DRV[c_LayerName_Exclude].ToString();
+                    sc.exclude_area_field_index = (int)DRV[c_AreaFieldIndex_Exclude];
+                    sc.conflict_num = (int)DRV[c_ConflictNumber];
+                    sc.pu_count = (int)DRV[c_PUCount];
+
+                    l.Add(sc);
+                }
+
+                // Sort them
+                l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
+
+                // Set the property
+                _conflicts = new ObservableCollection<SelectionRuleConflict>(l);
+                NotifyPropertyChanged(() => Conflicts);
+
+                int count = DV.Count;
+
+                ConflictGridCaption = "Planning Unit Status Conflict Listing (" + ((count == 1) ? "1 conflict)" : count.ToString() + " conflicts)");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
+                return false;
+            }
+        }
+
+        private async Task<bool> PopulateSelRulesGrid()
+        {
+            try
+            {
+                ProMsgBox.Show("PopulateSelRulesGrid method goes here :)");
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -2530,7 +2516,7 @@ namespace NCC.PRZTools
                 string toolOutput;
 
                 // Initialize ProgressBar and Progress Log
-                int max = 10;
+                int max = 20;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing..."), false, max, ++val);
 
                 // Quit if table doesn't exist
@@ -2603,13 +2589,7 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Status and Conflict fields updated successfully."), true, ++val);
 
-                // Rebuild the Conflict Grid
-                if (!await PopulateConflictGrid())
-                {
-                    ProMsgBox.Show("Error populating the Conflict Grid...");
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Conflict Grid.", LogMessageType.ERROR), true, ++val);
-                    return false;
-                }
+                // TODO: Repopulate the grids
 
                 return true;
             }

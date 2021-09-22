@@ -137,6 +137,13 @@
             ToolTip
             <disabledText></disabledText></tooltip>
         </button>
+        <!--Legend Button - Planning Unit Selection Rule Conflicts-->
+        <button id="prz_button_legend_pu_selruleconflicts" keytip="z" caption="Planning Units - Selection Rule Conflicts" className="Button_Legend_PU_SelRuleConflicts" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Planning Unit Legend">
+            ToolTip
+            <disabledText></disabledText>
+          </tooltip>
+        </button>
         <!--Legend Button - Planning Unit Cost-->
         <button id="prz_button_legend_pu_cost" keytip="z" caption="Planning Units - Cost" className="Button_Legend_PU_Cost" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Legend">
@@ -161,6 +168,7 @@
         <menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
           <button refID="prz_button_legend_pu_basic" />
           <button refID="prz_button_legend_pu_selrules" />
+          <button refID="prz_button_legend_pu_selruleconflicts" />
           <button refID="prz_button_legend_pu_cost" />
           <button refID="prz_button_legend_pu_cf_count" />
           <button refID="prz_button_legend_pu_boundary" />
