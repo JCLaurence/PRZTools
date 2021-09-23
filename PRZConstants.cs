@@ -219,6 +219,7 @@
         public const string c_FLD_TAB_SELRULES_LAYERJSON = "sr_layer_json";
         public const string c_FLD_TAB_SELRULES_MIN_THRESHOLD = "sr_min_threshold";
         public const string c_FLD_TAB_SELRULES_ENABLED = "sr_enabled";
+        public const string c_FLD_TAB_SELRULES_HIDDEN = "sr_hidden";
         public const string c_FLD_TAB_SELRULES_AREA_M = "sr_area_m";
         public const string c_FLD_TAB_SELRULES_AREA_AC = "sr_area_ac";
         public const string c_FLD_TAB_SELRULES_AREA_HA = "sr_area_ha";

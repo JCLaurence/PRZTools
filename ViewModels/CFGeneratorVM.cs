@@ -38,7 +38,7 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Properties
+        #region PROPERTIES
 
         private bool _cfTableExists;
         public bool CFTableExists
@@ -113,7 +113,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
         private ICommand _cmdConstraintDoubleClick;
         public ICommand CmdGridDoubleClick => _cmdConstraintDoubleClick ?? (_cmdConstraintDoubleClick = new RelayCommand(() => GridDoubleClick(), () => true));
@@ -130,7 +130,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Methods
+        #region METHODS
 
         public async Task OnProWinLoaded()
         {
@@ -2629,10 +2629,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Event Handlers
 
-
-        #endregion
 
     }
 }

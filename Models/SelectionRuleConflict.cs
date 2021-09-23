@@ -14,17 +14,21 @@ namespace NCC.PRZTools
 
         }
 
-        public int conflict_num { get; set; }
+        public int conflict_id { get; set; }
+
+        public int include_rule_id { get; set; }
+
+        public string include_rule_name { get; set; }
+
+        public string include_rule_areafield { get; set; }
+
+        public int exclude_rule_id { get; set; }
+
+        public string exclude_rule_name { get; set; }
+
+        public string exclude_rule_areafield { get; set; }
 
         public int pu_count { get; set; }
-        
-        public string include_layer_name { get; set; }
-        
-        public string exclude_layer_name { get; set; }
-
-        public int include_area_field_index { get; set; }
-        
-        public int exclude_area_field_index { get; set; }
 
 
     }

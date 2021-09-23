@@ -1,11 +1,11 @@
 ﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.0" desktopVersion="2.8.29751">
+  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.1" desktopVersion="2.8.29751">
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset</Description>
     <Image>Images\PRZTools32.png</Image>
     <Author>JC Laurence</Author>
     <Company>NCC</Company>
-    <Date>6/8/2021 10:29:56 AM</Date>
+    <Date>9/22/2021 7:20:12 PM</Date>
     <Subject>Framework</Subject>
   </AddInInfo>
   <modules>

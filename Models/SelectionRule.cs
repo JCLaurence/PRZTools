@@ -13,7 +13,6 @@ namespace NCC.PRZTools
         {
 
         }
-
         public int sr_id { get; set; }                      // unique ID
 
         public string sr_name { get; set; }                 // unique Selection Rule name (probably corresponds to the layer name)
@@ -29,6 +28,8 @@ namespace NCC.PRZTools
         public int sr_min_threshold { get; set; }           // Minimum Threshold (0 to 100 inclusive)
 
         public int sr_enabled { get; set; }                 // 0 or 1.  1=enabled, 0=disabled
+
+        public int sr_hidden { get; set; }                  // 0 or 1.
 
         public double sr_area_m2 { get; set; }              // Area (m2) of Rule across all Planning Units
 
