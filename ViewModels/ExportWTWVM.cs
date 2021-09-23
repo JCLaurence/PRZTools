@@ -44,46 +44,70 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Properties
+        #region FIELDS
 
         private bool _exportIsEnabled = false;
+        private string _compStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+        private string _compStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+        private string _compStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+        private string _compStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+        private string _compStat_Bounds = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+        private ICommand _cmdExport;
+        private ICommand _cmdClearLog;
+
+        #endregion
+
+        #region PROPERTIES
+
         public bool ExportIsEnabled
         {
-            get => _exportIsEnabled; set => SetProperty(ref _exportIsEnabled, value, () => ExportIsEnabled);
+            get => _exportIsEnabled;
+            set => SetProperty(ref _exportIsEnabled, value, () => ExportIsEnabled);
         }
 
-        private string _compStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
         public string CompStat_PUFC
         {
-            get => _compStat_PUFC; set => SetProperty(ref _compStat_PUFC, value, () => CompStat_PUFC);
+            get => _compStat_PUFC;
+            set => SetProperty(ref _compStat_PUFC, value, () => CompStat_PUFC);
         }
 
-        private string _compStat_CF = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-        public string CompStat_CF
+        public string CompStat_SelRules
         {
-            get => _compStat_CF; set => SetProperty(ref _compStat_CF, value, () => CompStat_CF);
+            get => _compStat_SelRules;
+            set => SetProperty(ref _compStat_SelRules, value, () => CompStat_SelRules);
         }
 
-        private string _compStat_Bounds = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+        public string CompStat_Weights
+        {
+            get => _compStat_Weights;
+            set => SetProperty(ref _compStat_Weights, value, () => CompStat_Weights);
+        }
+
+        public string CompStat_Features
+        {
+            get => _compStat_Features;
+            set => SetProperty(ref _compStat_Features, value, () => CompStat_Features);
+        }
+
         public string CompStat_Bounds
         {
-            get => _compStat_Bounds; set => SetProperty(ref _compStat_Bounds, value, () => CompStat_Bounds);
+            get => _compStat_Bounds;
+            set => SetProperty(ref _compStat_Bounds, value, () => CompStat_Bounds);
         }
 
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
         {
-            get => _pm; set => SetProperty(ref _pm, value, () => PM);
+            get => _pm;
+            set => SetProperty(ref _pm, value, () => PM);
         }
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
-        private ICommand _cmdExport;
         public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(() => ExportWTWPackage(), () => true));
 
-        private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
@@ -91,7 +115,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Methods
+        #region METHODS
 
         public async void OnProWinLoaded()
         {
@@ -102,7 +126,9 @@ namespace NCC.PRZTools
 
                 // Initialize the indicator images
                 bool PUFC_OK = await PRZH.FCExists_PU();
-                bool CF_OK = await PRZH.TableExists_Features();
+                bool SelRules_OK = await PRZH.TableExists_SelRules();
+                bool Weights_OK = false;    // TODO: ADD THIS LATER
+                bool Features_OK = await PRZH.TableExists_Features();
                 bool Bounds_OK = await PRZH.TableExists_Boundary();
 
                 // Set the Component Status Images
@@ -115,13 +141,31 @@ namespace NCC.PRZTools
                     CompStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
-                if (CF_OK)
+                if (SelRules_OK)
                 {
-                    CompStat_CF = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                    CompStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
-                    CompStat_CF = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                    CompStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+                }
+
+                if (Weights_OK)
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+                }
+
+                if (Features_OK)
+                {
+                    CompStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
                 if (Bounds_OK)
@@ -134,7 +178,7 @@ namespace NCC.PRZTools
                 }
 
                 // Set Enabled Status on export button
-                ExportIsEnabled = PUFC_OK & CF_OK & Bounds_OK;
+                ExportIsEnabled = PUFC_OK & Features_OK & Bounds_OK;
 
             }
             catch (Exception ex)
@@ -159,6 +203,7 @@ namespace NCC.PRZTools
                 #region VALIDATION
 
                 // Ensure the ExportWTW folder exists
+                string exportpath = PRZH.GetPath_ExportWTWFolder();
                 if (!PRZH.FolderExists_ExportWTW())
                 {
                     ProMsgBox.Show($"The {PRZC.c_DIR_EXPORT_WTW} folder does not exist in your project workspace." + Environment.NewLine + Environment.NewLine +
@@ -167,12 +212,12 @@ namespace NCC.PRZTools
                 }
 
                 // Prompt the user for permission to proceed
-                if (ProMsgBox.Show("Suitable prompt goes here" +
-                   Environment.NewLine + Environment.NewLine +
+                if (ProMsgBox.Show("If you proceed, all files in the following folder will be deleted:" + Environment.NewLine +
+                    exportpath + Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
                    "Choose wisely...",
-                   "File Overwrite Warning",
+                   "FILE OVERWRITE WARNING",
                    System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
@@ -185,7 +230,6 @@ namespace NCC.PRZTools
                 #region PREPARATION
 
                 // Delete all existing files within export dir
-                string exportpath = PRZH.GetPath_ExportWTWFolder();
                 DirectoryInfo di = new DirectoryInfo(exportpath);
 
                 try
@@ -339,7 +383,6 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp Feature Class deleted successfully."), true);
                 }
 
-
                 // Delete the two no-longer-required area and length fields from the shapefile
                 LIST_DeleteFields = new List<string>();
 
@@ -391,6 +434,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile Export Complete!"), true, ++val);
 
                 #endregion
+
+                // I'M HERE!!!
 
                 #region GENERATE AND ZIP THE ATTRIBUTE CSV
 
@@ -661,14 +706,14 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                ProMsgBox.Show("Done");
+                ProMsgBox.Show("Export of WTW Files Complete :)");
 
                 return true;
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }

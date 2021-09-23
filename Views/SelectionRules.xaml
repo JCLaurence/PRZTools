@@ -356,7 +356,8 @@
                         Maximum="{Binding PM.Max}" 
                         Value="{Binding PM.Current}" />
                     
-                    <ScrollViewer 
+                    <ScrollViewer
+                        Margin="0 5 0 0" 
                         HorizontalScrollBarVisibility="Auto" 
                         VerticalScrollBarVisibility="Auto">
 

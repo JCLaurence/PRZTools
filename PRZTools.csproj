@@ -489,6 +489,9 @@
     <Resource Include="ImagesWPF\ComponentStatus_No16.png" />
     <Resource Include="ImagesWPF\ComponentStatus_Yes16.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\ComponentStatus_Warn16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

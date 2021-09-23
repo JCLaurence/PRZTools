@@ -51,7 +51,7 @@
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5"
-                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Style="{DynamicResource Esri_TextBlockH5}"
                         Text="Component Status" />
 
                     <DockPanel
@@ -78,13 +78,47 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
-                            Source="{Binding CompStat_CF}"/>
+                            Source="{Binding CompStat_SelRules}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Conservation Feature Table" />
+                            Text="Selection Rules (Includes + Excludes)" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Weights}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Weights" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Features}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Features" />
 
                     </DockPanel>
 
@@ -101,7 +135,7 @@
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Boundary Table" />
+                            Text="Planning Unit Bounds" />
 
                     </DockPanel>
 
@@ -194,8 +228,8 @@
                         Maximum="{Binding PM.Max}" 
                         Value="{Binding PM.Current}" />
 
-                    <ScrollViewer 
-                        Margin="0" 
+                    <ScrollViewer
+                        Margin="0 5 0 0" 
                         HorizontalScrollBarVisibility="Auto" 
                         VerticalScrollBarVisibility="Auto">
 
