@@ -2165,6 +2165,107 @@ namespace NCC.PRZTools
 
         #endregion GENERIC DATA METHODS
 
+        #region LIST AND DICTIONARY RETRIEVAL
+
+        public static async Task<List<int>> GetPlanningUnitIDs()
+        {
+            try
+            {
+                List<int> ids = new List<int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    ids.Add(id);
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show("Error retrieving list of ids");
+                    return null;
+                }
+                else
+                {
+                    return ids;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<Dictionary<int, double>> GetPlanningUnitIDsAndArea()
+        {
+            try
+            {
+                Dictionary<int, double> dict = new Dictionary<int, double>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    double area_m2 = Convert.ToDouble(row[PRZC.c_FLD_FC_PU_AREA_M]);
+
+                                    dict.Add(id, area_m2);
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show("Error retrieving dictionary of planning unit ids + area");
+                    return null;
+                }
+                else
+                {
+                    return dict;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
+        #endregion
+
         #region GEOPROCESSING
 
         public static async Task<string> RunGPTool(string toolName, IReadOnlyList<string> toolParams, IReadOnlyList<KeyValuePair<string, string>> toolEnvs, GPExecuteToolFlags flags)

@@ -20,13 +20,13 @@ namespace NCC.PRZTools
 
         public string include_rule_name { get; set; }
 
-        public string include_rule_areafield { get; set; }
+        public string include_rule_statefield { get; set; }
 
         public int exclude_rule_id { get; set; }
 
         public string exclude_rule_name { get; set; }
 
-        public string exclude_rule_areafield { get; set; }
+        public string exclude_rule_statefield { get; set; }
 
         public int pu_count { get; set; }
 

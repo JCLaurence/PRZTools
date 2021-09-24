@@ -210,6 +210,7 @@
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_NAME = "_NAME";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_AREA = "_AREA";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE = "_COV";
+        public const string c_FLD_TAB_PUSELRULES_SUFFIX_STATE = "_STATE";
 
         // SELECTION RULES
         public const string c_FLD_TAB_SELRULES_ID = "sr_id";

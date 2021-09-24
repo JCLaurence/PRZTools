@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Selection Rule Generator"
-    Height="600" Width="600" MinHeight="600" MinWidth="600"
+    Height="600" Width="900" MinHeight="600" MinWidth="600"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PUStatus.ico" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
@@ -186,26 +186,20 @@
 
                         <DataGrid.Columns>
                             <DataGridTextColumn 
-                                Header="Selection Rule ID" 
+                                Header="Rule ID" 
                                 Binding="{Binding sr_id}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
-                                Header="Selection Rule Name" 
+                                Header="Rule Name" 
                                 Binding="{Binding sr_name}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
-                                Header="Selection Rule Type" 
+                                Header="Rule Type" 
                                 Binding="{Binding sr_rule_type}" 
-                                CanUserReorder="False" 
-                                CanUserSort="False" />
-
-                            <DataGridTextColumn 
-                                Header="Source Layer Type" 
-                                Binding="{Binding sr_layer_type}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
@@ -216,8 +210,8 @@
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
-                                Header="Hidden" 
-                                Binding="{Binding sr_hidden}" 
+                                Header="Minimum Threshold (%)" 
+                                Binding="{Binding sr_min_threshold, StringFormat={}{0} %}"
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
@@ -229,25 +223,37 @@
 
                             <DataGridTextColumn 
                                 Header="Total Area (m&#x00B2;)" 
-                                Binding="{Binding sr_area_m2}" 
+                                Binding="{Binding sr_area_m2, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ac)" 
-                                Binding="{Binding sr_area_ac}" 
+                                Binding="{Binding sr_area_ac, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ha)" 
-                                Binding="{Binding sr_area_ha}" 
+                                Binding="{Binding sr_area_ha, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (km&#x00B2;)" 
-                                Binding="{Binding sr_area_km2}" 
+                                Binding="{Binding sr_area_km2, StringFormat={}{0:N2}}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                            <DataGridTextColumn 
+                                Header="Source Layer Type" 
+                                Binding="{Binding sr_layer_type}" 
+                                CanUserReorder="False" 
+                                CanUserSort="False" />
+
+                            <DataGridTextColumn 
+                                Header="Hidden" 
+                                Binding="{Binding sr_hidden}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
