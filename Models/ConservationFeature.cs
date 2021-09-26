@@ -25,7 +25,7 @@ namespace NCC.PRZTools
 
         public string cf_whereclause { get; set; }        // Filter for CF based on specific feature subset of Source Layer (Vector only)
 
-        public bool? cf_in_use { get; set; }                // Indicates if the CF should be included in any calculations
+        public int cf_enabled { get; set; }                // Indicates if the CF should be included in any calculations.  1=yes, 0=no
 
         public double cf_area_m2 { get; set; }             // Area (m2) of CF across all Planning Units
 

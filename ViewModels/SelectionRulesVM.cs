@@ -647,7 +647,7 @@ namespace NCC.PRZTools
                     string fCovAlias = alias_prefix + srid.ToString() + " Coverage (%)";
                     string f4 = fCov + " DOUBLE '" + fCovAlias + "' # 0 #;";
 
-                    // Coverage field
+                    // State field
                     string fStat = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
                     string fStatAlias = alias_prefix + srid.ToString() + " State";
                     string f5 = fStat + " LONG '" + fStatAlias + "' # 0 #;";

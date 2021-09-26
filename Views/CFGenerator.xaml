@@ -219,8 +219,8 @@
                                 CanUserSort="True" />
 
                             <DataGridTextColumn 
-                                Header="CF In Use" 
-                                Binding="{Binding cf_in_use}" 
+                                Header="Enabled" 
+                                Binding="{Binding cf_enabled}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
 
@@ -265,25 +265,12 @@
                                 Binding="{Binding lyr_type}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
-
                             
-                            <!--<DataGridTextColumn 
-                                Header="Layer JSON" 
-                                Binding="{Binding lyr_json}" 
+                            <DataGridTextColumn 
+                                Header="Hidden" 
+                                Binding="{Binding cf_hidden}" 
                                 CanUserReorder="False" 
                                 CanUserSort="True" />
-
-                            <DataGridTextColumn 
-                                Header="Layer Min Thresh (%)" 
-                                Binding="{Binding lyr_min_threshold_pct}" 
-                                CanUserReorder="False" 
-                                CanUserSort="True" />
-
-                            <DataGridTextColumn 
-                                Header="Layer Target (%)" 
-                                Binding="{Binding lyr_target_pct}" 
-                                CanUserReorder="False" 
-                                CanUserSort="True" />-->
                             
                         </DataGrid.Columns>
                     </DataGrid>

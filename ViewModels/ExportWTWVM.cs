@@ -178,8 +178,8 @@ namespace NCC.PRZTools
                 }
 
                 // Set Enabled Status on export button
-                ExportIsEnabled = PUFC_OK & Features_OK & Bounds_OK;
-
+                //                ExportIsEnabled = PUFC_OK & Features_OK & Bounds_OK;
+                ExportIsEnabled = true;
             }
             catch (Exception ex)
             {
@@ -485,10 +485,10 @@ namespace NCC.PRZTools
 
                 #region COMPILE FEATURE INFORMATION
 
-                // Retrieve key info from the Feature Table
+                // First, retrieve key info from the Feature Table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving records from the {PRZC.c_TABLE_FEATURES} table..."), true, ++val);
-                var LIST_FeatureIDs = new List<int>();
-                var DICT_Features = new Dictionary<int, (string feature_name, string variable_name, bool enabled, int goal)>();
+                List<int> LIST_FeatureIDs = new List<int>();
+                var DICT_Features = new Dictionary<int, (string feature_name, string variable_name, string area_field_name, bool enabled, int goal)>();
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -507,6 +507,7 @@ namespace NCC.PRZTools
                                     // Names
                                     string name = (row[PRZC.c_FLD_TAB_CF_NAME] == null | row[PRZC.c_FLD_TAB_CF_NAME] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_CF_NAME].ToString();
                                     string varname = "CF_" + cfid.ToString("D3");   // Example:  for id 5, we get CF_005
+                                    string areafieldname = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cfid.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
 
                                     // Enabled
                                     bool enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]) == 1;
@@ -515,7 +516,7 @@ namespace NCC.PRZTools
                                     int goal = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_TARGET_PCT]);
 
                                     LIST_FeatureIDs.Add(cfid);
-                                    DICT_Features.Add(cfid, (name, varname, enabled, goal));
+                                    DICT_Features.Add(cfid, (name, varname, areafieldname, enabled, goal));
                                 }
                             }
                         }
@@ -540,6 +541,13 @@ namespace NCC.PRZTools
 
                 LIST_FeatureIDs.Sort();
 
+                // List of Area Fields (in order by cf_id) from PU Features table
+                List<string> AreaFieldNames_Features = new List<string>();
+                for (int k = 0; k < LIST_FeatureIDs.Count; k++)
+                {
+                    AreaFieldNames_Features.Add(DICT_Features[LIST_FeatureIDs[k]].area_field_name);
+                }
+
                 #endregion
 
                 #region COMPILE SELECTION RULE INFORMATION
@@ -547,10 +555,10 @@ namespace NCC.PRZTools
                 // Retrieve key information from the Selection Rule table
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving records from the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
-                var LIST_IncludeIDs = new List<int>();
-                var LIST_ExcludeIDs = new List<int>();
-                var DICT_Includes = new Dictionary<int, (string include_name, string variable_name, bool enabled)>();
-                var DICT_Excludes = new Dictionary<int, (string exclude_name, string variable_name, bool enabled)>();
+                List<int> LIST_IncludeIDs = new List<int>();
+                List<int> LIST_ExcludeIDs = new List<int>();
+                var DICT_Includes = new Dictionary<int, (string include_name, string variable_name, string state_field_name, bool enabled)>();
+                var DICT_Excludes = new Dictionary<int, (string exclude_name, string variable_name, string state_field_name, bool enabled)>();
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -569,21 +577,24 @@ namespace NCC.PRZTools
                                     // Enabled
                                     bool enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]) == 1;
 
-                                    // Rule Name
+                                    // Name
                                     string name = (row[PRZC.c_FLD_TAB_SELRULES_NAME] == null | row[PRZC.c_FLD_TAB_SELRULES_NAME] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString();
 
+                                    // Rest depend on the type
                                     string ruletype = (row[PRZC.c_FLD_TAB_SELRULES_RULETYPE] == null | row[PRZC.c_FLD_TAB_SELRULES_RULETYPE] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString();
                                     if (ruletype == SelectionRuleType.INCLUDE.ToString())
                                     {
-                                        string varname = "SR_" + srid.ToString("D3") + "_IN";   // Example:  for id 5, we get SR_005_IN
+                                        string varname = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString("D3"); // Example:  for id 5, we get IN_005
+                                        string statename = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
                                         LIST_IncludeIDs.Add(srid);
-                                        DICT_Includes.Add(srid, (name, varname, enabled));
+                                        DICT_Includes.Add(srid, (name, varname, statename, enabled));
                                     }
                                     else if (ruletype == SelectionRuleType.EXCLUDE.ToString())
                                     {
-                                        string varname = "SR_" + srid.ToString("D3") + "_EX";   // Example:  for id 5, we get SR_005_EX
+                                        string varname = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString("D3"); // Example:  for id 8, we get EX_008
+                                        string statename = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
                                         LIST_ExcludeIDs.Add(srid);
-                                        DICT_Excludes.Add(srid, (name, varname, enabled));
+                                        DICT_Excludes.Add(srid, (name, varname, statename, enabled));
                                     }
                                 }
                             }
@@ -609,6 +620,20 @@ namespace NCC.PRZTools
 
                 LIST_IncludeIDs.Sort();
                 LIST_ExcludeIDs.Sort();
+
+                // INCLUDES: List of State Fields (in order by sr_id) from PU Sel Rules table
+                List<string> StateFieldNames_Includes = new List<string>();
+                for (int k = 0; k < LIST_IncludeIDs.Count; k++)
+                {
+                    StateFieldNames_Includes.Add(DICT_Includes[LIST_IncludeIDs[k]].state_field_name);
+                }
+
+                // EXCLUDES: List of State Fields (in order by sr_id) from PU Sel Rules table
+                List<string> StateFieldNames_Excludes = new List<string>();
+                for (int k = 0; k < LIST_ExcludeIDs.Count; k++)
+                {
+                    StateFieldNames_Excludes.Add(DICT_Excludes[LIST_ExcludeIDs[k]].state_field_name);
+                }
 
                 #endregion
 
@@ -647,103 +672,163 @@ namespace NCC.PRZTools
                 using (var writer = new StreamWriter(attributepath))
                 using (var csv = new CsvWriter(writer, csvConfig))
                 {
-                    // *** WRITE ROW #1 = COLUMN NAMES
+                    #region ADD COLUMN HEADERS (ROW 1)
 
                     // First, add the Feature Variable Name Columns
                     for (int i = 0; i < LIST_FeatureIDs.Count; i++)
                     {
-                        int cf_id = LIST_FeatureIDs[i];
-                        csv.WriteField(DICT_Features[cf_id].variable_name);
+                        csv.WriteField(DICT_Features[LIST_FeatureIDs[i]].variable_name);
                     }
 
                     // Now the Include columns
                     for (int i = 0; i < LIST_IncludeIDs.Count; i++)
                     {
-                        int sr_id = LIST_IncludeIDs[i];
-                        csv.WriteField(DICT_Includes[sr_id].variable_name);
+                        csv.WriteField(DICT_Includes[LIST_IncludeIDs[i]].variable_name);
                     }
 
                     // Now the Exclude columns
                     for (int i = 0; i < LIST_ExcludeIDs.Count; i++)
                     {
-                        int sr_id = LIST_ExcludeIDs[i];
-                        csv.WriteField(DICT_Excludes[sr_id].variable_name);
+                        csv.WriteField(DICT_Excludes[LIST_ExcludeIDs[i]].variable_name);
                     }
 
                     // Insert the PU ID Column => must the "_index" and must be the final column in the attributes CSV
                     csv.WriteField("_index");
                     csv.NextRecord();   // First line is done!
 
-                    // *** WRITE REGULAR ROWS - ONE PER PLANNING UNIT
+                    #endregion
 
-                    for (int i = 0; i < LIST_PUIDs.Count; i++)  // Each iteration represents a single CSV row
+                    #region ADD REMAINING ROWS
+
+                    for (int i = 0; i < LIST_PUIDs.Count; i++)  // each iteration = single planning unit record = single CSV row
                     {
-                        int puid = LIST_PUIDs[i];   // ID of planning unit = this row
+                        int puid = LIST_PUIDs[i];
 
-                        // WRITE THE FEATURE COLUMN VALUES
-                        QueryFilter QF_F = new QueryFilter();
-                        QF_F.WhereClause = PRZC.c_FLD_TAB_PUCF_ID + " = " + puid.ToString();
+                        #region FEATURE COLUMN VALUES
 
-                        using (Table table = await PRZH.GetTable_PUFeatures())
-                        using (RowCursor rowCursor = table.Search(QF_F, true))
+                        if (!await QueuedTask.Run(async () =>
                         {
-                            while (rowCursor.MoveNext())
+                            try
                             {
-                                using (Row row = rowCursor.Current)
+                                QueryFilter featureQF = new QueryFilter
                                 {
-                                    for (int j = 0; j < LIST_FeatureIDs.Count; j++)
+                                    WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {puid}",
+                                    SubFields = string.Join(",", AreaFieldNames_Features)
+                                };
+
+                                using (Table table = await PRZH.GetTable_PUFeatures())
+                                using (RowCursor rowCursor = table.Search(featureQF, true))
+                                {
+                                    while (rowCursor.MoveNext())
                                     {
-                                        int cfid = LIST_FeatureIDs[j];
-                                        string areafield = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cfid.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            for (int n = 0; n < AreaFieldNames_Features.Count; n++)
+                                            {
+                                                double area_m2 = Math.Round(Convert.ToDouble(row[AreaFieldNames_Features[n]]), 2, MidpointRounding.AwayFromZero);
 
-                                        double area_m2 = Convert.ToDouble(row[areafield]);  // this is the "amount" of feature in this planning unit (area in m2)
+                                                // *** THESE ARE OPTIONAL *********************************
+                                                double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
+                                                double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
+                                                double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
+                                                // ********************************************************
 
-                                        // *** THESE ARE OPTIONAL *********************************
-                                        double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                                        double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                                        double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
-                                        // ********************************************************
-
-                                        csv.WriteField(area_km2);       // this could be a user-specified option
+                                                csv.WriteField(area_m2);    // make this user-specifiable (e.g. user picks an output unit)
+                                            }
+                                        }
                                     }
                                 }
+
+                                return true;
                             }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing features values to CSV.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error writing Features values to CSV.");
+                            return false;
                         }
 
-                        // WRITE THE INCLUDES COLUMN VALUES
-                        QueryFilter QF_IN = new QueryFilter();
-                        QF_IN.WhereClause = PRZC.c_FLD_TAB_PUSELRULES_ID + " = " + puid.ToString();
+                        #endregion
 
-                        using (Table table = await PRZH.GetTable_PUSelRules())
-                        using (RowCursor rowCursor = table.Search(QF_IN, true))
+                        #region INCLUDE AND EXCLUDE SELECTION RULES COLUMN VALUES
+
+                        if (!await QueuedTask.Run(async () =>
                         {
-                            while (rowCursor.MoveNext())
+                            try
                             {
-                                using (Row row = rowCursor.Current)
+                                // Merge the Include and Exclude State Field names
+                                List<string> StateFieldNames = StateFieldNames_Includes.Concat(StateFieldNames_Excludes).ToList();
+
+                                if (StateFieldNames.Count == 0)
                                 {
-                                    for (int j = 0; j < LIST_FeatureIDs.Count; j++)
+                                    return true;    // no point proceeding with selection rules, there aren't any
+                                }
+
+                                QueryFilter selruleQF = new QueryFilter
+                                {
+                                    WhereClause = $"{PRZC.c_FLD_TAB_PUSELRULES_ID} = {puid}",
+                                    SubFields = string.Join(",", StateFieldNames)
+                                };
+
+                                using (Table table = await PRZH.GetTable_PUSelRules())
+                                using (RowCursor rowCursor = table.Search(selruleQF, true))
+                                {
+                                    while (rowCursor.MoveNext())
                                     {
-                                        int srid = LIST_IncludeIDs[j];
-                                        string areafield = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            // First write the includes
+                                            for (int n = 0; n < StateFieldNames_Includes.Count; n++)
+                                            {
+                                                int state = Convert.ToInt32(row[StateFieldNames_Includes[n]]);  // will be a zero or 1
+                                                csv.WriteField(state);
+                                            }
 
-                                        double area_m2 = Convert.ToDouble(row[areafield]);  // this is the "amount" of include in this planning unit (area in m2)
-
-                                        // *** THESE ARE OPTIONAL *********************************
-                                        double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                                        double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                                        double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
-                                        // ********************************************************
-
-
-
-                                        csv.WriteField(area_km2);       // this could be a user-specified option
+                                            // Next write the excludes
+                                            for (int n = 0; n < StateFieldNames_Excludes.Count; n++)
+                                            {
+                                                int state = Convert.ToInt32(row[StateFieldNames_Excludes[n]]);  // will be a zero or 1
+                                                csv.WriteField(state);
+                                            }
+                                        }
                                     }
                                 }
+
+                                return true;
                             }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing selection rule values to CSV.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error writing selection rule values to CSV.");
+                            return false;
                         }
+
+                        #endregion
+
+                        #region WEIGHTS COLUMN VALUES
+
+
+
+                        #endregion
+
+                        // Write the Planning Unit ID to the final column
+                        csv.WriteField(puid);
+
+                        // Finish the line
+                        csv.NextRecord();
                     }
 
-
+                    #endregion
                 }
 
                 // Compress Attribute CSV to gzip format
@@ -799,28 +884,43 @@ namespace NCC.PRZTools
                     csv.NextRecord();
 
                     // *** ROWS 2 TO N => Boundary Records
-                    await QueuedTask.Run(async () =>
+                    if (!await QueuedTask.Run(async () =>
                     {
-                        using (Table table = await PRZH.GetTable_Boundary())
-                        using (RowCursor rowCursor = table.Search(null, true))
+                        try
                         {
-                            while (rowCursor.MoveNext())
+                            using (Table table = await PRZH.GetTable_Boundary())
+                            using (RowCursor rowCursor = table.Search(null, true))
                             {
-                                using (Row row = rowCursor.Current)
+                                while (rowCursor.MoveNext())
                                 {
-                                    int id1 = (int)row[PRZC.c_FLD_TAB_BOUND_ID1];
-                                    int id2 = (int)row[PRZC.c_FLD_TAB_BOUND_ID2];
-                                    double bnd = (double)row[PRZC.c_FLD_TAB_BOUND_BOUNDARY];
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int id1 = Convert.ToInt32(row[PRZC.c_FLD_TAB_BOUND_ID1]);
+                                        int id2 = Convert.ToInt32(row[PRZC.c_FLD_TAB_BOUND_ID2]);
+                                        double bnd = Convert.ToDouble(row[PRZC.c_FLD_TAB_BOUND_BOUNDARY]);
 
-                                    csv.WriteField(id1);
-                                    csv.WriteField(id2);
-                                    csv.WriteField(bnd);
+                                        csv.WriteField(id1);
+                                        csv.WriteField(id2);
+                                        csv.WriteField(bnd);
 
-                                    csv.NextRecord();
+                                        csv.NextRecord();
+                                    }
                                 }
                             }
+
+                            return true;
                         }
-                    });
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                            return false;
+                        }
+                    }))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing to Boundary CSV.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error writing to Boundary CSV.");
+                        return false;
+                    }
                 }
 
                 // Compress Boundary CSV to gzip format
@@ -846,49 +946,96 @@ namespace NCC.PRZTools
 
                 #region GENERATE THE YAML CONFIG FILE
 
+                #region FEATURES
+
                 List<YamlTheme> LIST_YamlThemes = new List<YamlTheme>();
 
-                foreach (var KVP in DICT_Features)
+                foreach (int cfid in LIST_FeatureIDs)
                 {
-                    int cfid = KVP.Key;
-
+                    var feature = DICT_Features[cfid];
 
                     // Set goal between 0 and 1 inclusive
-                    int g = KVP.Value.goal; // g is between 0 and 100 inclusive
+                    int g = feature.goal; // g is between 0 and 100 inclusive
                     double dg = Math.Round(g / 100.0, 2, MidpointRounding.AwayFromZero); // I need dg to be between 0 and 1 inclusive
 
                     YamlLegend yamlLegend = new YamlLegend();
-                    yamlLegend.type = WTWLegendType.continuous.ToString();
 
                     YamlVariable yamlVariable = new YamlVariable();
-                    yamlVariable.index = KVP.Value.variable_name;
-                    yamlVariable.units = "km\xB2";
+                    yamlVariable.index = feature.variable_name;
+                    yamlVariable.units = "m\xB2";
                     yamlVariable.provenance = (cfid % 2 == 0) ? WTWProvenanceType.national.ToString() : WTWProvenanceType.regional.ToString();
                     yamlVariable.legend = yamlLegend;
 
                     YamlFeature yamlFeature = new YamlFeature();
-                    yamlFeature.name = KVP.Value.feature_name;
-                    yamlFeature.status = true;
+                    yamlFeature.name = feature.feature_name;
+                    yamlFeature.status = feature.enabled;
                     yamlFeature.visible = true;
+                    yamlFeature.hidden = false;
                     yamlFeature.goal = dg;
                     yamlFeature.variable = yamlVariable;
 
                     YamlTheme yamlTheme = new YamlTheme();
-                    yamlTheme.name = yamlFeature.name.Substring(0, 5).Trim();   // this is silly, come up with something better
+                    yamlTheme.name = $"Theme_{cfid}";
                     yamlTheme.feature = new YamlFeature[] { yamlFeature };
                     LIST_YamlThemes.Add(yamlTheme);
                 }
 
+                #endregion
 
-                // INCLUDES
+                #region INCLUDES
+
+                List<YamlInclude> LIST_YamlIncludes = new List<YamlInclude>();
+
+                foreach (var srid in LIST_IncludeIDs)
+                {
+                    var include = DICT_Includes[srid];
+
+                    // Legend
+                    YamlLegend yamlLegend = new YamlLegend();
+                    yamlLegend.type = WTWLegendType.manual.ToString();
+                    yamlLegend.colors = new string[] { "#ffffff", "#4ce30b" };
+                    yamlLegend.labels = new string[] { "Available", "Included" };
+
+                    // Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = include.variable_name;
+                    yamlVariable.legend = yamlLegend;
+                    yamlVariable.units = "";
+                    yamlVariable.provenance = WTWProvenanceType.national.ToString();
+
+                    // Include
+                    YamlInclude yamlInclude = new YamlInclude();
+                    yamlInclude.name = include.include_name;
+                    yamlInclude.variable = yamlVariable;
+                    yamlInclude.mandatory = false;
+                    yamlInclude.hidden = false;
+                    yamlInclude.status = include.enabled;
+                    yamlInclude.visible = true;
+
+                    LIST_YamlIncludes.Add(yamlInclude);
+                }
+
+                #endregion
+
+                #region EXCLUDES
 
 
+
+                #endregion
+
+                #region WEIGHTS
+
+
+
+                #endregion
+
+                #region FINAL
 
                 YamlPackage yamlPackage = new YamlPackage();
                 yamlPackage.name = "TEMP PROJECT NAME";
                 yamlPackage.mode = WTWModeType.advanced.ToString();
                 yamlPackage.themes = LIST_YamlThemes.ToArray();
-                yamlPackage.includes = new YamlInclude[] { };
+                yamlPackage.includes = LIST_YamlIncludes.ToArray();
                 yamlPackage.weights = new YamlWeight[] { };
 
                 ISerializer builder = new SerializerBuilder().DisableAliases().Build();
@@ -904,6 +1051,8 @@ namespace NCC.PRZTools
                     ProMsgBox.Show("Unable to write the Yaml Config File..." + Environment.NewLine + Environment.NewLine + ex.Message);
                     return false;
                 }
+
+                #endregion
 
                 #endregion
 

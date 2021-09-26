@@ -234,6 +234,7 @@
         public const string c_FLD_TAB_CF_TARGET_PCT = "cf_target_pct";
         public const string c_FLD_TAB_CF_WHERECLAUSE = "cf_whereclause";
         public const string c_FLD_TAB_CF_ENABLED = "cf_enabled";
+        public const string c_FLD_TAB_CF_HIDDEN = "cf_hidden";
         public const string c_FLD_TAB_CF_AREA_M = "cf_area_m";
         public const string c_FLD_TAB_CF_AREA_AC = "cf_area_ac";
         public const string c_FLD_TAB_CF_AREA_HA = "cf_area_ha";

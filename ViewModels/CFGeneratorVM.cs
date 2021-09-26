@@ -196,17 +196,7 @@ namespace NCC.PRZTools
                                 CF.lyr_type = (row[PRZC.c_FLD_TAB_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_TYPE].ToString();
                                 CF.lyr_json = (row[PRZC.c_FLD_TAB_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_JSON].ToString();
 
-                                object o = row[PRZC.c_FLD_TAB_CF_ENABLED];
-                                bool? b;
-
-                                if (o == null)
-                                    b = null;
-                                else if (o.ToString() == "Yes")
-                                    b = true;
-                                else
-                                    b = false;
-
-                                CF.cf_in_use = b;
+                                CF.cf_enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]);
 
                                 LIST_CF.Add(CF);
                             }
@@ -606,7 +596,8 @@ namespace NCC.PRZTools
                 string fldCFThresholdPct = PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT + " LONG 'Min Threshold (%)' # 0 #;";
                 string fldCFTargetPct = PRZC.c_FLD_TAB_CF_TARGET_PCT + " LONG 'Target (%)' # 0 #;";
                 string fldCFWhereClause = PRZC.c_FLD_TAB_CF_WHERECLAUSE + " TEXT 'WHERE Clause' 1000 # #;";
-                string fldCFInUse = PRZC.c_FLD_TAB_CF_ENABLED + " TEXT 'In Use' 3 'Yes' #;";
+                string fldCFEnabled = PRZC.c_FLD_TAB_CF_ENABLED + " LONG 'Enabled' # 1 #;";
+                string fldCFHidden = PRZC.c_FLD_TAB_CF_HIDDEN + " LONG 'Hidden' # 0 #;";
                 string fldCFArea_m2 = PRZC.c_FLD_TAB_CF_AREA_M + " DOUBLE 'Total Area (m2)' # 0, #;";
                 string fldCFArea_ac = PRZC.c_FLD_TAB_CF_AREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
                 string fldCFArea_ha = PRZC.c_FLD_TAB_CF_AREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
@@ -621,7 +612,8 @@ namespace NCC.PRZTools
                               fldCFThresholdPct +
                               fldCFTargetPct +
                               fldCFWhereClause +
-                              fldCFInUse +
+                              fldCFEnabled +
+                              fldCFHidden +
                               fldCFArea_m2 +
                               fldCFArea_ac +
                               fldCFArea_ha +
@@ -671,13 +663,8 @@ namespace NCC.PRZTools
 
                             rowBuffer[PRZC.c_FLD_TAB_CF_WHERECLAUSE] = CF.cf_whereclause;
 
-                            // In use
-                            if (!CF.cf_in_use.HasValue)
-                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "";
-                            else if (CF.cf_in_use == true)
-                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "Yes";
-                            else
-                                rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = "No";
+                            // enabled
+                            rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = CF.cf_enabled;
 
                             rowBuffer[PRZC.c_FLD_TAB_CF_LYR_NAME] = CF.lyr_name;
                             rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.lyr_type;
@@ -1925,7 +1912,7 @@ namespace NCC.PRZTools
                                 consFeat.lyr_json = flJson;
                                 consFeat.lyr_target_pct = lyr_target_int;
                                 consFeat.cf_target_pct = CF.ClassTarget;
-                                consFeat.cf_in_use = true;
+                                consFeat.cf_enabled = 1;
 
                                 LIST_CF.Add(consFeat);
                             }
@@ -1947,7 +1934,7 @@ namespace NCC.PRZTools
                             consFeat.lyr_json = flJson;
                             consFeat.lyr_target_pct = lyr_target_int;
                             consFeat.cf_target_pct = lyr_target_int;
-                            consFeat.cf_in_use = true;
+                            consFeat.cf_enabled = 1;
 
                             LIST_CF.Add(consFeat);
                         }
@@ -2183,7 +2170,7 @@ namespace NCC.PRZTools
                         consFeat.lyr_json = rlJson;
                         consFeat.lyr_target_pct = lyr_target_int;
                         consFeat.cf_target_pct = lyr_target_int;
-                        consFeat.cf_in_use = true;
+                        consFeat.cf_enabled = 1;
 
                         LIST_CF.Add(consFeat);
                     }
