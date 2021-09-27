@@ -118,47 +118,6 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
-                    LastChildFill="False"
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
-
-                    <Button 
-                        DockPanel.Dock="Left"
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True" 
-                        Command="{Binding CmdGenerateSelRules}"
-                        Content="GENERATE SELECTION RULES" />
-
-                    <Button 
-                        DockPanel.Dock="Left"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="{Binding SelRulesExist}"
-                        Command="{Binding CmdClearSelRules}"
-                        Content="REMOVE ALL SELECTION RULES" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                </DockPanel>
-            </Border>
-
-            <!--Inner Border #3-->
-            <Border 
-                Grid.Row="2" 
-                Margin="0,0,0,5"
-                BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
-
-                <DockPanel 
                     LastChildFill="True" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
@@ -187,73 +146,73 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn 
                                 Header="Rule ID" 
-                                Binding="{Binding sr_id}" 
+                                Binding="{Binding SR_ID}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Rule Name" 
-                                Binding="{Binding sr_name}" 
+                                Binding="{Binding SR_Name}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Rule Type" 
-                                Binding="{Binding sr_rule_type}" 
+                                Binding="{Binding SR_RuleType}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Enabled" 
-                                Binding="{Binding sr_enabled}" 
+                                Binding="{Binding SR_Enabled}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Minimum Threshold (%)" 
-                                Binding="{Binding sr_min_threshold, StringFormat={}{0} %}"
+                                Binding="{Binding SR_MinThreshold, StringFormat={}{0} %}"
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Planning Units Affected" 
-                                Binding="{Binding sr_pucount}" 
+                                Binding="{Binding SR_PUCount, StringFormat={}{0:N0}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (m&#x00B2;)" 
-                                Binding="{Binding sr_area_m2, StringFormat={}{0:N2}}" 
+                                Binding="{Binding SR_Area_M2, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ac)" 
-                                Binding="{Binding sr_area_ac, StringFormat={}{0:N2}}" 
+                                Binding="{Binding SR_Area_Ac, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (ha)" 
-                                Binding="{Binding sr_area_ha, StringFormat={}{0:N2}}" 
+                                Binding="{Binding SR_Area_Ha, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Total Area (km&#x00B2;)" 
-                                Binding="{Binding sr_area_km2, StringFormat={}{0:N2}}" 
+                                Binding="{Binding SR_Area_Km2, StringFormat={}{0:N2}}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Source Layer Type" 
-                                Binding="{Binding sr_layer_type}" 
+                                Binding="{Binding SR_LayerType}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
                             <DataGridTextColumn 
                                 Header="Hidden" 
-                                Binding="{Binding sr_hidden}" 
+                                Binding="{Binding SR_Hidden}" 
                                 CanUserReorder="False" 
                                 CanUserSort="False" />
 
@@ -262,9 +221,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #4-->
+            <!--Inner Border #3-->
             <Border 
-                Grid.Row="3" 
+                Grid.Row="2" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -322,6 +281,47 @@
                         
                         </DataGrid.Columns>
                     </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #4-->
+            <Border 
+                Grid.Row="3" 
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True" 
+                        Command="{Binding CmdGenerateSelRules}"
+                        Content="GENERATE SELECTION RULES" />
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="{Binding SelRulesExist}"
+                        Command="{Binding CmdClearSelRules}"
+                        Content="REMOVE ALL SELECTION RULES" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
                 </DockPanel>
             </Border>
 

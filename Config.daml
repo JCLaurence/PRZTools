@@ -37,7 +37,7 @@
           <!--Planning Unit Cost Dialog Button-->
           <button refID="prz_button_pucost" size="large" />
           <!--Conservation Feature Generator Dialog Button-->
-          <button refID="prz_button_cfgenerator" size="large" />
+          <button refID="prz_button_features" size="large" />
           <!--Planning Unit Boundary Lengths Generator Dialog Button-->
           <button refID="prz_button_boundarylengths" size="large" />
         </group>
@@ -94,7 +94,7 @@
             </disabledText></tooltip>
         </button>
         <!--Conservation Feature Generator Dialog Button-->
-        <button id="prz_button_cfgenerator" caption="Conservation Features" className="Button_CFGenerator" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_features" caption="Conservation Features" className="Button_Features" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Conservation Features">
             Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers
             <disabledText>

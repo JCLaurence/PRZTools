@@ -44,7 +44,7 @@ namespace NCC.PRZTools
         private SelectionRuleConflict _selectedConflict;
         private List<string> _overrideOptions = new List<string> { SelectionRuleType.INCLUDE.ToString(), SelectionRuleType.EXCLUDE.ToString()};
         private string _selectedOverrideOption;
-        private string _defaultThreshold = Properties.Settings.Default.DEFAULT_SELRULE_MIN_THRESHOLD;
+        private string _defaultMinThreshold = Properties.Settings.Default.DEFAULT_SELRULE_MIN_THRESHOLD;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         private bool _selRulesExist = false;
         private bool _selRuleTableExists = false;
@@ -80,26 +80,29 @@ namespace NCC.PRZTools
 
         public SelectionRuleConflict SelectedConflict
         {
-            get => _selectedConflict; set => SetProperty(ref _selectedConflict, value, () => SelectedConflict);
+            get => _selectedConflict;
+            set => SetProperty(ref _selectedConflict, value, () => SelectedConflict);
         }
 
         public List<string> OverrideOptions
         {
-            get => _overrideOptions; set => SetProperty(ref _overrideOptions, value, () => OverrideOptions);
+            get => _overrideOptions;
+            set => SetProperty(ref _overrideOptions, value, () => OverrideOptions);
         }
 
         public string SelectedOverrideOption
         {
-            get => _selectedOverrideOption; set => SetProperty(ref _selectedOverrideOption, value, () => SelectedOverrideOption);
+            get => _selectedOverrideOption;
+            set => SetProperty(ref _selectedOverrideOption, value, () => SelectedOverrideOption);
         }
 
-        public string DefaultThreshold
+        public string DefaultMinThreshold
         {
-            get => _defaultThreshold;
+            get => _defaultMinThreshold;
 
             set
             {
-                SetProperty(ref _defaultThreshold, value, () => DefaultThreshold);
+                SetProperty(ref _defaultMinThreshold, value, () => DefaultMinThreshold);
                 Properties.Settings.Default.DEFAULT_SELRULE_MIN_THRESHOLD = value;
                 Properties.Settings.Default.Save();
             }
@@ -108,7 +111,6 @@ namespace NCC.PRZTools
         public ProgressManager PM
         {
             get => _pm;
-
             set => SetProperty(ref _pm, value, () => PM);
         }
 
@@ -161,7 +163,7 @@ namespace NCC.PRZTools
                 // Set the Conflict Override value default
                 SelectedOverrideOption = SelectionRuleType.INCLUDE.ToString();
 
-                // Determine the presence of 2 tables, and enable/disable the main button accordingly
+                // Determine the presence of 2 tables, and enable/disable the clear button accordingly
                 SelRuleTableExists = await PRZH.TableExists_SelRules();
                 PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
@@ -175,7 +177,6 @@ namespace NCC.PRZTools
                 {
                     ProMsgBox.Show("Error loading the Conflicts grid");
                 }
-
             }
             catch (Exception ex)
             {
@@ -256,7 +257,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Default Minimum Threshold is valid
-                string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
+                string threshold_text = string.IsNullOrEmpty(DefaultMinThreshold) ? "0" : ((DefaultMinThreshold.Trim() == "") ? "0" : DefaultMinThreshold.Trim());
 
                 if (!double.TryParse(threshold_text, out double threshold_double))
                 {
@@ -421,12 +422,12 @@ namespace NCC.PRZTools
                             // Iterate through each selection rule
                             foreach (SelectionRule SR in LIST_Rules)
                             {
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_ID] = SR.sr_id;
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_NAME] = SR.sr_name;
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_RULETYPE] = SR.sr_rule_type.ToString();
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE] = SR.sr_layer_type.ToString();
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERJSON] = SR.sr_layer_json;
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD] = SR.sr_min_threshold;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_ID] = SR.SR_ID;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_NAME] = SR.SR_Name;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_RULETYPE] = SR.SR_RuleType.ToString();
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE] = SR.SR_LayerType.ToString();
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERJSON] = SR.SR_LayerJson;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD] = SR.SR_MinThreshold;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_M] = 0;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_AC] = 0;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_HA] = 0;
@@ -604,13 +605,13 @@ namespace NCC.PRZTools
                 foreach (SelectionRule SR in LIST_Rules)
                 {
                     // Get the Selection Rule ID
-                    int srid = SR.sr_id;
+                    int srid = SR.SR_ID;
 
                     // Get the Selection Rule Name (limited to 75 characters)
-                    string rule_name = (SR.sr_name.Length > 75) ? SR.sr_name.Substring(0, 75) : SR.sr_name;
+                    string rule_name = (SR.SR_Name.Length > 75) ? SR.SR_Name.Substring(0, 75) : SR.SR_Name;
 
                     // Get the Selection Rule Type
-                    SelectionRuleType rule_type = SR.sr_rule_type;
+                    SelectionRuleType rule_type = SR.SR_RuleType;
                     string prefix = "";
                     string alias_prefix = "";
 
@@ -1036,236 +1037,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> PopulateGrid_Rules()
-        {
-            try
-            {
-                // Clear the contents
-                SelectionRules = new ObservableCollection<SelectionRule>(); // triggers the xaml refresh
-
-                // If Selection Rules table doesn't exist, exit
-                if (!await PRZH.TableExists_SelRules())
-                {
-                    return true;
-                }
-
-                List<SelectionRule> rules = new List<SelectionRule>();
-
-                await QueuedTask.Run(async () =>
-                {
-
-                    using (Table table = await PRZH.GetTable_SelRules())
-                    using (RowCursor rowCursor = table.Search(null, false))
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                SelectionRule SR = new SelectionRule();
-
-                                SR.sr_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
-                                SR.sr_name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
-
-                                string rt = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
-                                if (rt == SelectionRuleType.INCLUDE.ToString())
-                                {
-                                    SR.sr_rule_type = SelectionRuleType.INCLUDE;
-                                }
-                                else if (rt == SelectionRuleType.EXCLUDE.ToString())
-                                {
-                                    SR.sr_rule_type = SelectionRuleType.EXCLUDE;
-                                }
-
-                                string lt = row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE].ToString() ?? "";
-                                if (lt == SelectionRuleLayerType.RASTER.ToString())
-                                {
-                                    SR.sr_layer_type = SelectionRuleLayerType.RASTER;
-                                }
-                                else if (lt == SelectionRuleLayerType.VECTOR.ToString())
-                                {
-                                    SR.sr_layer_type = SelectionRuleLayerType.VECTOR;
-                                }
-
-                                SR.sr_min_threshold = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD]);
-                                SR.sr_pucount = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_PUCOUNT]);
-                                SR.sr_enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]);
-                                SR.sr_hidden = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_HIDDEN]);
-                                SR.sr_area_m2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_M]);
-                                SR.sr_area_ac = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_AC]);
-                                SR.sr_area_ha = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_HA]);
-                                SR.sr_area_km2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_KM]);
-
-                                rules.Add(SR);
-                            }
-                        }
-
-                        int c = table.GetCount();
-                    }
-                });
-
-                // Sort them
-                rules.Sort((x, y) => x.sr_id.CompareTo(y.sr_id));
-
-                SelectionRules = new ObservableCollection<SelectionRule>(rules);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        private async Task<bool> PopulateGrid_Conflicts()
-        {
-            try
-            {
-                // Clear the contents
-                SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(); // triggers the xaml refresh
-
-                // If either table doesn't exist, exit
-                if (!await PRZH.TableExists_SelRules() | !await PRZH.TableExists_PUSelRules())
-                {
-                    return true;
-                }
-
-                // Retrieve Selection Rule info
-                Dictionary<int, (string name, string statefield)> DICT_Includes = new Dictionary<int, (string name, string statefield)>();
-                Dictionary<int, (string name, string statefield)> DICT_Excludes = new Dictionary<int, (string name, string statefield)>();
-
-                if (!await QueuedTask.Run(async() =>
-                {
-                    try
-                    {
-                        using (Table table = await PRZH.GetTable_SelRules())
-                        using (TableDefinition tDef = table.GetDefinition())
-                        using (RowCursor rowCursor = table.Search(null, false))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int sr_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
-                                    string sr_name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
-                                    string sr_type = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
-
-                                    string StateField = "";
-
-                                    if (sr_type == SelectionRuleType.INCLUDE.ToString())
-                                    {
-                                        StateField = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
-                                        DICT_Includes.Add(sr_id, (sr_name, StateField));
-                                    }
-                                    else if (sr_type == SelectionRuleType.EXCLUDE.ToString())
-                                    {
-                                        StateField = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
-                                        DICT_Excludes.Add(sr_id, (sr_name, StateField));
-                                    }
-                                }
-                            }
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-
-                }))
-                {
-                    ProMsgBox.Show("Error retrieving Selection Rule details...");
-                    return false;
-                }
-
-                // Exit if either dictionary is empty (can't have a conflict)
-                if (DICT_Includes.Count == 0 | DICT_Excludes.Count == 0)
-                {
-                    return true;
-                }
-
-                // For each combination of Include & Exclude rules, search the PUSelRules table for records having STATE = 1
-                // If found, add a new Conflict object to the list
-
-                List<SelectionRuleConflict> conflicts = new List<SelectionRuleConflict>();
-
-                if (!await QueuedTask.Run(async () =>
-                {
-                    try
-                    {
-                        int conflict_id = 1;
-
-                        foreach (KeyValuePair<int, (string name, string statefield)> include in DICT_Includes)
-                        {
-                            foreach (KeyValuePair<int, (string name, string statefield)> exclude in DICT_Excludes)
-                            {
-                                QueryFilter QF = new QueryFilter
-                                {
-                                    SubFields = include.Value.statefield + "," + exclude.Value.statefield,
-                                    WhereClause = include.Value.statefield + @" = 1 And " + exclude.Value.statefield + @" = 1"
-                                };
-
-                                int rowcount = 0;
-
-                                using (Table table = await PRZH.GetTable_PUSelRules())
-                                {
-                                    rowcount = table.GetCount(QF);
-                                }
-
-                                if (rowcount > 0)
-                                {
-                                    // a conflict exists between include and exclude
-
-                                    SelectionRuleConflict con = new SelectionRuleConflict();
-
-                                    con.conflict_id = conflict_id++;
-                                    con.pu_count = rowcount;
-                                    con.include_rule_id = include.Key;
-                                    con.include_rule_name = include.Value.name;
-                                    con.include_rule_statefield = include.Value.statefield;
-                                    con.exclude_rule_id = exclude.Key;
-                                    con.exclude_rule_name = exclude.Value.name;
-                                    con.exclude_rule_statefield = exclude.Value.statefield;
-
-                                    conflicts.Add(con);
-                                }
-                            }
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-
-                }))
-                {
-                    ProMsgBox.Show("Error retrieving Selection Rule details...");
-                    return false;
-                }
-
-                if (conflicts.Count > 0)
-                {
-                    // Sort the conflicts
-                    conflicts.Sort((x, y) => x.conflict_id.CompareTo(y.conflict_id));
-
-                    // Update the collection (causes refresh)
-                    SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(conflicts);
-                }
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
         private async Task<(bool success, List<SelectionRule> rules)> GetRulesFromLayers()
         {
             (bool, List<SelectionRule>) fail = (false, null);
@@ -1434,13 +1205,13 @@ namespace NCC.PRZTools
 
                         SelectionRule rule = new SelectionRule();
 
-                        rule.sr_id = srid++;
-                        rule.sr_name = layer_name;
-                        rule.sr_layer_object = L;
-                        rule.sr_layer_type = SelectionRuleLayerType.VECTOR;
-                        rule.sr_layer_json = layerJson;
-                        rule.sr_rule_type = SelectionRuleType.INCLUDE;
-                        rule.sr_min_threshold = layer_threshold;
+                        rule.SR_ID = srid++;
+                        rule.SR_Name = layer_name;
+                        rule.SR_LayerObject = L;
+                        rule.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                        rule.SR_LayerJson = layerJson;
+                        rule.SR_RuleType = SelectionRuleType.INCLUDE;
+                        rule.SR_MinThreshold = layer_threshold;
 
                         rules.Add(rule);
 
@@ -1496,13 +1267,13 @@ namespace NCC.PRZTools
 
                         SelectionRule rule = new SelectionRule();
 
-                        rule.sr_id = srid++;
-                        rule.sr_name = layer_name;
-                        rule.sr_layer_object = L;
-                        rule.sr_layer_type = SelectionRuleLayerType.RASTER;
-                        rule.sr_layer_json = layerJson;
-                        rule.sr_rule_type = SelectionRuleType.INCLUDE;
-                        rule.sr_min_threshold = layer_threshold;
+                        rule.SR_ID = srid++;
+                        rule.SR_Name = layer_name;
+                        rule.SR_LayerObject = L;
+                        rule.SR_LayerType = SelectionRuleLayerType.RASTER;
+                        rule.SR_LayerJson = layerJson;
+                        rule.SR_RuleType = SelectionRuleType.INCLUDE;
+                        rule.SR_MinThreshold = layer_threshold;
 
                         rules.Add(rule);
 
@@ -1635,13 +1406,13 @@ namespace NCC.PRZTools
 
                         SelectionRule rule = new SelectionRule();
 
-                        rule.sr_id = srid++;
-                        rule.sr_name = layer_name;
-                        rule.sr_layer_object = L;
-                        rule.sr_layer_type = SelectionRuleLayerType.VECTOR;
-                        rule.sr_layer_json = layerJson;
-                        rule.sr_rule_type = SelectionRuleType.EXCLUDE;
-                        rule.sr_min_threshold = layer_threshold;
+                        rule.SR_ID = srid++;
+                        rule.SR_Name = layer_name;
+                        rule.SR_LayerObject = L;
+                        rule.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                        rule.SR_LayerJson = layerJson;
+                        rule.SR_RuleType = SelectionRuleType.EXCLUDE;
+                        rule.SR_MinThreshold = layer_threshold;
 
                         rules.Add(rule);
 
@@ -1697,13 +1468,13 @@ namespace NCC.PRZTools
 
                         SelectionRule rule = new SelectionRule();
 
-                        rule.sr_id = srid++;
-                        rule.sr_name = layer_name;
-                        rule.sr_layer_object = L;
-                        rule.sr_layer_type = SelectionRuleLayerType.RASTER;
-                        rule.sr_layer_json = layerJson;
-                        rule.sr_rule_type = SelectionRuleType.EXCLUDE;
-                        rule.sr_min_threshold = layer_threshold;
+                        rule.SR_ID = srid++;
+                        rule.SR_Name = layer_name;
+                        rule.SR_LayerObject = L;
+                        rule.SR_LayerType = SelectionRuleLayerType.RASTER;
+                        rule.SR_LayerJson = layerJson;
+                        rule.SR_RuleType = SelectionRuleType.EXCLUDE;
+                        rule.SR_MinThreshold = layer_threshold;
 
                         rules.Add(rule);
 
@@ -1796,11 +1567,11 @@ namespace NCC.PRZTools
                 foreach (SelectionRule SR in rules)
                 {
                     // Get some Rule info
-                    int srid = SR.sr_id;
-                    string name = SR.sr_name;
-                    SelectionRuleType ruletype = SR.sr_rule_type;
-                    SelectionRuleLayerType layertype = SR.sr_layer_type;
-                    int threshold = SR.sr_min_threshold;
+                    int srid = SR.SR_ID;
+                    string name = SR.SR_Name;
+                    SelectionRuleType ruletype = SR.SR_RuleType;
+                    SelectionRuleLayerType layertype = SR.SR_LayerType;
+                    int threshold = SR.SR_MinThreshold;
 
                     string prefix = "";
 
@@ -1818,7 +1589,7 @@ namespace NCC.PRZTools
                     }
 
                     // Process each rule layer
-                    if (SR.sr_layer_object is FeatureLayer FL)
+                    if (SR.SR_LayerObject is FeatureLayer FL)
                     {
                         // Clear selection on rule layer
                         await QueuedTask.Run(() =>
@@ -2006,7 +1777,7 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Temp feature classes deleted successfully."), true, ++val);
                         }
                     }
-                    else if (SR.sr_layer_object is RasterLayer RL)
+                    else if (SR.SR_LayerObject is RasterLayer RL)
                     {
                         // Get the Raster Layer and its SRs
                         SpatialReference RL_SR = null;
@@ -2205,6 +1976,395 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> PopulateGrid_Rules()
+        {
+            try
+            {
+                // Clear the contents
+                SelectionRules = new ObservableCollection<SelectionRule>(); // triggers the xaml refresh
+
+                // If Selection Rules table doesn't exist, exit
+                if (!await PRZH.TableExists_SelRules())
+                {
+                    return true;
+                }
+
+                List<SelectionRule> rules = new List<SelectionRule>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetTable_SelRules())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    SelectionRule SR = new SelectionRule();
+
+                                    SR.SR_ID = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
+                                    SR.SR_Name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
+
+                                    string rt = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
+                                    if (rt == SelectionRuleType.INCLUDE.ToString())
+                                    {
+                                        SR.SR_RuleType = SelectionRuleType.INCLUDE;
+                                    }
+                                    else if (rt == SelectionRuleType.EXCLUDE.ToString())
+                                    {
+                                        SR.SR_RuleType = SelectionRuleType.EXCLUDE;
+                                    }
+
+                                    string lt = row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE].ToString() ?? "";
+                                    if (lt == SelectionRuleLayerType.RASTER.ToString())
+                                    {
+                                        SR.SR_LayerType = SelectionRuleLayerType.RASTER;
+                                    }
+                                    else if (lt == SelectionRuleLayerType.VECTOR.ToString())
+                                    {
+                                        SR.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                                    }
+
+                                    SR.SR_MinThreshold = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD]);
+                                    SR.SR_PUCount = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_PUCOUNT]);
+                                    SR.SR_Enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]);
+                                    SR.SR_Hidden = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_HIDDEN]);
+                                    SR.SR_Area_M2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_M]);
+                                    SR.SR_Area_Ac = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_AC]);
+                                    SR.SR_Area_Ha = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_HA]);
+                                    SR.SR_Area_Km2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_KM]);
+
+                                    rules.Add(SR);
+                                }
+                            }
+
+                            int c = table.GetCount();
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+
+                }))
+                {
+                    ProMsgBox.Show($"Error retrieving Rule information from the {PRZC.c_TABLE_SELRULES} table.");
+                    return false;
+                }
+
+                // Sort them
+                rules.Sort((x, y) => x.SR_ID.CompareTo(y.SR_ID));
+
+                SelectionRules = new ObservableCollection<SelectionRule>(rules);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        private async Task<bool> PopulateGrid_Conflicts()
+        {
+            try
+            {
+                // Clear the contents
+                SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(); // triggers the xaml refresh
+
+                // If either table doesn't exist, exit
+                if (!await PRZH.TableExists_SelRules() | !await PRZH.TableExists_PUSelRules())
+                {
+                    return true;
+                }
+
+                // Retrieve Selection Rule info
+                Dictionary<int, (string name, string statefield)> DICT_Includes = new Dictionary<int, (string name, string statefield)>();
+                Dictionary<int, (string name, string statefield)> DICT_Excludes = new Dictionary<int, (string name, string statefield)>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetTable_SelRules())
+                        using (TableDefinition tDef = table.GetDefinition())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int sr_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
+                                    string sr_name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
+                                    string sr_type = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
+
+                                    string StateField = "";
+
+                                    if (sr_type == SelectionRuleType.INCLUDE.ToString())
+                                    {
+                                        StateField = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
+                                        DICT_Includes.Add(sr_id, (sr_name, StateField));
+                                    }
+                                    else if (sr_type == SelectionRuleType.EXCLUDE.ToString())
+                                    {
+                                        StateField = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
+                                        DICT_Excludes.Add(sr_id, (sr_name, StateField));
+                                    }
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+
+                }))
+                {
+                    ProMsgBox.Show("Error retrieving Selection Rule details...");
+                    return false;
+                }
+
+                // Exit if either dictionary is empty (can't have a conflict)
+                if (DICT_Includes.Count == 0 | DICT_Excludes.Count == 0)
+                {
+                    return true;
+                }
+
+                // For each combination of Include & Exclude rules, search the PUSelRules table for records having STATE = 1
+                // If found, add a new Conflict object to the list
+
+                List<SelectionRuleConflict> conflicts = new List<SelectionRuleConflict>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        int conflict_id = 1;
+
+                        foreach (KeyValuePair<int, (string name, string statefield)> include in DICT_Includes)
+                        {
+                            foreach (KeyValuePair<int, (string name, string statefield)> exclude in DICT_Excludes)
+                            {
+                                QueryFilter QF = new QueryFilter
+                                {
+                                    SubFields = include.Value.statefield + "," + exclude.Value.statefield,
+                                    WhereClause = include.Value.statefield + @" = 1 And " + exclude.Value.statefield + @" = 1"
+                                };
+
+                                int rowcount = 0;
+
+                                using (Table table = await PRZH.GetTable_PUSelRules())
+                                {
+                                    rowcount = table.GetCount(QF);
+                                }
+
+                                if (rowcount > 0)
+                                {
+                                    // a conflict exists between include and exclude
+
+                                    SelectionRuleConflict con = new SelectionRuleConflict();
+
+                                    con.conflict_id = conflict_id++;
+                                    con.pu_count = rowcount;
+                                    con.include_rule_id = include.Key;
+                                    con.include_rule_name = include.Value.name;
+                                    con.include_rule_statefield = include.Value.statefield;
+                                    con.exclude_rule_id = exclude.Key;
+                                    con.exclude_rule_name = exclude.Value.name;
+                                    con.exclude_rule_statefield = exclude.Value.statefield;
+
+                                    conflicts.Add(con);
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+
+                }))
+                {
+                    ProMsgBox.Show("Error retrieving Selection Rule details...");
+                    return false;
+                }
+
+                if (conflicts.Count > 0)
+                {
+                    // Sort the conflicts
+                    conflicts.Sort((x, y) => x.conflict_id.CompareTo(y.conflict_id));
+
+                    // Update the collection (causes refresh)
+                    SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(conflicts);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        private async Task<bool> ClearSelRules()
+        {
+            int val = 0;
+
+            try
+            {
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
+
+                // Some paths
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string srpath = PRZH.GetPath_Table_SelRules();
+                string pusrpath = PRZH.GetPath_Table_PUSelRules();
+
+                // Initialize ProgressBar and Progress Log
+                int max = 20;
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing..."), false, max, ++val);
+
+                // Validation: Prompt User for permission to proceed
+                if (ProMsgBox.Show("If you proceed, the following will happen:" +
+                   Environment.NewLine +
+                   $"1. The {PRZC.c_TABLE_SELRULES} and {PRZC.c_TABLE_PUSELRULES} tables will be deleted from the project geodatabase (if they exist)" + Environment.NewLine +
+                   $"2. All values in the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 1" + Environment.NewLine +
+                   $"3. All values in the {PRZC.c_FLD_FC_PU_CONFLICT} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 0" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "TABLE DELETE WARNING",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
+                    return false;
+                }
+
+                // Delete the SelRules table
+                if (await PRZH.TableExists_SelRules())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(srpath, "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_SELRULES} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_SELRULES} table deleted successfully..."), true, ++val);
+                    }
+                }
+
+                // Delete the PUSelRules table
+                if (await PRZH.TableExists_PUSelRules())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table deleted successfully..."), true, ++val);
+                    }
+                }
+
+                // Update PUFC, set effective rule and conflict fields to default
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class..."), true, ++val);
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    row[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = DBNull.Value;
+                                    row[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
+
+                                    row.Store();
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error resetting the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields updated successfully."), true, ++val);
+                }
+
+
+                // Determine the presence of 2 tables, and enable/disable the main button accordingly
+                SelRuleTableExists = await PRZH.TableExists_SelRules();
+                PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
+                SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
+
+                // Repopulate the grids
+                if (!await PopulateGrid_Rules())
+                {
+                    ProMsgBox.Show("Error loading the Selection Rules grid");
+                }
+                if (!await PopulateGrid_Conflicts())
+                {
+                    ProMsgBox.Show("Error loading the Conflicts grid");
+                }
+
+                ProMsgBox.Show("Selection Rules Removed.");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                return false;
+            }
+        }
+
         private async Task<bool> ConflictDblClick()
         {
             try
@@ -2318,22 +2478,22 @@ namespace NCC.PRZTools
                 }
 
                 // Exit if the Selection Rule has no associated planning units
-                if (SelectedSelectionRule.sr_pucount == 0)
+                if (SelectedSelectionRule.SR_PUCount == 0)
                 {
                     return true;
                 }
 
                 // Get the Selection Rule ID
-                int sr_id = SelectedSelectionRule.sr_id;
+                int sr_id = SelectedSelectionRule.SR_ID;
 
                 // Get the Area Field name
                 string statefield = "";
 
-                if (SelectedSelectionRule.sr_rule_type == SelectionRuleType.INCLUDE)
+                if (SelectedSelectionRule.SR_RuleType == SelectionRuleType.INCLUDE)
                 {
                     statefield = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
                 }
-                else if (SelectedSelectionRule.sr_rule_type == SelectionRuleType.EXCLUDE)
+                else if (SelectedSelectionRule.SR_RuleType == SelectionRuleType.EXCLUDE)
                 {
                     statefield = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + sr_id.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
                 }
@@ -2436,150 +2596,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ClearSelRules()
-        {
-            int val = 0;
-
-            try
-            {
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                string toolOutput;
-
-                // Some paths
-                string gdbpath = PRZH.GetPath_ProjectGDB();
-                string srpath = PRZH.GetPath_Table_SelRules();
-                string pusrpath = PRZH.GetPath_Table_PUSelRules();
-
-                // Initialize ProgressBar and Progress Log
-                int max = 20;
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing..."), false, max, ++val);
-
-                // Validation: Prompt User for permission to proceed
-                if (ProMsgBox.Show("If you proceed, the following will happen:" +
-                   Environment.NewLine + 
-                   $"1. The {PRZC.c_TABLE_SELRULES} and {PRZC.c_TABLE_PUSELRULES} tables will be deleted from the project geodatabase (if they exist)" + Environment.NewLine +
-                   $"2. All values in the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 1" + Environment.NewLine +
-                   $"3. All values in the {PRZC.c_FLD_FC_PU_CONFLICT} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 0" +
-                   Environment.NewLine + Environment.NewLine +
-                   "Do you wish to proceed?" +
-                   Environment.NewLine + Environment.NewLine +
-                   "Choose wisely...",
-                   "TABLE DELETE WARNING",
-                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
-                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
-                    return false;
-                }
-
-                // Delete the SelRules table
-                if (await PRZH.TableExists_SelRules())
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(srpath, "");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_SELRULES} table.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_SELRULES} table deleted successfully..."), true, ++val);
-                    }
-                }
-
-                // Delete the PUSelRules table
-                if (await PRZH.TableExists_PUSelRules())
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table deleted successfully..."), true, ++val);
-                    }
-                }
-
-                // Update PUFC, set effective rule and conflict fields to default
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class..."), true, ++val);
-                
-                if (!await QueuedTask.Run(async () =>
-                {
-                    try
-                    {
-                        using (Table table = await PRZH.GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(null, false))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    row[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = DBNull.Value;
-                                    row[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
-
-                                    row.Store();
-                                }
-                            }
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error resetting the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields updated successfully."), true, ++val);
-                }
-
-
-                // Determine the presence of 2 tables, and enable/disable the main button accordingly
-                SelRuleTableExists = await PRZH.TableExists_SelRules();
-                PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
-                SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
-
-                // Repopulate the grids
-                if (!await PopulateGrid_Rules())
-                {
-                    ProMsgBox.Show("Error loading the Selection Rules grid");
-                }
-                if (!await PopulateGrid_Conflicts())
-                {
-                    ProMsgBox.Show("Error loading the Conflicts grid");
-                }
-
-                ProMsgBox.Show("Selection Rules Removed.");
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
-                return false;
-            }
-        }
 
         #endregion
 

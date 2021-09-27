@@ -12,7 +12,7 @@ using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    internal class Button_CFGenerator : Button
+    internal class Button_Features : Button
     {
 
         protected override async void OnClick()
@@ -101,10 +101,10 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region Configure and Show the CF Dialog
+                #region Configure and Show the Features Dialog
 
-                CFGenerator dlg = new CFGenerator();                      // View
-                CFGeneratorVM vm = (CFGeneratorVM)dlg.DataContext;        // View Model
+                Features dlg = new Features();                      // View
+                FeaturesVM vm = (FeaturesVM)dlg.DataContext;        // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 

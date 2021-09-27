@@ -32,80 +32,84 @@ using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    public class CFGeneratorVM : PropertyChangedBase
+    public class FeaturesVM : PropertyChangedBase
     {
-        public CFGeneratorVM()
+        public FeaturesVM()
         {
         }
+
+        #region FIELDS
+
+        private ObservableCollection<FeatureElement> _features = new ObservableCollection<FeatureElement>();
+        private FeatureElement _selectedFeature;
+        private string _defaultMinThreshold = Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD;
+        private string _defaultGoal = Properties.Settings.Default.DEFAULT_CF_GOAL;
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+        private bool _featuresTableExists = false;
+        private bool _puFeaturesTableExists = false;
+        private bool _featuresExist = false;
+
+        private ICommand _cmdFeatureDblClick;
+        private ICommand _cmdGenerateFeatures;
+        private ICommand _cmdClearFeatures;
+        private ICommand _cmdClearLog;
+
+        #endregion
 
         #region PROPERTIES
 
-        private bool _cfTableExists;
-        public bool CFTableExists
+        public bool FeaturesTableExists
         {
-            get => _cfTableExists;
-            set => SetProperty(ref _cfTableExists, value, () => CFTableExists);
+            get => _featuresTableExists;
+            set => SetProperty(ref _featuresTableExists, value, () => FeaturesTableExists);
         }
 
-        private bool _puvcfTableExists;
-        public bool PUVCFTableExists
+        public bool PUFeaturesTableExists
         {
-            get => _puvcfTableExists;
-            set => SetProperty(ref _puvcfTableExists, value, () => PUVCFTableExists);
+            get => _puFeaturesTableExists;
+            set => SetProperty(ref _puFeaturesTableExists, value, () => PUFeaturesTableExists);
         }
 
-        private string _gridCaption;
-        public string GridCaption
+        public bool FeaturesExist
         {
-            get => _gridCaption; set => SetProperty(ref _gridCaption, value, () => GridCaption);
+            get => _featuresExist;
+            set => SetProperty(ref _featuresExist, value, () => FeaturesExist);
         }
 
-        private string _defaultThreshold = Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD;
-        public string DefaultThreshold
+        public string DefaultMinThreshold
         {
-            get => _defaultThreshold;
-
+            get => _defaultMinThreshold;
             set
             {
-                SetProperty(ref _defaultThreshold, value, () => DefaultThreshold);
+                SetProperty(ref _defaultMinThreshold, value, () => DefaultMinThreshold);
                 Properties.Settings.Default.DEFAULT_CF_MIN_THRESHOLD = value;
                 Properties.Settings.Default.Save();
             }
         }
 
-        private string _defaultTarget = Properties.Settings.Default.DEFAULT_CF_GOAL;
-        public string DefaultTarget
+        public string DefaultGoal
         {
-            get => _defaultTarget;
-
+            get => _defaultGoal;
             set
             {
-                SetProperty(ref _defaultTarget, value, () => DefaultTarget);
+                SetProperty(ref _defaultGoal, value, () => DefaultGoal);
                 Properties.Settings.Default.DEFAULT_CF_GOAL = value;
                 Properties.Settings.Default.Save();
             }
         }
 
-        private ObservableCollection<ConservationFeature> _conservationFeatures = new ObservableCollection<ConservationFeature>();
-        public ObservableCollection<ConservationFeature> ConservationFeatures
+        public ObservableCollection<FeatureElement> Features
         {
-            get { return _conservationFeatures; }
-            set
-            {
-                _conservationFeatures = value;
-                SetProperty(ref _conservationFeatures, value, () => ConservationFeatures);
-            }
+            get => _features;
+            set => SetProperty(ref _features, value, () => Features);
         }
 
-        private ConservationFeature _selectedConservationFeature;
-        public ConservationFeature SelectedConservationFeature
+        public FeatureElement SelectedFeature
         {
-            get => _selectedConservationFeature; set => SetProperty(ref _selectedConservationFeature, value, () => SelectedConservationFeature);
+            get => _selectedFeature;
+            set => SetProperty(ref _selectedFeature, value, () => SelectedFeature);
         }
 
-
-
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
         {
             get => _pm; set => SetProperty(ref _pm, value, () => PM);
@@ -115,18 +119,16 @@ namespace NCC.PRZTools
 
         #region COMMANDS
 
-        private ICommand _cmdConstraintDoubleClick;
-        public ICommand CmdGridDoubleClick => _cmdConstraintDoubleClick ?? (_cmdConstraintDoubleClick = new RelayCommand(() => GridDoubleClick(), () => true));
-
-        private ICommand _cmdGenerateCF;
-        public ICommand CmdGenerateCF => _cmdGenerateCF ?? (_cmdGenerateCF = new RelayCommand(() => GenerateCF(), () => true));
-
-        private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
+        public ICommand CmdFeatureDblClick => _cmdFeatureDblClick ?? (_cmdFeatureDblClick = new RelayCommand(() => FeatureDblClick(), () => true));
+
+        public ICommand CmdClearFeatures => _cmdClearFeatures ?? (_cmdClearFeatures = new RelayCommand(() => ClearFeatures(), () => true));
+
+        public ICommand CmdGenerateFeatures => _cmdGenerateFeatures ?? (_cmdGenerateFeatures = new RelayCommand(() => GenerateFeatures(), () => true));
 
         #endregion
 
@@ -139,254 +141,24 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                // checkboxes
-                CFTableExists = await PRZH.TableExists_Features();
-                PUVCFTableExists = await PRZH.TableExists_PUFeatures();
+                // Determine the presence of 2 tables, and enable/disable the clear button accordingly
+                FeaturesTableExists = await PRZH.TableExists_Features();
+                PUFeaturesTableExists = await PRZH.TableExists_PUFeatures();
+                FeaturesExist = FeaturesTableExists || PUFeaturesTableExists;
 
-                // Populate the Grid
-                bool Populated = await PopulateGrid();
-
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        private async Task<bool> PopulateGrid()
-        {
-            try
-            {
-                // Clear the contents of the Conflicts observable collection
-                ConservationFeatures.Clear();
-
-                string caption = "";
-                List<ConservationFeature> LIST_CF = new List<ConservationFeature>();
-
-                await QueuedTask.Run(async() =>
+                // Populate the grid
+                if (!await PopulateGrid())
                 {
-                    if (!await PRZH.TableExists_Features())
-                    {
-                        caption = "Conservation Features Table not yet built...";
-                        return;
-                    }
-
-                    using (Table table = await PRZH.GetTable_Features())
-                    using (RowCursor rowCursor = table.Search(null, false))
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                ConservationFeature CF = new ConservationFeature();
-
-                                CF.cf_id = (row[PRZC.c_FLD_TAB_CF_ID] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_ID];
-                                CF.cf_name = (row[PRZC.c_FLD_TAB_CF_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_NAME].ToString();
-                                CF.cf_whereclause = (row[PRZC.c_FLD_TAB_CF_WHERECLAUSE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_WHERECLAUSE].ToString();
-                                CF.cf_min_threshold_pct = (row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT];
-                                CF.cf_target_pct = (row[PRZC.c_FLD_TAB_CF_TARGET_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_TARGET_PCT];
-
-                                CF.cf_area_m2 = (row[PRZC.c_FLD_TAB_CF_AREA_M] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_M];
-                                CF.cf_area_ac = (row[PRZC.c_FLD_TAB_CF_AREA_AC] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_AC];
-                                CF.cf_area_ha = (row[PRZC.c_FLD_TAB_CF_AREA_HA] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_HA];
-                                CF.cf_area_km2 = (row[PRZC.c_FLD_TAB_CF_AREA_KM] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_KM];
-                                CF.cf_pucount = (row[PRZC.c_FLD_TAB_CF_PUCOUNT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_PUCOUNT];
-
-                                CF.lyr_name = (row[PRZC.c_FLD_TAB_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_NAME].ToString();
-                                CF.lyr_type = (row[PRZC.c_FLD_TAB_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_TYPE].ToString();
-                                CF.lyr_json = (row[PRZC.c_FLD_TAB_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_JSON].ToString();
-
-                                CF.cf_enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]);
-
-                                LIST_CF.Add(CF);
-                            }
-                        }
-
-                        int c = table.GetCount();
-                        caption = "Conservation Features Table: (" + ((c == 1) ? "1 Record)" : c.ToString() + " Records)");
-                    }
-                });
-
-                GridCaption = caption;
-
-                // Sort them
-                LIST_CF.Sort((x, y) => x.cf_id.CompareTo(y.cf_id));
-
-                foreach (ConservationFeature cf in LIST_CF)
-                {
-                    ConservationFeatures.Add(cf);
+                    ProMsgBox.Show("Error loading the Features grid");
                 }
-                NotifyPropertyChanged(() => ConservationFeatures);
-
-
-
-                // CF Table Exists - retrieve data from it
-
-                //Dictionary<int, string> DICT_IN = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = IN Constraint Layer to which it applies
-                //Dictionary<int, string> DICT_EX = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = EX Constraint Layer to which it applies
-
-                //List<Field> fields = null;  // List of Planning Unit Status table fields
-
-                //// Populate the Dictionaries
-                //await QueuedTask.Run(async () =>
-                //{
-                //    using (Table table = await PRZH.GetStatusInfoTable())
-                //    using (RowCursor rowCursor = table.Search(null, false))
-                //    {
-                //        TableDefinition tDef = table.GetDefinition();
-                //        fields = tDef.GetFields().ToList();
-
-                //        // Get the first row (I only need one row)
-                //        if (rowCursor.MoveNext())
-                //        {
-                //            using (Row row = rowCursor.Current)
-                //            {
-                //                // Now, get field info and row value info that's present in all rows exactly the same (that's why I only need one row)
-                //                for (int i = 0; i < fields.Count; i++)
-                //                {
-                //                    Field field = fields[i];
-
-                //                    if (field.Name.EndsWith("_Name"))
-                //                    {
-                //                        string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
-
-                //                        if (field.Name.StartsWith("IN"))
-                //                        {
-                //                            DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
-                //                        }
-                //                        else if (field.Name.StartsWith("EX"))
-                //                        {
-                //                            DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
-                //                        }
-                //                    }
-                //                }
-                //            }
-                //        }
-                //    }
-                //});
-
-                //// Build a List of Unique Combinations of IN and EX Layers
-                //string c_ConflictNumber = "CONFLICT";
-                //string c_LayerName_Include = "'INCLUDE' Constraint";
-                //string c_LayerName_Exclude = "'EXCLUDE' Constraint";
-                //string c_PUCount = "PLANNING UNIT COUNT";
-                //string c_AreaFieldIndex_Include = "IndexIN";
-                //string c_AreaFieldIndex_Exclude = "IndexEX";
-                //string c_ConflictExists = "Exists";
-
-                //DataTable DT = new DataTable();
-                //DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
-                //DT.Columns.Add(c_LayerName_Include, Type.GetType("System.String"));
-                //DT.Columns.Add(c_LayerName_Exclude, Type.GetType("System.String"));
-                //DT.Columns.Add(c_PUCount, Type.GetType("System.Int32"));
-                //DT.Columns.Add(c_AreaFieldIndex_Include, Type.GetType("System.Int32"));
-                //DT.Columns.Add(c_AreaFieldIndex_Exclude, Type.GetType("System.Int32"));
-                //DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
-
-                //foreach (int IN_AreaFieldIndex in DICT_IN.Keys)
-                //{
-                //    string IN_LayerName = DICT_IN[IN_AreaFieldIndex];
-
-                //    foreach (int EX_AreaFieldIndex in DICT_EX.Keys)
-                //    {
-                //        string EX_LayerName = DICT_EX[EX_AreaFieldIndex];
-
-                //        DataRow DR = DT.NewRow();
-
-                //        DR[c_LayerName_Include] = IN_LayerName;
-                //        DR[c_LayerName_Exclude] = EX_LayerName;
-                //        DR[c_PUCount] = 0;
-                //        DR[c_AreaFieldIndex_Include] = IN_AreaFieldIndex;
-                //        DR[c_AreaFieldIndex_Exclude] = EX_AreaFieldIndex;
-                //        DR[c_ConflictExists] = false;
-                //        DT.Rows.Add(DR);
-                //    }
-                //}
-
-                //// For each row in DataTable, query PU Status for pairs having area>0 in both IN and EX
-                //int conflict_number = 1;
-                //int IN_AreaField_Index;
-                //int EX_AreaField_Index;
-                //string IN_AreaField_Name = "";
-                //string EX_AreaField_Name = "";
-
-                //foreach (DataRow DR in DT.Rows)
-                //{
-                //    IN_AreaField_Index = (int)DR[c_AreaFieldIndex_Include];
-                //    EX_AreaField_Index = (int)DR[c_AreaFieldIndex_Exclude];
-
-                //    IN_AreaField_Name = fields[IN_AreaField_Index].Name;
-                //    EX_AreaField_Name = fields[EX_AreaField_Index].Name;
-
-                //    string where_clause = IN_AreaField_Name + @" > 0 And " + EX_AreaField_Name + @" > 0";
-
-                //    QueryFilter QF = new QueryFilter();
-                //    QF.SubFields = IN_AreaField_Name + "," + EX_AreaField_Name;
-                //    QF.WhereClause = where_clause;
-
-                //    int row_count = 0;
-
-                //    await QueuedTask.Run(async () =>
-                //    {
-                //        using (Table table = await PRZH.GetStatusInfoTable())
-                //        {
-                //            row_count = table.GetCount(QF);
-                //        }
-                //    });
-
-                //    if (row_count > 0)
-                //    {
-                //        DR[c_ConflictNumber] = conflict_number++;
-                //        DR[c_PUCount] = row_count;
-                //        DR[c_ConflictExists] = true;
-                //    }
-                //}
-
-
-                //// Filter out only those DataRows where conflict exists
-                //DataView DV = DT.DefaultView;
-                //DV.RowFilter = c_ConflictExists + " = true";
-
-                //// Finally, populate the Observable Collection
-
-                //List<StatusConflict> l = new List<StatusConflict>();
-                //foreach (DataRowView DRV in DV)
-                //{
-                //    StatusConflict sc = new StatusConflict();
-
-                //    sc.include_layer_name = DRV[c_LayerName_Include].ToString();
-                //    sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
-                //    sc.exclude_layer_name = DRV[c_LayerName_Exclude].ToString();
-                //    sc.exclude_area_field_index = (int)DRV[c_AreaFieldIndex_Exclude];
-                //    sc.conflict_num = (int)DRV[c_ConflictNumber];
-                //    sc.pu_count = (int)DRV[c_PUCount];
-
-                //    l.Add(sc);
-                //}
-
-                //// Sort them
-                //l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
-
-                //// Set the property
-                //_conflicts = new ObservableCollection<StatusConflict>(l);
-                //NotifyPropertyChanged(() => Conflicts);
-
-                //int count = DV.Count;
-
-                //ConflictGridCaption = "Planning Unit Status Conflict Listing (" + ((count == 1) ? "1 conflict)" : count.ToString() + " conflicts)");
-
-
-                return true;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
-                return false;
             }
         }
 
-        private async Task<bool> GenerateCF()
+        private async Task<bool> GenerateFeatures()
         {
             int val = 0;
 
@@ -440,7 +212,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Default Threshold is valid
-                string threshold_text = string.IsNullOrEmpty(DefaultThreshold) ? "0" : ((DefaultThreshold.Trim() == "") ? "0" : DefaultThreshold.Trim());
+                string threshold_text = string.IsNullOrEmpty(DefaultMinThreshold) ? "0" : ((DefaultMinThreshold.Trim() == "") ? "0" : DefaultMinThreshold.Trim());
 
                 if (!double.TryParse(threshold_text, out double threshold_double))
                 {
@@ -460,7 +232,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Default Target is valid
-                string target_text = string.IsNullOrEmpty(DefaultTarget) ? "0" : ((DefaultTarget.Trim() == "") ? "0" : DefaultTarget.Trim());
+                string target_text = string.IsNullOrEmpty(DefaultGoal) ? "0" : ((DefaultGoal.Trim() == "") ? "0" : DefaultGoal.Trim());
 
                 if (!double.TryParse(target_text, out double target_double))
                 {
@@ -524,7 +296,7 @@ namespace NCC.PRZTools
                 #region RETRIEVE CONSERVATION FEATURES FROM THE CF GROUPLAYER
 
                 // Create the empty list of future Conservation Features
-                List<ConservationFeature> LIST_CF = new List<ConservationFeature>();
+                List<FeatureElement> LIST_CF = new List<FeatureElement>();
 
                 if (!await GetConservationFeaturesFromLayers(LIST_CF))
                 {
@@ -649,26 +421,26 @@ namespace NCC.PRZTools
                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                     {
                         // Iterate through each CF
-                        foreach (ConservationFeature CF in LIST_CF)
+                        foreach (FeatureElement CF in LIST_CF)
                         {
                             // Set the row values from the CF object
-                            rowBuffer[PRZC.c_FLD_TAB_CF_ID] = CF.cf_id;
-                            rowBuffer[PRZC.c_FLD_TAB_CF_NAME] = CF.cf_name;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_ID] = CF.CF_ID;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_NAME] = CF.CF_Name;
 
                             // min threshold
-                            rowBuffer[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT] = (CF.cf_min_threshold_pct == -1) ? Convert.ToInt32(threshold_double) : CF.cf_min_threshold_pct;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT] = (CF.CF_MinThreshold == -1) ? Convert.ToInt32(threshold_double) : CF.CF_MinThreshold;
 
                             // target
-                            rowBuffer[PRZC.c_FLD_TAB_CF_TARGET_PCT] = (CF.cf_target_pct == -1) ? Convert.ToInt32(target_double) : CF.cf_target_pct;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_TARGET_PCT] = (CF.CF_Goal == -1) ? Convert.ToInt32(target_double) : CF.CF_Goal;
 
-                            rowBuffer[PRZC.c_FLD_TAB_CF_WHERECLAUSE] = CF.cf_whereclause;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_WHERECLAUSE] = CF.CF_WhereClause;
 
                             // enabled
-                            rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = CF.cf_enabled;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_ENABLED] = CF.CF_Enabled;
 
-                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_NAME] = CF.lyr_name;
-                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.lyr_type;
-                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_JSON] = CF.lyr_json;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_NAME] = CF.Layer_Name;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.Layer_Type;
+                            rowBuffer[PRZC.c_FLD_TAB_CF_LYR_JSON] = CF.Layer_Json;
 
                             // Finally, insert the row
                             insertCursor.Insert(rowBuffer);
@@ -803,9 +575,9 @@ namespace NCC.PRZTools
                 }
 
                 // Add CF-specific fields to PUVCF Table
-                foreach (ConservationFeature CF in LIST_CF)
+                foreach (FeatureElement CF in LIST_CF)
                 {
-                    int cf_id = CF.cf_id;
+                    int cf_id = CF.CF_ID;
 
                     // CF Name field
                     string fldCFNAME_name = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_NAME;
@@ -848,7 +620,7 @@ namespace NCC.PRZTools
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    string cf_name = (CF.cf_name.Length > 100) ? CF.cf_name.Substring(0, 75) : CF.cf_name;
+                                    string cf_name = (CF.CF_Name.Length > 100) ? CF.CF_Name.Substring(0, 75) : CF.CF_Name;
                                     row[fldCFNAME_name] = cf_name;
 
                                     row[fldCFAREA_name] = 0;
@@ -926,7 +698,7 @@ namespace NCC.PRZTools
                                     int CFCount = 0;
                                     int puid = (int)row[PRZC.c_FLD_TAB_PUCF_ID];
 
-                                    foreach(string fldname in LIST_AreaFieldNames)
+                                    foreach (string fldname in LIST_AreaFieldNames)
                                     {
                                         double cfarea = (row[fldname] == null) ? 0 : (double)row[fldname];
 
@@ -1121,8 +893,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
                 // update checkboxes
-                CFTableExists = await PRZH.TableExists_Features();
-                PUVCFTableExists = await PRZH.TableExists_PUFeatures();
+                FeaturesTableExists = await PRZH.TableExists_Features();
+                PUFeaturesTableExists = await PRZH.TableExists_PUFeatures();
 
                 ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
 
@@ -1138,7 +910,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> GetConservationFeaturesFromLayers(List<ConservationFeature> LIST_CF)
+        private async Task<bool> GetConservationFeaturesFromLayers(List<FeatureElement> LIST_CF)
         {
             try
             {
@@ -1611,7 +1383,7 @@ namespace NCC.PRZTools
 
                                     // Retrieve the Classes in this Group
                                     CIMUniqueValueClass[] UVClasses = UVGroup.Classes;
- 
+
                                     // Each UVClass will become a Conservation Feature
                                     foreach (CIMUniqueValueClass UVClass in UVClasses)
                                     {
@@ -1899,20 +1671,20 @@ namespace NCC.PRZTools
                         {
                             foreach (UVConservationFeature CF in LIST_ConservationFeaturesUV)
                             {
-                                ConservationFeature consFeat = new ConservationFeature();
+                                FeatureElement consFeat = new FeatureElement();
 
-                                consFeat.cf_id = cfid++;
-                                consFeat.cf_name = layer_name + " - " + CF.GroupHeading + " - " + CF.ClassLabel;
-                                consFeat.cf_whereclause = CF.WhereClause;
-                                consFeat.lyr_min_threshold_pct = lyr_threshold_int;
-                                consFeat.cf_min_threshold_pct = CF.ClassThreshold;
-                                consFeat.lyr_object = FL;
-                                consFeat.lyr_type = "Feature";
-                                consFeat.lyr_name = FL.Name;
-                                consFeat.lyr_json = flJson;
-                                consFeat.lyr_target_pct = lyr_target_int;
-                                consFeat.cf_target_pct = CF.ClassTarget;
-                                consFeat.cf_enabled = 1;
+                                consFeat.CF_ID = cfid++;
+                                consFeat.CF_Name = layer_name + " - " + CF.GroupHeading + " - " + CF.ClassLabel;
+                                consFeat.CF_WhereClause = CF.WhereClause;
+                                consFeat.Layer_MinThreshold = lyr_threshold_int;
+                                consFeat.CF_MinThreshold = CF.ClassThreshold;
+                                consFeat.Layer_Object = FL;
+                                consFeat.Layer_Type = "Feature";
+                                consFeat.Layer_Name = FL.Name;
+                                consFeat.Layer_Json = flJson;
+                                consFeat.Layer_Goal = lyr_target_int;
+                                consFeat.CF_Goal = CF.ClassTarget;
+                                consFeat.CF_Enabled = 1;
 
                                 LIST_CF.Add(consFeat);
                             }
@@ -1921,20 +1693,20 @@ namespace NCC.PRZTools
                         // Otherwise, get the CF from the FL
                         else
                         {
-                            ConservationFeature consFeat = new ConservationFeature();
+                            FeatureElement consFeat = new FeatureElement();
 
-                            consFeat.cf_id = cfid++;
-                            consFeat.cf_name = layer_name;
-                            consFeat.cf_whereclause = "";
-                            consFeat.lyr_min_threshold_pct = lyr_threshold_int;
-                            consFeat.cf_min_threshold_pct = lyr_threshold_int;
-                            consFeat.lyr_object = FL;
-                            consFeat.lyr_type = "Feature";
-                            consFeat.lyr_name = FL.Name;
-                            consFeat.lyr_json = flJson;
-                            consFeat.lyr_target_pct = lyr_target_int;
-                            consFeat.cf_target_pct = lyr_target_int;
-                            consFeat.cf_enabled = 1;
+                            consFeat.CF_ID = cfid++;
+                            consFeat.CF_Name = layer_name;
+                            consFeat.CF_WhereClause = "";
+                            consFeat.Layer_MinThreshold = lyr_threshold_int;
+                            consFeat.CF_MinThreshold = lyr_threshold_int;
+                            consFeat.Layer_Object = FL;
+                            consFeat.Layer_Type = "Feature";
+                            consFeat.Layer_Name = FL.Name;
+                            consFeat.Layer_Json = flJson;
+                            consFeat.Layer_Goal = lyr_target_int;
+                            consFeat.CF_Goal = lyr_target_int;
+                            consFeat.CF_Enabled = 1;
 
                             LIST_CF.Add(consFeat);
                         }
@@ -2157,20 +1929,20 @@ namespace NCC.PRZTools
                         });
 
                         // Create a new CF for this raster layer
-                        ConservationFeature consFeat = new ConservationFeature();
+                        FeatureElement consFeat = new FeatureElement();
 
-                        consFeat.cf_id = cfid++;
-                        consFeat.cf_name = layer_name;
-                        consFeat.cf_whereclause = "";
-                        consFeat.lyr_min_threshold_pct = lyr_threshold_int;
-                        consFeat.cf_min_threshold_pct = lyr_threshold_int;
-                        consFeat.lyr_object = RL;
-                        consFeat.lyr_type = "Raster";
-                        consFeat.lyr_name = RL.Name;
-                        consFeat.lyr_json = rlJson;
-                        consFeat.lyr_target_pct = lyr_target_int;
-                        consFeat.cf_target_pct = lyr_target_int;
-                        consFeat.cf_enabled = 1;
+                        consFeat.CF_ID = cfid++;
+                        consFeat.CF_Name = layer_name;
+                        consFeat.CF_WhereClause = "";
+                        consFeat.Layer_MinThreshold = lyr_threshold_int;
+                        consFeat.CF_MinThreshold = lyr_threshold_int;
+                        consFeat.Layer_Object = RL;
+                        consFeat.Layer_Type = "Raster";
+                        consFeat.Layer_Name = RL.Name;
+                        consFeat.Layer_Json = rlJson;
+                        consFeat.Layer_Goal = lyr_target_int;
+                        consFeat.CF_Goal = lyr_target_int;
+                        consFeat.CF_Enabled = 1;
 
                         LIST_CF.Add(consFeat);
                     }
@@ -2185,7 +1957,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> IntersectConservationFeatures(List<ConservationFeature> LIST_CF, Dictionary<int, double> DICT_PUID_area_total, int val)
+        private async Task<bool> IntersectConservationFeatures(List<FeatureElement> LIST_CF, Dictionary<int, double> DICT_PUID_area_total, int val)
         {
             try
             {
@@ -2209,30 +1981,30 @@ namespace NCC.PRZTools
                     FeatureLayer PUFL = PRZH.GetFeatureLayer_PU(map);
                     PUFL.ClearSelection();  // we don't want selected features only, we want all of them
 
-                    foreach (ConservationFeature CF in LIST_CF)
+                    foreach (FeatureElement CF in LIST_CF)
                     {
 
                         // CALCULATIONS DEPEND ON LAYER TYPE!!!!
 
                         // If FeatureLayer...
-                        if (CF.lyr_object is FeatureLayer FL)
+                        if (CF.Layer_Object is FeatureLayer FL)
                         {
                             // Selection
                             await QueuedTask.Run(() =>
                             {
                                 FL.ClearSelection();
 
-                                if (CF.cf_whereclause.Length > 0)
+                                if (CF.CF_WhereClause.Length > 0)
                                 {
                                     // Select appropriate features
                                     QueryFilter QF = new QueryFilter();
-                                    QF.WhereClause = CF.cf_whereclause;
+                                    QF.WhereClause = CF.CF_WhereClause;
                                     FL.Select(QF, SelectionCombinationMethod.New);
                                 }
                             });
 
                             // Prepare for Intersection Prelim FCs
-                            string intersect_fc_name = PRZC.c_FC_TEMP_PUVCF_PREFIX + CF.cf_id.ToString() + PRZC.c_FC_TEMP_PUVCF_SUFFIX_INT;
+                            string intersect_fc_name = PRZC.c_FC_TEMP_PUVCF_PREFIX + CF.CF_ID.ToString() + PRZC.c_FC_TEMP_PUVCF_SUFFIX_INT;
                             string intersect_fc_path = Path.Combine(gdbpath, intersect_fc_name);
 
                             // Construct the inputs value array
@@ -2244,22 +2016,22 @@ namespace NCC.PRZTools
 
                             string inputs_string = string.Join(" ", a2) + ";" + string.Join(" ", b2);   // my final inputs string
 
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersecting CF {CF.cf_id}: {CF.cf_name}"), true);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersecting CF {CF.CF_ID}: {CF.CF_Name}"), true);
                             toolParams = Geoprocessing.MakeValueArray(inputs_string, intersect_fc_path, "ALL", "", "INPUT");
                             toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                             toolOutput = await PRZH.RunGPTool("Intersect_analysis", toolParams, toolEnvs, toolFlags);
                             if (toolOutput == null)
                             {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Intersecting CF {CF.cf_id}.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Intersecting CF {CF.CF_ID}.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
                                 return false;
                             }
                             else
                             {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersect was successful for CF {CF.cf_id}."), true);
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Intersect was successful for CF {CF.CF_ID}."), true);
                             }
 
                             // Now dissolve the temp intersect layer on PUID
-                            string dissolve_fc_name = PRZC.c_FC_TEMP_PUVCF_PREFIX + CF.cf_id.ToString() + PRZC.c_FC_TEMP_PUVCF_SUFFIX_DSLV;
+                            string dissolve_fc_name = PRZC.c_FC_TEMP_PUVCF_PREFIX + CF.CF_ID.ToString() + PRZC.c_FC_TEMP_PUVCF_SUFFIX_DSLV;
                             string dissolve_fc_path = Path.Combine(gdbpath, dissolve_fc_name);
 
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dissolving {intersect_fc_name} on Planning Unit ID..."), true);
@@ -2312,11 +2084,11 @@ namespace NCC.PRZTools
                             }
 
                             // Finally, write this information to PUVCF table
-                            int cf_min_thresh = CF.cf_min_threshold_pct;
-                            int cf_tgt = CF.cf_target_pct;
+                            int cf_min_thresh = CF.CF_MinThreshold;
+                            int cf_tgt = CF.CF_Goal;
 
-                            string fnArea = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
-                            string fnProp = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_PROP;
+                            string fnArea = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.CF_ID.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
+                            string fnProp = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.CF_ID.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_PROP;
 
                             foreach (KeyValuePair<int, double> KVP in DICT_PUID_area_dslv)
                             {
@@ -2369,7 +2141,7 @@ namespace NCC.PRZTools
                         }
 
                         // If RasterLayer...
-                        else if (CF.lyr_object is RasterLayer RL)
+                        else if (CF.Layer_Object is RasterLayer RL)
                         {
                             // Get the PUFC SR and Extent
                             SpatialReference PUFC_SR = null;
@@ -2402,7 +2174,7 @@ namespace NCC.PRZTools
                             string tabname = "cf_zonal_temp";
 
                             // Calculate Zonal Statistics as Table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for CF {CF.cf_id}..."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for CF {CF.CF_ID}..."), true, ++val);
                             toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_FC_PU_ID, RL, tabname);
                             toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
                             toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
@@ -2467,8 +2239,8 @@ namespace NCC.PRZTools
                             }
 
                             // Finally, write the dictionary info to PUVCF table
-                            string fnArea = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
-                            string fnProp = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_PROP;
+                            string fnArea = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.CF_ID.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
+                            string fnProp = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + CF.CF_ID.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_PROP;
 
                             foreach (KeyValuePair<int, Tuple<int, double>> KVP in DICT_PUID_and_count_area)
                             {
@@ -2520,88 +2292,587 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> GridDoubleClick()
+        private async Task<bool> PopulateGrid()
         {
             try
             {
-                ProMsgBox.Show("click");
+                // Clear the contents
+                Features = new ObservableCollection<FeatureElement>(); // triggers the xaml refresh
 
-                //if (SelectedConflict != null)
+                // If Features table doesn't exist, exit
+                if (!await PRZH.TableExists_Features())
+                {
+                    return true;
+                }
+
+                List<FeatureElement> LIST_Features = new List<FeatureElement>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await PRZH.GetTable_Features())
+                        using (RowCursor rowCursor = table.Search())
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+
+                                    // i'm here!!!
+                                    FeatureElement feature = new FeatureElement();
+
+                                    feature.CF_ID = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ID]);
+                                    feature.CF_Name = (row[PRZC.c_FLD_TAB_CF_NAME] == null | row[PRZC.c_FLD_TAB_CF_NAME] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString();
+
+
+                                    feature.CF_Name = (row[PRZC.c_FLD_TAB_CF_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_NAME].ToString();
+                                    feature.CF_WhereClause = (row[PRZC.c_FLD_TAB_CF_WHERECLAUSE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_WHERECLAUSE].ToString();
+                                    feature.CF_MinThreshold = (row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT];
+                                    feature.CF_Goal = (row[PRZC.c_FLD_TAB_CF_TARGET_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_TARGET_PCT];
+
+                                    feature.CF_Area_M2 = (row[PRZC.c_FLD_TAB_CF_AREA_M] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_M];
+                                    feature.CF_Area_Ac = (row[PRZC.c_FLD_TAB_CF_AREA_AC] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_AC];
+                                    feature.CF_Area_Ha = (row[PRZC.c_FLD_TAB_CF_AREA_HA] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_HA];
+                                    feature.CF_Area_Km2 = (row[PRZC.c_FLD_TAB_CF_AREA_KM] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_KM];
+                                    feature.CF_PUCount = (row[PRZC.c_FLD_TAB_CF_PUCOUNT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_PUCOUNT];
+
+                                    feature.Layer_Name = (row[PRZC.c_FLD_TAB_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_NAME].ToString();
+                                    feature.Layer_Type = (row[PRZC.c_FLD_TAB_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_TYPE].ToString();
+                                    feature.Layer_Json = (row[PRZC.c_FLD_TAB_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_JSON].ToString();
+
+                                    feature.CF_Enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]);
+
+                                    LIST_Features.Add(feature);
+
+
+
+                                    SelectionRule SR = new SelectionRule();
+
+                                    SR.SR_Name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
+
+                                    string rt = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
+                                    if (rt == SelectionRuleType.INCLUDE.ToString())
+                                    {
+                                        SR.SR_RuleType = SelectionRuleType.INCLUDE;
+                                    }
+                                    else if (rt == SelectionRuleType.EXCLUDE.ToString())
+                                    {
+                                        SR.SR_RuleType = SelectionRuleType.EXCLUDE;
+                                    }
+
+                                    string lt = row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE].ToString() ?? "";
+                                    if (lt == SelectionRuleLayerType.RASTER.ToString())
+                                    {
+                                        SR.SR_LayerType = SelectionRuleLayerType.RASTER;
+                                    }
+                                    else if (lt == SelectionRuleLayerType.VECTOR.ToString())
+                                    {
+                                        SR.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                                    }
+
+                                    SR.SR_MinThreshold = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD]);
+                                    SR.SR_PUCount = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_PUCOUNT]);
+                                    SR.SR_Enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]);
+                                    SR.SR_Hidden = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_HIDDEN]);
+                                    SR.SR_Area_M2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_M]);
+                                    SR.SR_Area_Ac = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_AC]);
+                                    SR.SR_Area_Ha = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_HA]);
+                                    SR.SR_Area_Km2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_KM]);
+
+                                    rules.Add(SR);
+                                }
+                            }
+
+                            int c = table.GetCount();
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+
+                }))
+                {
+                    ProMsgBox.Show($"Error retrieving Feature information from the {PRZC.c_TABLE_FEATURES} table.");
+                    return false;
+                }
+
+
+
+
+
+
+
+                await QueuedTask.Run(async() =>
+                {
+                    if (!await PRZH.TableExists_Features())
+                    {
+                        return;
+                    }
+
+                    using (Table table = await PRZH.GetTable_Features())
+                    using (RowCursor rowCursor = table.Search(null, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                FeatureElement CF = new FeatureElement();
+
+                                CF.CF_ID = (row[PRZC.c_FLD_TAB_CF_ID] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_ID];
+                                CF.CF_Name = (row[PRZC.c_FLD_TAB_CF_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_NAME].ToString();
+                                CF.CF_WhereClause = (row[PRZC.c_FLD_TAB_CF_WHERECLAUSE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_WHERECLAUSE].ToString();
+                                CF.CF_MinThreshold = (row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_MIN_THRESHOLD_PCT];
+                                CF.CF_Goal = (row[PRZC.c_FLD_TAB_CF_TARGET_PCT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_TARGET_PCT];
+
+                                CF.CF_Area_M2 = (row[PRZC.c_FLD_TAB_CF_AREA_M] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_M];
+                                CF.CF_Area_Ac = (row[PRZC.c_FLD_TAB_CF_AREA_AC] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_AC];
+                                CF.CF_Area_Ha = (row[PRZC.c_FLD_TAB_CF_AREA_HA] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_HA];
+                                CF.CF_Area_Km2 = (row[PRZC.c_FLD_TAB_CF_AREA_KM] == null) ? -1 : (double)row[PRZC.c_FLD_TAB_CF_AREA_KM];
+                                CF.CF_PUCount = (row[PRZC.c_FLD_TAB_CF_PUCOUNT] == null) ? -1 : (int)row[PRZC.c_FLD_TAB_CF_PUCOUNT];
+
+                                CF.Layer_Name = (row[PRZC.c_FLD_TAB_CF_LYR_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_NAME].ToString();
+                                CF.Layer_Type = (row[PRZC.c_FLD_TAB_CF_LYR_TYPE] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_TYPE].ToString();
+                                CF.Layer_Json = (row[PRZC.c_FLD_TAB_CF_LYR_JSON] == null) ? "" : row[PRZC.c_FLD_TAB_CF_LYR_JSON].ToString();
+
+                                CF.CF_Enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]);
+
+                                LIST_Features.Add(CF);
+                            }
+                        }
+                    }
+                });
+
+                // Sort them
+                LIST_Features.Sort((x, y) => x.CF_ID.CompareTo(y.CF_ID));
+
+                foreach (FeatureElement cf in LIST_Features)
+                {
+                    Features.Add(cf);
+                }
+                NotifyPropertyChanged(() => Features);
+
+
+
+                // CF Table Exists - retrieve data from it
+
+                //Dictionary<int, string> DICT_IN = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = IN Constraint Layer to which it applies
+                //Dictionary<int, string> DICT_EX = new Dictionary<int, string>();    // Dictionary where key = Area Column Indexes, value = EX Constraint Layer to which it applies
+
+                //List<Field> fields = null;  // List of Planning Unit Status table fields
+
+                //// Populate the Dictionaries
+                //await QueuedTask.Run(async () =>
                 //{
-                //    string LayerName_IN = SelectedConflict.include_layer_name;
-                //    string LayerName_EX = SelectedConflict.exclude_layer_name;
-
-                //    int AreaFieldIndex_IN = SelectedConflict.include_area_field_index;
-                //    int AreaFieldIndex_EX = SelectedConflict.exclude_area_field_index;
-
-                //    ProMsgBox.Show("Include Index: " + AreaFieldIndex_IN.ToString() + "   Layer: " + LayerName_IN);
-                //    ProMsgBox.Show("Exclude Index: " + AreaFieldIndex_EX.ToString() + "   Layer: " + LayerName_EX);
-
-                //    // Query the Status Info table for all records (i.e. PUs) where field IN ix > 0 and field EX ix > 0
-                //    // Save the PUIDs in a list
-
-                //    List<int> PlanningUnitIDs = new List<int>();
-
-                //    await QueuedTask.Run(async () =>
+                //    using (Table table = await PRZH.GetStatusInfoTable())
+                //    using (RowCursor rowCursor = table.Search(null, false))
                 //    {
-                //        using (Table table = await PRZH.GetStatusInfoTable())
-                //        using (TableDefinition tDef = table.GetDefinition())
+                //        TableDefinition tDef = table.GetDefinition();
+                //        fields = tDef.GetFields().ToList();
+
+                //        // Get the first row (I only need one row)
+                //        if (rowCursor.MoveNext())
                 //        {
-                //            // Get the field names
-                //            var fields = tDef.GetFields();
-                //            string area_field_IN = fields[AreaFieldIndex_IN].Name;
-                //            string area_field_EX = fields[AreaFieldIndex_EX].Name;
-
-                //            ProMsgBox.Show("IN Field Name: " + area_field_IN + "    EX Field Name: " + area_field_EX);
-
-                //            QueryFilter QF = new QueryFilter();
-                //            QF.SubFields = PRZC.c_FLD_PUFC_ID + "," + area_field_IN + "," + area_field_EX;
-                //            QF.WhereClause = area_field_IN + @" > 0 And " + area_field_EX + @" > 0";
-
-                //            using (RowCursor rowCursor = table.Search(QF, false))
+                //            using (Row row = rowCursor.Current)
                 //            {
-                //                while (rowCursor.MoveNext())
+                //                // Now, get field info and row value info that's present in all rows exactly the same (that's why I only need one row)
+                //                for (int i = 0; i < fields.Count; i++)
                 //                {
-                //                    using (Row row = rowCursor.Current)
+                //                    Field field = fields[i];
+
+                //                    if (field.Name.EndsWith("_Name"))
                 //                    {
-                //                        int puid = (int)row[PRZC.c_FLD_PUFC_ID];
-                //                        PlanningUnitIDs.Add(puid);
+                //                        string constraint_name = row[i].ToString();         // this is the name of the constraint layer to which columns i to i+2 apply
+
+                //                        if (field.Name.StartsWith("IN"))
+                //                        {
+                //                            DICT_IN.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                //                        }
+                //                        else if (field.Name.StartsWith("EX"))
+                //                        {
+                //                            DICT_EX.Add(i + 2, constraint_name);    // i + 2 is the Area field, two columns to the right of the Name field
+                //                        }
                 //                    }
                 //                }
                 //            }
                 //        }
-                //    });
-
-                //    // validate the number of PUIDs returned
-                //    if (PlanningUnitIDs.Count == 0)
-                //    {
-                //        ProMsgBox.Show("No Planning Unit IDs retrieved.  That's very strange, there should be at least 1.  Ask JC about this.");
-                //        return true;
                 //    }
+                //});
 
-                //    // I now have a list of PUIDs.  I need to select the associated features in the PUFC
-                //    Map map = MapView.Active.Map;
+                //// Build a List of Unique Combinations of IN and EX Layers
+                //string c_ConflictNumber = "CONFLICT";
+                //string c_LayerName_Include = "'INCLUDE' Constraint";
+                //string c_LayerName_Exclude = "'EXCLUDE' Constraint";
+                //string c_PUCount = "PLANNING UNIT COUNT";
+                //string c_AreaFieldIndex_Include = "IndexIN";
+                //string c_AreaFieldIndex_Exclude = "IndexEX";
+                //string c_ConflictExists = "Exists";
 
-                //    await QueuedTask.Run(() =>
+                //DataTable DT = new DataTable();
+                //DT.Columns.Add(c_ConflictNumber, Type.GetType("System.Int32"));
+                //DT.Columns.Add(c_LayerName_Include, Type.GetType("System.String"));
+                //DT.Columns.Add(c_LayerName_Exclude, Type.GetType("System.String"));
+                //DT.Columns.Add(c_PUCount, Type.GetType("System.Int32"));
+                //DT.Columns.Add(c_AreaFieldIndex_Include, Type.GetType("System.Int32"));
+                //DT.Columns.Add(c_AreaFieldIndex_Exclude, Type.GetType("System.Int32"));
+                //DT.Columns.Add(c_ConflictExists, Type.GetType("System.Boolean"));
+
+                //foreach (int IN_AreaFieldIndex in DICT_IN.Keys)
+                //{
+                //    string IN_LayerName = DICT_IN[IN_AreaFieldIndex];
+
+                //    foreach (int EX_AreaFieldIndex in DICT_EX.Keys)
                 //    {
-                //        // Get the Planning Unit Feature Layer
-                //        FeatureLayer featureLayer = PRZH.GetFeatureLayer_PU(map);
+                //        string EX_LayerName = DICT_EX[EX_AreaFieldIndex];
 
-                //        // Clear Selection
-                //        featureLayer.ClearSelection();
+                //        DataRow DR = DT.NewRow();
 
-                //        // Build QueryFilter
-                //        QueryFilter QF = new QueryFilter();
-                //        string puid_list = string.Join(",", PlanningUnitIDs);
-                //        QF.WhereClause = PRZC.c_FLD_PUFC_ID + " In (" + puid_list + ")";
+                //        DR[c_LayerName_Include] = IN_LayerName;
+                //        DR[c_LayerName_Exclude] = EX_LayerName;
+                //        DR[c_PUCount] = 0;
+                //        DR[c_AreaFieldIndex_Include] = IN_AreaFieldIndex;
+                //        DR[c_AreaFieldIndex_Exclude] = EX_AreaFieldIndex;
+                //        DR[c_ConflictExists] = false;
+                //        DT.Rows.Add(DR);
+                //    }
+                //}
 
-                //        // Do the actual selection
-                //        using (Selection selection = featureLayer.Select(QF, SelectionCombinationMethod.New))   // selection happens here
+                //// For each row in DataTable, query PU Status for pairs having area>0 in both IN and EX
+                //int conflict_number = 1;
+                //int IN_AreaField_Index;
+                //int EX_AreaField_Index;
+                //string IN_AreaField_Name = "";
+                //string EX_AreaField_Name = "";
+
+                //foreach (DataRow DR in DT.Rows)
+                //{
+                //    IN_AreaField_Index = (int)DR[c_AreaFieldIndex_Include];
+                //    EX_AreaField_Index = (int)DR[c_AreaFieldIndex_Exclude];
+
+                //    IN_AreaField_Name = fields[IN_AreaField_Index].Name;
+                //    EX_AreaField_Name = fields[EX_AreaField_Index].Name;
+
+                //    string where_clause = IN_AreaField_Name + @" > 0 And " + EX_AreaField_Name + @" > 0";
+
+                //    QueryFilter QF = new QueryFilter();
+                //    QF.SubFields = IN_AreaField_Name + "," + EX_AreaField_Name;
+                //    QF.WhereClause = where_clause;
+
+                //    int row_count = 0;
+
+                //    await QueuedTask.Run(async () =>
+                //    {
+                //        using (Table table = await PRZH.GetStatusInfoTable())
                 //        {
-                //            // do nothing?
+                //            row_count = table.GetCount(QF);
                 //        }
                 //    });
+
+                //    if (row_count > 0)
+                //    {
+                //        DR[c_ConflictNumber] = conflict_number++;
+                //        DR[c_PUCount] = row_count;
+                //        DR[c_ConflictExists] = true;
+                //    }
                 //}
+
+
+                //// Filter out only those DataRows where conflict exists
+                //DataView DV = DT.DefaultView;
+                //DV.RowFilter = c_ConflictExists + " = true";
+
+                //// Finally, populate the Observable Collection
+
+                //List<StatusConflict> l = new List<StatusConflict>();
+                //foreach (DataRowView DRV in DV)
+                //{
+                //    StatusConflict sc = new StatusConflict();
+
+                //    sc.include_layer_name = DRV[c_LayerName_Include].ToString();
+                //    sc.include_area_field_index = (int)DRV[c_AreaFieldIndex_Include];
+                //    sc.exclude_layer_name = DRV[c_LayerName_Exclude].ToString();
+                //    sc.exclude_area_field_index = (int)DRV[c_AreaFieldIndex_Exclude];
+                //    sc.conflict_num = (int)DRV[c_ConflictNumber];
+                //    sc.pu_count = (int)DRV[c_PUCount];
+
+                //    l.Add(sc);
+                //}
+
+                //// Sort them
+                //l.Sort((x, y) => x.conflict_num.CompareTo(y.conflict_num));
+
+                //// Set the property
+                //_conflicts = new ObservableCollection<StatusConflict>(l);
+                //NotifyPropertyChanged(() => Conflicts);
+
+                //int count = DV.Count;
+
+                //ConflictGridCaption = "Planning Unit Status Conflict Listing (" + ((count == 1) ? "1 conflict)" : count.ToString() + " conflicts)");
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true);
+                return false;
+            }
+        }
+
+        private async Task<bool> ClearFeatures()
+        {
+            int val = 0;
+
+            try
+            {
+                //// Some GP variables
+                //IReadOnlyList<string> toolParams;
+                //IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                //GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                //string toolOutput;
+
+                //// Some paths
+                //string gdbpath = PRZH.GetPath_ProjectGDB();
+                //string srpath = PRZH.GetPath_Table_SelRules();
+                //string pusrpath = PRZH.GetPath_Table_PUSelRules();
+
+                //// Initialize ProgressBar and Progress Log
+                //int max = 20;
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing..."), false, max, ++val);
+
+                //// Validation: Prompt User for permission to proceed
+                //if (ProMsgBox.Show("If you proceed, the following will happen:" +
+                //   Environment.NewLine +
+                //   $"1. The {PRZC.c_TABLE_SELRULES} and {PRZC.c_TABLE_PUSELRULES} tables will be deleted from the project geodatabase (if they exist)" + Environment.NewLine +
+                //   $"2. All values in the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 1" + Environment.NewLine +
+                //   $"3. All values in the {PRZC.c_FLD_FC_PU_CONFLICT} field in the {PRZC.c_FC_PLANNING_UNITS} feature class will be set to 0" +
+                //   Environment.NewLine + Environment.NewLine +
+                //   "Do you wish to proceed?" +
+                //   Environment.NewLine + Environment.NewLine +
+                //   "Choose wisely...",
+                //   "TABLE DELETE WARNING",
+                //   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                //   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
+                //    return false;
+                //}
+
+                //// Delete the SelRules table
+                //if (await PRZH.TableExists_SelRules())
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
+                //    toolParams = Geoprocessing.MakeValueArray(srpath, "");
+                //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                //    if (toolOutput == null)
+                //    {
+                //        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_SELRULES} table.");
+                //        return false;
+                //    }
+                //    else
+                //    {
+                //        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_SELRULES} table deleted successfully..."), true, ++val);
+                //    }
+                //}
+
+                //// Delete the PUSelRules table
+                //if (await PRZH.TableExists_PUSelRules())
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
+                //    toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
+                //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                //    if (toolOutput == null)
+                //    {
+                //        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_PUSELRULES} table.");
+                //        return false;
+                //    }
+                //    else
+                //    {
+                //        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table deleted successfully..."), true, ++val);
+                //    }
+                //}
+
+                //// Update PUFC, set effective rule and conflict fields to default
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class..."), true, ++val);
+
+                //if (!await QueuedTask.Run(async () =>
+                //{
+                //    try
+                //    {
+                //        using (Table table = await PRZH.GetFC_PU())
+                //        using (RowCursor rowCursor = table.Search(null, false))
+                //        {
+                //            while (rowCursor.MoveNext())
+                //            {
+                //                using (Row row = rowCursor.Current)
+                //                {
+                //                    row[PRZC.c_FLD_FC_PU_EFFECTIVE_RULE] = DBNull.Value;
+                //                    row[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
+
+                //                    row.Store();
+                //                }
+                //            }
+                //        }
+
+                //        return true;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                //        return false;
+                //    }
+                //}))
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error resetting the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields updated successfully."), true, ++val);
+                //}
+
+
+                //// Determine the presence of 2 tables, and enable/disable the main button accordingly
+                //SelRuleTableExists = await PRZH.TableExists_SelRules();
+                //PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
+                //SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
+
+                //// Repopulate the grids
+                //if (!await PopulateGrid_Rules())
+                //{
+                //    ProMsgBox.Show("Error loading the Selection Rules grid");
+                //}
+                //if (!await PopulateGrid_Conflicts())
+                //{
+                //    ProMsgBox.Show("Error loading the Conflicts grid");
+                //}
+
+                //ProMsgBox.Show("Selection Rules Removed.");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                return false;
+            }
+        }
+
+        private async Task<bool> FeatureDblClick()
+        {
+            try
+            {
+                if (SelectedFeature == null)
+                {
+                    return true;
+                }
+
+                // Exit if the Feature has no associated planning units
+                if (SelectedFeature.CF_PUCount == 0)
+                {
+                    return true;
+                }
+
+                // Get the Feature ID
+                int cf_id = SelectedFeature.CF_ID;
+
+                // Get the associated area field name
+                string areafieldname = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cf_id.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
+
+                // Query the PUFeatures table for associated planning unit records
+                List<int> LIST_PUIDs = new List<int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        string whereclause = areafieldname + @" > 0";
+
+                        QueryFilter QF = new QueryFilter
+                        {
+                            SubFields = PRZC.c_FLD_TAB_PUCF_ID + "," + areafieldname,
+                            WhereClause = whereclause
+                        };
+
+                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        using (RowCursor rowCursor = table.Search(QF))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_PUCF_ID]);
+                                    LIST_PUIDs.Add(id);
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show("Error retrieving associated planning unit IDs...");
+                    return false;
+                }
+
+                // Exit if list is empty
+                if (LIST_PUIDs.Count == 0)
+                {
+                    return true;
+                }
+
+                // Select the planning units
+                Map map = MapView.Active.Map;
+
+                if (!await QueuedTask.Run(() =>
+                {
+                    try
+                    {
+                        FeatureLayer FL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
+
+                        string puids = string.Join(",", LIST_PUIDs);
+
+                        QueryFilter QF = new QueryFilter
+                        {
+                            WhereClause = PRZC.c_FLD_FC_PU_ID + " In (" + puids + ")"
+                        };
+
+                        using (Selection selection = FL.Select(QF, SelectionCombinationMethod.New))
+                        {
+                            int counter = selection.GetCount();
+                            string label = (counter == 1) ? "" : "s";
+                            ProMsgBox.Show($"{counter} Planning Unit{label} Selected");
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+
+                }))
+                {
+                    ProMsgBox.Show("Error selecting associated planning units.");
+                    return false;
+                }
 
                 return true;
             }
@@ -2612,11 +2883,7 @@ namespace NCC.PRZTools
             }
         }
 
-
-
         #endregion
-
-
 
     }
 }
