@@ -30,7 +30,7 @@ namespace NCC.PRZTools
         private string _cf_whereclause;
 
         private string _layer_name;
-        private string _layer_type;
+        private FeatureLayerType _layer_type;
         private Layer _layer_object;
         private string _layer_json;
         private int _layer_minthreshold = 0;        // default to 0
@@ -164,7 +164,7 @@ namespace NCC.PRZTools
         /// <summary>
         /// Type of source layer (Raster or Vector)
         /// </summary>
-        public string Layer_Type
+        public FeatureLayerType Layer_Type
         {
             get => _layer_type;
             set => _layer_type = value;

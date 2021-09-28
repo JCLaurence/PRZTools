@@ -2232,7 +2232,7 @@ namespace NCC.PRZTools
                                 using (Row row = rowCursor.Current)
                                 {
                                     int id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-                                    double area_m2 = Convert.ToDouble(row[PRZC.c_FLD_FC_PU_AREA_M]);
+                                    double area_m2 = Convert.ToDouble(row[PRZC.c_FLD_FC_PU_AREA_M2]);
 
                                     dict.Add(id, area_m2);
                                 }
@@ -2676,7 +2676,7 @@ namespace NCC.PRZTools
                         {
                             using (Row row = rowCursor.Current)
                             {
-                                int max = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_CFCOUNT]);
+                                int max = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_FEATURECOUNT]);
 
                                 if (max > maxCF)
                                 {
@@ -2700,7 +2700,7 @@ namespace NCC.PRZTools
                     // Create the Unclassed Renderer
                     UnclassedColorsRendererDefinition ucDef = new UnclassedColorsRendererDefinition();
 
-                    ucDef.Field = PRZC.c_FLD_FC_PU_CFCOUNT;
+                    ucDef.Field = PRZC.c_FLD_FC_PU_FEATURECOUNT;
                     ucDef.ColorRamp = ramp;
                     ucDef.LowerColorStop = 0;
                     ucDef.LowerLabel = "0";

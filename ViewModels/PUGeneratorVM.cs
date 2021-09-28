@@ -792,11 +792,11 @@ namespace NCC.PRZTools
                 string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 50 # #;";
                 string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                 string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
-                string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M + " DOUBLE 'Square m' # 1 #;";
+                string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 1 #;";
                 string fldPUAreaAC = PRZC.c_FLD_FC_PU_AREA_AC + " DOUBLE 'Acres' # 1 #;";
                 string fldPUAreaHA = PRZC.c_FLD_FC_PU_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
-                string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM + " DOUBLE 'Square km' # 1 #;";
-                string fldCFCount = PRZC.c_FLD_FC_PU_CFCOUNT + " LONG 'Conservation Feature Count' # 0 #;";
+                string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM2 + " DOUBLE 'Square km' # 1 #;";
+                string fldCFCount = PRZC.c_FLD_FC_PU_FEATURECOUNT + " LONG 'Conservation Feature Count' # 0 #;";
                 string fldSharedPerim = PRZC.c_FLD_FC_PU_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
                 string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
 
@@ -933,7 +933,7 @@ namespace NCC.PRZTools
                 // Add Fields to Main Study Area FC
                 string fldArea_ac = PRZC.c_FLD_FC_STUDYAREA_AREA_AC + " DOUBLE 'Acres' # 1 #;";
                 string fldArea_ha = PRZC.c_FLD_FC_STUDYAREA_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
-                string fldArea_km = PRZC.c_FLD_FC_STUDYAREA_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+                string fldArea_km = PRZC.c_FLD_FC_STUDYAREA_AREA_KM2 + " DOUBLE 'Square km' # 1 #;";
                 string SAflds = fldArea_ac + fldArea_ha + fldArea_km;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Main Study Area Feature Class..."), true, ++val);
@@ -961,7 +961,7 @@ namespace NCC.PRZTools
                             int ixShape = fcDef.FindField(fcDef.GetShapeField());
                             int ixAcres = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_AC);
                             int ixHectares = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_HA);
-                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_KM);
+                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_KM2);
 
                             // Prepare area values
                             double ac = SA_poly.Area * PRZC.c_CONVERT_M2_TO_AC;
@@ -1020,7 +1020,7 @@ namespace NCC.PRZTools
                 // Add Fields to Buffered Study Area FC
                 string fldBArea_ac = PRZC.c_FLD_FC_STUDYAREA_AREA_AC + " DOUBLE 'Acres' # 1 #;";
                 string fldBArea_ha = PRZC.c_FLD_FC_STUDYAREA_AREA_HA + " DOUBLE 'Hectares' # 1 #;";
-                string fldBArea_km = PRZC.c_FLD_FC_STUDYAREA_AREA_KM + " DOUBLE 'Square km' # 1 #;";
+                string fldBArea_km = PRZC.c_FLD_FC_STUDYAREA_AREA_KM2 + " DOUBLE 'Square km' # 1 #;";
                 string SABflds = fldBArea_ac + fldBArea_ha + fldBArea_km;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Buffered Study Area Feature Class..."), true, ++val);
@@ -1048,7 +1048,7 @@ namespace NCC.PRZTools
                             int ixShape = fcDef.FindField(fcDef.GetShapeField());
                             int ixAcres = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_AC);
                             int ixHectares = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_HA);
-                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_KM);
+                            int ixKm2 = fcDef.FindField(PRZC.c_FLD_FC_STUDYAREA_AREA_KM2);
 
                             // Prepare area values
                             double ac = SA_poly_buffer.Area * PRZC.c_CONVERT_M2_TO_AC;
@@ -1238,10 +1238,10 @@ namespace NCC.PRZTools
 
                                             // set shape-related values
                                             rowBuffer[fcDef.GetShapeField()] = poly;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_M] = m;
+                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = m;
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = ac;
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = ha;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM] = km;
+                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM2] = km;
 
                                             // Set common values
                                             rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
@@ -1277,10 +1277,10 @@ namespace NCC.PRZTools
 
                                             // set shape-related values
                                             rowBuffer[fcDef.GetShapeField()] = poly;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_M] = m;
+                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = m;
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = ac;
                                             rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = ha;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM] = km;
+                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM2] = km;
 
                                             // Set common values
                                             rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;

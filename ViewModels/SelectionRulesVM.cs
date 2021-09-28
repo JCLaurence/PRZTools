@@ -231,7 +231,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure three required Layers are present
-                if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) || !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Layers are missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("PRZ Layers are missing.  Please reload the PRZ Layers and try again.", "Validation");
@@ -261,25 +261,25 @@ namespace NCC.PRZTools
 
                 if (!double.TryParse(threshold_text, out double threshold_double))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Minimum Threshold", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Minimum Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
                     return false;
                 }
                 else if (threshold_double < 0 | threshold_double > 100)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Threshold value", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Please specify a valid Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Default Minimum Threshold", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify a valid Default Minimum Threshold value.  Value must be a number between 0 and 100 (inclusive)", "Validation");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Default Threshold = {threshold_text}"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Default Minimum Threshold = {threshold_text}"), true, ++val);
                 }
 
                 // Validation: Prompt User for permission to proceed
                 if (ProMsgBox.Show($"If you proceed, the {PRZC.c_TABLE_SELRULES} and {PRZC.c_TABLE_PUSELRULES} tables will be overwritten if they exist in the Project Geodatabase." +
                    Environment.NewLine + Environment.NewLine +
-                   $"Additionally, the contents of the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} field in the {PRZC.c_FC_PLANNING_UNITS} Feature Class will be updated." +
+                   $"Additionally, the contents of the {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in the {PRZC.c_FC_PLANNING_UNITS} Feature Class will be updated." +
                    Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
@@ -340,6 +340,7 @@ namespace NCC.PRZTools
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user");
                         return false;
                     }
                     else
@@ -356,6 +357,7 @@ namespace NCC.PRZTools
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating the {PRZC.c_TABLE_SELRULES} table.");
                     return false;
                 }
                 else
@@ -372,10 +374,10 @@ namespace NCC.PRZTools
                 string fldSRMinThreshold = PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD + " LONG 'Min Threshold (%)' # 0 #;";
                 string fldSREnabled = PRZC.c_FLD_TAB_SELRULES_ENABLED + " LONG 'Enabled' # 1 #;";
                 string fldSRHidden = PRZC.c_FLD_TAB_SELRULES_HIDDEN + " LONG 'Hidden' # 0 #;";
-                string fldSRArea_m2 = PRZC.c_FLD_TAB_SELRULES_AREA_M + " DOUBLE 'Total Area (m2)' # 0, #;";
+                string fldSRArea_m2 = PRZC.c_FLD_TAB_SELRULES_AREA_M2 + " DOUBLE 'Total Area (m2)' # 0, #;";
                 string fldSRArea_ac = PRZC.c_FLD_TAB_SELRULES_AREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
                 string fldSRArea_ha = PRZC.c_FLD_TAB_SELRULES_AREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
-                string fldSRArea_km2 = PRZC.c_FLD_TAB_SELRULES_AREA_KM + " DOUBLE 'Total Area (km2)' # 0, #;";
+                string fldSRArea_km2 = PRZC.c_FLD_TAB_SELRULES_AREA_KM2 + " DOUBLE 'Total Area (km2)' # 0, #;";
                 string fldSRPUCount = PRZC.c_FLD_TAB_SELRULES_PUCOUNT + " LONG 'Planning Unit Count' # 0 #;";
 
                 string flds = fldSRID +
@@ -399,6 +401,7 @@ namespace NCC.PRZTools
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_TABLE_SELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the {PRZC.c_TABLE_SELRULES} table.");
                     return false;
                 }
                 else
@@ -428,10 +431,10 @@ namespace NCC.PRZTools
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE] = SR.SR_LayerType.ToString();
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_LAYERJSON] = SR.SR_LayerJson;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD] = SR.SR_MinThreshold;
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_M] = 0;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_M2] = 0;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_AC] = 0;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_HA] = 0;
-                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_KM] = 0;
+                                rowBuffer[PRZC.c_FLD_TAB_SELRULES_AREA_KM2] = 0;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_ENABLED] = 1;
                                 rowBuffer[PRZC.c_FLD_TAB_SELRULES_HIDDEN] = 0;
 
@@ -486,14 +489,14 @@ namespace NCC.PRZTools
                 }
 
                 // Copy PU FC rows into a new PUSR table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying Planning Unit FC Attributes..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying attributes from the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, pusrpath, "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("CopyRows_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying planning unit attributes to {PRZC.c_TABLE_PUSELRULES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error executing the CopyRows tool.");
+                    ProMsgBox.Show($"Error copying planning unit attributes to {PRZC.c_TABLE_PUSELRULES} table.");
                     return false;
                 }
                 else
@@ -501,7 +504,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Attributes copied successfully."), true, ++val);
                 }
 
-                // Delete all fields but OID and PUID from PUVCF table
+                // Delete all fields but OID and PUID from PUFeatures table
                 List<string> LIST_DeleteFields = new List<string>();
 
                 if (!await QueuedTask.Run(async () =>
@@ -567,8 +570,8 @@ namespace NCC.PRZTools
                 toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error indexing field.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error indexing the {PRZC.c_FLD_TAB_PUSELRULES_ID} field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error indexing the {PRZC.c_FLD_TAB_PUSELRULES_ID} field.");
                     return false;
                 }
                 else
@@ -589,7 +592,7 @@ namespace NCC.PRZTools
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding extra fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error adding lovely fields.");
+                    ProMsgBox.Show($"Error adding extra fields.");
                     return false;
                 }
                 else
@@ -626,7 +629,7 @@ namespace NCC.PRZTools
                         alias_prefix = "Exclude ";
                     }
 
-                    // Add 5 Fields: id, Name, Area, Coverage, and Status
+                    // Add 5 Fields: SRID, Name, Area, Coverage, and State
 
                     // ID field
                     string fId = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID;
@@ -959,10 +962,10 @@ namespace NCC.PRZTools
                                     double ha_round = Math.Round(area_m2 * PRZC.c_CONVERT_M2_TO_HA, 2, MidpointRounding.AwayFromZero);
                                     double km2_round = Math.Round(area_m2 * PRZC.c_CONVERT_M2_TO_KM2, 2, MidpointRounding.AwayFromZero);
 
-                                    row[PRZC.c_FLD_TAB_SELRULES_AREA_M] = m2_round;
+                                    row[PRZC.c_FLD_TAB_SELRULES_AREA_M2] = m2_round;
                                     row[PRZC.c_FLD_TAB_SELRULES_AREA_AC] = ac_round;
                                     row[PRZC.c_FLD_TAB_SELRULES_AREA_HA] = ha_round;
-                                    row[PRZC.c_FLD_TAB_SELRULES_AREA_KM] = km2_round;
+                                    row[PRZC.c_FLD_TAB_SELRULES_AREA_KM2] = km2_round;
                                     row[PRZC.c_FLD_TAB_SELRULES_PUCOUNT] = pucount;
 
                                     row.Store();
@@ -995,11 +998,16 @@ namespace NCC.PRZTools
                 // Populate the grids
                 if (!await PopulateGrid_Rules())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Selection Rules grid", LogMessageType.ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Selection Rules grid.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error populating the Selection Rules grid.");
+                    return false;
                 }
+
                 if (!await PopulateGrid_Conflicts())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Conflicts grid", LogMessageType.ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error populating the Conflicts grid.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error populating the Conflicts grid.");
+                    return false;
                 }
 
                 // Compact the Geodatabase
@@ -1208,7 +1216,7 @@ namespace NCC.PRZTools
                         rule.SR_ID = srid++;
                         rule.SR_Name = layer_name;
                         rule.SR_LayerObject = L;
-                        rule.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                        rule.SR_LayerType = SelectionRuleLayerType.FEATURE;
                         rule.SR_LayerJson = layerJson;
                         rule.SR_RuleType = SelectionRuleType.INCLUDE;
                         rule.SR_MinThreshold = layer_threshold;
@@ -1409,7 +1417,7 @@ namespace NCC.PRZTools
                         rule.SR_ID = srid++;
                         rule.SR_Name = layer_name;
                         rule.SR_LayerObject = L;
-                        rule.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                        rule.SR_LayerType = SelectionRuleLayerType.FEATURE;
                         rule.SR_LayerJson = layerJson;
                         rule.SR_RuleType = SelectionRuleType.EXCLUDE;
                         rule.SR_MinThreshold = layer_threshold;
@@ -1660,7 +1668,7 @@ namespace NCC.PRZTools
                                         return false;
                                     }
 
-                                    using (RowCursor rowCursor = fc.Search(null, false))
+                                    using (RowCursor rowCursor = fc.Search())
                                     {
                                         while (rowCursor.MoveNext())
                                         {
@@ -1816,7 +1824,7 @@ namespace NCC.PRZTools
                         string tabname = "sr_zonal_temp";
 
                         // Calculate Zonal Statistics as Table
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for rule {srid} table..."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for rule {srid}..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(PUFL, PRZC.c_FLD_FC_PU_ID, RL, tabname);  // TODO: Ensure I'm using the correct object: FL or FC?  Which one?
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: PUFC_SR, overwriteoutput: true, extent: PUFC_Extent);
                         toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags);
@@ -1849,7 +1857,7 @@ namespace NCC.PRZTools
                             {
                                 using (Geodatabase gdb = await PRZH.GetProjectGDB())
                                 using (Table table = await PRZH.GetTable(gdb, tabname))
-                                using (RowCursor rowCursor = table.Search(null, false))
+                                using (RowCursor rowCursor = table.Search())
                                 {
                                     while (rowCursor.MoveNext())
                                     {
@@ -1886,7 +1894,7 @@ namespace NCC.PRZTools
                         }
 
                         // Delete the temp zonal stats table (I no longer need it, I think...)
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tabname} Table..."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tabname} table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(tabname, "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                         toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
@@ -2005,9 +2013,9 @@ namespace NCC.PRZTools
                                     SelectionRule SR = new SelectionRule();
 
                                     SR.SR_ID = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
-                                    SR.SR_Name = row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString() ?? "";
+                                    SR.SR_Name = (row[PRZC.c_FLD_TAB_SELRULES_NAME] == null) ? "" : row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString();
 
-                                    string rt = row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString() ?? "";
+                                    string rt = (row[PRZC.c_FLD_TAB_SELRULES_RULETYPE] == null) ? "" : row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString();
                                     if (rt == SelectionRuleType.INCLUDE.ToString())
                                     {
                                         SR.SR_RuleType = SelectionRuleType.INCLUDE;
@@ -2017,24 +2025,24 @@ namespace NCC.PRZTools
                                         SR.SR_RuleType = SelectionRuleType.EXCLUDE;
                                     }
 
-                                    string lt = row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE].ToString() ?? "";
+                                    string lt = (row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE] == null) ? "" : row[PRZC.c_FLD_TAB_SELRULES_LAYERTYPE].ToString();
                                     if (lt == SelectionRuleLayerType.RASTER.ToString())
                                     {
                                         SR.SR_LayerType = SelectionRuleLayerType.RASTER;
                                     }
-                                    else if (lt == SelectionRuleLayerType.VECTOR.ToString())
+                                    else if (lt == SelectionRuleLayerType.FEATURE.ToString())
                                     {
-                                        SR.SR_LayerType = SelectionRuleLayerType.VECTOR;
+                                        SR.SR_LayerType = SelectionRuleLayerType.FEATURE;
                                     }
 
                                     SR.SR_MinThreshold = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_MIN_THRESHOLD]);
                                     SR.SR_PUCount = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_PUCOUNT]);
                                     SR.SR_Enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]);
                                     SR.SR_Hidden = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_HIDDEN]);
-                                    SR.SR_Area_M2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_M]);
+                                    SR.SR_Area_M2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_M2]);
                                     SR.SR_Area_Ac = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_AC]);
                                     SR.SR_Area_Ha = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_HA]);
-                                    SR.SR_Area_Km2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_KM]);
+                                    SR.SR_Area_Km2 = Convert.ToDouble(row[PRZC.c_FLD_TAB_SELRULES_AREA_KM2]);
 
                                     rules.Add(SR);
                                 }

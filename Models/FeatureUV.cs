@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace NCC.PRZTools
 {
-    public class UVConservationFeature
+    public class FeatureUV
     {
-
-        public UVConservationFeature()
+        public FeatureUV()
         {
         }
 
@@ -21,11 +20,11 @@ namespace NCC.PRZTools
 
         public int GroupThreshold { get; set; }
 
-        public int GroupTarget { get; set; }
+        public int GroupGoal { get; set; }
 
         public int ClassThreshold { get; set; }
 
-        public int ClassTarget { get; set; }
+        public int ClassGoal { get; set; }
 
     }
 }

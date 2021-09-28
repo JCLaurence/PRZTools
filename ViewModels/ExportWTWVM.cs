@@ -513,7 +513,7 @@ namespace NCC.PRZTools
                                     bool enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]) == 1;
 
                                     // Goal
-                                    int goal = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_TARGET_PCT]);
+                                    int goal = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_GOAL]);
 
                                     LIST_FeatureIDs.Add(cfid);
                                     DICT_Features.Add(cfid, (name, varname, areafieldname, enabled, goal));

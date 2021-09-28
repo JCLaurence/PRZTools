@@ -155,7 +155,7 @@
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\FeatureElement.cs" />
     <Compile Include="Models\SelectionRule.cs" />
-    <Compile Include="Models\UVConservationFeature.cs" />
+    <Compile Include="Models\FeatureUV.cs" />
     <Compile Include="Models\YamlFeature.cs" />
     <Compile Include="Models\YamlInclude.cs" />
     <Compile Include="Models\YamlLegend.cs" />
