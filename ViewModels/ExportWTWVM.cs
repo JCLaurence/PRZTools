@@ -471,15 +471,13 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving master list of planning unit ids..."), true, ++val);
 
-                List<int> LIST_PUIDs = await PRZH.GetPlanningUnitIDs();
+                List<int> LIST_PUIDs = await PRZH.GetList_PUID();
                 if (LIST_PUIDs == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving master list of planning unit ids", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving master list of planning unit ids");
                     return false;
                 }
-
-                LIST_PUIDs.Sort();    // THIS IS THE MASTER LIST OF PLANNING UNIT IDS.
 
                 #endregion
 

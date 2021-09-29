@@ -132,11 +132,11 @@
                         Style="{DynamicResource Esri_DataGrid}" 
                         ColumnHeaderStyle="{DynamicResource Esri_DataGridColumnHeader}" 
                         CellStyle="{DynamicResource Esri_DataGridCell}"
-                        ItemsSource="{Binding ConservationFeatures}" 
-                        SelectedItem="{Binding SelectedConservationFeature}">
+                        ItemsSource="{Binding Features}" 
+                        SelectedItem="{Binding SelectedFeature}">
 
                         <DataGrid.InputBindings>
-                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdGridDoubleClick}" />
+                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding CmdFeatureDblClick}" />
                         </DataGrid.InputBindings>
 
                         <DataGrid.Columns>

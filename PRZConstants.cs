@@ -202,8 +202,6 @@
         public const string c_FLD_TAB_PUCF_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_TAB_PUCF_FEATURECOUNT = c_FLD_FC_PU_FEATURECOUNT;
         public const string c_FLD_TAB_PUCF_PREFIX_CF = "CF_";
-        public const string c_FLD_TAB_PUCF_SUFFIX_CFID = "_ID";
-        public const string c_FLD_TAB_PUCF_SUFFIX_NAME = "_NAME";
         public const string c_FLD_TAB_PUCF_SUFFIX_AREA = "_AREA";
         public const string c_FLD_TAB_PUCF_SUFFIX_COVERAGE = "_COV";
         public const string c_FLD_TAB_PUCF_SUFFIX_STATE = "_STATE";
@@ -214,8 +212,6 @@
         public const string c_FLD_TAB_PUSELRULES_CONFLICT = "rule_conflict";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE = "IN_";
         public const string c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE = "EX_";
-        public const string c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID = "_ID";
-        public const string c_FLD_TAB_PUSELRULES_SUFFIX_NAME = "_NAME";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_AREA = "_AREA";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE = "_COV";
         public const string c_FLD_TAB_PUSELRULES_SUFFIX_STATE = "_STATE";

@@ -30,7 +30,7 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Fields
+        #region FIELDS
 
         private SpatialReference _outputSR;
         private SpatialReference _mapSR;
@@ -38,7 +38,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Properties
+        #region PROPERTIES
 
         private bool _srMapIsChecked;
         public bool SRMapIsChecked
@@ -235,7 +235,7 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
         private ICommand _cmdSelectSpatialReference;
         public ICommand CmdSelectSpatialReference => _cmdSelectSpatialReference ?? (_cmdSelectSpatialReference = new RelayCommand(() => SelectSpatialReference(), () => true));

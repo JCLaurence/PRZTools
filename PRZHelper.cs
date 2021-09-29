@@ -23,7 +23,6 @@ using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
-
     public static class PRZHelper
     {
         #region LOGGING AND NOTIFICATIONS
@@ -2167,7 +2166,7 @@ namespace NCC.PRZTools
 
         #region LIST AND DICTIONARY RETRIEVAL
 
-        public static async Task<List<int>> GetPlanningUnitIDs()
+        public static async Task<List<int>> GetList_PUID()
         {
             try
             {
@@ -2178,7 +2177,7 @@ namespace NCC.PRZTools
                     try
                     {
                         using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(null, false))
+                        using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
                             {
@@ -2199,7 +2198,52 @@ namespace NCC.PRZTools
                     }
                 }))
                 {
-                    ProMsgBox.Show("Error retrieving list of ids");
+                    return null;
+                }
+                else
+                {
+                    ids.Sort();
+                    return ids;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<HashSet<int>> GetHashSet_PUID()
+        {
+            try
+            {
+                HashSet<int> ids = new HashSet<int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search())
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    ids.Add((int)row[PRZC.c_FLD_FC_PU_ID]);
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
                     return null;
                 }
                 else
@@ -2225,7 +2269,7 @@ namespace NCC.PRZTools
                     try
                     {
                         using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(null, false))
+                        using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
                             {
@@ -2358,10 +2402,12 @@ namespace NCC.PRZTools
                 int inthours = span.Hours;
                 int intminutes = span.Minutes;
                 int intseconds = span.Seconds;
+                int intmilliseconds = span.Milliseconds;
 
                 string hours = inthours.ToString() + ((inthours == 1) ? " hour" : " hours");
                 string minutes = intminutes.ToString() + ((intminutes == 1) ? " minute" : " minutes");
                 string seconds = intseconds.ToString() + ((intseconds == 1) ? " second" : " seconds");
+                string milliseconds = intmilliseconds.ToString() + ((intmilliseconds == 1) ? " millisecond" : " milliseconds");
 
                 string elapsedmessage = "";
 
@@ -2379,6 +2425,23 @@ namespace NCC.PRZTools
                 }
 
                 return "Elapsed Time: " + elapsedmessage;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return "<error calculating duration>";
+            }
+        }
+
+        public static string GetElapsedTimeInSeconds(TimeSpan span)
+        {
+            try
+            {
+                double sec = span.TotalSeconds;
+
+                string message = $"Elapsed Time: {sec:N3}";
+
+                return message;
             }
             catch (Exception ex)
             {

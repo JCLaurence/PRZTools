@@ -199,6 +199,10 @@ namespace NCC.PRZTools
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Selection Rules Generator..."), false, max, ++val);
 
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
@@ -315,10 +319,6 @@ namespace NCC.PRZTools
                 List<SelectionRule> LIST_Rules = rule_getter.rules;
 
                 #endregion
-
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
 
                 // Some GP variables
                 IReadOnlyList<string> toolParams;
@@ -504,7 +504,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Attributes copied successfully."), true, ++val);
                 }
 
-                // Delete all fields but OID and PUID from PUFeatures table
+                // Delete all fields but OID and PUID from PUSelRules table
                 List<string> LIST_DeleteFields = new List<string>();
 
                 if (!await QueuedTask.Run(async () =>
@@ -604,7 +604,8 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PU + SELRULES TABLE - PART II
 
-                // Cycle through each Selection Rule
+                Dictionary<int, string> DICT_RuleID_and_prefix = new Dictionary<int, string>();
+
                 foreach (SelectionRule SR in LIST_Rules)
                 {
                     // Get the Selection Rule ID
@@ -620,43 +621,45 @@ namespace NCC.PRZTools
 
                     if (rule_type == SelectionRuleType.INCLUDE)
                     {
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
-                        alias_prefix = "Include ";
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString();
+                        alias_prefix = "Include " + srid.ToString();
                     }
                     else if (rule_type == SelectionRuleType.EXCLUDE)
                     {
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
-                        alias_prefix = "Exclude ";
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString();
+                        alias_prefix = "Exclude " + srid.ToString();
                     }
 
-                    // Add 5 Fields: SRID, Name, Area, Coverage, and State
+                    DICT_RuleID_and_prefix.Add(srid, prefix);
 
-                    // ID field
-                    string fId = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID;
-                    string fIdAlias = alias_prefix + srid.ToString() + " ID";
-                    string f1 = fId + " LONG '" + fIdAlias + "' # 0 #;";
+                    // Add 3 Fields: Area, Coverage, and State
 
-                    // Name field 
-                    string fName = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME;
-                    string fNameAlias = alias_prefix + srid.ToString() + " Name";
-                    string f2 = fName + " TEXT '" + fNameAlias + "' 200 # #;";
+                    //// ID field
+                    //string fId = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_SELRULEID;
+                    //string fIdAlias = alias_prefix + " ID";
+                    //string f1 = fId + " LONG '" + fIdAlias + "' # 0 #;";
+
+                    //// Name field 
+                    //string fName = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_NAME;
+                    //string fNameAlias = alias_prefix + " Name";
+                    //string f2 = fName + " TEXT '" + fNameAlias + "' 200 # #;";
 
                     // Area field
-                    string fArea = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
-                    string fAreaAlias = alias_prefix + srid.ToString() + " Area (m2)";
+                    string fArea = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                    string fAreaAlias = alias_prefix + " Area (m2)";
                     string f3 = fArea + " DOUBLE '" + fAreaAlias + "' # 0 #;";
 
                     // Coverage field
-                    string fCov = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
-                    string fCovAlias = alias_prefix + srid.ToString() + " Coverage (%)";
+                    string fCov = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+                    string fCovAlias = alias_prefix + " Coverage (%)";
                     string f4 = fCov + " DOUBLE '" + fCovAlias + "' # 0 #;";
 
                     // State field
-                    string fStat = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
-                    string fStatAlias = alias_prefix + srid.ToString() + " State";
+                    string fStat = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
+                    string fStatAlias = alias_prefix + " State";
                     string f5 = fStat + " LONG '" + fStatAlias + "' # 0 #;";
 
-                    flds = f1 + f2 + f3 + f4 + f5;
+                    flds = f3 + f4 + f5;
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields for selection rule {srid}..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pusrpath, flds);
@@ -672,47 +675,73 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully..."), true, ++val);
                     }
+                }
 
-                    // Populate the new fields
-                    if (!await QueuedTask.Run(async () =>
+                // Update values in the new fields
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating new field values..."), true, ++val);
+
+                // Get lists of field names
+                List<string> AreaFields = new List<string>();
+                List<string> CovFields = new List<string>();
+                List<string> StateFields = new List<string>();
+
+                foreach (SelectionRule SR in LIST_Rules)
+                {
+                    int srid = SR.SR_ID;
+
+                    AreaFields.Add(DICT_RuleID_and_prefix[srid] + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA);
+                    CovFields.Add(DICT_RuleID_and_prefix[srid] + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE);
+                    StateFields.Add(DICT_RuleID_and_prefix[srid] + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE);
+                }
+
+                // Populate the new fields
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
                     {
-                        try
+                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        using (RowCursor rowCursor = table.Search())
                         {
-                            using (Table table = await PRZH.GetTable_PUSelRules())
-                            using (RowCursor rowCursor = table.Search(null, false))
+                            while (rowCursor.MoveNext())
                             {
-                                while (rowCursor.MoveNext())
+                                using (Row row = rowCursor.Current)
                                 {
-                                    using (Row row = rowCursor.Current)
+                                    foreach (var fldname in AreaFields)
                                     {
-                                        row[fId] = srid;
-                                        row[fName] = rule_name;
-                                        row[fArea] = 0;
-                                        row[fCov] = 0;
-                                        row[fStat] = 0;
-
-                                        row.Store();
+                                        row[fldname] = 0;
                                     }
+
+                                    foreach (var fldname in CovFields)
+                                    {
+                                        row[fldname] = 0;
+                                    }
+
+                                    foreach (var fldname in StateFields)
+                                    {
+                                        row[fldname] = 0;
+                                    }
+
+                                    row.Store();
                                 }
                             }
+                        }
 
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
+                        return true;
+                    }
+                    catch (Exception ex)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table.");
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
                     }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table updated successfully."), true, ++val);
-                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error updating records in the {PRZC.c_TABLE_PUSELRULES} table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUSELRULES} table updated successfully."), true, ++val);
                 }
 
                 #endregion
@@ -751,7 +780,7 @@ namespace NCC.PRZTools
                             // Get list of EXCLUDE layer State fields
                             List<Field> EXStateFields = tDef.GetFields().Where(f => f.Name.StartsWith(PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE) && f.Name.EndsWith(PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE)).ToList();
 
-                            using (RowCursor rowCursor = table.Search(null, false))
+                            using (RowCursor rowCursor = table.Search())
                             {
                                 while (rowCursor.MoveNext())
                                 {
@@ -851,7 +880,7 @@ namespace NCC.PRZTools
                     try
                     {
                         using (Table table = await PRZH.GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(null, false))
+                        using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
                             {
@@ -906,7 +935,7 @@ namespace NCC.PRZTools
                     try
                     {
                         using (Table table = await PRZH.GetTable_SelRules())
-                        using (RowCursor rowCursor = table.Search(null, false))
+                        using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
                             {
@@ -941,7 +970,7 @@ namespace NCC.PRZTools
                                     QF.WhereClause = StateField + @" = 1";
 
                                     using (Table table2 = await PRZH.GetTable_PUSelRules())
-                                    using (RowCursor rowCursor2 = table2.Search(QF, false))
+                                    using (RowCursor rowCursor2 = table2.Search(QF))
                                     {
                                         while (rowCursor2.MoveNext())
                                         {
@@ -1585,11 +1614,11 @@ namespace NCC.PRZTools
 
                     if (ruletype == SelectionRuleType.INCLUDE)
                     {
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE;
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString();
                     }
                     else if (ruletype == SelectionRuleType.EXCLUDE)
                     {
-                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE;
+                        prefix = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString();
                     }
                     else
                     { 
@@ -1709,9 +1738,9 @@ namespace NCC.PRZTools
                             try
                             {
                                 // Get the Area and Coverage fields for this Selection Rule
-                                string AreaField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
-                                string CoverageField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
-                                string StateField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
+                                string AreaField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                                string CoverageField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+                                string StateField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
 
                                 // Iterate through each PUID returned from the intersection (this dictionary might only have a few, or even no entries)
                                 foreach (KeyValuePair<int, double> KVP in DICT_PUID_Area_Dissolved)
@@ -1910,9 +1939,9 @@ namespace NCC.PRZTools
                         }
 
                         // Get the Area and Coverage fields for this Selection Rule
-                        string AreaField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
-                        string CoverageField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
-                        string StateField = prefix + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
+                        string AreaField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_AREA;
+                        string CoverageField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_COVERAGE;
+                        string StateField = prefix + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
 
                         foreach (KeyValuePair<int, Tuple<int, double>> KVP in DICT_PUID_and_count_area)
                         {

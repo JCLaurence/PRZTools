@@ -289,7 +289,7 @@ namespace NCC.PRZTools
 
                 #region COMPILE LIST OF FEATURES
 
-                // Retrieve the Selection Rules
+                // Retrieve the Features
                 var feature_getter = await GetFeaturesFromLayers();
 
                 if (!feature_getter.success || feature_getter.features == null)
@@ -422,7 +422,7 @@ namespace NCC.PRZTools
                         using (InsertCursor insertCursor = table.CreateInsertCursor())
                         using (RowBuffer rowBuffer = table.CreateRowBuffer())
                         {
-                            // Iterate through each selection rule
+                            // Iterate through each feature
                             foreach (FeatureElement CF in LIST_Features)
                             {
                                 rowBuffer[PRZC.c_FLD_TAB_CF_ID] = CF.CF_ID;
@@ -438,7 +438,7 @@ namespace NCC.PRZTools
                                 rowBuffer[PRZC.c_FLD_TAB_CF_AREA_KM2] = CF.CF_Area_Km2;
                                 rowBuffer[PRZC.c_FLD_TAB_CF_PUCOUNT] = CF.CF_PUCount;
                                 rowBuffer[PRZC.c_FLD_TAB_CF_LYR_NAME] = CF.Layer_Name;
-                                rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.Layer_Type;
+                                rowBuffer[PRZC.c_FLD_TAB_CF_LYR_TYPE] = CF.Layer_Type.ToString();
                                 rowBuffer[PRZC.c_FLD_TAB_CF_LYR_JSON] = CF.Layer_Json;
 
                                 // Finally, insert the row
@@ -582,7 +582,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                 }
 
-                // Add a CF Count field
+                // Add a Feature Count field
                 string fldCFSum = PRZC.c_FLD_TAB_PUCF_FEATURECOUNT + " LONG 'Feature Count' # 0 #;";
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding {PRZC.c_FLD_TAB_PUCF_FEATURECOUNT} field to {PRZC.c_TABLE_PUFEATURES} table..."), true, ++val);
@@ -634,15 +634,15 @@ namespace NCC.PRZTools
 
                     // Add Fields: CFID, Name, Area, Coverage, and Status
 
-                    // CF ID field
-                    string fId = prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_CFID;
-                    string fIdAlias = aliasprefix + " ID";
-                    string f1 = fId + " LONG '" + fIdAlias + "' # 0 #;";
+                    //// CF ID field
+                    //string fId = prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_CFID;
+                    //string fIdAlias = aliasprefix + " ID";
+                    //string f1 = fId + " LONG '" + fIdAlias + "' # 0 #;";
 
-                    // Name field 
-                    string fName = prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_NAME;
-                    string fNameAlias = aliasprefix + " Name";
-                    string f2 = fName + " TEXT '" + fNameAlias + "' 200 # #;";
+                    //// Name field 
+                    //string fName = prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_NAME;
+                    //string fNameAlias = aliasprefix + " Name";
+                    //string f2 = fName + " TEXT '" + fNameAlias + "' 200 # #;";
 
                     // Area field
                     string fArea = prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
@@ -659,7 +659,7 @@ namespace NCC.PRZTools
                     string fStatAlias = aliasprefix + " State";
                     string f5 = fStat + " LONG '" + fStatAlias + "' # 0 #;";
 
-                    flds = f1 + f2 + f3 + f4 + f5;
+                    flds = f3 + f4 + f5;
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields for feature {cfid}..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pucfpath, flds);
@@ -675,48 +675,95 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully..."), true, ++val);
                     }
+                }
 
-                    // Populate the new fields
-                    if (!await QueuedTask.Run(async () =>
+                // Update values in the new fields
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating new field values..."), true, ++val);
+
+                // Get lists of field names
+                //Dictionary<string, int> IDFields = new Dictionary<string, int>();
+                //Dictionary<string, string> NameFields = new Dictionary<string, string>();
+                List<string> AreFields = new List<string>();
+                List<string> CovFields = new List<string>();
+                List<string> StatFields = new List<string>();
+
+                foreach (FeatureElement CF in LIST_Features)
+                {
+                    int cfid = CF.CF_ID;
+
+                    string prefix = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cfid.ToString();
+
+                    //IDFields.Add(prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_CFID, cfid);
+                    //NameFields.Add(prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_NAME, CF.CF_Name);
+                    AreFields.Add(prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA);
+                    CovFields.Add(prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_COVERAGE);
+                    StatFields.Add(prefix + PRZC.c_FLD_TAB_PUCF_SUFFIX_STATE);
+                }
+
+                // Populate the new fields
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
                     {
-                        try
+                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        using (RowCursor rowCursor = table.Search())
                         {
-                            using (Table table = await PRZH.GetTable_PUFeatures())
-                            using (RowCursor rowCursor = table.Search(null, false))
+                            while (rowCursor.MoveNext())
                             {
-                                while (rowCursor.MoveNext())
+                                using (Row row = rowCursor.Current)
                                 {
-                                    using (Row row = rowCursor.Current)
-                                    {
-                                        row[fId] = cfid;
-                                        row[fName] = feature_name;
-                                        row[fArea] = 0;
-                                        row[fCov] = 0;
-                                        row[fStat] = 0;
+                                    //foreach (var kvp in IDFields)
+                                    //{
+                                    //    string fldname = kvp.Key;
+                                    //    int id = kvp.Value;
+                                    //    row[fldname] = id;
+                                    //}
 
-                                        row.Store();
+                                    //foreach (var kvp in NameFields)
+                                    //{
+                                    //    string fldname = kvp.Key;
+                                    //    string name = kvp.Value;
+                                    //    row[fldname] = name;
+                                    //}
+
+                                    foreach (var fldname in AreFields)
+                                    {
+                                        row[fldname] = 0;
                                     }
+
+                                    foreach (var fldname in CovFields)
+                                    {
+                                        row[fldname] = 0;
+                                    }
+
+                                    foreach (var fldname in StatFields)
+                                    {
+                                        row[fldname] = 0;
+                                    }
+
+                                    row.Store();
                                 }
                             }
+                        }
 
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
+                        return true;
+                    }
+                    catch (Exception ex)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUFEATURES} table...", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error updating records in the {PRZC.c_TABLE_PUFEATURES} table.");
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
                     }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUFEATURES} table updated successfully."), true, ++val);
-                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating records in the {PRZC.c_TABLE_PUFEATURES} table...", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error updating records in the {PRZC.c_TABLE_PUFEATURES} table.");
+                    return false;
                 }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUFEATURES} table updated successfully."), true, ++val);
+                }
+
 
                 #endregion
 
@@ -762,7 +809,7 @@ namespace NCC.PRZTools
                             }
 
                             // Iterate through each planning unit, then iterate through each State field.  Each field having value = 1 means the associated Feature has a presence in this planning unit.
-                            using (RowCursor rowCursor = table.Search(null, false))
+                            using (RowCursor rowCursor = table.Search())
                             {
                                 while (rowCursor.MoveNext())
                                 {
@@ -1873,7 +1920,7 @@ namespace NCC.PRZTools
                                     };
 
                                     using (Table table = await PRZH.GetTable_PUFeatures())
-                                    using (RowCursor rowCursor = table.Search(QF, false))
+                                    using (RowCursor rowCursor = table.Search(QF))
                                     {
                                         while (rowCursor.MoveNext())
                                         {
@@ -1963,7 +2010,7 @@ namespace NCC.PRZTools
                         }
 
                         // prepare the temporary zonal stats table
-                        string tabname = "sr_zonal_temp";
+                        string tabname = "cf_zonal_temp";
 
                         // Calculate Zonal Statistics as Table
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Zonal Statistics as Table for feature {cfid}..."), true, ++val);
@@ -2079,7 +2126,7 @@ namespace NCC.PRZTools
                                 try
                                 {
                                     using (Table table = await PRZH.GetTable_PUFeatures())
-                                    using (RowCursor rowCursor = table.Search(QF, false))
+                                    using (RowCursor rowCursor = table.Search(QF))
                                     {
                                         while (rowCursor.MoveNext())
                                         {

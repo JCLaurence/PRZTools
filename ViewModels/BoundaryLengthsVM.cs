@@ -35,16 +35,26 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Properties
+        #region FIELDS
 
-        private bool _boundaryTableExists;
+        private bool _boundaryTableExists = false;
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+
+        private ICommand _cmdClearLog;
+        private ICommand _cmdBuildBoundaryTable;
+        private ICommand _cmdTest;
+
+
+        #endregion
+
+        #region PROPERTIES
+
         public bool BoundaryTableExists
         {
             get => _boundaryTableExists;
             set => SetProperty(ref _boundaryTableExists, value, () => BoundaryTableExists);
         }
 
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
         {
             get => _pm; set => SetProperty(ref _pm, value, () => PM);
@@ -52,16 +62,16 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
-        private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        private ICommand _cmdBuildBoundaryTable;
         public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () => await BuildBoundaryTable(), () => true));
+
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () => await Test(), () => true));
 
         #endregion
 
@@ -71,15 +81,10 @@ namespace NCC.PRZTools
         {
             try
             {
-                //// Initialize the Progress Bar & Log
-                //PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+                // Initialize the Progress Bar & Log
+                PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                //// Set the Conflict Override value default
-                //SelectedOverrideOption = c_OVERRIDE_INCLUDE;
-
-                //// Populate the Grid
-                //bool Populated = await PopulateConflictGrid();
-
+                // Table presence
                 BoundaryTableExists = await PRZH.TableExists_Boundary();
 
             }
@@ -97,21 +102,22 @@ namespace NCC.PRZTools
             {
                 #region INITIALIZATION AND VALIDATION
 
+                // Initialize a few thingies
                 Map map = MapView.Active.Map;
-
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
 
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Boundary Table generator..."), false, max, ++val);
 
-                // Validation: Project Geodatabase
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
                                    Environment.NewLine +
                                    gdbpath +
@@ -125,21 +131,24 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase is OK: " + gdbpath), true, ++val);
                 }
 
-                // Validation: Ensure the Planning Unit FC exists
+                // Validation: Ensure that the Planning Unit FC exists
                 string pufcpath = PRZH.GetPath_FC_PU();
                 if (!await PRZH.FCExists_PU())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Planning Unit Feature Class not present in the project geodatabase.  Have you built it yet?");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class is OK: " + pufcpath), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Planning Unit Feature Class is OK: {pufcpath}"), true, ++val);
                 }
 
+                // Validation: Ensure the Planning Unit Layer is present
                 if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Layer not found in the map.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Planning Units feature layer not found in the map.  Please reload the PRZ Layers and try again.", "Validation");
                     return false;
                 }
 
@@ -148,7 +157,7 @@ namespace NCC.PRZTools
                 SpatialReference PUFL_SR = null;
                 await QueuedTask.Run(() =>
                 {
-                    PUFL = PRZH.GetFeatureLayer_PU(map);
+                    PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
                     PUFL_SR = PUFL.GetSpatialReference();
 
                     // clear selection as well
@@ -190,12 +199,13 @@ namespace NCC.PRZTools
                     toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting the Boundary Length table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_PUBOUNDARY} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_PUBOUNDARY} table.");
                         return false;
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully deleted the Boundary Length table."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUBOUNDARY} table deleted sucessfully."), true, ++val);
                     }
                 }
 
@@ -205,11 +215,12 @@ namespace NCC.PRZTools
                 // Polygon Neighbors tool
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Polygon Neighbors geoprocessing tool..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PUFL, boundtemp, PRZC.c_FLD_FC_PU_ID, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("PolygonNeighbors_analysis", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing the Polygon Neighbors geoprocessing tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error executing the Polygon Neighbors tool.");
                     return false;
                 }
                 else
@@ -219,6 +230,7 @@ namespace NCC.PRZTools
 
                 // Delete all zero length records
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting node connections from Boundary Length table..."), true, ++val);
+
                 if (!await QueuedTask.Run(async () =>
                 {
                     try
@@ -236,15 +248,20 @@ namespace NCC.PRZTools
 
                         return true;
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to delete node connection records from temp Boundary Length table...", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to delete all node connection records from temp Boundary Length table...");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to delete node connection records from {boundtemp} table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to delete node connection records from {boundtemp} table.");
                     return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Node connection records deleted."), true, ++val);
                 }
 
                 #endregion
@@ -493,7 +510,12 @@ namespace NCC.PRZTools
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error compacting geodatabase");
                     return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                 }
 
                 // Wrap things up
@@ -514,6 +536,80 @@ namespace NCC.PRZTools
             }
         }
 
+        public async Task<bool> Test()
+        {
+            int val = 0;
+            try
+            {
+                // Initialize ProgressBar and Progress Log
+                int max = 50;
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the tester..."), false, max, ++val);
+
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                int counter = 0;
+                int hundreds = 0;
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        
+
+
+                        //using (Table table = await PRZH.GetTable_PUFeatures())
+                        //using (RowCursor rowCursor = table.Search(null, false))
+                        //{
+                        //    while (rowCursor.MoveNext())
+                        //    {
+                        //        using (Row row = rowCursor.Current)
+                        //        {
+                        //            row[PRZC.c_FLD_TAB_PUCF_FEATURECOUNT] = 3;
+                        //            row.Store();
+                        //            counter++;
+                        //        }
+                                
+                        //        if (counter == 1000)
+                        //        {
+                        //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Hundreds: {hundreds}"), true, max, ++val);
+
+                        //            hundreds++;
+                        //            counter = 0;
+                        //        }
+
+
+                        //    }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"test error.", LogMessageType.ERROR), true);
+                    ProMsgBox.Show($"test error.");
+                    return false;
+                }
+
+                stopwatch.Stop();
+
+                string message = PRZH.GetElapsedTimeInSeconds(stopwatch.Elapsed);
+                ProMsgBox.Show(message);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message);
+                return false;
+            }
+        }
 
         #endregion
 

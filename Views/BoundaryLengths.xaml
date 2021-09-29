@@ -108,7 +108,8 @@
                         Margin="5,5,0,5" 
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
+                        IsEnabled="True"
+                        Command="{Binding CmdTest}"
                         Content="EXISTING INFO" />
 
                 </DockPanel>
