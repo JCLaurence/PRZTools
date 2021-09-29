@@ -3,6 +3,7 @@ using ArcGIS.Core.Data;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Controls;
@@ -71,7 +72,7 @@ namespace NCC.PRZTools
 
         public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () => await BuildBoundaryTable(), () => true));
 
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () => await Test(), () => true));
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () => ProMsgBox.Show($"{await Test()}"), () => true));
 
         #endregion
 
@@ -539,8 +540,23 @@ namespace NCC.PRZTools
         public async Task<bool> Test()
         {
             int val = 0;
+            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
+
             try
             {
+                // Check for currently unsaved edits in the project
+                if (Project.Current.HasEdits)
+                {
+                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding");
+                    return true;
+                }
+
+                // Enable editing temporarily (reset this in 'finally')
+                if (edits_are_disabled)
+                {
+                    await Project.Current.SetIsEditingEnabledAsync(true);
+                }
+
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the tester..."), false, max, ++val);
@@ -554,39 +570,66 @@ namespace NCC.PRZTools
 
                 if (!await QueuedTask.Run(async () =>
                 {
+                    bool success = false;
+
                     try
                     {
-                        
+                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        {
+                            // EditOperation approach
+                            var editOp = new EditOperation();
+                            editOp.Name = "Tester I";
+                            editOp.ShowProgressor = false;
+                            editOp.ShowModalMessageAfterFailure = false;
+                            
+                            editOp.Callback((context) =>
+                            {
+                                // callback editing function
+                                try
+                                {
+                                    using (RowCursor rowCursor = table.Search(null, false))
+                                    {
+                                        while (rowCursor.MoveNext())
+                                        {
+                                            using (Row row = rowCursor.Current)
+                                            {
+                                                context.Invalidate(row);
+                                                row[PRZC.c_FLD_TAB_PUCF_FEATURECOUNT] = 3;
+                                                row.Store();
+                                                context.Invalidate(row);
+                                            }
+                                        }
+                                    }
 
+                                    throw new Exception("whaaah happened?");
 
-                        //using (Table table = await PRZH.GetTable_PUFeatures())
-                        //using (RowCursor rowCursor = table.Search(null, false))
-                        //{
-                        //    while (rowCursor.MoveNext())
-                        //    {
-                        //        using (Row row = rowCursor.Current)
-                        //        {
-                        //            row[PRZC.c_FLD_TAB_PUCF_FEATURECOUNT] = 3;
-                        //            row.Store();
-                        //            counter++;
-                        //        }
-                                
-                        //        if (counter == 1000)
-                        //        {
-                        //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Hundreds: {hundreds}"), true, max, ++val);
+                                }
+                                catch (Exception ex)
+                                {
+                                    context.Abort("Abortorama: " + ex.Message);
+                                }
 
-                        //            hundreds++;
-                        //            counter = 0;
-                        //        }
+                            }, table);
 
+                            success = await editOp.ExecuteAsync();
 
-                        //    }
+                            if (success)
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving edits..."), true, max, ++val);
+                                await Project.Current.SaveEditsAsync();
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error... Error...", LogMessageType.ERROR), true, max, ++val);
+                                ProMsgBox.Show("Error Message: " + editOp.ErrorMessage);
+                            }
                         }
 
-                        return true;
+                        return success;
                     }
                     catch (Exception ex)
                     {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error happened.", LogMessageType.ERROR), true, max, ++val);
                         ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
                     }
@@ -608,6 +651,13 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message);
                 return false;
+            }
+            finally
+            {
+                if (edits_are_disabled)
+                {
+                    await Project.Current.SetIsEditingEnabledAsync(false);
+                }
             }
         }
 

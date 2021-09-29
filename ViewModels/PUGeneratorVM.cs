@@ -36,197 +36,199 @@ namespace NCC.PRZTools
         private SpatialReference _mapSR;
         private SpatialReference _userSR;
 
+        private bool _srMapIsChecked;
+        private bool _srLayerIsChecked;
+        private bool _srUserIsChecked;
+        private string _mapSRName;
+        private string _userSRName;
+        private List<SpatialReference> _layerSRList;
+        private bool _srMapIsEnabled;
+        private bool _srLayerIsEnabled;
+        private bool _srUserIsEnabled;
+        private SpatialReference _selectedLayerSR;
+        private List<GraphicsLayer> _graphicsLayerList;
+        private GraphicsLayer _selectedGraphicsLayer;
+        private List<FeatureLayer> _featureLayerList;
+        private FeatureLayer _selectedFeatureLayer;
+        private string _bufferValue;
+        private string _gridAlign_X;
+        private string _gridAlign_Y;
+        private bool _bufferUnitMetersIsChecked;
+        private bool _bufferUnitKilometersIsChecked;
+        private List<string> _gridTypeList;
+        private string _selectedGridType;
+        private string _tileArea;
+        private bool _tileAreaMIsSelected;
+        private bool _tileAreaAcIsSelected;
+        private bool _tileAreaHaIsSelected;
+        private bool _tileAreaKmIsSelected;
+        private bool _buildIsEnabled;
+        private bool _graphicsLayerIsEnabled;
+        private bool _graphicsLayerIsChecked;
+        private bool _featureLayerIsEnabled;
+        private bool _featureLayerIsChecked;
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+
+
         #endregion
 
         #region PROPERTIES
 
-        private bool _srMapIsChecked;
         public bool SRMapIsChecked
         {
             get => _srMapIsChecked; set => SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
         }
 
-        private bool _srLayerIsChecked;
         public bool SRLayerIsChecked
         {
             get => _srLayerIsChecked; set => SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
         }
 
-        private bool _srUserIsChecked;
         public bool SRUserIsChecked
         {
             get => _srUserIsChecked; set => SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
         }
 
-        private string _mapSRName;
         public string MapSRName
         {
             get => _mapSRName; set => SetProperty(ref _mapSRName, value, () => MapSRName);
         }
 
-        private string _userSRName;
         public string UserSRName
         {
             get => _userSRName; set => SetProperty(ref _userSRName, value, () => UserSRName);
         }
 
-        private List<SpatialReference> _layerSRList;
         public List<SpatialReference> LayerSRList
         {
             get => _layerSRList; set => SetProperty(ref _layerSRList, value, () => LayerSRList);
         }
 
-        private bool _srMapIsEnabled;
         public bool SRMapIsEnabled
         {
             get => _srMapIsEnabled; set => SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
         }
 
-        private bool _srLayerIsEnabled;
         public bool SRLayerIsEnabled
         {
             get => _srLayerIsEnabled; set => SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
         }
 
-        private bool _srUserIsEnabled;
         public bool SRUserIsEnabled
         {
             get => _srUserIsEnabled; set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
         }
 
-        private SpatialReference _selectedLayerSR;
         public SpatialReference SelectedLayerSR
         {
             get => _selectedLayerSR; set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
         }
 
-        private List<GraphicsLayer> _graphicsLayerList;
         public List<GraphicsLayer> GraphicsLayerList
         {
             get => _graphicsLayerList; set => SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
         }
 
-        private GraphicsLayer _selectedGraphicsLayer;
         public GraphicsLayer SelectedGraphicsLayer
         {
             get => _selectedGraphicsLayer; set => SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
         }
 
-        private List<FeatureLayer> _featureLayerList;
         public List<FeatureLayer> FeatureLayerList
         {
             get => _featureLayerList; set => SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
         }
 
-        private FeatureLayer _selectedFeatureLayer;
         public FeatureLayer SelectedFeatureLayer
         {
             get => _selectedFeatureLayer; set => SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
         }
 
-        private string _bufferValue;
         public string BufferValue
         {
             get => _bufferValue; set => SetProperty(ref _bufferValue, value, () => BufferValue);
         }
 
-        private string _gridAlign_X;
         public string GridAlign_X
         {
             get => _gridAlign_X; set => SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
         }
 
-        private string _gridAlign_Y;
         public string GridAlign_Y
         {
             get => _gridAlign_Y; set => SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
         }
 
-        private bool _bufferUnitMetersIsChecked;
         public bool BufferUnitMetersIsChecked
         {
             get => _bufferUnitMetersIsChecked; set => SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
         }
 
-        private bool _bufferUnitKilometersIsChecked;
         public bool BufferUnitKilometersIsChecked
         {
             get => _bufferUnitKilometersIsChecked; set => SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
         }
 
-        private List<string> _gridTypeList;
         public List<string> GridTypeList
         {
             get => _gridTypeList; set => SetProperty(ref _gridTypeList, value, () => GridTypeList);
         }
 
-        private string _selectedGridType;
         public string SelectedGridType
         {
             get => _selectedGridType; set => SetProperty(ref _selectedGridType, value, () => SelectedGridType);
         }
 
-        private string _tileArea;
         public string TileArea
         {
             get => _tileArea; set => SetProperty(ref _tileArea, value, () => TileArea);
         }
 
-        private bool _tileAreaMIsSelected;
         public bool TileAreaMIsSelected
         {
             get => _tileAreaMIsSelected; set => SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
         }
 
-        private bool _tileAreaAcIsSelected;
         public bool TileAreaAcIsSelected
         {
             get => _tileAreaAcIsSelected; set => SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
         }
 
-        private bool _tileAreaHaIsSelected;
         public bool TileAreaHaIsSelected
         {
             get => _tileAreaHaIsSelected; set => SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
         }
 
-        private bool _tileAreaKmIsSelected;
         public bool TileAreaKmIsSelected
         {
             get => _tileAreaKmIsSelected; set => SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
         }
 
-        private bool _buildIsEnabled;
         public bool BuildIsEnabled
         {
             get => _buildIsEnabled; set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
         }
 
-        private bool _graphicsLayerIsEnabled;
         public bool GraphicsLayerIsEnabled
         {
             get => _graphicsLayerIsEnabled; set => SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
         }
 
-        private bool _graphicsLayerIsChecked;
         public bool GraphicsLayerIsChecked
         {
             get => _graphicsLayerIsChecked; set => SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
         }
 
-        private bool _featureLayerIsEnabled;
         public bool FeatureLayerIsEnabled
         {
             get => _featureLayerIsEnabled; set => SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
         }
 
-        private bool _featureLayerIsChecked;
         public bool FeatureLayerIsChecked
         {
             get => _featureLayerIsChecked; set => SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
         }
 
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         public ProgressManager PM
         {
             get => _pm; set => SetProperty(ref _pm, value, () => PM);
