@@ -24,9 +24,9 @@ using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
-    public class PUGeneratorVM : PropertyChangedBase
+    public class PlanningUnitsVM : PropertyChangedBase
     {
-        public PUGeneratorVM()
+        public PlanningUnitsVM()
         {
         }
 
@@ -67,166 +67,238 @@ namespace NCC.PRZTools
         private bool _graphicsLayerIsChecked;
         private bool _featureLayerIsEnabled;
         private bool _featureLayerIsChecked;
+        private bool _gridGeometryIsChecked = true;
+        private bool _flGeometryIsEnabled = false;
+        private bool _flGeometryIsChecked = false;
+        private List<FeatureLayer> _polygonFeatureLayers;
+        private FeatureLayer _selectedPolygonFeatureLayer;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
 
+        private ICommand _cmdSelectSpatialReference;
+        private ICommand _cmdSRMap;
+        private ICommand _cmdSRUser;
+        private ICommand _cmdSRLayer;
+        private ICommand _cmdGeneratePlanningUnits;
+        private ICommand _cmdClearLog;
 
         #endregion
 
         #region PROPERTIES
 
+        public List<FeatureLayer> PolygonFeatureLayers
+        {
+            get => _polygonFeatureLayers;
+            set => SetProperty(ref _polygonFeatureLayers, value, () => PolygonFeatureLayers);
+        }
+
+        public FeatureLayer SelectedPolygonFeatureLayer
+        {
+            get => _selectedPolygonFeatureLayer;
+            set => SetProperty(ref _selectedPolygonFeatureLayer, value, () => SelectedPolygonFeatureLayer);
+        }
+
+        public bool FLGeometryIsEnabled
+        {
+            get => _flGeometryIsEnabled;
+            set => SetProperty(ref _flGeometryIsEnabled, value, () => FLGeometryIsEnabled);
+        }
+
+        public bool FLGeometryIsChecked
+        {
+            get => _flGeometryIsChecked;
+            set => SetProperty(ref _flGeometryIsChecked, value, () => FLGeometryIsChecked);
+        }
+
+        public bool GridGeometryIsChecked
+        {
+            get => _gridGeometryIsChecked;
+            set => SetProperty(ref _gridGeometryIsChecked, value, () => GridGeometryIsChecked);
+        }
+
         public bool SRMapIsChecked
         {
-            get => _srMapIsChecked; set => SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
+            get => _srMapIsChecked;
+            set => SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
         }
 
         public bool SRLayerIsChecked
         {
-            get => _srLayerIsChecked; set => SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
+            get => _srLayerIsChecked;
+            set => SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
         }
 
         public bool SRUserIsChecked
         {
-            get => _srUserIsChecked; set => SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
+            get => _srUserIsChecked;
+            set => SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
         }
 
         public string MapSRName
         {
-            get => _mapSRName; set => SetProperty(ref _mapSRName, value, () => MapSRName);
+            get => _mapSRName;
+            set => SetProperty(ref _mapSRName, value, () => MapSRName);
         }
 
         public string UserSRName
         {
-            get => _userSRName; set => SetProperty(ref _userSRName, value, () => UserSRName);
+            get => _userSRName;
+            set => SetProperty(ref _userSRName, value, () => UserSRName);
         }
 
         public List<SpatialReference> LayerSRList
         {
-            get => _layerSRList; set => SetProperty(ref _layerSRList, value, () => LayerSRList);
+            get => _layerSRList;
+            set => SetProperty(ref _layerSRList, value, () => LayerSRList);
         }
 
         public bool SRMapIsEnabled
         {
-            get => _srMapIsEnabled; set => SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
+            get => _srMapIsEnabled;
+            set => SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
         }
 
         public bool SRLayerIsEnabled
         {
-            get => _srLayerIsEnabled; set => SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
+            get => _srLayerIsEnabled;
+            set => SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
         }
 
         public bool SRUserIsEnabled
         {
-            get => _srUserIsEnabled; set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
+            get => _srUserIsEnabled;
+            set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
         }
 
         public SpatialReference SelectedLayerSR
         {
-            get => _selectedLayerSR; set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
+            get => _selectedLayerSR;
+            set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
         }
 
         public List<GraphicsLayer> GraphicsLayerList
         {
-            get => _graphicsLayerList; set => SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
+            get => _graphicsLayerList;
+            set => SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
         }
 
         public GraphicsLayer SelectedGraphicsLayer
         {
-            get => _selectedGraphicsLayer; set => SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
+            get => _selectedGraphicsLayer;
+            set => SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
         }
 
         public List<FeatureLayer> FeatureLayerList
         {
-            get => _featureLayerList; set => SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
+            get => _featureLayerList;
+            set => SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
         }
 
         public FeatureLayer SelectedFeatureLayer
         {
-            get => _selectedFeatureLayer; set => SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
+            get => _selectedFeatureLayer;
+            set => SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
         }
 
         public string BufferValue
         {
-            get => _bufferValue; set => SetProperty(ref _bufferValue, value, () => BufferValue);
+            get => _bufferValue;
+            set => SetProperty(ref _bufferValue, value, () => BufferValue);
         }
 
         public string GridAlign_X
         {
-            get => _gridAlign_X; set => SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
+            get => _gridAlign_X;
+            set => SetProperty(ref _gridAlign_X, value, () => GridAlign_X);
         }
 
         public string GridAlign_Y
         {
-            get => _gridAlign_Y; set => SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
+            get => _gridAlign_Y;
+            set => SetProperty(ref _gridAlign_Y, value, () => GridAlign_Y);
         }
 
         public bool BufferUnitMetersIsChecked
         {
-            get => _bufferUnitMetersIsChecked; set => SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
+            get => _bufferUnitMetersIsChecked;
+            set => SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
         }
 
         public bool BufferUnitKilometersIsChecked
         {
-            get => _bufferUnitKilometersIsChecked; set => SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
+            get => _bufferUnitKilometersIsChecked;
+            set => SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
         }
 
         public List<string> GridTypeList
         {
-            get => _gridTypeList; set => SetProperty(ref _gridTypeList, value, () => GridTypeList);
+            get => _gridTypeList;
+            set => SetProperty(ref _gridTypeList, value, () => GridTypeList);
         }
 
         public string SelectedGridType
         {
-            get => _selectedGridType; set => SetProperty(ref _selectedGridType, value, () => SelectedGridType);
+            get => _selectedGridType;
+            set => SetProperty(ref _selectedGridType, value, () => SelectedGridType);
         }
 
         public string TileArea
         {
-            get => _tileArea; set => SetProperty(ref _tileArea, value, () => TileArea);
+            get => _tileArea;
+            set => SetProperty(ref _tileArea, value, () => TileArea);
         }
 
         public bool TileAreaMIsSelected
         {
-            get => _tileAreaMIsSelected; set => SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
+            get => _tileAreaMIsSelected;
+            set => SetProperty(ref _tileAreaMIsSelected, value, () => TileAreaMIsSelected);
         }
 
         public bool TileAreaAcIsSelected
         {
-            get => _tileAreaAcIsSelected; set => SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
+            get => _tileAreaAcIsSelected;
+            set => SetProperty(ref _tileAreaAcIsSelected, value, () => TileAreaAcIsSelected);
         }
 
         public bool TileAreaHaIsSelected
         {
-            get => _tileAreaHaIsSelected; set => SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
+            get => _tileAreaHaIsSelected;
+            set => SetProperty(ref _tileAreaHaIsSelected, value, () => TileAreaHaIsSelected);
         }
 
         public bool TileAreaKmIsSelected
         {
-            get => _tileAreaKmIsSelected; set => SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
+            get => _tileAreaKmIsSelected;
+            set => SetProperty(ref _tileAreaKmIsSelected, value, () => TileAreaKmIsSelected);
         }
 
         public bool BuildIsEnabled
         {
-            get => _buildIsEnabled; set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
+            get => _buildIsEnabled;
+            set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
         }
 
         public bool GraphicsLayerIsEnabled
         {
-            get => _graphicsLayerIsEnabled; set => SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
+            get => _graphicsLayerIsEnabled;
+            set => SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
         }
 
         public bool GraphicsLayerIsChecked
         {
-            get => _graphicsLayerIsChecked; set => SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
+            get => _graphicsLayerIsChecked;
+            set => SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
         }
 
         public bool FeatureLayerIsEnabled
         {
-            get => _featureLayerIsEnabled; set => SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
+            get => _featureLayerIsEnabled;
+            set => SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
         }
 
         public bool FeatureLayerIsChecked
         {
-            get => _featureLayerIsChecked; set => SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
+            get => _featureLayerIsChecked;
+            set => SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
         }
 
         public ProgressManager PM
@@ -234,27 +306,20 @@ namespace NCC.PRZTools
             get => _pm; set => SetProperty(ref _pm, value, () => PM);
         }
 
-
         #endregion
 
         #region COMMANDS
 
-        private ICommand _cmdSelectSpatialReference;
         public ICommand CmdSelectSpatialReference => _cmdSelectSpatialReference ?? (_cmdSelectSpatialReference = new RelayCommand(() => SelectSpatialReference(), () => true));
 
-        private ICommand _cmdSRMap;
         public ICommand CmdSRMap => _cmdSRMap ?? (_cmdSRMap = new RelayCommand(() => SelectMapSR(), () => true));
 
-        private ICommand _cmdSRUser;
         public ICommand CmdSRUser => _cmdSRUser ?? (_cmdSRUser = new RelayCommand(() => SelectUserSR(), () => true));
 
-        private ICommand _cmdSRLayer;
         public ICommand CmdSRLayer => _cmdSRLayer ?? (_cmdSRLayer = new RelayCommand(() => SelectLayerSR(), () => true));
 
-        private ICommand _cmdBuildPlanningUnits;
-        public ICommand CmdBuildPlanningUnits => _cmdBuildPlanningUnits ?? (_cmdBuildPlanningUnits = new RelayCommand(async () => await BuildPlanningUnits(), () => true));
+        public ICommand CmdGeneratePlanningUnits => _cmdGeneratePlanningUnits ?? (_cmdGeneratePlanningUnits = new RelayCommand(async () => await GeneratePlanningUnits(), () => true));
 
-        private ICommand _cmdClearLog;
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
@@ -395,7 +460,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<bool> BuildPlanningUnits()
+        private async Task<bool> GeneratePlanningUnits()
         {
             int val = 0;
 
@@ -403,30 +468,29 @@ namespace NCC.PRZTools
             {
                 #region INITIALIZATION AND USER INPUT VALIDATION
 
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
+                // Initialize a few thingies
+                Map map = MapView.Active.Map;
 
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Planning Unit Generator..."), false, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Selection Rules Generator..."), false, max, ++val);
 
-                // Validation: Project Geodatabase
+                // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 if (!await PRZH.ProjectGDBExists())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase not found: " + gdbpath, LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Project Geodatabase not found at this path:" + 
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Project Geodatabase not found at this path:" +
                                    Environment.NewLine +
-                                   gdbpath + 
-                                   Environment.NewLine + Environment.NewLine + 
+                                   gdbpath +
+                                   Environment.NewLine + Environment.NewLine +
                                    "Please specify a valid Project Workspace.", "Validation");
 
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Project Geodatabase is OK: " + gdbpath), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase is OK: {gdbpath}"), true, ++val);
                 }
 
                 // Validation: Output Spatial Reference
@@ -447,32 +511,32 @@ namespace NCC.PRZTools
                 {
                     if (SelectedGraphicsLayer == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Graphics Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("You must specify a Graphics Layer", "Validation");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - no graphics layer is selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Study Area Source Geometry - no graphics layer is selected.", "Validation");
                         return false;
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Graphics Layer Name: " + SelectedGraphicsLayer.Name), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - graphics layer name: " + SelectedGraphicsLayer.Name), true, ++val);
                     }
                 }
                 else if (FeatureLayerIsChecked)
                 {
                     if (SelectedFeatureLayer == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Feature Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("You must specify a Feature Layer", "Validation");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - no feature layer is selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Study Area Source Geometry - no feature layer is selected", "Validation");
                         return false;
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Feature Layer Name: " + SelectedFeatureLayer.Name), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - feature layer name: " + SelectedFeatureLayer.Name), true, ++val);
                     }
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No Graphics Layer or Feature Layer was selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("You must select either a Graphics Layer or a Feature Layer", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - no graphics or feature layer is selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Study Area Source Geometry - no graphics or feature layer is selected.", "Validation");
                     return false;
                 }
 
@@ -518,7 +582,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Shape is " + tile_shape), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Tile Shape = {tile_shape}"), true, ++val);
                 }
 
                 var TileShape = PlanningUnitTileShape.SQUARE;
@@ -560,17 +624,17 @@ namespace NCC.PRZTools
                     else if (TileAreaAcIsSelected)
                     {
                         au = tile_area_text + " ac";
-                        tile_area_m2 *= 4046.86;
+                        tile_area_m2 /= PRZC.c_CONVERT_M2_TO_AC;
                     }
                     else if (TileAreaHaIsSelected)
                     {
                         au = tile_area_text + " ha";
-                        tile_area_m2 *= 10000.0;
+                        tile_area_m2 /= PRZC.c_CONVERT_M2_TO_HA;
                     }
                     else if (TileAreaKmIsSelected)
                     {
                         au = tile_area_text + " km\xB2";
-                        tile_area_m2 *= 1000000.0;
+                        tile_area_m2 /= PRZC.c_CONVERT_M2_TO_KM2;
                     }
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
@@ -642,6 +706,10 @@ namespace NCC.PRZTools
                     return false;
                 }
 
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 #endregion
 
                 #region STUDY AREA GEOMETRY
@@ -657,6 +725,28 @@ namespace NCC.PRZTools
 
                     var selElems = gl.GetSelectedElements().OfType<GraphicElement>();
                     int polyelems = 0;
+
+                    if (!await QueuedTask.Run(() =>
+                    {
+                        try
+                        {
+                            // I'M HERE!!!!!
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+
+                            return false;
+                        }
+                    }))
+                    {
+
+                    }
+                    else
+                    {
+
+                    }
+
 
                     await QueuedTask.Run(() =>
                     {
@@ -741,7 +831,6 @@ namespace NCC.PRZTools
                 #region STRIP MAP AND GDB
 
                 // Remove any PRZ GDB Layers or Tables from Active Map
-                var map = MapView.Active.Map;
                 var flyrs = map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
                 List<Layer> LayersToDelete = new List<Layer>();
 
@@ -1125,7 +1214,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<bool> RemovePRZLayersAndTables()
+        private async Task<bool> RemovePRZLayersAndTables()
         {
             try
             {
@@ -1206,7 +1295,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<bool> LoadTiles(PlanningUnitTileInfo planningUnitTileInfo)
+        private async Task<bool> LoadTiles(PlanningUnitTileInfo planningUnitTileInfo)
         {
             try
             {
@@ -1322,7 +1411,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<bool> StripTiles(Polygon study_area)
+        private async Task<bool> StripTiles(Polygon study_area)
         {
             try
             {
@@ -1399,7 +1488,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<Polygon> BuildTileSquare(double xmin, double ymin, double side_length, SpatialReference SR)
+        private async Task<Polygon> BuildTileSquare(double xmin, double ymin, double side_length, SpatialReference SR)
         {
             try
             {
@@ -1422,7 +1511,7 @@ namespace NCC.PRZTools
             }
         }
 
-        internal async Task<Polygon> BuildTileHexagon(double xmin, double ymin, double center_to_vertex, double center_to_edge, SpatialReference SR)
+        private async Task<Polygon> BuildTileHexagon(double xmin, double ymin, double center_to_vertex, double center_to_edge, SpatialReference SR)
         {
             try
             {

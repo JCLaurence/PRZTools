@@ -1,6 +1,6 @@
 ﻿<controls:ProWindow
-    x:Class="NCC.PRZTools.PUGenerator"
-    x:Name="PUGeneratorDlg"
+    x:Class="NCC.PRZTools.PlanningUnits"
+    x:Name="PlanningUnitsDlg"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:controls="clr-namespace:ArcGIS.Desktop.Framework.Controls;assembly=ArcGIS.Desktop.Framework"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -98,7 +98,8 @@
                             Margin="5,3,5,3" 
                             ItemsSource="{Binding LayerSRList}" 
                             DisplayMemberPath="Name" 
-                            SelectedItem="{Binding SelectedLayerSR}" />
+                            SelectedItem="{Binding SelectedLayerSR}"
+                            IsEnabled="{Binding SRLayerIsChecked}"/>
 
                     </DockPanel>
 
@@ -174,7 +175,8 @@
                         <ComboBox 
                             Margin="5,3,5,3" 
                             ItemsSource="{Binding GraphicsLayerList}" 
-                            SelectedItem="{Binding SelectedGraphicsLayer}" />
+                            SelectedItem="{Binding SelectedGraphicsLayer}"
+                            IsEnabled="{Binding GraphicsLayerIsChecked}"/>
 
                     </DockPanel>
                     
@@ -195,7 +197,8 @@
                         <ComboBox 
                             Margin="5,3,5,3" 
                             ItemsSource="{Binding FeatureLayerList}" 
-                            SelectedItem="{Binding SelectedFeatureLayer}" />
+                            SelectedItem="{Binding SelectedFeatureLayer}"
+                            IsEnabled="{Binding FeatureLayerIsChecked}"/>
 
                     </DockPanel>
                     
@@ -265,13 +268,15 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="FCType"
-                            IsEnabled="False" 
+                            IsEnabled="{Binding FLGeometryIsEnabled}"
+                            IsChecked="{Binding FLGeometryIsChecked}"
                             Content="Use Existing Feature Layer:" />
 
                         <ComboBox 
                             Margin="5,3,5,3" 
-                            ItemsSource="{Binding GraphicsLayerList}" 
-                            SelectedItem="{Binding SelectedGraphicsLayer}" />
+                            ItemsSource="{Binding PolygonFeatureLayers}" 
+                            SelectedItem="{Binding SelectedPolygonFeatureLayer}"
+                            IsEnabled="{Binding FLGeometryIsChecked}"/>
 
                     </DockPanel>
                     
@@ -285,7 +290,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="FCType"
-                            IsChecked="True" 
+                            IsChecked="{Binding GridGeometryIsChecked}" 
                             IsEnabled="True" 
                             Content="Use Grid:" />
 
@@ -295,7 +300,8 @@
                             Width="70"
                             HorizontalContentAlignment="Center"   
                             ItemsSource="{Binding GridTypeList}" 
-                            SelectedItem="{Binding SelectedGridType}" />
+                            SelectedItem="{Binding SelectedGridType}"
+                            IsEnabled="{Binding GridGeometryIsChecked}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
@@ -308,6 +314,7 @@
                             DockPanel.Dock="Left" 
                             Margin="5"
                             Width="40"
+                            IsEnabled="{Binding GridGeometryIsChecked}"
                             Text="{Binding TileArea}" />
 
                         <RadioButton
@@ -316,6 +323,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="TileUnits"
+                            IsEnabled="{Binding GridGeometryIsChecked}"
                             IsChecked="{Binding TileAreaMIsSelected}" 
                             Content="m&#x00B2;" />
 
@@ -325,6 +333,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="TileUnits"
+                            IsEnabled="{Binding GridGeometryIsChecked}"
                             IsChecked="{Binding TileAreaAcIsSelected}" 
                             Content="ac" />
 
@@ -334,6 +343,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="TileUnits"
+                            IsEnabled="{Binding GridGeometryIsChecked}"
                             IsChecked="{Binding TileAreaHaIsSelected}" 
                             Content="ha" />
 
@@ -343,6 +353,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="TileUnits"
+                            IsEnabled="{Binding GridGeometryIsChecked}"
                             IsChecked="{Binding TileAreaKmIsSelected}" 
                             Content="km&#x00B2;" />
 
@@ -407,7 +418,7 @@
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
-                        Command="{Binding CmdBuildPlanningUnits}"
+                        Command="{Binding CmdGeneratePlanningUnits}"
                         Content="GENERATE PLANNING UNITS" />
 
                     <Button 

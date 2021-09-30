@@ -9,7 +9,7 @@ using PRZH = NCC.PRZTools.PRZHelper;
 
 namespace NCC.PRZTools
 {
-    internal class Button_PUGenerator : Button
+    internal class Button_PlanningUnits : Button
     {
 
         protected override async void OnClick()
@@ -71,8 +71,8 @@ namespace NCC.PRZTools
 
                 #region Configure and Show the Planning Units Dialog
 
-                PUGenerator dlg = new PUGenerator();                    // View
-                PUGeneratorVM vm = (PUGeneratorVM)dlg.DataContext;      // View Model
+                PlanningUnits dlg = new PlanningUnits();                    // View
+                PlanningUnitsVM vm = (PlanningUnitsVM)dlg.DataContext;      // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 

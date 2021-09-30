@@ -31,7 +31,7 @@
         <!--CONFIGURATION GROUP-->
         <group id="prz_group_configuration" caption="Project Construction" keytip="z">
           <!--Planning Unit Generator Dialog Button-->
-          <button refID="prz_button_pugenerator" size="large" />
+          <button refID="prz_button_planningunits" size="large" />
           <!--Planning Unit Selection Rules Dialog Button-->
           <button refID="prz_button_selectionrules" size="large" />
           <!--Planning Unit Cost Dialog Button-->
@@ -70,7 +70,7 @@
         </button>
         <!--CONFIGURATION CONTROLS-->
         <!--Planning Unit Generator Dialog Button-->
-        <button id="prz_button_pugenerator" caption="Planning Units" className="Button_PUGenerator" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_planningunits" caption="Planning Units" className="Button_PlanningUnits" keytip="z" loadOnClick="true" smallImage="Images\PlanningUnits16.png" largeImage="Images\PlanningUnits32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Generator">
             Tools to generate a Planning Unit Feature Class, based on a grid definition or an existing Polygon Feature Class.
             <disabledText>

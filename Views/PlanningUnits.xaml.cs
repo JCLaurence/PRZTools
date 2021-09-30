@@ -18,11 +18,11 @@ namespace NCC.PRZTools
     /// <summary>
     /// Interaction logic for PlanningUnitsDialog.xaml
     /// </summary>
-    public partial class PUGenerator : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class PlanningUnits : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        internal PUGeneratorVM vm = new PUGeneratorVM();
+        internal PlanningUnitsVM vm = new PlanningUnitsVM();
 
-        public PUGenerator()
+        public PlanningUnits()
         {
             InitializeComponent();
             this.DataContext = vm;
