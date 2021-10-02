@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="PLANNING UNIT GENERATOR"
-    Height="650" Width="500" MinHeight="650" MinWidth="500"
+    Height="650" Width="600" MinHeight="650" MinWidth="600"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
@@ -35,8 +35,8 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
         
             <!--Inner Border #1-->
@@ -45,102 +45,145 @@
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
-                
-                <DockPanel
+
+                <DockPanel 
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
-                    <TextBlock 
+                    <TextBlock
                         DockPanel.Dock="Top"
-                        Margin="5"
+                        Margin="5"  
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Output Spatial Reference (linear units = meters)" />
+                        Text="Specify the Planning Unit Source Geometry" />
 
                     <DockPanel 
-                        DockPanel.Dock="Top"                         
-                        LastChildFill="True">
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False"
+                        Height="25">
 
                         <RadioButton
                             DockPanel.Dock="Left"
-                            Margin="5" 
+                            Margin="5"  
                             VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center"
-                            GroupName="SR" 
-                            Command="{Binding CmdSRMap}" 
-                            IsEnabled="{Binding SRMapIsEnabled}" 
-                            IsChecked="{Binding SRMapIsChecked}" 
-                            Content="From Map:" />
-
-                        <TextBlock 
-                            Margin="0,0,5,0"
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="{Binding MapSRName}" />
+                            VerticalContentAlignment="Center" 
+                            GroupName="PlanningUnitSource"
+                            IsChecked="{Binding PUSource_Rad_NatGrid_IsChecked}"
+                            Content="National Grid" />
 
                     </DockPanel>
-                    
+
                     <DockPanel 
                         DockPanel.Dock="Top" 
-                        LastChildFill="True">
+                        LastChildFill="True"
+                        Height="25">
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5"  
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center" 
+                            GroupName="PlanningUnitSource"
+                            IsChecked="{Binding PUSource_Rad_CustomGrid_IsChecked}"
+                            Content="Custom Grid" />
+
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="False"
+                            Visibility="{Binding PUSource_Vis_CustomGrid_Controls}">
+
+                            <TextBlock
+                                DockPanel.Dock="Left"
+                                Margin="10, 5, 5, 5" 
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}"
+                                Text="Tile Shape:" />
+
+                            <ComboBox
+                                DockPanel.Dock="Left"
+                                Width="90"
+                                Margin="5, 1, 5, 1"
+                                VerticalAlignment="Center"
+                                HorizontalContentAlignment="Center"   
+                                ItemsSource="{Binding PUSource_Cmb_CustomGrid_TileShapes}" 
+                                SelectedItem="{Binding PUSource_Cmb_CustomGrid_SelectedTileShape}"/>
+
+                            <TextBlock
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}"
+                                Text="Tile Area:" />
+
+                            <TextBox
+                                DockPanel.Dock="Left"
+                                Margin="5, 1, 5, 1"
+                                Width="40"
+                                Text="{Binding PUSource_Txt_CustomGrid_TileArea}" />
+
+                            <RadioButton
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center" 
+                                GroupName="TileUnits"
+                                IsChecked="{Binding PUSource_Rad_TileArea_M_IsChecked}" 
+                                Content="m&#x00B2;" />
+
+                            <RadioButton 
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center" 
+                                GroupName="TileUnits"
+                                IsChecked="{Binding PUSource_Rad_TileArea_Ac_IsChecked}" 
+                                Content="ac" />
+
+                            <RadioButton
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center" 
+                                GroupName="TileUnits"
+                                IsChecked="{Binding PUSource_Rad_TileArea_Ha_IsChecked}" 
+                                Content="ha" />
+
+                            <RadioButton 
+                                DockPanel.Dock="Left"
+                                Margin="5" 
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center" 
+                                GroupName="TileUnits"
+                                IsChecked="{Binding PUSource_Rad_TileArea_Km_IsChecked}" 
+                                Content="km&#x00B2;" />
+
+                        </DockPanel>
+                    </DockPanel>
+
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="True"
+                        Height="25">
 
                         <RadioButton 
                             DockPanel.Dock="Left"
-                            Margin="5" 
+                            Margin="5"  
                             VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center"
-                            GroupName="SR" 
-                            Command="{Binding CmdSRLayer}" 
-                            IsEnabled="{Binding SRLayerIsEnabled}" 
-                            IsChecked="{Binding SRLayerIsChecked}"
-                            Content="From Layers:" />
+                            VerticalContentAlignment="Center" 
+                            GroupName="PlanningUnitSource"
+                            IsEnabled="{Binding PUSource_Rad_Layer_IsEnabled}"
+                            IsChecked="{Binding PUSource_Rad_Layer_IsChecked}"
+                            Content="Existing Feature Layer" />
 
                         <ComboBox 
-                            Margin="5,3,5,3" 
-                            ItemsSource="{Binding LayerSRList}" 
-                            DisplayMemberPath="Name" 
-                            SelectedItem="{Binding SelectedLayerSR}"
-                            IsEnabled="{Binding SRLayerIsChecked}"/>
-
-                    </DockPanel>
-
-                    <DockPanel 
-                        DockPanel.Dock="Bottom" 
-                        LastChildFill="True">
-
-                        <RadioButton
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center"
-                            GroupName="SR" 
-                            Command="{Binding CmdSRUser}" 
-                            IsEnabled="{Binding SRUserIsEnabled}" 
-                            IsChecked="{Binding SRUserIsChecked}"
-                            Content="User-specified:" />
-
-                        <Button
-                            DockPanel.Dock="Left"
-                            Margin="0,3,5,3"  
-                            Command="{Binding CmdSelectSpatialReference}"
-                            IsEnabled="False">
-                            
-                            <Image
-                                Margin="2" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CoordinateSystem16.png" />
-                        
-                        </Button>
-
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="{Binding UserSRName}" />
+                            Margin="5, 1, 5, 1"
+                            ItemsSource="{Binding PUSource_Cmb_Layer_FeatureLayers}" 
+                            SelectedItem="{Binding PUSource_Cmb_Layer_SelectedFeatureLayer}"
+                            IsEnabled="{Binding PUSource_Rad_Layer_IsChecked}"/>
 
                     </DockPanel>
                 </DockPanel>
             </Border>
-            
+
             <!--Inner Border #2-->
             <Border 
                 Grid.Row="1"
@@ -246,17 +289,41 @@
                 Grid.Row="2"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
+                BorderBrush="{DynamicResource Esri_BorderBrush}"
+                Visibility="{Binding OutputSR_Vis_Border}">
 
-                <DockPanel 
+                <DockPanel
                     LastChildFill="False"
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
 
-                    <TextBlock
+                    <TextBlock 
                         DockPanel.Dock="Top"
-                        Margin="5"  
+                        Margin="5"
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Planning Unit Source Geometry" />
+                        Text="Specify the Output Spatial Reference (linear units = meters)" />
+
+                    <DockPanel 
+                        DockPanel.Dock="Top"                         
+                        LastChildFill="True">
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center"
+                            GroupName="SR" 
+                            Command="{Binding CmdSRMap}" 
+                            IsEnabled="{Binding SRMapIsEnabled}" 
+                            IsChecked="{Binding SRMapIsChecked}" 
+                            Content="From Map:" />
+
+                        <TextBlock 
+                            Margin="0,0,5,0"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="{Binding MapSRName}" />
+
+                    </DockPanel>
 
                     <DockPanel 
                         DockPanel.Dock="Top" 
@@ -264,149 +331,122 @@
 
                         <RadioButton 
                             DockPanel.Dock="Left"
-                            Margin="5"  
+                            Margin="5" 
                             VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="FCType"
-                            IsEnabled="{Binding FLGeometryIsEnabled}"
-                            IsChecked="{Binding FLGeometryIsChecked}"
-                            Content="Use Existing Feature Layer:" />
+                            VerticalContentAlignment="Center"
+                            GroupName="SR" 
+                            Command="{Binding CmdSRLayer}" 
+                            IsEnabled="{Binding SRLayerIsEnabled}" 
+                            IsChecked="{Binding SRLayerIsChecked}"
+                            Content="From Layer:" />
 
                         <ComboBox 
                             Margin="5,3,5,3" 
-                            ItemsSource="{Binding PolygonFeatureLayers}" 
-                            SelectedItem="{Binding SelectedPolygonFeatureLayer}"
-                            IsEnabled="{Binding FLGeometryIsChecked}"/>
+                            ItemsSource="{Binding LayerSRList}" 
+                            DisplayMemberPath="Name" 
+                            SelectedItem="{Binding SelectedLayerSR}"
+                            IsEnabled="{Binding SRLayerIsChecked}"/>
 
                     </DockPanel>
-                    
+
                     <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="False">
-
-                        <RadioButton
-                            DockPanel.Dock="Left"
-                            Margin="5"  
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="FCType"
-                            IsChecked="{Binding GridGeometryIsChecked}" 
-                            IsEnabled="True" 
-                            Content="Use Grid:" />
-
-                        <ComboBox 
-                            DockPanel.Dock="Left"
-                            Margin="5,3,5,3" 
-                            Width="70"
-                            HorizontalContentAlignment="Center"   
-                            ItemsSource="{Binding GridTypeList}" 
-                            SelectedItem="{Binding SelectedGridType}"
-                            IsEnabled="{Binding GridGeometryIsChecked}"/>
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Tile Area:" />
-
-                        <TextBox
-                            DockPanel.Dock="Left" 
-                            Margin="5"
-                            Width="40"
-                            IsEnabled="{Binding GridGeometryIsChecked}"
-                            Text="{Binding TileArea}" />
+                        DockPanel.Dock="Bottom" 
+                        LastChildFill="True">
 
                         <RadioButton
                             DockPanel.Dock="Left"
                             Margin="5" 
                             VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="TileUnits"
-                            IsEnabled="{Binding GridGeometryIsChecked}"
-                            IsChecked="{Binding TileAreaMIsSelected}" 
-                            Content="m&#x00B2;" />
+                            VerticalContentAlignment="Center"
+                            GroupName="SR" 
+                            Command="{Binding CmdSRUser}" 
+                            IsEnabled="{Binding SRUserIsEnabled}" 
+                            IsChecked="{Binding SRUserIsChecked}"
+                            Content="User-specified:" />
 
-                        <RadioButton 
+                        <Button
                             DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="TileUnits"
-                            IsEnabled="{Binding GridGeometryIsChecked}"
-                            IsChecked="{Binding TileAreaAcIsSelected}" 
-                            Content="ac" />
+                            Margin="0,3,5,3"
+                            Command="{Binding CmdSelectSpatialReference}"
+                            IsEnabled="False">
 
-                        <RadioButton
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="TileUnits"
-                            IsEnabled="{Binding GridGeometryIsChecked}"
-                            IsChecked="{Binding TileAreaHaIsSelected}" 
-                            Content="ha" />
+                            <Image
+                                Margin="2" 
+                                Stretch="None"
+                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CoordinateSystem16.png" />
 
-                        <RadioButton 
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="TileUnits"
-                            IsEnabled="{Binding GridGeometryIsChecked}"
-                            IsChecked="{Binding TileAreaKmIsSelected}" 
-                            Content="km&#x00B2;" />
+                        </Button>
 
-                    </DockPanel>
-                    
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="False">
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
+                        <TextBlock 
                             Margin="5" 
                             VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Align grid to these XY coordinates:" />
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="X:" />
-
-                        <TextBox
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Width="80"
-                            Text="{Binding GridAlign_X}" />
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Y:" />
-
-                        <TextBox 
-                            DockPanel.Dock="Left" 
-                            Margin="5" 
-                            Width="90"
-                            Text="{Binding GridAlign_Y}" />
+                            Style="{DynamicResource Esri_TextBlockRegular}" 
+                            Text="{Binding UserSRName}" />
 
                     </DockPanel>
                 </DockPanel>
             </Border>
-            
+
             <!--Inner Border #4-->
             <Border 
-                Grid.Row="3" 
+                Grid.Row="3"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="True" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <DockPanel 
+                        DockPanel.Dock="Top" 
+                        LastChildFill="False">
+
+                        <TextBlock 
+                            DockPanel.Dock="Left" 
+                            Margin="5" 
+                            Style="{DynamicResource Esri_TextBlockH4}"
+                            Text="Generator Log" />
+
+                        <Button 
+                            DockPanel.Dock="Right"
+                            Margin="5" 
+                            Style="{DynamicResource Esri_Button}"
+                            Command="{Binding CmdClearLog}"
+                            Content="Clear Log" />
+
+                    </DockPanel>
+
+                    <ProgressBar 
+                        DockPanel.Dock="Top"
+                        Margin="5,0,5,0" 
+                        Height="10"  
+                        Minimum="{Binding PM.Min}" 
+                        Maximum="{Binding PM.Max}" 
+                        Value="{Binding PM.Current}" />
+
+                    <ScrollViewer 
+                        Margin="0" 
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
+
+                        <TextBlock 
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding PM.Message}" />
+
+                    </ScrollViewer>
+
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #5-->
+
+            <Border 
+                Grid.Row="4" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
-                
+
                 <DockPanel 
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
@@ -442,63 +482,13 @@
                         Margin="5,5,0,5" 
                         Padding="5,0,5,0"
                         Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
+                        IsEnabled="True"
+                        Command="{Binding CmdTest}"
                         Content="EXISTING INFO" />
 
                 </DockPanel>
             </Border>
-            
-            <!--Inner Border #5-->
-            <Border 
-                Grid.Row="4"
-                BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
 
-                <DockPanel 
-                    LastChildFill="True" 
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-                    
-                    <DockPanel 
-                        DockPanel.Dock="Top" 
-                        LastChildFill="False">
-
-                        <TextBlock 
-                            DockPanel.Dock="Left" 
-                            Margin="5" 
-                            Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="Generator Log" />
-
-                        <Button 
-                            DockPanel.Dock="Right"
-                            Margin="5" 
-                            Style="{DynamicResource Esri_Button}"
-                            Command="{Binding CmdClearLog}"
-                            Content="Clear Log" />
-
-                    </DockPanel>
-                    
-                    <ProgressBar 
-                        DockPanel.Dock="Top"
-                        Margin="5,0,5,0" 
-                        Height="10"  
-                        Minimum="{Binding PM.Min}" 
-                        Maximum="{Binding PM.Max}" 
-                        Value="{Binding PM.Current}" />
-                    
-                    <ScrollViewer 
-                        Margin="0" 
-                        HorizontalScrollBarVisibility="Auto" 
-                        VerticalScrollBarVisibility="Auto">
-
-                        <TextBlock 
-                            Margin="5"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="{Binding PM.Message}" />
-
-                    </ScrollViewer>
-                    
-                </DockPanel>
-            </Border>
         </Grid>
     </Border>
 </controls:ProWindow>

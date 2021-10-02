@@ -168,10 +168,23 @@ namespace NCC.PRZTools
         {
             try
             {
+                //// Update the Message
+                //if (string.IsNullOrEmpty(message))
+                //{
+                //    pm.Message = append ? (pm.Message + Environment.NewLine + "") : "";
+                //}
+                //else
+                //{
+                //    pm.Message = append ? (pm.Message + Environment.NewLine + message) : message;
+                //}
+
                 // Update the Message
-                if (string.IsNullOrEmpty(message))
+                if (message == null)
                 {
-                    pm.Message = append ? (pm.Message + Environment.NewLine + "") : "";
+                    if (append == false)
+                    {
+                        pm.Message = "";
+                    }
                 }
                 else
                 {
@@ -2155,7 +2168,7 @@ namespace NCC.PRZTools
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return false;
             }

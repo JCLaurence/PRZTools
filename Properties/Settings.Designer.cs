@@ -94,5 +94,29 @@ namespace NCC.PRZTools.Properties {
                 this["DEFAULT_CF_GOAL"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("SQUARE")]
+        public string DEFAULT_TILE_SHAPE {
+            get {
+                return ((string)(this["DEFAULT_TILE_SHAPE"]));
+            }
+            set {
+                this["DEFAULT_TILE_SHAPE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public string DEFAULT_TILE_AREA {
+            get {
+                return ((string)(this["DEFAULT_TILE_AREA"]));
+            }
+            set {
+                this["DEFAULT_TILE_AREA"] = value;
+            }
+        }
     }
 }

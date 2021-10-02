@@ -206,7 +206,7 @@ namespace NCC.PRZTools
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUBOUNDARY} table deleted sucessfully."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_TABLE_PUBOUNDARY} table deleted successfully."), true, ++val);
                     }
                 }
 
@@ -526,7 +526,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
                 BoundaryTableExists = await PRZH.TableExists_Boundary();
-                ProMsgBox.Show("Construction Completed Sucessfully!" + Environment.NewLine + Environment.NewLine + message);
+                ProMsgBox.Show("Construction Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
                 return true;
             }
             catch (Exception ex)

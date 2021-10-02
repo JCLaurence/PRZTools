@@ -69,7 +69,7 @@
         ERROR
     }
 
-    public enum PlanningUnitTileShape
+    public enum CustomGridTileShape
     {
         SQUARE,
         HEXAGON
@@ -178,7 +178,6 @@
         public const string c_FLD_FC_PU_ID = "id";
         public const string c_FLD_FC_PU_EFFECTIVE_RULE = "effective_rule";
         public const string c_FLD_FC_PU_COST = "cost";
-        public const string c_FLD_FC_PU_NCC_ID = "ncc_id";
         public const string c_FLD_FC_PU_AREA_M2 = "area_m2";
         public const string c_FLD_FC_PU_AREA_AC = "area_ac";
         public const string c_FLD_FC_PU_AREA_HA = "area_ha";
@@ -190,6 +189,7 @@
         public const string c_FLD_FC_PU_HAS_UNSHARED_PERIM = "has_unshared_perimeter";
 
         // STUDY AREA + STUDY AREA BUFFER
+        public const string c_FLD_FC_STUDYAREA_AREA_M2 = "area_m2";
         public const string c_FLD_FC_STUDYAREA_AREA_AC = "area_ac";
         public const string c_FLD_FC_STUDYAREA_AREA_HA = "area_ha";
         public const string c_FLD_FC_STUDYAREA_AREA_KM2 = "area_km2";

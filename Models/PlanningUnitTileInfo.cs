@@ -10,7 +10,7 @@ namespace NCC.PRZTools
 {
     internal class PlanningUnitTileInfo
     {
-        internal PlanningUnitTileShape tile_shape;
+        internal CustomGridTileShape tile_shape;
         internal double tile_area;
         internal int tiles_up;
         internal int tiles_across;

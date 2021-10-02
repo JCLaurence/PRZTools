@@ -20,5 +20,11 @@
     <Setting Name="DEFAULT_CF_GOAL" Type="System.String" Scope="User">
       <Value Profile="(Default)">50</Value>
     </Setting>
+    <Setting Name="DEFAULT_TILE_SHAPE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SQUARE</Value>
+    </Setting>
+    <Setting Name="DEFAULT_TILE_AREA" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

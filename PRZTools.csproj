@@ -150,10 +150,10 @@
     <AddInContent Include="Config.daml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\PlanningUnitTileInfo.cs" />
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\FeatureElement.cs" />
+    <Compile Include="Models\PlanningUnitTileInfo.cs" />
     <Compile Include="Models\SelectionRule.cs" />
     <Compile Include="Models\FeatureUV.cs" />
     <Compile Include="Models\YamlFeature.cs" />
@@ -492,6 +492,7 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\ComponentStatus_Warn16.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
