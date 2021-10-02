@@ -170,16 +170,20 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="PlanningUnitSource"
-                            IsEnabled="{Binding PUSource_Rad_Layer_IsEnabled}"
                             IsChecked="{Binding PUSource_Rad_Layer_IsChecked}"
                             Content="Existing Feature Layer" />
 
-                        <ComboBox 
-                            Margin="5, 1, 5, 1"
-                            ItemsSource="{Binding PUSource_Cmb_Layer_FeatureLayers}" 
-                            SelectedItem="{Binding PUSource_Cmb_Layer_SelectedFeatureLayer}"
-                            IsEnabled="{Binding PUSource_Rad_Layer_IsChecked}"/>
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="True"
+                            Visibility="{Binding PUSource_Vis_Layer_Controls}">
 
+                            <ComboBox 
+                                Margin="5, 1, 5, 1"
+                                ItemsSource="{Binding PUSource_Cmb_Layer_FeatureLayers}" 
+                                SelectedItem="{Binding PUSource_Cmb_Layer_SelectedFeatureLayer}"/>
+
+                        </DockPanel>
                     </DockPanel>
                 </DockPanel>
             </Border>
@@ -211,16 +215,20 @@
                             VerticalAlignment="Center"
                             VerticalContentAlignment="Center"
                             GroupName="StudyAreaSource"
-                            IsEnabled="{Binding GraphicsLayerIsEnabled}" 
-                            IsChecked="{Binding GraphicsLayerIsChecked}"
-                            Content="Graphics Layers with Poly Selections:" />
+                            IsChecked="{Binding SASource_Rad_Graphic_IsChecked}"
+                            Content="Graphics Layers with Poly Selections" />
 
-                        <ComboBox 
-                            Margin="5,3,5,3" 
-                            ItemsSource="{Binding GraphicsLayerList}" 
-                            SelectedItem="{Binding SelectedGraphicsLayer}"
-                            IsEnabled="{Binding GraphicsLayerIsChecked}"/>
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="True"
+                            Visibility="{Binding SASource_Vis_Graphic_Controls}">
 
+                            <ComboBox
+                                Margin="5, 1, 5, 1" 
+                                ItemsSource="{Binding SASource_Cmb_Graphic_GraphicsLayers}" 
+                                SelectedItem="{Binding SASource_Cmb_Graphic_SelectedGraphicsLayer}"/>
+
+                        </DockPanel>
                     </DockPanel>
                     
                     <DockPanel 
@@ -233,16 +241,20 @@
                             VerticalAlignment="Center"
                             VerticalContentAlignment="Center"
                             GroupName="StudyAreaSource"
-                            IsEnabled="{Binding FeatureLayerIsEnabled}" 
-                            IsChecked="{Binding FeatureLayerIsChecked}" 
-                            Content="Poly Feature Layers with Selections:" />
+                            IsChecked="{Binding SASource_Rad_Layer_IsChecked}" 
+                            Content="Poly Feature Layers with Selections" />
 
-                        <ComboBox 
-                            Margin="5,3,5,3" 
-                            ItemsSource="{Binding FeatureLayerList}" 
-                            SelectedItem="{Binding SelectedFeatureLayer}"
-                            IsEnabled="{Binding FeatureLayerIsChecked}"/>
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="True"
+                            Visibility="{Binding SASource_Vis_Layer_Controls}">
 
+                            <ComboBox 
+                                Margin="5, 1, 5, 1" 
+                                ItemsSource="{Binding SASource_Cmb_Layer_FeatureLayers}" 
+                                SelectedItem="{Binding SASource_Cmb_Layer_SelectedFeatureLayer}"/>
+
+                        </DockPanel>
                     </DockPanel>
                     
                     <DockPanel 
@@ -260,7 +272,7 @@
                             DockPanel.Dock="Left"
                             Margin="5"
                             Width="60"
-                            Text="{Binding BufferValue}" />
+                            Text="{Binding SASource_Txt_BufferDistance}" />
 
                         <RadioButton
                             DockPanel.Dock="Left"
@@ -268,7 +280,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="BufferUnits"
-                            IsChecked="{Binding BufferUnitMetersIsChecked}" 
+                            IsChecked="{Binding SASource_Rad_BufferDistance_M_IsChecked}" 
                             Content="m" />
 
                         <RadioButton
@@ -277,7 +289,7 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center" 
                             GroupName="BufferUnits"
-                            IsChecked="{Binding BufferUnitKilometersIsChecked}" 
+                            IsChecked="{Binding SASource_Rad_BufferDistance_Km_IsChecked}" 
                             Content="km" />
 
                     </DockPanel>

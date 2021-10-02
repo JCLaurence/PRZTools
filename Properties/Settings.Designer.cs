@@ -118,5 +118,65 @@ namespace NCC.PRZTools.Properties {
                 this["DEFAULT_TILE_AREA"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("M")]
+        public string DEFAULT_TILE_AREA_UNITS {
+            get {
+                return ((string)(this["DEFAULT_TILE_AREA_UNITS"]));
+            }
+            set {
+                this["DEFAULT_TILE_AREA_UNITS"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("NATGRID")]
+        public string DEFAULT_PU_GEOMETRY_SOURCE {
+            get {
+                return ((string)(this["DEFAULT_PU_GEOMETRY_SOURCE"]));
+            }
+            set {
+                this["DEFAULT_PU_GEOMETRY_SOURCE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("GRAPHIC")]
+        public string DEFAULT_SA_GEOMETRY_SOURCE {
+            get {
+                return ((string)(this["DEFAULT_SA_GEOMETRY_SOURCE"]));
+            }
+            set {
+                this["DEFAULT_SA_GEOMETRY_SOURCE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string DEFAULT_SA_BUFFER_DISTANCE {
+            get {
+                return ((string)(this["DEFAULT_SA_BUFFER_DISTANCE"]));
+            }
+            set {
+                this["DEFAULT_SA_BUFFER_DISTANCE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("KM")]
+        public string DEFAULT_SA_BUFFER_DISTANCE_UNITS {
+            get {
+                return ((string)(this["DEFAULT_SA_BUFFER_DISTANCE_UNITS"]));
+            }
+            set {
+                this["DEFAULT_SA_BUFFER_DISTANCE_UNITS"] = value;
+            }
+        }
     }
 }

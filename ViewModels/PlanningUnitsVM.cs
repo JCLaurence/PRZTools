@@ -38,31 +38,50 @@ namespace NCC.PRZTools
 
         #region PLANNING UNIT SOURCE GEOMETRY
 
-        private bool _puSource_Rad_Layer_IsEnabled;
-
         private bool _puSource_Rad_NatGrid_IsChecked;
         private bool _puSource_Rad_CustomGrid_IsChecked;
         private bool _puSource_Rad_Layer_IsChecked;
 
+        private List<string> _puSource_Cmb_CustomGrid_TileShapes;
+        private string _puSource_Cmb_CustomGrid_SelectedTileShape;
+        private string _puSource_Txt_CustomGrid_TileArea;
         private bool _puSource_Rad_TileArea_M_IsChecked;
         private bool _puSource_Rad_TileArea_Ac_IsChecked;
         private bool _puSource_Rad_TileArea_Ha_IsChecked;
         private bool _puSource_Rad_TileArea_Km_IsChecked;
 
-        private List<string> _puSource_Cmb_CustomGrid_TileShapes;
-        private string _puSource_Cmb_CustomGrid_SelectedTileShape;
-        private string _puSource_Txt_CustomGrid_TileArea;
-
-        private Visibility _puSource_Vis_CustomGrid_Controls;
+        private Visibility _puSource_Vis_CustomGrid_Controls = Visibility.Collapsed;
+        private Visibility _puSource_Vis_Layer_Controls = Visibility.Collapsed;
 
         private List<FeatureLayer> _puSource_Cmb_Layer_FeatureLayers;
         private FeatureLayer _puSource_Cmb_Layer_SelectedFeatureLayer;
 
         #endregion
 
+        #region STUDY AREA SOURCE GEOMETRY
+
+        private bool _saSource_Rad_Graphic_IsChecked;
+        private bool _saSource_Rad_Layer_IsChecked;
+
+        private Visibility _saSource_Vis_Graphic_Controls = Visibility.Collapsed;
+        private Visibility _saSource_Vis_Layer_Controls = Visibility.Collapsed;
+
+        private string _saSource_Txt_BufferDistance;
+        private bool _saSource_Rad_BufferDistance_M_IsChecked;
+        private bool _saSource_Rad_BufferDistance_Km_IsChecked;
+
+        private List<GraphicsLayer> _saSource_Cmb_Graphic_GraphicsLayers;
+        private GraphicsLayer _saSource_Cmb_Graphic_SelectedGraphicsLayer;
+
+        private List<FeatureLayer> _saSource_Cmb_Layer_FeatureLayers;
+        private FeatureLayer _saSource_Cmb_Layer_SelectedFeatureLayer;
+
+
+        #endregion
+
         #region OUTPUT SPATIAL REFERENCE
 
-        private Visibility _outputSR_Vis_Border;
+        private Visibility _outputSR_Vis_Border = Visibility.Visible;
 
         #endregion
 
@@ -80,18 +99,10 @@ namespace NCC.PRZTools
         private bool _srLayerIsEnabled;
         private bool _srUserIsEnabled;
         private SpatialReference _selectedLayerSR;
-        private List<GraphicsLayer> _graphicsLayerList;
-        private GraphicsLayer _selectedGraphicsLayer;
-        private List<FeatureLayer> _featureLayerList;
-        private FeatureLayer _selectedFeatureLayer;
         private string _bufferValue;
         private bool _bufferUnitMetersIsChecked;
         private bool _bufferUnitKilometersIsChecked;
         private bool _buildIsEnabled;
-        private bool _graphicsLayerIsEnabled;
-        private bool _graphicsLayerIsChecked;
-        private bool _featureLayerIsEnabled;
-        private bool _featureLayerIsChecked;
         private bool _flGeometryIsEnabled = false;
         private bool _flGeometryIsChecked = false;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
@@ -110,11 +121,6 @@ namespace NCC.PRZTools
 
         #region PLANNING UNIT SOURCE GEOMETRY
 
-        public bool PUSource_Rad_Layer_IsEnabled
-        {
-            get => _puSource_Rad_Layer_IsEnabled;
-            set => SetProperty(ref _puSource_Rad_Layer_IsEnabled, value, () => PUSource_Rad_Layer_IsEnabled);
-        }
         public bool PUSource_Rad_NatGrid_IsChecked
         {
             get => _puSource_Rad_NatGrid_IsChecked;
@@ -122,6 +128,11 @@ namespace NCC.PRZTools
             {
                 SetProperty(ref _puSource_Rad_NatGrid_IsChecked, value, () => PUSource_Rad_NatGrid_IsChecked);
                 OutputSR_Vis_Border = value ? Visibility.Collapsed : Visibility.Visible;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE = "NATGRID";
+                    Properties.Settings.Default.Save();
+                }
             }
         }
         public bool PUSource_Rad_CustomGrid_IsChecked
@@ -131,12 +142,26 @@ namespace NCC.PRZTools
             {
                 SetProperty(ref _puSource_Rad_CustomGrid_IsChecked, value, () => PUSource_Rad_CustomGrid_IsChecked);
                 PUSource_Vis_CustomGrid_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE = "CUSTOMGRID";
+                    Properties.Settings.Default.Save();
+                }
             }
         }
         public bool PUSource_Rad_Layer_IsChecked
         {
             get => _puSource_Rad_Layer_IsChecked;
-            set => SetProperty(ref _puSource_Rad_Layer_IsChecked, value, () => PUSource_Rad_Layer_IsChecked);
+            set
+            {
+                SetProperty(ref _puSource_Rad_Layer_IsChecked, value, () => PUSource_Rad_Layer_IsChecked);
+                PUSource_Vis_Layer_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE = "LAYER";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public List<string> PUSource_Cmb_CustomGrid_TileShapes
         {
@@ -158,30 +183,73 @@ namespace NCC.PRZTools
             get => _puSource_Vis_CustomGrid_Controls;
             set => SetProperty(ref _puSource_Vis_CustomGrid_Controls, value, () => PUSource_Vis_CustomGrid_Controls);
         }
+        public Visibility PUSource_Vis_Layer_Controls
+        {
+            get => _puSource_Vis_Layer_Controls;
+            set => SetProperty(ref _puSource_Vis_Layer_Controls, value, () => PUSource_Vis_Layer_Controls);
+        }
+
         public string PUSource_Txt_CustomGrid_TileArea
         {
             get => _puSource_Txt_CustomGrid_TileArea;
-            set => SetProperty(ref _puSource_Txt_CustomGrid_TileArea, value, () => PUSource_Txt_CustomGrid_TileArea);
+            set
+            {
+                SetProperty(ref _puSource_Txt_CustomGrid_TileArea, value, () => PUSource_Txt_CustomGrid_TileArea);
+                Properties.Settings.Default.DEFAULT_TILE_AREA = value;
+                Properties.Settings.Default.Save();
+            }
         }
         public bool PUSource_Rad_TileArea_M_IsChecked
         {
             get => _puSource_Rad_TileArea_M_IsChecked;
-            set => SetProperty(ref _puSource_Rad_TileArea_M_IsChecked, value, () => PUSource_Rad_TileArea_M_IsChecked);
+            set
+            {
+                SetProperty(ref _puSource_Rad_TileArea_M_IsChecked, value, () => PUSource_Rad_TileArea_M_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "M";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public bool PUSource_Rad_TileArea_Ac_IsChecked
         {
             get => _puSource_Rad_TileArea_Ac_IsChecked;
-            set => SetProperty(ref _puSource_Rad_TileArea_Ac_IsChecked, value, () => PUSource_Rad_TileArea_Ac_IsChecked);
+            set
+            {
+                SetProperty(ref _puSource_Rad_TileArea_Ac_IsChecked, value, () => PUSource_Rad_TileArea_Ac_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "AC";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public bool PUSource_Rad_TileArea_Ha_IsChecked
         {
             get => _puSource_Rad_TileArea_Ha_IsChecked;
-            set => SetProperty(ref _puSource_Rad_TileArea_Ha_IsChecked, value, () => PUSource_Rad_TileArea_Ha_IsChecked);
+            set
+            {
+                SetProperty(ref _puSource_Rad_TileArea_Ha_IsChecked, value, () => PUSource_Rad_TileArea_Ha_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "HA";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public bool PUSource_Rad_TileArea_Km_IsChecked
         {
             get => _puSource_Rad_TileArea_Km_IsChecked;
-            set => SetProperty(ref _puSource_Rad_TileArea_Km_IsChecked, value, () => PUSource_Rad_TileArea_Km_IsChecked);
+            set
+            {
+                SetProperty(ref _puSource_Rad_TileArea_Km_IsChecked, value, () => PUSource_Rad_TileArea_Km_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "KM";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public List<FeatureLayer> PUSource_Cmb_Layer_FeatureLayers
         {
@@ -192,6 +260,106 @@ namespace NCC.PRZTools
         {
             get => _puSource_Cmb_Layer_SelectedFeatureLayer;
             set => SetProperty(ref _puSource_Cmb_Layer_SelectedFeatureLayer, value, () => PUSource_Cmb_Layer_SelectedFeatureLayer);
+        }
+
+
+        #endregion
+
+        #region STUDY AREA SOURCE GEOMETRY
+
+        public bool SASource_Rad_Graphic_IsChecked
+        {
+            get => _saSource_Rad_Graphic_IsChecked;
+            set
+            {
+                SetProperty(ref _saSource_Rad_Graphic_IsChecked, value, () => SASource_Rad_Graphic_IsChecked);
+                SASource_Vis_Graphic_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_SA_GEOMETRY_SOURCE = "GRAPHIC";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool SASource_Rad_Layer_IsChecked
+        {
+            get => _saSource_Rad_Layer_IsChecked;
+            set
+            {
+                SetProperty(ref _saSource_Rad_Layer_IsChecked, value, () => SASource_Rad_Layer_IsChecked);
+                SASource_Vis_Layer_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_SA_GEOMETRY_SOURCE = "LAYER";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public Visibility SASource_Vis_Graphic_Controls
+        {
+            get => _saSource_Vis_Graphic_Controls;
+            set => SetProperty(ref _saSource_Vis_Graphic_Controls, value, () => SASource_Vis_Graphic_Controls);
+        }
+        public Visibility SASource_Vis_Layer_Controls
+        {
+            get => _saSource_Vis_Layer_Controls;
+            set => SetProperty(ref _saSource_Vis_Layer_Controls, value, () => SASource_Vis_Layer_Controls);
+        }
+        public string SASource_Txt_BufferDistance
+        {
+            get => _saSource_Txt_BufferDistance;
+            set
+            {
+                SetProperty(ref _saSource_Txt_BufferDistance, value, () => SASource_Txt_BufferDistance);
+                Properties.Settings.Default.DEFAULT_SA_BUFFER_DISTANCE = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+        public bool SASource_Rad_BufferDistance_M_IsChecked
+        {
+            get => _saSource_Rad_BufferDistance_M_IsChecked;
+            set
+            {
+                SetProperty(ref _saSource_Rad_BufferDistance_M_IsChecked, value, () => SASource_Rad_BufferDistance_M_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_SA_BUFFER_DISTANCE_UNITS = "M";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool SASource_Rad_BufferDistance_Km_IsChecked
+        {
+            get => _saSource_Rad_BufferDistance_Km_IsChecked;
+            set
+            {
+                SetProperty(ref _saSource_Rad_BufferDistance_Km_IsChecked, value, () => SASource_Rad_BufferDistance_Km_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_SA_BUFFER_DISTANCE_UNITS = "KM";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public List<GraphicsLayer> SASource_Cmb_Graphic_GraphicsLayers
+        {
+            get => _saSource_Cmb_Graphic_GraphicsLayers;
+            set => SetProperty(ref _saSource_Cmb_Graphic_GraphicsLayers, value, () => SASource_Cmb_Graphic_GraphicsLayers);
+        }
+        public GraphicsLayer SASource_Cmb_Graphic_SelectedGraphicsLayer
+        {
+            get => _saSource_Cmb_Graphic_SelectedGraphicsLayer;
+            set => SetProperty(ref _saSource_Cmb_Graphic_SelectedGraphicsLayer, value, () => SASource_Cmb_Graphic_SelectedGraphicsLayer);
+        }
+        public List<FeatureLayer> SASource_Cmb_Layer_FeatureLayers
+        {
+            get => _saSource_Cmb_Layer_FeatureLayers;
+            set => SetProperty(ref _saSource_Cmb_Layer_FeatureLayers, value, () => SASource_Cmb_Layer_FeatureLayers);
+        }
+        public FeatureLayer SASource_Cmb_Layer_SelectedFeatureLayer
+        {
+            get => _saSource_Cmb_Layer_SelectedFeatureLayer;
+            set => SetProperty(ref _saSource_Cmb_Layer_SelectedFeatureLayer, value, () => SASource_Cmb_Layer_SelectedFeatureLayer);
         }
 
 
@@ -279,30 +447,6 @@ namespace NCC.PRZTools
             set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
         }
 
-        public List<GraphicsLayer> GraphicsLayerList
-        {
-            get => _graphicsLayerList;
-            set => SetProperty(ref _graphicsLayerList, value, () => GraphicsLayerList);
-        }
-
-        public GraphicsLayer SelectedGraphicsLayer
-        {
-            get => _selectedGraphicsLayer;
-            set => SetProperty(ref _selectedGraphicsLayer, value, () => SelectedGraphicsLayer);
-        }
-
-        public List<FeatureLayer> FeatureLayerList
-        {
-            get => _featureLayerList;
-            set => SetProperty(ref _featureLayerList, value, () => FeatureLayerList);
-        }
-
-        public FeatureLayer SelectedFeatureLayer
-        {
-            get => _selectedFeatureLayer;
-            set => SetProperty(ref _selectedFeatureLayer, value, () => SelectedFeatureLayer);
-        }
-
         public string BufferValue
         {
             get => _bufferValue;
@@ -325,30 +469,6 @@ namespace NCC.PRZTools
         {
             get => _buildIsEnabled;
             set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
-        }
-
-        public bool GraphicsLayerIsEnabled
-        {
-            get => _graphicsLayerIsEnabled;
-            set => SetProperty(ref _graphicsLayerIsEnabled, value, () => GraphicsLayerIsEnabled);
-        }
-
-        public bool GraphicsLayerIsChecked
-        {
-            get => _graphicsLayerIsChecked;
-            set => SetProperty(ref _graphicsLayerIsChecked, value, () => GraphicsLayerIsChecked);
-        }
-
-        public bool FeatureLayerIsEnabled
-        {
-            get => _featureLayerIsEnabled;
-            set => SetProperty(ref _featureLayerIsEnabled, value, () => FeatureLayerIsEnabled);
-        }
-
-        public bool FeatureLayerIsChecked
-        {
-            get => _featureLayerIsChecked;
-            set => SetProperty(ref _featureLayerIsChecked, value, () => FeatureLayerIsChecked);
         }
 
         public ProgressManager PM
@@ -389,32 +509,127 @@ namespace NCC.PRZTools
 
                 #region UI PROPERTIES
 
-                // Planning Unit Geometry Source
-                PUSource_Rad_CustomGrid_IsChecked = true;
+                #region PLANNING UNIT SOURCE GEOMETRY
 
-                // Grid Type combo box
+                // Geometry Source
+                string pusrc = Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE;
+                if (string.IsNullOrEmpty(pusrc) || pusrc == "NATGRID")
+                {
+                    PUSource_Rad_NatGrid_IsChecked = true;
+                }
+                else if (pusrc == "CUSTOMGRID")
+                {
+                    PUSource_Rad_CustomGrid_IsChecked = true;
+                }
+                else if (pusrc == "LAYER")
+                {
+                    PUSource_Rad_Layer_IsChecked = true;
+                }
+                else
+                {
+                    PUSource_Rad_NatGrid_IsChecked = true;
+                }
+
+                // Custom Grid - Tile Shapes
                 PUSource_Cmb_CustomGrid_TileShapes = Enum.GetNames(typeof(CustomGridTileShape)).ToList();
+
                 string tile_type = Properties.Settings.Default.DEFAULT_TILE_SHAPE;
+
                 if (string.IsNullOrEmpty(tile_type))
                 {
                     PUSource_Cmb_CustomGrid_SelectedTileShape = CustomGridTileShape.SQUARE.ToString();
                 }
-                else if (tile_type == CustomGridTileShape.SQUARE.ToString())
+                else
                 {
-                    PUSource_Cmb_CustomGrid_SelectedTileShape = CustomGridTileShape.SQUARE.ToString();
+                    PUSource_Cmb_CustomGrid_SelectedTileShape = (tile_type == CustomGridTileShape.HEXAGON.ToString()) ? CustomGridTileShape.HEXAGON.ToString() : CustomGridTileShape.SQUARE.ToString();
                 }
-                else if (tile_type == CustomGridTileShape.HEXAGON.ToString())
+
+                // Custom Grid Tile Area
+                string tile_area = Properties.Settings.Default.DEFAULT_TILE_AREA;
+
+                if (string.IsNullOrEmpty(tile_area))
                 {
-                    PUSource_Cmb_CustomGrid_SelectedTileShape = CustomGridTileShape.HEXAGON.ToString();
+                    PUSource_Txt_CustomGrid_TileArea = "1";
+                }
+                else if (double.TryParse(tile_area, out double tilearea))
+                {
+                    PUSource_Txt_CustomGrid_TileArea = (tilearea <= 0) ? "1" : tile_area;
                 }
                 else
                 {
-                    PUSource_Cmb_CustomGrid_SelectedTileShape = CustomGridTileShape.SQUARE.ToString();
+                    PUSource_Txt_CustomGrid_TileArea = "1";
                 }
 
-                // Tile area units set to Km
-                PUSource_Rad_TileArea_Km_IsChecked = true;
+                // Custom Grid Tile Area Units
+                string area_units = Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS;
 
+                switch (area_units)
+                {
+                    case "M":
+                        PUSource_Rad_TileArea_M_IsChecked = true;
+                        break;
+                    case "AC":
+                        PUSource_Rad_TileArea_Ac_IsChecked = true;
+                        break;
+                    case "HA":
+                        PUSource_Rad_TileArea_Ha_IsChecked = true;
+                        break;
+                    case "KM":
+                    default:
+                        PUSource_Rad_TileArea_Km_IsChecked = true;
+                        break;
+                }
+
+                #endregion
+
+                #region STUDY AREA SOURCE GEOMETRY
+
+                // Geometry Source
+                string sasrc = Properties.Settings.Default.DEFAULT_SA_GEOMETRY_SOURCE;
+                if (string.IsNullOrEmpty(sasrc) || sasrc == "LAYER")
+                {
+                    SASource_Rad_Layer_IsChecked = true;
+                }
+                else if (sasrc == "GRAPHIC")
+                {
+                    SASource_Rad_Graphic_IsChecked = true;
+                }
+                else
+                {
+                    SASource_Rad_Layer_IsChecked = true;
+                }
+
+                // Buffer Distance
+                string dist = Properties.Settings.Default.DEFAULT_SA_BUFFER_DISTANCE;
+
+                if (string.IsNullOrEmpty(dist))
+                {
+                    SASource_Txt_BufferDistance = "0";
+                }
+                else if (double.TryParse(dist, out double bd))
+                {
+                    SASource_Txt_BufferDistance = (bd < 0) ? "0" : dist;
+                }
+                else
+                {
+                    SASource_Txt_BufferDistance = "0";
+                }
+
+                // Buffer Distance Units
+                string bd_units = Properties.Settings.Default.DEFAULT_SA_BUFFER_DISTANCE_UNITS;
+
+                switch (bd_units)
+                {
+                    case "M":
+                        SASource_Rad_BufferDistance_M_IsChecked = true;
+                        break;
+                    case "KM":
+                    default:
+                        SASource_Rad_BufferDistance_Km_IsChecked = true;
+                        break;
+                }
+
+                #endregion
 
                 #endregion
 
@@ -509,8 +724,7 @@ namespace NCC.PRZTools
                     }
                 }
 
-                this.GraphicsLayerList = DICT_GraphicLayer_SelPolyCount.Keys.ToList();
-                this.GraphicsLayerIsEnabled = (DICT_GraphicLayer_SelPolyCount.Count > 0);
+                SASource_Cmb_Graphic_GraphicsLayers = DICT_GraphicLayer_SelPolyCount.Keys.ToList();
 
                 // Polygon Feature Layers
                 var pusourcefls = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
@@ -520,8 +734,7 @@ namespace NCC.PRZTools
                 // Polygon Feature Layers having selection
                 var flyrs = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0 && fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
 
-                this.FeatureLayerList = flyrs;
-                this.FeatureLayerIsEnabled = flyrs.Count > 0;
+                SASource_Cmb_Layer_FeatureLayers = flyrs;
 
                 // Buffer
                 this.BufferValue = "0";
@@ -595,9 +808,9 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Study Area Source Geometry
-                if (GraphicsLayerIsChecked)
+                if (SASource_Rad_Graphic_IsChecked)
                 {
-                    if (SelectedGraphicsLayer == null)
+                    if (SASource_Cmb_Graphic_SelectedGraphicsLayer == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - no graphics layer is selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Study Area Source Geometry - no graphics layer is selected.", "Validation");
@@ -605,12 +818,12 @@ namespace NCC.PRZTools
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - graphics layer name: " + SelectedGraphicsLayer.Name), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - graphics layer name: " + SASource_Cmb_Graphic_SelectedGraphicsLayer.Name), true, ++val);
                     }
                 }
-                else if (FeatureLayerIsChecked)
+                else if (SASource_Rad_Layer_IsChecked)
                 {
-                    if (SelectedFeatureLayer == null)
+                    if (SASource_Cmb_Layer_SelectedFeatureLayer == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - no feature layer is selected.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Study Area Source Geometry - no feature layer is selected", "Validation");
@@ -618,7 +831,7 @@ namespace NCC.PRZTools
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - feature layer name: " + SelectedFeatureLayer.Name), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Study Area Source Geometry - feature layer name: " + SASource_Cmb_Layer_SelectedFeatureLayer.Name), true, ++val);
                     }
                 }
                 else
@@ -775,10 +988,10 @@ namespace NCC.PRZTools
                 List<Polygon> LIST_SA_polys = new List<Polygon>();
                 Polygon SA_poly = null;
 
-                if (GraphicsLayerIsChecked)
+                if (SASource_Rad_Graphic_IsChecked)
                 {
                     // Get the selected polygon graphics from the graphics layer
-                    GraphicsLayer gl = SelectedGraphicsLayer;
+                    GraphicsLayer gl = SASource_Cmb_Graphic_SelectedGraphicsLayer;
 
                     var selElems = gl.GetSelectedElements().OfType<GraphicElement>();
                     int polyelems = 0;
@@ -825,10 +1038,10 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study Area >> Retrieved {polyelems} selected polygon(s) from the {gl.Name} graphics layer."), true, ++val);
                     }
                 }
-                else if (FeatureLayerIsChecked)
+                else if (SASource_Rad_Layer_IsChecked)
                 {
                     // Get the selected polygon features from the selected feature layer
-                    FeatureLayer fl = SelectedFeatureLayer;
+                    FeatureLayer fl = SASource_Cmb_Layer_SelectedFeatureLayer;
                     int selpol = 0;
 
                     if (!await QueuedTask.Run(() =>

@@ -26,5 +26,20 @@
     <Setting Name="DEFAULT_TILE_AREA" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
+    <Setting Name="DEFAULT_TILE_AREA_UNITS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">M</Value>
+    </Setting>
+    <Setting Name="DEFAULT_PU_GEOMETRY_SOURCE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">NATGRID</Value>
+    </Setting>
+    <Setting Name="DEFAULT_SA_GEOMETRY_SOURCE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">GRAPHIC</Value>
+    </Setting>
+    <Setting Name="DEFAULT_SA_BUFFER_DISTANCE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="DEFAULT_SA_BUFFER_DISTANCE_UNITS" Type="System.String" Scope="User">
+      <Value Profile="(Default)">KM</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
