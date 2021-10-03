@@ -54,7 +54,7 @@
                         DockPanel.Dock="Top"
                         Margin="5"  
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Planning Unit Source Geometry" />
+                        Text="Planning Unit Source Geometry" />
 
                     <DockPanel 
                         DockPanel.Dock="Top" 
@@ -171,7 +171,7 @@
                             VerticalContentAlignment="Center" 
                             GroupName="PlanningUnitSource"
                             IsChecked="{Binding PUSource_Rad_Layer_IsChecked}"
-                            Content="Existing Feature Layer" />
+                            Content="Feature Layer" />
 
                         <DockPanel
                             DockPanel.Dock="Left"
@@ -203,7 +203,7 @@
                         DockPanel.Dock="Top"
                         Margin="5"  
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Study Area Source Geometry" />
+                        Text="Study Area Source Geometry" />
 
                     <DockPanel 
                         DockPanel.Dock="Top" 
@@ -216,7 +216,7 @@
                             VerticalContentAlignment="Center"
                             GroupName="StudyAreaSource"
                             IsChecked="{Binding SASource_Rad_Graphic_IsChecked}"
-                            Content="Graphics Layers with Poly Selections" />
+                            Content="Graphics Layer" />
 
                         <DockPanel
                             DockPanel.Dock="Left"
@@ -242,7 +242,7 @@
                             VerticalContentAlignment="Center"
                             GroupName="StudyAreaSource"
                             IsChecked="{Binding SASource_Rad_Layer_IsChecked}" 
-                            Content="Poly Feature Layers with Selections" />
+                            Content="Feature Layer" />
 
                         <DockPanel
                             DockPanel.Dock="Left"
@@ -266,7 +266,7 @@
                             Margin="5" 
                             VerticalAlignment="Center" 
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Apply Buffer to Features/Graphics:" />
+                            Text="Study Area Buffer:" />
 
                         <TextBox
                             DockPanel.Dock="Left"
@@ -312,10 +312,11 @@
                         DockPanel.Dock="Top"
                         Margin="5"
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Output Spatial Reference (linear units = meters)" />
+                        Text="Output Spatial Reference" />
 
                     <DockPanel 
-                        DockPanel.Dock="Top"                         
+                        DockPanel.Dock="Top"
+                        Height="25"
                         LastChildFill="True">
 
                         <RadioButton
@@ -325,20 +326,27 @@
                             VerticalContentAlignment="Center"
                             GroupName="SR" 
                             Command="{Binding CmdSRMap}" 
-                            IsEnabled="{Binding SRMapIsEnabled}" 
-                            IsChecked="{Binding SRMapIsChecked}" 
-                            Content="From Map:" />
+                            IsEnabled="{Binding OutputSR_Rad_Map_IsEnabled}" 
+                            IsChecked="{Binding OutputSR_Rad_Map_IsChecked}"
+                            Content="From Map" />
 
-                        <TextBlock 
-                            Margin="0,0,5,0"
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="{Binding MapSRName}" />
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="True"
+                            Visibility="{Binding OutputSR_Vis_Map_Controls}">
 
+                            <TextBlock
+                                Margin="0,0,5,0"
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}" 
+                                Text="{Binding OutputSR_Txt_Map_SRName}" />
+
+                        </DockPanel>
                     </DockPanel>
 
                     <DockPanel 
-                        DockPanel.Dock="Top" 
+                        DockPanel.Dock="Top"
+                        Height="25"
                         LastChildFill="True">
 
                         <RadioButton 
@@ -347,22 +355,26 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center"
                             GroupName="SR" 
-                            Command="{Binding CmdSRLayer}" 
-                            IsEnabled="{Binding SRLayerIsEnabled}" 
-                            IsChecked="{Binding SRLayerIsChecked}"
-                            Content="From Layer:" />
+                            IsChecked="{Binding OutputSR_Rad_Layer_IsChecked}"
+                            Content="From Layer" />
 
-                        <ComboBox 
-                            Margin="5,3,5,3" 
-                            ItemsSource="{Binding LayerSRList}" 
-                            DisplayMemberPath="Name" 
-                            SelectedItem="{Binding SelectedLayerSR}"
-                            IsEnabled="{Binding SRLayerIsChecked}"/>
+                        <DockPanel
+                            DockPanel.Dock="Left"
+                            LastChildFill="True"
+                            Visibility="{Binding OutputSR_Vis_Layer_Controls}">
 
+                            <ComboBox 
+                                Margin="5,3,5,3"
+                                ItemsSource="{Binding OutputSR_Cmb_Layer_SpatialReferences}" 
+                                SelectedItem="{Binding OutputSR_Cmb_Layer_SelectedSpatialReference}"
+                                DisplayMemberPath="Name" />
+
+                        </DockPanel>
                     </DockPanel>
 
                     <DockPanel 
-                        DockPanel.Dock="Bottom" 
+                        DockPanel.Dock="Bottom"
+                        Height="25"
                         LastChildFill="True">
 
                         <RadioButton
@@ -371,30 +383,33 @@
                             VerticalAlignment="Center" 
                             VerticalContentAlignment="Center"
                             GroupName="SR" 
-                            Command="{Binding CmdSRUser}" 
-                            IsEnabled="{Binding SRUserIsEnabled}" 
-                            IsChecked="{Binding SRUserIsChecked}"
-                            Content="User-specified:" />
+                            IsChecked="{Binding OutputSR_Rad_User_IsChecked}"
+                            Content="User-specified" />
 
-                        <Button
+                        <DockPanel
                             DockPanel.Dock="Left"
-                            Margin="0,3,5,3"
-                            Command="{Binding CmdSelectSpatialReference}"
-                            IsEnabled="False">
+                            LastChildFill="True"
+                            Visibility="{Binding OutputSR_Vis_User_Controls}">
 
-                            <Image
-                                Margin="2" 
-                                Stretch="None"
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/CoordinateSystem16.png" />
+                            <Button
+                                DockPanel.Dock="Left"
+                                Command="{Binding CmdSelectSpatialReference}"
+                                IsEnabled="False">
 
-                        </Button>
+                                <Image
+                                    Margin="2" 
+                                    Stretch="None"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/CoordinateSystem16.png" />
 
-                        <TextBlock 
-                            Margin="5" 
-                            VerticalAlignment="Center"
-                            Style="{DynamicResource Esri_TextBlockRegular}" 
-                            Text="{Binding UserSRName}" />
+                            </Button>
 
+                            <TextBlock 
+                                Margin="5" 
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}" 
+                                Text="{Binding OutputSR_Txt_User_SRName}" />
+
+                        </DockPanel>
                     </DockPanel>
                 </DockPanel>
             </Border>

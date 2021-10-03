@@ -41,5 +41,8 @@
     <Setting Name="DEFAULT_SA_BUFFER_DISTANCE_UNITS" Type="System.String" Scope="User">
       <Value Profile="(Default)">KM</Value>
     </Setting>
+    <Setting Name="DEFAULT_OUTPUTSR_SOURCE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">MAP</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

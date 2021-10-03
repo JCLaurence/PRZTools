@@ -82,6 +82,17 @@ namespace NCC.PRZTools
         #region OUTPUT SPATIAL REFERENCE
 
         private Visibility _outputSR_Vis_Border = Visibility.Visible;
+        private Visibility _outputSR_Vis_Map_Controls = Visibility.Collapsed;
+        private Visibility _outputSR_Vis_Layer_Controls = Visibility.Collapsed;
+        private Visibility _outputSR_Vis_User_Controls = Visibility.Collapsed;
+        private bool _outputSR_Rad_Map_IsEnabled;
+        private bool _outputSR_Rad_Map_IsChecked;
+        private bool _outputSR_Rad_Layer_IsChecked;
+        private bool _outputSR_Rad_User_IsChecked;
+        private string _outputSR_Txt_Map_SRName;
+        private string _outputSR_Txt_User_SRName;
+        private List<SpatialReference> _outputSR_Cmb_Layer_SpatialReferences;
+        private SpatialReference _outputSR_Cmb_Layer_SelectedSpatialReference;
 
         #endregion
 
@@ -94,11 +105,9 @@ namespace NCC.PRZTools
         private bool _srUserIsChecked;
         private string _mapSRName;
         private string _userSRName;
-        private List<SpatialReference> _layerSRList;
         private bool _srMapIsEnabled;
         private bool _srLayerIsEnabled;
         private bool _srUserIsEnabled;
-        private SpatialReference _selectedLayerSR;
         private string _bufferValue;
         private bool _bufferUnitMetersIsChecked;
         private bool _bufferUnitKilometersIsChecked;
@@ -372,6 +381,61 @@ namespace NCC.PRZTools
             get => _outputSR_Vis_Border;
             set => SetProperty(ref _outputSR_Vis_Border, value, () => OutputSR_Vis_Border);
         }
+        public Visibility OutputSR_Vis_Map_Controls
+        {
+            get => _outputSR_Vis_Map_Controls;
+            set => SetProperty(ref _outputSR_Vis_Map_Controls, value, () => OutputSR_Vis_Map_Controls);
+        }
+        public Visibility OutputSR_Vis_Layer_Controls
+        {
+            get => _outputSR_Vis_Layer_Controls;
+            set => SetProperty(ref _outputSR_Vis_Layer_Controls, value, () => OutputSR_Vis_Layer_Controls);
+        }
+        public Visibility OutputSR_Vis_User_Controls
+        {
+            get => _outputSR_Vis_User_Controls;
+            set => SetProperty(ref _outputSR_Vis_User_Controls, value, () => OutputSR_Vis_User_Controls);
+        }
+        public bool OutputSR_Rad_Map_IsEnabled
+        {
+            get => _outputSR_Rad_Map_IsEnabled;
+            set => SetProperty(ref _outputSR_Rad_Map_IsEnabled, value, () => OutputSR_Rad_Map_IsEnabled);
+        }
+        public bool OutputSR_Rad_Map_IsChecked
+        {
+            get => _outputSR_Rad_Map_IsChecked;
+            set => SetProperty(ref _outputSR_Rad_Map_IsChecked, value, () => OutputSR_Rad_Map_IsChecked);
+        }
+        public bool OutputSR_Rad_Layer_IsChecked
+        {
+            get => _outputSR_Rad_Layer_IsChecked;
+            set => SetProperty(ref _outputSR_Rad_Layer_IsChecked, value, () => OutputSR_Rad_Layer_IsChecked);
+        }
+        public bool OutputSR_Rad_User_IsChecked
+        {
+            get => _outputSR_Rad_User_IsChecked;
+            set => SetProperty(ref _outputSR_Rad_User_IsChecked, value, () => OutputSR_Rad_User_IsChecked);
+        }
+        public string OutputSR_Txt_Map_SRName
+        {
+            get => _outputSR_Txt_Map_SRName;
+            set => SetProperty(ref _outputSR_Txt_Map_SRName, value, () => OutputSR_Txt_Map_SRName);
+        }
+        public string OutputSR_Txt_User_SRName
+        {
+            get => _outputSR_Txt_User_SRName;
+            set => SetProperty(ref _outputSR_Txt_User_SRName, value, () => OutputSR_Txt_User_SRName);
+        }
+        public List<SpatialReference> OutputSR_Cmb_Layer_SpatialReferences
+        {
+            get => _outputSR_Cmb_Layer_SpatialReferences;
+            set => SetProperty(ref _outputSR_Cmb_Layer_SpatialReferences, value, () => OutputSR_Cmb_Layer_SpatialReferences);
+        }
+        public SpatialReference OutputSR_Cmb_Layer_SelectedSpatialReference
+        {
+            get => _outputSR_Cmb_Layer_SelectedSpatialReference;
+            set => SetProperty(ref _outputSR_Cmb_Layer_SelectedSpatialReference, value, () => OutputSR_Cmb_Layer_SelectedSpatialReference);
+        }
 
         #endregion
 
@@ -387,24 +451,6 @@ namespace NCC.PRZTools
             set => SetProperty(ref _flGeometryIsChecked, value, () => FLGeometryIsChecked);
         }
 
-        public bool SRMapIsChecked
-        {
-            get => _srMapIsChecked;
-            set => SetProperty(ref _srMapIsChecked, value, () => SRMapIsChecked);
-        }
-
-        public bool SRLayerIsChecked
-        {
-            get => _srLayerIsChecked;
-            set => SetProperty(ref _srLayerIsChecked, value, () => SRLayerIsChecked);
-        }
-
-        public bool SRUserIsChecked
-        {
-            get => _srUserIsChecked;
-            set => SetProperty(ref _srUserIsChecked, value, () => SRUserIsChecked);
-        }
-
         public string MapSRName
         {
             get => _mapSRName;
@@ -415,12 +461,6 @@ namespace NCC.PRZTools
         {
             get => _userSRName;
             set => SetProperty(ref _userSRName, value, () => UserSRName);
-        }
-
-        public List<SpatialReference> LayerSRList
-        {
-            get => _layerSRList;
-            set => SetProperty(ref _layerSRList, value, () => LayerSRList);
         }
 
         public bool SRMapIsEnabled
@@ -439,12 +479,6 @@ namespace NCC.PRZTools
         {
             get => _srUserIsEnabled;
             set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
-        }
-
-        public SpatialReference SelectedLayerSR
-        {
-            get => _selectedLayerSR;
-            set => SetProperty(ref _selectedLayerSR, value, () => SelectedLayerSR);
         }
 
         public string BufferValue
@@ -504,8 +538,11 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Initialize the Progress Bar & Log
+                // Clear the Progress Bar
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+
+                // Get the Map
+                _map = MapView.Active.Map;
 
                 #region UI PROPERTIES
 
@@ -631,24 +668,18 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #endregion
+                #region OUTPUT SPATIAL REFERENCE
 
+                // Review the Spatial Reference of the Map
+                // To make it available as Output SR, the spatial reference must be projected, and must have meters as its linear units
 
-                #region Spatial Reference Information
-
-                _map = MapView.Active.Map;
                 _mapSR = _map.SpatialReference;
                 MapSRName = _mapSR.Name;
                 bool isMapSRProjM = false;
 
-                if (_mapSR.IsProjected)
+                if (_mapSR.IsProjected && _mapSR.Unit.FactoryCode == 9001)
                 {
-                    Unit u = _mapSR.Unit; // should be LinearUnit, since SR is projected
-                    LinearUnit lu = u as LinearUnit;
-                    if (lu.FactoryCode == 9001) // meter
-                    {
-                        isMapSRProjM = true;
-                    }
+                    isMapSRProjM = true;
                 }
 
                 // layers
@@ -685,12 +716,14 @@ namespace NCC.PRZTools
                     });
                 }
 
-                this.LayerSRList = SRList;
+                OutputSR_Cmb_Layer_SpatialReferences = SRList;
 
                 // SR Radio Options enabled/disabled
                 this.SRLayerIsEnabled = (SRList.Count > 0);
                 this.SRMapIsEnabled = isMapSRProjM;
                 this.SRUserIsEnabled = false;
+
+                #endregion
 
                 #endregion
 
@@ -1867,14 +1900,6 @@ namespace NCC.PRZTools
             try
             {
                 ProMsgBox.Show("This will eventually be the Coordinate Systems Picker dialog");
-
-                _userSR = SpatialReferences.WebMercator;
-                _outputSR = _userSR;
-
-                if (this.SelectedLayerSR != null)
-                {
-                    ProMsgBox.Show("Selected SR: " + this.SelectedLayerSR.Name);
-                }
             }
             catch (Exception ex)
             {
@@ -1920,18 +1945,18 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (SRMapIsChecked)
+                if (OutputSR_Rad_Map_IsChecked)
                 {
                     return _mapSR;
                 }
-                else if (SRLayerIsChecked)
+                else if (OutputSR_Rad_Layer_IsChecked)
                 {
-                    if (SelectedLayerSR != null)
+                    if (OutputSR_Cmb_Layer_SelectedSpatialReference != null)
                     {
-                        return this.SelectedLayerSR;
+                        return OutputSR_Cmb_Layer_SelectedSpatialReference;
                     }
                 }
-                else if (SRUserIsChecked)
+                else if (OutputSR_Rad_User_IsChecked)
                 {
                     // not implemented yet
                 }
@@ -1949,8 +1974,15 @@ namespace NCC.PRZTools
         {
             try
             {
+                SpatialReference sr = PRZH.GetSR_PRZCanadaAlbers();
 
-                OutputSR_Vis_Border = Visibility.Collapsed;
+                if (sr == null)
+                {
+                    return false;
+                }
+
+                ProMsgBox.Show("Name: " + sr.Name + Environment.NewLine +
+                    "Is Projected: " + sr.IsProjected.ToString());
 
 
 

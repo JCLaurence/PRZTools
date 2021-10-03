@@ -1,6 +1,7 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
+using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Dialogs;
@@ -3111,6 +3112,26 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return FieldCategory.UNKNOWN;
+            }
+        }
+
+        #endregion
+
+        #region SPATIAL REFERENCES
+
+        public static SpatialReference GetSR_PRZCanadaAlbers()
+        {
+            try
+            {
+                string wkt = PRZC.c_SR_WKT_WGS84_CanadaAlbers;  // Special PRZ WGS84 Canada Albers projection
+                SpatialReference sr = SpatialReferenceBuilder.CreateSpatialReference(wkt);
+
+                return sr;  // this might be null if WKT is no good.  Or, the CreateSpatialReference method might throw an error.
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
             }
         }
 

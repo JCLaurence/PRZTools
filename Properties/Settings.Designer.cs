@@ -178,5 +178,17 @@ namespace NCC.PRZTools.Properties {
                 this["DEFAULT_SA_BUFFER_DISTANCE_UNITS"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("MAP")]
+        public string DEFAULT_OUTPUTSR_SOURCE {
+            get {
+                return ((string)(this["DEFAULT_OUTPUTSR_SOURCE"]));
+            }
+            set {
+                this["DEFAULT_OUTPUTSR_SOURCE"] = value;
+            }
+        }
     }
 }
