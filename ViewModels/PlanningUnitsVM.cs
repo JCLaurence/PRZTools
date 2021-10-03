@@ -34,7 +34,7 @@ namespace NCC.PRZTools
 
         #region FIELDS
 
-        private Map _map;
+        private Map _map = MapView.Active.Map;
 
         #region PLANNING UNIT SOURCE GEOMETRY
 
@@ -97,7 +97,6 @@ namespace NCC.PRZTools
         #endregion
 
         private SpatialReference _outputSR;
-        private SpatialReference _mapSR;
         private SpatialReference _userSR;
 
         private bool _srMapIsChecked;
@@ -117,9 +116,6 @@ namespace NCC.PRZTools
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
 
         private ICommand _cmdSelectSpatialReference;
-        private ICommand _cmdSRMap;
-        private ICommand _cmdSRUser;
-        private ICommand _cmdSRLayer;
         private ICommand _cmdGeneratePlanningUnits;
         private ICommand _cmdClearLog;
         private ICommand _cmdTest;
@@ -516,12 +512,6 @@ namespace NCC.PRZTools
 
         public ICommand CmdSelectSpatialReference => _cmdSelectSpatialReference ?? (_cmdSelectSpatialReference = new RelayCommand(() => SelectSpatialReference(), () => true));
 
-        public ICommand CmdSRMap => _cmdSRMap ?? (_cmdSRMap = new RelayCommand(() => SelectMapSR(), () => true));
-
-        public ICommand CmdSRUser => _cmdSRUser ?? (_cmdSRUser = new RelayCommand(() => SelectUserSR(), () => true));
-
-        public ICommand CmdSRLayer => _cmdSRLayer ?? (_cmdSRLayer = new RelayCommand(() => SelectLayerSR(), () => true));
-
         public ICommand CmdGeneratePlanningUnits => _cmdGeneratePlanningUnits ?? (_cmdGeneratePlanningUnits = new RelayCommand(async () => await GeneratePlanningUnits(), () => true));
 
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
@@ -541,14 +531,9 @@ namespace NCC.PRZTools
                 // Clear the Progress Bar
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                // Get the Map
-                _map = MapView.Active.Map;
-
-                #region UI PROPERTIES
-
                 #region PLANNING UNIT SOURCE GEOMETRY
 
-                // Geometry Source
+                // Geometry Source Radio Buttons
                 string pusrc = Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE;
                 if (string.IsNullOrEmpty(pusrc) || pusrc == "NATGRID")
                 {
@@ -617,6 +602,51 @@ namespace NCC.PRZTools
                         break;
                 }
 
+                // Feature Layers Listing
+                List<FeatureLayer> featureLayers = new List<FeatureLayer>();
+
+                if (!await QueuedTask.Run(() =>
+                {
+                    try
+                    {
+                        var flayers = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where(fl => fl.ShapeType == esriGeometryType.esriGeometryPolygon);
+
+                        foreach (var flayer in flayers)
+                        {
+                            using (FeatureClass fc = flayer.GetFeatureClass())
+                            {
+                                if (fc == null)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            SpatialReference sr = flayer.GetSpatialReference();
+                            if (sr == null || sr.IsUnknown)
+                            {
+                                continue;
+                            }
+
+                            featureLayers.Add(flayer);
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show($"Error retrieving list of valid polygon feature layers.");
+                    return;
+                }
+                else
+                {
+                    PUSource_Cmb_Layer_FeatureLayers = featureLayers;
+                }
+
                 #endregion
 
                 #region STUDY AREA SOURCE GEOMETRY
@@ -660,123 +690,161 @@ namespace NCC.PRZTools
                     case "M":
                         SASource_Rad_BufferDistance_M_IsChecked = true;
                         break;
+
                     case "KM":
                     default:
                         SASource_Rad_BufferDistance_Km_IsChecked = true;
                         break;
                 }
 
+                // Graphics Layers
+                List<GraphicsLayer> graphicsLayers = new List<GraphicsLayer>();
+
+                if (!await QueuedTask.Run(() =>
+                {
+                    try
+                    {
+                        var GLs = _map.GetLayersAsFlattenedList().OfType<GraphicsLayer>();
+
+                        foreach (var GL in GLs)
+                        {
+                            var selectedElements = GL.GetSelectedElements().OfType<GraphicElement>();
+                            bool hasPolys = false;
+
+                            foreach (var elem in selectedElements)
+                            {
+                                CIMGraphic g = elem.GetGraphic();
+
+                                if (g is CIMPolygonGraphic)
+                                {
+                                    hasPolys = true;
+                                    break;
+                                }
+                            }
+
+                            if (hasPolys)
+                            {
+                                graphicsLayers.Add(GL);
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show($"Error retrieving list of graphics layers.");
+                    return;
+                }
+                else
+                {
+                    SASource_Cmb_Graphic_GraphicsLayers = graphicsLayers;
+                }
+
+                // Feature Layers
+                var FLayersWithSelections = new List<FeatureLayer>();
+
+                if (!await QueuedTask.Run(() =>
+                {
+                    try
+                    {
+                        var flayers = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where(fl => fl.ShapeType == esriGeometryType.esriGeometryPolygon);
+
+                        foreach (var flayer in flayers)
+                        {
+                            using (FeatureClass fc = flayer.GetFeatureClass())
+                            {
+                                if (fc == null)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            SpatialReference sr = flayer.GetSpatialReference();
+                            if (sr == null || sr.IsUnknown)
+                            {
+                                continue;
+                            }
+
+                            if (flayer.SelectionCount == 0)
+                            {
+                                continue;
+                            }
+
+                            FLayersWithSelections.Add(flayer);
+                        }
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show($"Error retrieving list of graphics layers.");
+                    return;
+                }
+                else
+                {
+                    SASource_Cmb_Layer_FeatureLayers = FLayersWithSelections;
+                }
+
                 #endregion
 
                 #region OUTPUT SPATIAL REFERENCE
 
-                // Review the Spatial Reference of the Map
-                // To make it available as Output SR, the spatial reference must be projected, and must have meters as its linear units
+                // Map Spatial Reference
+                OutputSR_Rad_Map_IsEnabled = _map.SpatialReference.IsProjected && _map.SpatialReference.Unit.FactoryCode == 9001;   // might only really need the second condition here...
+                OutputSR_Txt_Map_SRName = string.IsNullOrEmpty(_map.SpatialReference.Name) ? "(unnamed spatial reference)" : _map.SpatialReference.Name;
 
-                _mapSR = _map.SpatialReference;
-                MapSRName = _mapSR.Name;
-                bool isMapSRProjM = false;
+                // Layer Spatial References
+                List<SpatialReference> SRs = new List<SpatialReference>();
 
-                if (_mapSR.IsProjected && _mapSR.Unit.FactoryCode == 9001)
+                if (!await QueuedTask.Run(() =>
                 {
-                    isMapSRProjM = true;
-                }
-
-                // layers
-
-                var SRList = new List<SpatialReference>();
-
-                var lyrs = _map.GetLayersAsFlattenedList().ToList();
-
-                foreach (var lyr in lyrs)
-                {
-                    await QueuedTask.Run(() =>
+                    try
                     {
-                        var sr = lyr.GetSpatialReference();
-                        if (sr != null)
+                        var layers = _map.GetLayersAsFlattenedList();
+
+                        foreach (Layer layer in layers)
                         {
-                            if (!SRList.Contains(sr))
+                            SpatialReference sr = layer.GetSpatialReference();
+
+                            if (sr != null)
                             {
-                                if ((!sr.IsUnknown) && (!sr.IsGeographic))
+                                if (sr.IsProjected && sr.Unit.FactoryCode == 9001)
                                 {
-                                    Unit u = sr.Unit;
-
-                                    if (u.UnitType == ArcGIS.Core.Geometry.UnitType.Linear)
+                                    if (!SRs.Contains(sr))
                                     {
-                                        LinearUnit lu = u as LinearUnit;
-
-                                        if (lu.FactoryCode == 9001) // Meter
-                                        {
-                                            SRList.Add(sr);
-                                        }
+                                        SRs.Add(sr);
                                     }
                                 }
                             }
                         }
-                    });
-                }
 
-                OutputSR_Cmb_Layer_SpatialReferences = SRList;
-
-                // SR Radio Options enabled/disabled
-                this.SRLayerIsEnabled = (SRList.Count > 0);
-                this.SRMapIsEnabled = isMapSRProjM;
-                this.SRUserIsEnabled = false;
-
-                #endregion
-
-                #endregion
-
-                // Graphics Layers having selected Polygon Graphics
-                var glyrs = _map.GetLayersAsFlattenedList().OfType<GraphicsLayer>().ToList();
-                var polygraphicList = new List<CIMPolygonGraphic>();
-
-                Dictionary<GraphicsLayer, int> DICT_GraphicLayer_SelPolyCount = new Dictionary<GraphicsLayer, int>();
-
-                List<GraphicsLayer> gls = new List<GraphicsLayer>();
-                foreach (var glyr in glyrs)
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
                 {
-                    var selElems = glyr.GetSelectedElements().OfType<GraphicElement>();
-                    int c = 0;
-
-                    foreach (var elem in selElems)
-                    {
-                        await QueuedTask.Run(() =>
-                        {
-                            CIMGraphic g = elem.GetGraphic();
-                            if (g is CIMPolygonGraphic)
-                            {
-                                c++;
-                            }
-                        });                        
-                    }
-
-                    if (c > 0)
-                    {
-                        DICT_GraphicLayer_SelPolyCount.Add(glyr, c);
-                    }
+                    ProMsgBox.Show($"Error retrieving spatial references of map layers.");
+                    return;
+                }
+                else
+                {
+                    OutputSR_Cmb_Layer_SpatialReferences = SRs;
                 }
 
-                SASource_Cmb_Graphic_GraphicsLayers = DICT_GraphicLayer_SelPolyCount.Keys.ToList();
-
-                // Polygon Feature Layers
-                var pusourcefls = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
-                PUSource_Cmb_Layer_FeatureLayers = pusourcefls;
-                FLGeometryIsEnabled = pusourcefls.Count > 0;
-
-                // Polygon Feature Layers having selection
-                var flyrs = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().Where((fl) => fl.SelectionCount > 0 && fl.ShapeType == esriGeometryType.esriGeometryPolygon).ToList();
-
-                SASource_Cmb_Layer_FeatureLayers = flyrs;
-
-                // Buffer
-                this.BufferValue = "0";
-                this.BufferUnitKilometersIsChecked = true;
-
-                StringBuilder sb = new StringBuilder();
-
-                sb.AppendLine("Map Name: " + _map.Name);
-                sb.AppendLine("Spatial Reference: " + _mapSR.Name);
+                #endregion
 
             }
             catch (Exception ex)
@@ -1907,18 +1975,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private void SelectMapSR()
-        {
-            try
-            {
-                _outputSR = _mapSR;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
         private void SelectUserSR()
         {
             try
@@ -1947,7 +2003,7 @@ namespace NCC.PRZTools
             {
                 if (OutputSR_Rad_Map_IsChecked)
                 {
-                    return _mapSR;
+                    return _map.SpatialReference;
                 }
                 else if (OutputSR_Rad_Layer_IsChecked)
                 {
