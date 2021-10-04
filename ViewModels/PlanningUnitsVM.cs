@@ -35,6 +35,12 @@ namespace NCC.PRZTools
         #region FIELDS
 
         private Map _map = MapView.Active.Map;
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+
+        private ICommand _cmdSelectSpatialReference;
+        private ICommand _cmdGeneratePlanningUnits;
+        private ICommand _cmdClearLog;
+        private ICommand _cmdTest;
 
         #region PLANNING UNIT SOURCE GEOMETRY
 
@@ -95,30 +101,6 @@ namespace NCC.PRZTools
         private SpatialReference _outputSR_Cmb_Layer_SelectedSpatialReference;
 
         #endregion
-
-        private SpatialReference _outputSR;
-        private SpatialReference _userSR;
-
-        private bool _srMapIsChecked;
-        private bool _srLayerIsChecked;
-        private bool _srUserIsChecked;
-        private string _mapSRName;
-        private string _userSRName;
-        private bool _srMapIsEnabled;
-        private bool _srLayerIsEnabled;
-        private bool _srUserIsEnabled;
-        private string _bufferValue;
-        private bool _bufferUnitMetersIsChecked;
-        private bool _bufferUnitKilometersIsChecked;
-        private bool _buildIsEnabled;
-        private bool _flGeometryIsEnabled = false;
-        private bool _flGeometryIsChecked = false;
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
-
-        private ICommand _cmdSelectSpatialReference;
-        private ICommand _cmdGeneratePlanningUnits;
-        private ICommand _cmdClearLog;
-        private ICommand _cmdTest;
 
         #endregion
 
@@ -193,7 +175,6 @@ namespace NCC.PRZTools
             get => _puSource_Vis_Layer_Controls;
             set => SetProperty(ref _puSource_Vis_Layer_Controls, value, () => PUSource_Vis_Layer_Controls);
         }
-
         public string PUSource_Txt_CustomGrid_TileArea
         {
             get => _puSource_Txt_CustomGrid_TileArea;
@@ -266,7 +247,6 @@ namespace NCC.PRZTools
             get => _puSource_Cmb_Layer_SelectedFeatureLayer;
             set => SetProperty(ref _puSource_Cmb_Layer_SelectedFeatureLayer, value, () => PUSource_Cmb_Layer_SelectedFeatureLayer);
         }
-
 
         #endregion
 
@@ -400,17 +380,44 @@ namespace NCC.PRZTools
         public bool OutputSR_Rad_Map_IsChecked
         {
             get => _outputSR_Rad_Map_IsChecked;
-            set => SetProperty(ref _outputSR_Rad_Map_IsChecked, value, () => OutputSR_Rad_Map_IsChecked);
+            set
+            {
+                SetProperty(ref _outputSR_Rad_Map_IsChecked, value, () => OutputSR_Rad_Map_IsChecked);
+                OutputSR_Vis_Map_Controls = value ? Visibility.Visible: Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE = "MAP";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public bool OutputSR_Rad_Layer_IsChecked
         {
             get => _outputSR_Rad_Layer_IsChecked;
-            set => SetProperty(ref _outputSR_Rad_Layer_IsChecked, value, () => OutputSR_Rad_Layer_IsChecked);
+            set
+            {
+                SetProperty(ref _outputSR_Rad_Layer_IsChecked, value, () => OutputSR_Rad_Layer_IsChecked);
+                OutputSR_Vis_Layer_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE = "LAYER";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public bool OutputSR_Rad_User_IsChecked
         {
             get => _outputSR_Rad_User_IsChecked;
-            set => SetProperty(ref _outputSR_Rad_User_IsChecked, value, () => OutputSR_Rad_User_IsChecked);
+            set
+            {
+                SetProperty(ref _outputSR_Rad_User_IsChecked, value, () => OutputSR_Rad_User_IsChecked);
+                OutputSR_Vis_User_Controls = value ? Visibility.Visible : Visibility.Collapsed;
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE = "USER";
+                    Properties.Settings.Default.Save();
+                }
+            }
         }
         public string OutputSR_Txt_Map_SRName
         {
@@ -434,72 +441,6 @@ namespace NCC.PRZTools
         }
 
         #endregion
-
-        public bool FLGeometryIsEnabled
-        {
-            get => _flGeometryIsEnabled;
-            set => SetProperty(ref _flGeometryIsEnabled, value, () => FLGeometryIsEnabled);
-        }
-
-        public bool FLGeometryIsChecked
-        {
-            get => _flGeometryIsChecked;
-            set => SetProperty(ref _flGeometryIsChecked, value, () => FLGeometryIsChecked);
-        }
-
-        public string MapSRName
-        {
-            get => _mapSRName;
-            set => SetProperty(ref _mapSRName, value, () => MapSRName);
-        }
-
-        public string UserSRName
-        {
-            get => _userSRName;
-            set => SetProperty(ref _userSRName, value, () => UserSRName);
-        }
-
-        public bool SRMapIsEnabled
-        {
-            get => _srMapIsEnabled;
-            set => SetProperty(ref _srMapIsEnabled, value, () => SRMapIsEnabled);
-        }
-
-        public bool SRLayerIsEnabled
-        {
-            get => _srLayerIsEnabled;
-            set => SetProperty(ref _srLayerIsEnabled, value, () => SRLayerIsEnabled);
-        }
-
-        public bool SRUserIsEnabled
-        {
-            get => _srUserIsEnabled;
-            set => SetProperty(ref _srUserIsEnabled, value, () => SRUserIsEnabled);
-        }
-
-        public string BufferValue
-        {
-            get => _bufferValue;
-            set => SetProperty(ref _bufferValue, value, () => BufferValue);
-        }
-
-        public bool BufferUnitMetersIsChecked
-        {
-            get => _bufferUnitMetersIsChecked;
-            set => SetProperty(ref _bufferUnitMetersIsChecked, value, () => BufferUnitMetersIsChecked);
-        }
-
-        public bool BufferUnitKilometersIsChecked
-        {
-            get => _bufferUnitKilometersIsChecked;
-            set => SetProperty(ref _bufferUnitKilometersIsChecked, value, () => BufferUnitKilometersIsChecked);
-        }
-
-        public bool BuildIsEnabled
-        {
-            get => _buildIsEnabled;
-            set => SetProperty(ref _buildIsEnabled, value, () => BuildIsEnabled);
-        }
 
         public ProgressManager PM
         {
@@ -800,7 +741,7 @@ namespace NCC.PRZTools
 
                 // Map Spatial Reference
                 OutputSR_Rad_Map_IsEnabled = _map.SpatialReference.IsProjected && _map.SpatialReference.Unit.FactoryCode == 9001;   // might only really need the second condition here...
-                OutputSR_Txt_Map_SRName = string.IsNullOrEmpty(_map.SpatialReference.Name) ? "(unnamed spatial reference)" : _map.SpatialReference.Name;
+                OutputSR_Txt_Map_SRName = string.IsNullOrEmpty(_map.SpatialReference.Name) ? "(null, unknown, or unnamed spatial reference)" : _map.SpatialReference.Name;
 
                 // Layer Spatial References
                 List<SpatialReference> SRs = new List<SpatialReference>();
@@ -819,7 +760,18 @@ namespace NCC.PRZTools
                             {
                                 if (sr.IsProjected && sr.Unit.FactoryCode == 9001)
                                 {
-                                    if (!SRs.Contains(sr))
+                                    bool already_added = false;
+
+                                    foreach (SpatialReference spat in SRs)
+                                    {
+                                        if (SpatialReference.AreEqual(spat, sr))
+                                        {
+                                            already_added = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (!already_added)
                                     {
                                         SRs.Add(sr);
                                     }
@@ -842,6 +794,38 @@ namespace NCC.PRZTools
                 else
                 {
                     OutputSR_Cmb_Layer_SpatialReferences = SRs;
+                }
+
+                string output_sr_source = Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE;
+
+                switch (output_sr_source)
+                {
+                    case "MAP":
+                        if (OutputSR_Rad_Map_IsEnabled)
+                        {
+                            OutputSR_Rad_Map_IsChecked = true;
+                        }
+                        else
+                        {
+                            OutputSR_Rad_Layer_IsChecked = true;
+                            Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE = "LAYER";
+                            Properties.Settings.Default.Save();
+                        }
+                        break;
+
+                    case "USER":
+                        OutputSR_Rad_User_IsChecked = true;
+                        break;
+
+                    case "LAYER":
+                        OutputSR_Rad_Layer_IsChecked = true;
+                        break;
+
+                    default:
+                        OutputSR_Rad_Layer_IsChecked = true;
+                        Properties.Settings.Default.DEFAULT_OUTPUTSR_SOURCE = "LAYER";
+                        Properties.Settings.Default.Save();
+                        break;
                 }
 
                 #endregion
@@ -868,13 +852,13 @@ namespace NCC.PRZTools
                 // Check for currently unsaved edits in the project
                 if (Project.Current.HasEdits)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, ++val);
                 }
 
                 // Validation: Ensure the Project Geodatabase Exists
@@ -887,7 +871,6 @@ namespace NCC.PRZTools
                                    gdbpath +
                                    Environment.NewLine + Environment.NewLine +
                                    "Please specify a valid Project Workspace.", "Validation");
-
                     return false;
                 }
                 else
@@ -896,17 +879,45 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Output Spatial Reference
-                var OutputSR = GetOutputSR();
-                if (OutputSR == null)
+                SpatialReference OutputSR = null;
+
+                if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unspecified or invalid output Spatial Reference", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("Please specify a valid Output Spatial Reference", "Validation");
+                    var natsr = PRZH.GetSR_PRZCanadaAlbers();
+                    if (natsr == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unable to retrieve PRZ Canada Albers projection.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Unable to retrieve PRZ Canada Albers projection.", "Validation");
+                        return false;
+                    }
+                    else
+                    {
+                        OutputSR = natsr;
+                    }
+                }
+                else if (OutputSR_Rad_Map_IsChecked)
+                {
+                    OutputSR = _map.SpatialReference;
+                }
+                else if (OutputSR_Rad_Layer_IsChecked && OutputSR_Cmb_Layer_SelectedSpatialReference != null)
+                {
+                    OutputSR = OutputSR_Cmb_Layer_SelectedSpatialReference;
+                }
+                else if (OutputSR_Rad_User_IsChecked)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> User-specified Output spatial reference is not an option (yet).", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("User-specified Output spatial reference is not an option (yet).", "Validation");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Output Spatial Reference is OK: " + OutputSR.Name), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Output spatial reference has not been specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show("Please specify an output spatial reference.", "Validation");
+                    return false;
                 }
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Output Spatial Reference = {OutputSR.Name}"), true, ++val);
+
 
                 // Validation: Study Area Source Geometry
                 if (SASource_Rad_Graphic_IsChecked)
@@ -943,7 +954,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Study Area Buffer Distance
-                string buffer_dist_text = string.IsNullOrEmpty(BufferValue) ? "0" : ((BufferValue.Trim() == "") ? "0" : BufferValue.Trim());
+                string buffer_dist_text = string.IsNullOrEmpty(SASource_Txt_BufferDistance) ? "0" : ((SASource_Txt_BufferDistance.Trim() == "") ? "0" : SASource_Txt_BufferDistance.Trim());
 
                 if (!double.TryParse(buffer_dist_text, out double buffer_dist))
                 {
@@ -961,12 +972,12 @@ namespace NCC.PRZTools
                 double buffer_dist_m = 0;
                 string bu = "";
 
-                if (BufferUnitMetersIsChecked)
+                if (SASource_Rad_BufferDistance_M_IsChecked)
                 {
                     bu = buffer_dist_text + " m";
                     buffer_dist_m = buffer_dist;
                 }
-                else if (BufferUnitKilometersIsChecked)
+                else if (SASource_Rad_BufferDistance_Km_IsChecked)
                 {
                     bu = buffer_dist_text + " km";
                     buffer_dist_m = buffer_dist * 1000.0;
@@ -980,11 +991,14 @@ namespace NCC.PRZTools
 
                 // Planning Unit Geometry Source
                 double tile_area_m2 = 0;
-                double gridalign_x_coord = 0;
-                double gridalign_y_coord = 0;
                 var TileShape = CustomGridTileShape.SQUARE;
 
-                if (PUSource_Rad_CustomGrid_IsChecked)
+                if (PUSource_Rad_NatGrid_IsChecked)
+                {
+                    // Not sure if I need to validate anything here!
+                    // have a nice day?
+                }
+                else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
                     // Validation: Tile Shape
                     string tile_shape = string.IsNullOrEmpty(_puSource_Cmb_CustomGrid_SelectedTileShape) ? "" : _puSource_Cmb_CustomGrid_SelectedTileShape;
@@ -1053,7 +1067,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
                     }
                 }
-                else if (FLGeometryIsChecked)
+                else if (PUSource_Rad_Layer_IsChecked)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Unsupported Functionality", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Geometry from a Feature Layer is not yet supported.");
@@ -1086,7 +1100,6 @@ namespace NCC.PRZTools
                 #region STUDY AREA GEOMETRY
 
                 // Retrieve Polygons to construct Study Area + Buffered Study Area
-                List<Polygon> LIST_SA_polys = new List<Polygon>();
                 Polygon SA_poly = null;
 
                 if (SASource_Rad_Graphic_IsChecked)
@@ -1112,8 +1125,6 @@ namespace NCC.PRZTools
                                     var s = p.Polygon.Clone() as Polygon;
 
                                     polyBuilder.AddParts(s.Parts);
-                                    Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                    LIST_SA_polys.Add(p3);
                                     polyelems++;
                                 }
                             }
@@ -1162,8 +1173,6 @@ namespace NCC.PRZTools
                                             // process feature
                                             var s = feat.GetShape().Clone() as Polygon;
                                             polyBuilder.AddParts(s.Parts);
-                                            Polygon p3 = (Polygon)GeometryEngine.Instance.Project(s, OutputSR);
-                                            LIST_SA_polys.Add(p3);
                                             selpol++;
                                         }
                                     }
@@ -1194,14 +1203,6 @@ namespace NCC.PRZTools
 
                 // Generate Buffered Polygons (buffer might be 0)
                 Polygon SA_poly_buffer = GeometryEngine.Instance.Buffer(SA_poly, buffer_dist_m) as Polygon;
-
-                List<Polygon> LIST_BufferedPolys = new List<Polygon>();
-                foreach (Polygon p in LIST_SA_polys)
-                {
-                    Polygon b = GeometryEngine.Instance.Buffer(p, buffer_dist_m) as Polygon;
-                    LIST_BufferedPolys.Add(b);
-                }
-
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study Area >> Buffered by {buffer_dist_m} meter{((buffer_dist_m == 1) ? "" : "s")}"), true, ++val);
 
                 #endregion
@@ -1296,7 +1297,11 @@ namespace NCC.PRZTools
 
                 #region IMPORT PLANNING UNIT FEATURES BASED ON SOURCE TYPE
 
-                if (PUSource_Rad_CustomGrid_IsChecked)
+                if (PUSource_Rad_NatGrid_IsChecked)
+                {
+                    // I'm here!!!
+                }
+                else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
                     // Assemble the Grid
                     double tile_edge_length = 0;
@@ -1401,9 +1406,9 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Tiles imported successfully."), true, ++val);
                     }
                 }
-                else    // Feature Geometry
+                else if (PUSource_Rad_Layer_IsChecked)
                 {
-                    // TODO: Import features from a user-specified feature layer
+
                 }
 
                 #endregion
@@ -1601,7 +1606,7 @@ namespace NCC.PRZTools
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath);
-                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, GPExecuteToolFlags.None);
+                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, toolFlags);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1972,57 +1977,6 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        private void SelectUserSR()
-        {
-            try
-            {
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        private void SelectLayerSR()
-        {
-            try
-            {
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        private SpatialReference GetOutputSR()
-        {
-            try
-            {
-                if (OutputSR_Rad_Map_IsChecked)
-                {
-                    return _map.SpatialReference;
-                }
-                else if (OutputSR_Rad_Layer_IsChecked)
-                {
-                    if (OutputSR_Cmb_Layer_SelectedSpatialReference != null)
-                    {
-                        return OutputSR_Cmb_Layer_SelectedSpatialReference;
-                    }
-                }
-                else if (OutputSR_Rad_User_IsChecked)
-                {
-                    // not implemented yet
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
             }
         }
 
