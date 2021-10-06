@@ -44,5 +44,8 @@
     <Setting Name="DEFAULT_OUTPUTSR_SOURCE" Type="System.String" Scope="User">
       <Value Profile="(Default)">MAP</Value>
     </Setting>
+    <Setting Name="DEFAULT_NATGRID_DIMENSION" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -33,14 +33,32 @@ namespace NCC.PRZTools
 
         public NationalGridInfo(Polygon gridPoly)
         {
-            _cellPolygonIsValid = GenerateFromPolygon(gridPoly);
+            try
+            {
+                var res = GenerateFromPolygon(gridPoly);
+
+                _cellIsValid = res.success;
+                _constructorMessage = res.message;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
         }
 
         public NationalGridInfo(string identifier)
         {
-            var res = GenerateFromIdentifier(identifier);
-            _cellPolygonIsValid = res.success;
-            _constructorMessage = res.message;
+            try
+            {
+                var res = GenerateFromIdentifier(identifier);
+
+                _cellIsValid = res.success;
+                _constructorMessage = res.message;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
         }
 
         #region FIELDS
@@ -50,21 +68,18 @@ namespace NCC.PRZTools
         private const int c_MAX_X_COORDINATE = 3200000;     // Maximum X "
         private const int c_MAX_Y_COORDINATE = 4900000;     // Maximum Y "
 
-        private string _identifier;
-        private bool _cellPolygonIsValid = false;
+        private string _cellIdentifier;
+        private bool _cellIsValid = false;
         private string _constructorMessage;
-        private Polygon _cellPolygon = null;
-        private MapPoint _cellCenterPoint = null;
+        private Polygon _cellPolygon;
+        private Envelope _cellEnvelope;
+        private MapPoint _cellCenterPoint;
         private double _cellSideLength;
         private double _cellArea;
-        private double _cell_LL_X;
-        private double _cell_LL_Y;
-        private double _cell_UR_X;
-        private double _cell_UR_Y;
-        private double _cell_UL_X;
-        private double _cell_UL_Y;
-        private double _cell_LR_X;
-        private double _cell_LR_Y;
+        private double _cell_MinX;
+        private double _cell_MinY;
+        private double _cell_MaxX;
+        private double _cell_MaxY;
 
         #endregion
 
@@ -96,13 +111,17 @@ namespace NCC.PRZTools
         {
             get => _cellPolygon;
         }
+        public Envelope CellEnvelope
+        {
+            get => _cellEnvelope;
+        }
         public MapPoint CellCenterPoint
         {
             get => _cellCenterPoint;
         }
-        public bool CellPolygonIsValid
+        public bool CellIsValid
         {
-            get => _cellPolygonIsValid;
+            get => _cellIsValid;
         }
         public string ConstructorMessage
         {
@@ -112,43 +131,26 @@ namespace NCC.PRZTools
         {
             get => _cellSideLength;
         }
-        public string Identifier
+        public string CellIdentifier
         {
-            get => _identifier;
+            get => _cellIdentifier;
         }
-        public double Cell_LL_X
+        public double Cell_MinX
         {
-            get => _cell_LL_X;
+            get => _cell_MinX;
         }
-        public double Cell_LL_Y
+        public double Cell_MinY
         {
-            get => _cell_LL_Y;
+            get => _cell_MinY;
         }
-        public double Cell_UR_X
+        public double Cell_MaxX
         {
-            get => _cell_UR_X;
+            get => _cell_MaxX;
         }
-        public double Cell_UR_Y
+        public double Cell_MaxY
         {
-            get => _cell_UR_Y;
+            get => _cell_MaxY;
         }
-        public double Cell_UL_X
-        {
-            get => _cell_UL_X;
-        }
-        public double Cell_UL_Y
-        {
-            get => _cell_UL_Y;
-        }
-        public double Cell_LR_X
-        {
-            get => _cell_LR_X;
-        }
-        public double Cell_LR_Y
-        {
-            get => _cell_LR_Y;
-        }
-
         public double CellArea
         {
             get => _cellArea;
@@ -271,67 +273,164 @@ namespace NCC.PRZTools
         /// <summary>
         /// Instantiate a National Grid Info object based on a grid cell polygon.
         /// </summary>
-        /// <param name="gridPoly"></param>
+        /// <param name="cellPoly"></param>
         /// <returns></returns>
-        private bool GenerateFromPolygon(Polygon gridPoly)
+        private (bool success, string message) GenerateFromPolygon(Polygon cellPoly)
         {
             try
             {
-                // Ensure no null geometry provided
-                if (gridPoly == null)
+                // Ensure no null or empty geometry provided
+                if (cellPoly == null || cellPoly.IsEmpty)
                 {
-                    return false;
+                    return (false, "Cell geometry is null or empty");
                 }
 
-                // Retrieve National Grid Spatial Reference
-                SpatialReference NatGridSR = PRZH.GetSR_PRZCanadaAlbers();
+                // Polygon must have valid spatial reference
+                SpatialReference cellSR = cellPoly.SpatialReference;
 
-                if (NatGridSR == null)
+                if (cellSR == null)
                 {
-                    return false;
+                    return (false, "Cell geometry has null spatial reference");
                 }
 
-                // Polygon must have same spatial reference
-                SpatialReference polySR = gridPoly.SpatialReference;
-
-                if (!SpatialReference.AreEqual(NatGridSR, polySR))
+                // Polygon spatial reference must be same as National Grid spatial reference
+                if (!SpatialReference.AreEqual(CANADA_ALBERS_SR, cellSR))
                 {
-                    return false;
-                }
-
-                // Polygon must not be empty geometry
-                if (gridPoly.IsEmpty)
-                {
-                    return false;
+                    return (false, "Cell geometry has incorrect spatial reference");
                 }
 
                 // Polygon should have exactly 5 points (start and end points are coincident)
-                var gridPoints = gridPoly.Points;
-                if (gridPoly.PointCount != 5)
+                var cellVertices = cellPoly.Points;
+                if (cellPoly.PointCount != 5)
                 {
-                    return false;
+                    return (false, "Cell geometry has more than 5 vertices");
                 }
 
                 // Get Polygon Envelope
-                Envelope gridEnv = gridPoly.Extent;
-                var gridCenterCoord = gridEnv.CenterCoordinate;
-                foreach (var p in gridPoints)
+                Envelope cellEnv = cellPoly.Extent;
+
+                if (cellEnv == null || cellEnv.IsEmpty)
                 {
+                    return (false, "Cell geometry envelope is null or empty");
                 }
 
+                // Convert Envelope to Polygon
+                Polygon cellEnvPoly = PolygonBuilderEx.CreatePolygon(cellEnv, CANADA_ALBERS_SR);
 
+                if (cellEnvPoly == null || cellEnvPoly.IsEmpty)
+                {
+                    return (false, "Envelope to Polygon produces null or empty geometry");
+                }
 
-                // Retrieve all the information from this polygon
-                double poly_area = gridPoly.Area;
+                // Compare polygons.  They must be identical
+                bool are_equal = GeometryEngine.Instance.Equals(cellPoly, cellEnvPoly);
 
+                if (!are_equal)
+                {
+                    return (false, "Cell geometry is not equal to its own envelope");
+                }
 
+                // Test squareness by comparing areas (i know geometry is rectangular and axis-aligned with SR)
+                double perimeter = cellPoly.Length;
+                double side_length = perimeter / 4.0;
+                double area_from_sides = side_length * side_length;
+                double area_from_poly = cellPoly.Area;
 
-                return true;
+                if (area_from_sides != area_from_poly)
+                {
+                    return (false, "Cell geometry is not square");
+                }
+
+                // Ensure that the square side length is 1, 10, 100, 1000, or 10000 meters
+                if (side_length != 1 & side_length != 10 & side_length != 100 & side_length != 1000 & side_length != 10000 & side_length != 100000)
+                {
+                    return (false, "Cell geometry has invalid side length for the national grid");
+                }
+
+                // Now assess the square's alignment
+                double MinX = cellEnv.XMin;
+                double MinY = cellEnv.YMin;
+
+                double remainderX = Math.Abs(MinX % side_length);
+                double remainderY = Math.Abs(MinY % side_length);
+
+                if (remainderX != 0 & remainderY != 0)
+                {
+                    return (false, $"Cell geometry is misaligned with the {side_length} meter National Grid along both the X and Y axes");
+                }
+                else if (remainderX != 0)
+                {
+                    return (false, $"Cell geometry is misaligned with the {side_length} meter National Grid along the X axis");
+                }
+                else if (remainderY != 0)
+                {
+                    return (false, $"Cell geometry is misaligned with the {side_length} meter National Grid along the Y axis");
+                }
+
+                // Ensure that polygon does not lie even partly outside the National Grid outer bounds
+                if (cellEnv.XMin < c_MIN_X_COORDINATE |
+                    cellEnv.XMax > c_MAX_X_COORDINATE |
+                    cellEnv.YMin < c_MIN_Y_COORDINATE |
+                    cellEnv.YMax > c_MAX_Y_COORDINATE)
+                {
+                    return (false, "Cell geometry falls outside the National Grid outer bounds");
+                }
+
+                // Cell Geometry is fully validated!
+
+                // Populate Instance Fields
+                _cellPolygon = cellPoly;
+                _cellEnvelope = cellEnv;
+                _cellSideLength = side_length;
+                _cellCenterPoint = cellEnv.Center;
+                _cellArea = cellPoly.Area;
+                _cell_MinX = cellEnv.XMin;
+                _cell_MinY = cellEnv.YMin;
+                _cell_MaxX = cellEnv.XMax;
+                _cell_MaxY = cellEnv.YMax;
+
+                // generate identifier from lower left coords and side length
+                string Xsuffix = (cellEnv.XMin < 0) ? "W" : "E";
+
+                int xmin = Convert.ToInt32(cellEnv.XMin);
+                int ymin = Convert.ToInt32(cellEnv.YMin);
+
+                string abscissa = Math.Abs(xmin).ToString("D7");
+                string ordinate = ymin.ToString("D7");
+
+                string dimension = "";
+
+                switch(side_length)
+                {
+                    case 1:
+                        dimension = "0";
+                        break;
+                    case 10:
+                        dimension = "1";
+                        break;
+                    case 100:
+                        dimension = "2";
+                        break;
+                    case 1000:
+                        dimension = "3";
+                        break;
+                    case 10000:
+                        dimension = "4";
+                        break;
+                    case 100000:
+                        dimension = "5";
+                        break;
+                }
+
+                string identifier = abscissa + Xsuffix + "_" + ordinate + "_" + dimension;
+                _cellIdentifier = identifier;
+
+                return (true, "success");
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -404,6 +503,12 @@ namespace NCC.PRZTools
                 if (!int.TryParse(x_coord_string, out x_coord))
                 {
                     return (false, "First 7 digits of first element of identifier cannot be parsed to an integer value");
+                }
+
+                // Enforce need for "E" Identifier where X = 0
+                if (x_coord == 0 && identifier_element_1.EndsWith("W"))
+                {
+                    return (false, "X coordinate of 0 must have associated 'E' qualifier, not 'W' qualifier");
                 }
 
                 if (!xIsPositive)
@@ -514,18 +619,15 @@ namespace NCC.PRZTools
                     // cell polygon is valid in all ways.  Populate the various properties of this class instance
 
                     _cellPolygon = cellPoly;
+                    _cellEnvelope = cellEnv;
                     _cellSideLength = side_length;
                     _cellCenterPoint = cellEnv.Center;
                     _cellArea = cellPoly.Area;
-                    _identifier = identifier;
-                    _cell_LL_X = cellEnv.XMin;
-                    _cell_LL_Y = cellEnv.YMin;
-                    _cell_UR_X = cellEnv.XMax;
-                    _cell_UR_Y = cellEnv.YMax;
-                    _cell_UL_X = cellEnv.XMin;
-                    _cell_UL_Y = cellEnv.YMax;
-                    _cell_LR_X = cellEnv.XMax;
-                    _cell_LR_Y = cellEnv.YMin;
+                    _cellIdentifier = identifier;
+                    _cell_MinX = cellEnv.XMin;
+                    _cell_MinY = cellEnv.YMin;
+                    _cell_MaxX = cellEnv.XMax;
+                    _cell_MaxY = cellEnv.YMax;
 
                     // i'm here!!!
 
@@ -542,6 +644,8 @@ namespace NCC.PRZTools
                 return (false, ex.Message);
             }
         }
+
+
 
 
         #endregion

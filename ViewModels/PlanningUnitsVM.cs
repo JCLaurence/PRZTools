@@ -56,6 +56,14 @@ namespace NCC.PRZTools
         private bool _puSource_Rad_TileArea_Ha_IsChecked;
         private bool _puSource_Rad_TileArea_Km_IsChecked;
 
+        private bool _puSource_Rad_NatGrid_1M_IsChecked;
+        private bool _puSource_Rad_NatGrid_10M_IsChecked;
+        private bool _puSource_Rad_NatGrid_100M_IsChecked;
+        private bool _puSource_Rad_NatGrid_1Km_IsChecked;
+        private bool _puSource_Rad_NatGrid_10Km_IsChecked;
+        private bool _puSource_Rad_NatGrid_100Km_IsChecked;
+
+        private Visibility _puSource_Vis_NatGrid_Controls = Visibility.Collapsed;
         private Visibility _puSource_Vis_CustomGrid_Controls = Visibility.Collapsed;
         private Visibility _puSource_Vis_Layer_Controls = Visibility.Collapsed;
 
@@ -115,6 +123,7 @@ namespace NCC.PRZTools
             {
                 SetProperty(ref _puSource_Rad_NatGrid_IsChecked, value, () => PUSource_Rad_NatGrid_IsChecked);
                 OutputSR_Vis_Border = value ? Visibility.Collapsed : Visibility.Visible;
+                PUSource_Vis_NatGrid_Controls = value ? Visibility.Visible : Visibility.Collapsed;
                 if (value)
                 {
                     Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE = "NATGRID";
@@ -165,6 +174,11 @@ namespace NCC.PRZTools
                 Properties.Settings.Default.Save();
             }
         }
+        public Visibility PUSource_Vis_NatGrid_Controls
+        {
+            get => _puSource_Vis_NatGrid_Controls;
+            set => SetProperty(ref _puSource_Vis_NatGrid_Controls, value, () => PUSource_Vis_NatGrid_Controls);
+        }
         public Visibility PUSource_Vis_CustomGrid_Controls
         {
             get => _puSource_Vis_CustomGrid_Controls;
@@ -185,6 +199,85 @@ namespace NCC.PRZTools
                 Properties.Settings.Default.Save();
             }
         }
+        public bool PUSource_Rad_NatGrid_1M_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_1M_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_1M_IsChecked, value, () => PUSource_Rad_NatGrid_1M_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "0";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool PUSource_Rad_NatGrid_10M_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_10M_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_10M_IsChecked, value, () => PUSource_Rad_NatGrid_10M_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "1";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool PUSource_Rad_NatGrid_100M_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_100M_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_100M_IsChecked, value, () => PUSource_Rad_NatGrid_100M_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "2";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool PUSource_Rad_NatGrid_1Km_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_1Km_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_1Km_IsChecked, value, () => PUSource_Rad_NatGrid_1Km_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "3";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool PUSource_Rad_NatGrid_10Km_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_10Km_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_10Km_IsChecked, value, () => PUSource_Rad_NatGrid_10Km_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "4";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool PUSource_Rad_NatGrid_100Km_IsChecked
+        {
+            get => _puSource_Rad_NatGrid_100Km_IsChecked;
+            set
+            {
+                SetProperty(ref _puSource_Rad_NatGrid_100Km_IsChecked, value, () => PUSource_Rad_NatGrid_100Km_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION = "5";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
         public bool PUSource_Rad_TileArea_M_IsChecked
         {
             get => _puSource_Rad_TileArea_M_IsChecked;
@@ -491,6 +584,37 @@ namespace NCC.PRZTools
                 else
                 {
                     PUSource_Rad_NatGrid_IsChecked = true;
+                }
+
+                // National Grid - Dimension
+                string dimension = Properties.Settings.Default.DEFAULT_NATGRID_DIMENSION;   //
+                if (string.IsNullOrEmpty(dimension) || dimension == "3")
+                {
+                    PUSource_Rad_NatGrid_1Km_IsChecked = true;
+                }
+                else if (dimension == "0")
+                {
+                    PUSource_Rad_NatGrid_1M_IsChecked = true;
+                }
+                else if (dimension == "1")
+                {
+                    PUSource_Rad_NatGrid_10M_IsChecked = true;
+                }
+                else if (dimension == "2")
+                {
+                    PUSource_Rad_NatGrid_100M_IsChecked = true;
+                }
+                else if (dimension == "4")
+                {
+                    PUSource_Rad_NatGrid_10Km_IsChecked = true;
+                }
+                else if (dimension == "5")
+                {
+                    PUSource_Rad_NatGrid_100Km_IsChecked = true;
+                }
+                else
+                {
+                    PUSource_Rad_NatGrid_1Km_IsChecked = true;
                 }
 
                 // Custom Grid - Tile Shapes
@@ -1986,9 +2110,33 @@ namespace NCC.PRZTools
             try
             {
                 // test parameter value
-                string identifier = "3199000E_4899000_2";
+                string identifier = "0000000E_0200000_5";
 
-                ProMsgBox.Show(NationalGridInfo.CANADA_ALBERS_SR.Name);
+                NationalGridInfo natGridInfo = new NationalGridInfo(identifier);
+
+                if (!natGridInfo.CellIsValid)
+                {
+                    ProMsgBox.Show("Message: " + natGridInfo.ConstructorMessage);
+                }
+                else
+                {
+                    ProMsgBox.Show(natGridInfo.CellIdentifier);
+                }
+
+                Envelope env = EnvelopeBuilderEx.CreateEnvelope(0, 200000, 100000, 300000, PRZH.GetSR_PRZCanadaAlbers());
+
+                Polygon poly = PolygonBuilderEx.CreatePolygon(env, PRZH.GetSR_PRZCanadaAlbers());
+
+                NationalGridInfo natInfo = new NationalGridInfo(poly);
+
+                if (natInfo.CellIsValid)
+                {
+                    ProMsgBox.Show($"Cell Identifier: {natInfo.CellIdentifier}");
+                }
+
+
+                
+
 
                 return true;
             }
