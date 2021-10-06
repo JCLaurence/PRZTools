@@ -2875,7 +2875,6 @@ namespace NCC.PRZTools
             }
         }
 
-
         public static bool ApplyLegend_SAB_Simple(FeatureLayer FL)
         {
             try
@@ -3112,6 +3111,24 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return FieldCategory.UNKNOWN;
+            }
+        }
+
+        #endregion
+
+        #region GEOMETRIES
+
+        public static async Task<string> GetNationalGridInfo(Polygon cellPolygon)
+        {
+            try
+            {
+
+                return "hi";
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return "hi";
             }
         }
 

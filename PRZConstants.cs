@@ -176,6 +176,7 @@
 
         // PLANNING UNITS
         public const string c_FLD_FC_PU_ID = "id";
+        public const string c_FLD_FC_PU_NATGRID_ID = "natgrid_id";
         public const string c_FLD_FC_PU_EFFECTIVE_RULE = "effective_rule";
         public const string c_FLD_FC_PU_COST = "cost";
         public const string c_FLD_FC_PU_AREA_M2 = "area_m2";

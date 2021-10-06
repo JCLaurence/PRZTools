@@ -1266,6 +1266,7 @@ namespace NCC.PRZTools
 
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
+                string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 50 # #;";
                 string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 50 # #;";
                 string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                 string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
@@ -1278,7 +1279,7 @@ namespace NCC.PRZTools
                 string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
                 string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
 
-                string flds = fldPUID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+                string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -1984,17 +1985,10 @@ namespace NCC.PRZTools
         {
             try
             {
-                SpatialReference sr = PRZH.GetSR_PRZCanadaAlbers();
+                // test parameter value
+                string identifier = "3199000E_4899000_2";
 
-                if (sr == null)
-                {
-                    return false;
-                }
-
-                ProMsgBox.Show("Name: " + sr.Name + Environment.NewLine +
-                    "Is Projected: " + sr.IsProjected.ToString());
-
-
+                ProMsgBox.Show(NationalGridInfo.CANADA_ALBERS_SR.Name);
 
                 return true;
             }
