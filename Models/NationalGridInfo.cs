@@ -24,6 +24,16 @@ namespace NCC.PRZTools
         UndefinedRelationship
     }
 
+    public enum NationalGridDimension
+    {
+        dim0_1m,
+        dim1_10m,
+        dim2_100m,
+        dim3_1000m,
+        dim4_10000m,
+        dim5_100000m
+    }
+
     public class NationalGridInfo
     {
         static NationalGridInfo()
@@ -161,6 +171,33 @@ namespace NCC.PRZTools
         #region STATIC METHODS
 
         /// <summary>
+        /// Assembles a National Grid Identifier from the three separate components (x, y, and dimension)
+        /// </summary>
+        /// <param name="XMIN"></param>
+        /// <param name="YMIN"></param>
+        /// <param name="gridDimension"></param>
+        /// <returns></returns>
+        public static string GetIdentifier(int XMIN, int YMIN, int gridDimension)
+        {
+            try
+            {
+                string x_suffix = (XMIN < 0) ? "W" : "E";
+
+                string abscissa = Math.Abs(XMIN).ToString("D7");
+                string ordinate = YMIN.ToString("D7");
+                string dimension = gridDimension.ToString();
+
+                string identifier = abscissa + x_suffix + "_" + ordinate + "_" + dimension;
+                return identifier;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return "";
+            }
+        }
+
+        /// <summary>
         /// Returns an envelope corresponding to the full outer bounds of the National Grid system.
         /// </summary>
         /// <returns></returns>
@@ -263,6 +300,125 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return (false, BoundaryRelationship.UndefinedRelationship, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Returns an Envelope that encompasses the supplied geometry, and that can be filled completely with
+        /// whole square tiles of the size defined by the supplied grid dimension.
+        /// </summary>
+        /// <param name="study_area_geom"></param>
+        /// <param name="grid_dimension"></param>
+        /// <returns></returns>
+        public static (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetGridBoundsFromStudyArea(Geometry geom, NationalGridDimension gridDimension)
+        {
+            try
+            {
+                #region VALIDATION
+
+                // Ensure that geometry is not null or empty
+                if (geom == null || geom.IsEmpty)
+                {
+                    return (false, null, "Geometry is null or empty", 0, 0);
+                }
+
+                // Ensure the geometry is either an envelope or a polygon
+                if (!(geom is Envelope | geom is Polygon))
+                {
+                    return (false, null, "Geometry is not of type envelope or polygon", 0, 0);
+                }
+
+                // Simplify the geometry
+                if (!GeometryEngine.Instance.IsSimpleAsFeature(geom))
+                {
+                    geom = GeometryEngine.Instance.SimplifyAsFeature(geom);
+                }
+
+                // Project the geometry if required
+                SpatialReference geomSR = geom.SpatialReference;
+
+                if (!SpatialReference.AreEqual(CANADA_ALBERS_SR, geomSR))
+                {
+                    geom = GeometryEngine.Instance.Project(geom, CANADA_ALBERS_SR);
+                }
+
+                // Get the National Grid Envelope
+                Envelope gridEnv = GetOuterBounds();
+
+                // Get the geometry Envelope
+                Envelope geomEnv = geom.Extent;
+
+                // Get the supplied grid dimension
+                int dimension = (int)gridDimension;
+                if (dimension < 0 | dimension > 5)
+                {
+                    return (false, null, "invalid grid dimension provided", 0, 0);
+                }
+
+                #endregion
+
+                #region GENERATE ENVELOPE
+
+                // Multiplier
+                int multiplier = (int)Math.Pow(10, dimension);
+
+                // Convert envelope coordinate values to integers
+                int XMIN = (int)Math.Floor(geomEnv.XMin);
+                int YMIN = (int)Math.Floor(geomEnv.YMin);
+                int XMAX = (int)Math.Ceiling(geomEnv.XMax);
+                int YMAX = (int)Math.Ceiling(geomEnv.YMax);
+
+                // Adjust to specified dimension
+                XMIN = (XMIN / multiplier) * multiplier;
+                YMIN = (YMIN / multiplier) * multiplier;
+                XMAX = (XMAX / multiplier) * multiplier;
+                YMAX = (YMAX / multiplier) * multiplier;
+
+                // Generate final values
+                int XMIN_NEW = ((double)XMIN > geomEnv.XMin) ? XMIN - multiplier : XMIN;
+                int YMIN_NEW = ((double)YMIN > geomEnv.YMin) ? YMIN - multiplier : YMIN;
+                int XMAX_NEW = ((double)XMAX < geomEnv.XMax) ? XMAX + multiplier : XMAX;
+                int YMAX_NEW = ((double)YMAX < geomEnv.YMax) ? YMAX + multiplier : YMAX;
+
+                // Generate the new envelope
+                Envelope outputEnv = EnvelopeBuilderEx.CreateEnvelope(XMIN_NEW, YMIN_NEW, XMAX_NEW, YMAX_NEW, CANADA_ALBERS_SR);
+
+                if (outputEnv == null || outputEnv.IsEmpty)
+                {
+                    return (false, null, "Output envelope is null or empty", 0, 0);
+                }
+
+                // Ensure that the output envelope does not lie outside the national grid outer bounds
+                if (XMIN_NEW < c_MIN_X_COORDINATE | YMIN_NEW < c_MIN_Y_COORDINATE | XMAX_NEW > c_MAX_X_COORDINATE | YMAX_NEW > c_MAX_Y_COORDINATE)
+                {
+                    return (false, null, "Output envelope lies wholly or partly outside of the National Grid outer bounds", 0, 0);
+                }
+
+                // Determine row and column count
+                int outputWidth = Convert.ToInt32(outputEnv.Width);
+                int outputHeight = Convert.ToInt32(outputEnv.Height);
+
+                if (outputWidth == 0 | outputHeight == 0)
+                {
+                    return (false, null, "Output envelope has either no height or no width", 0, 0);
+                }
+
+                int tiles_across = outputWidth / multiplier;       // integer division
+                int tiles_up = outputHeight / multiplier;          // integer division
+
+                if (tiles_across == 0 | tiles_up == 0)
+                {
+                    return (false, null, "Unable to determine tile counts", 0, 0);
+                }
+
+                #endregion
+
+                return (true, outputEnv, "Success", tiles_across, tiles_up);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null, ex.Message, 0, 0);
             }
         }
 

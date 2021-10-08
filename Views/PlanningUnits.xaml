@@ -81,7 +81,8 @@
                                 VerticalAlignment="Center" 
                                 VerticalContentAlignment="Center" 
                                 GroupName="NatGridDimensions"
-                                IsChecked="{Binding PUSource_Rad_NatGrid_1M_IsChecked}" 
+                                IsChecked="{Binding PUSource_Rad_NatGrid_1M_IsChecked}"
+                                IsEnabled="False"
                                 Content="1 m" />
 
                             <RadioButton
@@ -91,6 +92,7 @@
                                 VerticalContentAlignment="Center" 
                                 GroupName="NatGridDimensions"
                                 IsChecked="{Binding PUSource_Rad_NatGrid_10M_IsChecked}" 
+                                IsEnabled="False"
                                 Content="10 m" />
 
                             <RadioButton

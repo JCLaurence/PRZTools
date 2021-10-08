@@ -1114,13 +1114,58 @@ namespace NCC.PRZTools
                 #region VALIDATION II
 
                 // Planning Unit Geometry Source
-                double tile_area_m2 = 0;
-                var TileShape = CustomGridTileShape.SQUARE;
+                double customgrid_tile_area_m2 = 0;
+                var customgrid_tile_shape = CustomGridTileShape.SQUARE;
+                int natgrid_dimension = 0;
+                int natgrid_sidelength = 0;
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    // Not sure if I need to validate anything here!
-                    // have a nice day?
+                    // Ensure that one of the national grid dimensions have been picked
+                    if (!PUSource_Rad_NatGrid_1M_IsChecked && !PUSource_Rad_NatGrid_10M_IsChecked && !PUSource_Rad_NatGrid_100M_IsChecked && !PUSource_Rad_NatGrid_1Km_IsChecked && !PUSource_Rad_NatGrid_10Km_IsChecked & !PUSource_Rad_NatGrid_100Km_IsChecked)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No National Grid dimension is specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Please specify a National Grid dimension", "Validation");
+                        return false;
+                    }
+
+                    // calculate dimension and side length
+                    if (PUSource_Rad_NatGrid_1M_IsChecked)
+                    {
+                        natgrid_dimension = 0;
+                        natgrid_sidelength = 1;
+                    }
+                    else if (PUSource_Rad_NatGrid_10M_IsChecked)
+                    {
+                        natgrid_dimension = 1;
+                        natgrid_sidelength = 10;
+                    }
+                    else if (PUSource_Rad_NatGrid_100M_IsChecked)
+                    {
+                        natgrid_dimension = 2;
+                        natgrid_sidelength = 100;
+                    }
+                    else if (PUSource_Rad_NatGrid_1Km_IsChecked)
+                    {
+                        natgrid_dimension = 3;
+                        natgrid_sidelength = 1000;
+                    }
+                    else if (PUSource_Rad_NatGrid_10Km_IsChecked)
+                    {
+                        natgrid_dimension = 4;
+                        natgrid_sidelength = 10000;
+                    }
+                    else if (PUSource_Rad_NatGrid_100Km_IsChecked)
+                    {
+                        natgrid_dimension = 5;
+                        natgrid_sidelength = 100000;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Invalid National Grid dimension specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Invalid National Grid dimension specified.", "Validation");
+                        return false;
+                    }
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
@@ -1140,10 +1185,10 @@ namespace NCC.PRZTools
                     switch (tile_shape)
                     {
                         case "SQUARE":
-                            TileShape = CustomGridTileShape.SQUARE;
+                            customgrid_tile_shape = CustomGridTileShape.SQUARE;
                             break;
                         case "HEXAGON":
-                            TileShape = CustomGridTileShape.HEXAGON;
+                            customgrid_tile_shape = CustomGridTileShape.HEXAGON;
                             break;
                         default:
                             return false;
@@ -1152,13 +1197,13 @@ namespace NCC.PRZTools
                     // Validation: Tile Area
                     string tile_area_text = string.IsNullOrEmpty(PUSource_Txt_CustomGrid_TileArea) ? "0" : ((PUSource_Txt_CustomGrid_TileArea.Trim() == "") ? "0" : PUSource_Txt_CustomGrid_TileArea.Trim());
 
-                    if (!double.TryParse(tile_area_text, out tile_area_m2))
+                    if (!double.TryParse(tile_area_text, out customgrid_tile_area_m2))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
                         return false;
                     }
-                    else if (tile_area_m2 <= 0)
+                    else if (customgrid_tile_area_m2 <= 0)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
@@ -1175,17 +1220,17 @@ namespace NCC.PRZTools
                         else if (PUSource_Rad_TileArea_Ac_IsChecked)
                         {
                             au = tile_area_text + " ac";
-                            tile_area_m2 /= PRZC.c_CONVERT_M2_TO_AC;
+                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_AC;
                         }
                         else if (PUSource_Rad_TileArea_Ha_IsChecked)
                         {
                             au = tile_area_text + " ha";
-                            tile_area_m2 /= PRZC.c_CONVERT_M2_TO_HA;
+                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_HA;
                         }
                         else if (PUSource_Rad_TileArea_Km_IsChecked)
                         {
                             au = tile_area_text + " km\xB2";
-                            tile_area_m2 /= PRZC.c_CONVERT_M2_TO_KM2;
+                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_KM2;
                         }
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
@@ -1390,8 +1435,8 @@ namespace NCC.PRZTools
 
                 // Add Fields to Planning Unit FC
                 string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
-                string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 50 # #;";
-                string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 50 # #;";
+                string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
                 string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                 string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
                 string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 0 #;";
@@ -1424,7 +1469,34 @@ namespace NCC.PRZTools
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    // I'm here!!!
+                    // Retrieve the required grid extent based on the specified National Grid dimension and the buffered study area
+                    var res = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+
+                    if (!res.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extend envelope.\n{res.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve National Grid extend envelope.\n{res.message}");
+                        return false;
+                    }
+
+                    // Load the National Grid Tiles
+                    Envelope gridEnv = res.gridEnv;
+                    int tiles_across = res.tilesAcross;
+                    int tiles_up = res.tilesUp;
+                    int side_length = natgrid_sidelength;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Loading the National Grid tiles"), true, ++val);
+                    if (!await LoadNationalGridTiles(SA_poly_buffer, gridEnv, tiles_across, tiles_up, side_length, natgrid_dimension))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error loading tiles.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles loaded"), true, ++val);
+                    }
+
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
@@ -1437,17 +1509,17 @@ namespace NCC.PRZTools
                     int tiles_across = 0;
                     int tiles_up = 0;
 
-                    switch (TileShape)
+                    switch (customgrid_tile_shape)
                     {
                         case CustomGridTileShape.SQUARE:
-                            tile_edge_length = Math.Sqrt(tile_area_m2);
+                            tile_edge_length = Math.Sqrt(customgrid_tile_area_m2);
                             tile_width = tile_edge_length;
                             tile_height = tile_edge_length;
                             tile_center_to_right = tile_width / 2.0;
                             tile_center_to_top = tile_height / 2.0;
                             break;
                         case CustomGridTileShape.HEXAGON:
-                            tile_edge_length = Math.Sqrt((2 * tile_area_m2) / (3 * Math.Sqrt(3)));
+                            tile_edge_length = Math.Sqrt((2 * customgrid_tile_area_m2) / (3 * Math.Sqrt(3)));
                             tile_width = tile_edge_length * 2;
                             tile_height = 2 * (tile_edge_length * Math.Sin((60 * Math.PI) / 180));
                             tile_center_to_right = tile_width / 2;
@@ -1478,8 +1550,8 @@ namespace NCC.PRZTools
                         }
                     }))
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retriving lower left corner of buffer extent.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error retriving lower left corner of buffer extent.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving lower left corner of buffer extent.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving lower left corner of buffer extent.");
                         return false;
                     }
                     else
@@ -1487,7 +1559,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"lower left corner of extent retrieved."), true, ++val);
                     }
 
-                    switch (TileShape)
+                    switch (customgrid_tile_shape)
                     {
                         case CustomGridTileShape.SQUARE:
                             tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
@@ -1510,17 +1582,17 @@ namespace NCC.PRZTools
                         LL_Point = env_ll_point,
                         tiles_across = tiles_across,
                         tiles_up = tiles_up,
-                        tile_area = tile_area_m2,
+                        tile_area = customgrid_tile_area_m2,
                         tile_center_to_right = tile_center_to_right,
                         tile_center_to_top = tile_center_to_top,
                         tile_edge_length = tile_edge_length,
                         tile_height = tile_height,
-                        tile_shape = TileShape,
+                        tile_shape = customgrid_tile_shape,
                         tile_width = tile_width
                     };
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Importing tiles into {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                    if (!await ImportTiles(tileinfo, SA_poly_buffer))
+                    if (!await LoadCustomGridTiles(tileinfo, SA_poly_buffer))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error importing tiles...", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Error importing tiles.");
@@ -1533,7 +1605,9 @@ namespace NCC.PRZTools
                 }
                 else if (PUSource_Rad_Layer_IsChecked)
                 {
-
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"unsupported option", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"unsupported option");
+                    return false;
                 }
 
                 #endregion
@@ -1860,7 +1934,189 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ImportTiles(PlanningUnitTileInfo tileInfo, Polygon study_area_buffer_poly)
+        private async Task<bool> LoadNationalGridTiles(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, int side_length, int dimension)
+        {
+            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
+            int val = 0;
+            int max = tiles_up;
+
+            try
+            {
+                // Check for currently unsaved edits in the project
+                if (Project.Current.HasEdits)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, max, ++val);
+                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, max, ++val);
+                }
+
+                // If editing is disabled, enable it temporarily (and disable again in the finally block)
+                if (edits_are_disabled)
+                {
+                    if (!await Project.Current.SetIsEditingEnabledAsync(true))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, max, ++val);
+                        ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, max, ++val);
+                    }
+                }
+
+                // Do the work here!
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_across*tiles_up} potential tiles)..."), true, max, ++val);
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    bool success = false;
+
+                    try
+                    {
+                        var loader = new EditOperation();
+                        loader.Name = "National Grid Tile Loader";
+                        loader.ShowProgressor = false;
+                        loader.ShowModalMessageAfterFailure = false;
+                        loader.SelectNewFeatures = false;
+
+
+                        // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
+                        Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(buffered_study_area);
+
+                        // Planning Unit ID variable
+                        int puid = 1;
+
+                        // Grid values
+                        int XMIN = Convert.ToInt32(gridEnvelope.XMin);
+                        int YMIN = Convert.ToInt32(gridEnvelope.YMin);
+
+                        int flusher = 0;
+
+                        using (FeatureClass fc = await PRZH.GetFC_PU())
+                        {
+                            loader.Callback(async (context) =>
+                            {
+                                using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                                using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                                using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
+                                using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
+                                {
+                                    for (int row = 0; row < tiles_up; row++)
+                                    {
+                                        for (int col = 0; col < tiles_across; col++)
+                                        {
+                                            // Tile construction will be based on lower left corner XY and side length
+                                            double CurrentX = XMIN + (col * side_length);
+                                            double CurrentY = YMIN + (row * side_length);
+
+                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + side_length, CurrentY + side_length, gridEnvelope.SpatialReference);
+
+                                            // Determine if the tile poly intersects with the study area buffer polygon
+                                            if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
+                                            {
+                                                // Create the polygon
+                                                Polygon tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv);
+
+                                                rowBuffer[fcDef.GetShapeField()] = tilePoly;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_ID] = NationalGridInfo.GetIdentifier(Convert.ToInt32(CurrentX), Convert.ToInt32(CurrentY), dimension);
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_AC;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_HA;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM2] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_KM2;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_COST] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_FEATURECOUNT] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_SHARED_PERIM] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_UNSHARED_PERIM] = 0;
+
+                                                insertCursor.Insert(rowBuffer);
+
+                                                flusher++;
+
+                                                if (flusher == 10000)
+                                                {
+                                                    insertCursor.Flush();
+                                                    flusher = 0;
+                                                }
+                                            }
+                                        }
+
+                                        PRZH.UpdateProgress(PM, null, true, row);
+                                    }
+
+                                    insertCursor.Flush();
+                                }
+                            }, fc);
+                        }
+
+                        // Execute all the queued "creates"
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation!  This one might take a while..."), true, max, ++val);
+                        success = loader.Execute();
+
+                        if (success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving National Grid tile imports..."), true, max, ++val);
+                            if (!await Project.Current.SaveEditsAsync())
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving imported tiles.", LogMessageType.ERROR), true, max, ++val);
+                                ProMsgBox.Show($"Error saving imported tiles.");
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Imports saved."), true, max, ++val);
+                            }
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to create tiles: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
+                            ProMsgBox.Show($"Edit Operation error: unable to create tiles: {loader.ErrorMessage}");
+                        }
+
+                        return success;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error importing National Grid tiles.", LogMessageType.ERROR), true, val++);
+                    ProMsgBox.Show($"Error importing National Grid tiles.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles imported."), true, val++);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, val++);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+            finally
+            {
+                // reset disabled editing status
+                if (edits_are_disabled)
+                {
+                    await Project.Current.SetIsEditingEnabledAsync(false);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
+                }
+            }
+        }
+
+        private async Task<bool> LoadCustomGridTiles(PlanningUnitTileInfo tileInfo, Polygon study_area_buffer_poly)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
@@ -1896,7 +2152,7 @@ namespace NCC.PRZTools
                 }
 
                 // Do the work here!
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Iterating through tile rows and columns..."), true, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tileInfo.tiles_up * tileInfo.tiles_across} potential tiles)..."), true, max, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -1908,78 +2164,95 @@ namespace NCC.PRZTools
                         loader.Name = "Tile Loader";
                         loader.ShowProgressor = false;
                         loader.ShowModalMessageAfterFailure = false;
+                        loader.SelectNewFeatures = false;
+                        loader.SelectModifiedFeatures = false;
 
                         // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
-                        Polygon bufferpoly = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(study_area_buffer_poly);
+                        Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(study_area_buffer_poly);
 
                         // Planning Unit ID variable
                         int puid = 1;
 
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
-                        using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                        double hex_horizoffset = tileInfo.tile_center_to_right + (tileInfo.tile_edge_length / 2.0);     // this is specifically for hexagon tiles
+                        int flusher = 0;
+
+                        using (FeatureClass fc = await PRZH.GetFC_PU())
                         {
-                            double hex_horizoffset = tileInfo.tile_center_to_right + (tileInfo.tile_edge_length / 2.0);     // this is specifically for hexagon tiles
-
-                            for (int row = 0; row < tileInfo.tiles_up; row++)
+                            loader.Callback(async (context) =>
                             {
-                                for (int col = 0; col < tileInfo.tiles_across; col++)
+                                using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                                using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                                using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
+                                using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
                                 {
-                                    // Create attributes dictionary
-                                    Dictionary<string, object> attributes = new Dictionary<string, object>();
-
-                                    // Shape Construction by Tile Shape
-                                    double CurrentX;
-                                    double CurrentY;
-                                    Polygon poly = null;
-
-                                    switch (tileInfo.tile_shape)
+                                    for (int row = 0; row < tileInfo.tiles_up; row++)
                                     {
-                                        case CustomGridTileShape.SQUARE:
-                                            CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
-                                            CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
-                                            poly = await BuildTileSquare(CurrentX, CurrentY, tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
-                                            break;
+                                        for (int col = 0; col < tileInfo.tiles_across; col++)
+                                        {
+                                            double CurrentX;
+                                            double CurrentY;
+                                            Polygon tilePoly = null;
 
-                                        case CustomGridTileShape.HEXAGON:
-                                            CurrentX = tileInfo.LL_Point.X + (col * hex_horizoffset);
-                                            CurrentY = tileInfo.LL_Point.Y + (row * (2 * tileInfo.tile_center_to_top)) - ((col % 2) * tileInfo.tile_center_to_top);
-                                            poly = await BuildTileHexagon(CurrentX, CurrentY, tileInfo.tile_center_to_right, tileInfo.tile_center_to_top, tileInfo.LL_Point.SpatialReference);
-                                            break;
+                                            switch (tileInfo.tile_shape)
+                                            {
+                                                case CustomGridTileShape.SQUARE:
+                                                    CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
+                                                    CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
+                                                    Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
+                                                    tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
+                                                    break;
 
-                                        default:
-                                            return false;
+                                                case CustomGridTileShape.HEXAGON:
+                                                    CurrentX = tileInfo.LL_Point.X + (col * hex_horizoffset);
+                                                    CurrentY = tileInfo.LL_Point.Y + (row * (2 * tileInfo.tile_center_to_top)) - ((col % 2) * tileInfo.tile_center_to_top);
+
+                                                    List<Coordinate2D> hexcoords = new List<Coordinate2D>();
+
+                                                    hexcoords.Add(new Coordinate2D(CurrentX - tileInfo.tile_center_to_right, CurrentY));
+                                                    hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
+                                                    hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
+                                                    hexcoords.Add(new Coordinate2D(CurrentX + tileInfo.tile_center_to_right, CurrentY));
+                                                    hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
+                                                    hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
+
+                                                    tilePoly = PolygonBuilderEx.CreatePolygon(hexcoords, tileInfo.LL_Point.SpatialReference);
+                                                    break;
+                                            }
+
+                                            // Determine if the tile poly intersects with the study area buffer polygon
+                                            if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
+                                            {
+                                                rowBuffer[fcDef.GetShapeField()] = tilePoly;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_AC;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_HA;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM2] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_KM2;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_COST] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_FEATURECOUNT] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_SHARED_PERIM] = 0;
+                                                rowBuffer[PRZC.c_FLD_FC_PU_UNSHARED_PERIM] = 0;
+
+                                                insertCursor.Insert(rowBuffer);
+
+                                                flusher++;
+
+                                                if (flusher == 10000)
+                                                {
+                                                    insertCursor.Flush();
+                                                    flusher = 0;
+                                                }
+                                            }
+                                        }
+
+                                        PRZH.UpdateProgress(PM, null, true, row);
                                     }
 
-                                    // Determine if the tile poly intersects with the study area buffer polygon
-                                    if (GeometryEngine.Instance.Intersects(bufferpoly, poly))
-                                    {
-                                        // Get area values
-                                        double m = Math.Round(poly.Area, 3, MidpointRounding.AwayFromZero);
-                                        double ac = Math.Round(poly.Area * PRZC.c_CONVERT_M2_TO_AC, 3, MidpointRounding.AwayFromZero);
-                                        double ha = Math.Round(poly.Area * PRZC.c_CONVERT_M2_TO_HA, 3, MidpointRounding.AwayFromZero);
-                                        double km = Math.Round(poly.Area * PRZC.c_CONVERT_M2_TO_KM2, 3, MidpointRounding.AwayFromZero);
-
-                                        // populate dictionary
-                                        attributes.Add(fcDef.GetShapeField(), poly);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_ID, puid++);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_AREA_M2, m);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_AREA_AC, ac);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_AREA_HA, ha);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_AREA_KM2, km);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_CONFLICT, 0);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_COST, 0);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_FEATURECOUNT, 0);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM, 0);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_SHARED_PERIM, 0);
-                                        attributes.Add(PRZC.c_FLD_FC_PU_UNSHARED_PERIM, 0);
-
-                                        // Queue up the creation of this feature
-                                        loader.Create(featureClass, attributes);
-                                    }
+                                    insertCursor.Flush();
                                 }
-
-                                PRZH.UpdateProgress(PM, null, true, row);
-                            }
+                            }, fc);
                         }
 
                         // Execute all the queued "creates"
@@ -1988,7 +2261,7 @@ namespace NCC.PRZTools
 
                         if (success)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving tile imports..."), true, max, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving custom grid tile imports..."), true, max, ++val);
                             if (!await Project.Current.SaveEditsAsync())
                             {
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving imported tiles.", LogMessageType.ERROR), true, max, ++val);
@@ -2042,57 +2315,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<Polygon> BuildTileSquare(double xmin, double ymin, double side_length, SpatialReference SR)
-        {
-            try
-            {
-                Polygon polygon = null;
-
-                await QueuedTask.Run(() =>
-                {
-                    MapPoint ll = MapPointBuilder.CreateMapPoint(xmin, ymin, SR);
-                    MapPoint ur = MapPointBuilder.CreateMapPoint(xmin + side_length, ymin + side_length, SR);
-                    Envelope env = EnvelopeBuilder.CreateEnvelope(ll, ur, SR);
-                    polygon = PolygonBuilder.CreatePolygon(env, SR);
-                });
-
-                return polygon;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        private async Task<Polygon> BuildTileHexagon(double xmin, double ymin, double center_to_vertex, double center_to_edge, SpatialReference SR)
-        {
-            try
-            {
-                Polygon polygon = null;
-
-                await QueuedTask.Run(() =>
-                {
-                    MapPoint mp1 = MapPointBuilder.CreateMapPoint(xmin - center_to_vertex, ymin, SR);
-                    MapPoint mp2 = MapPointBuilder.CreateMapPoint(xmin - (center_to_vertex/2.0), ymin + center_to_edge, SR);
-                    MapPoint mp3 = MapPointBuilder.CreateMapPoint(xmin + (center_to_vertex/2.0), ymin + center_to_edge, SR);
-                    MapPoint mp4 = MapPointBuilder.CreateMapPoint(xmin + center_to_vertex, ymin, SR);
-                    MapPoint mp5 = MapPointBuilder.CreateMapPoint(xmin + (center_to_vertex/2.0), ymin - center_to_edge, SR);
-                    MapPoint mp6 = MapPointBuilder.CreateMapPoint(xmin - (center_to_vertex/2.0), ymin - center_to_edge, SR);
-
-                    List<MapPoint> mps = new List<MapPoint>() { mp1, mp2, mp3, mp4, mp5, mp6 };
-                    polygon = PolygonBuilder.CreatePolygon(mps, SR);
-                });
-
-                return polygon;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
         private void SelectSpatialReference()
         {
             try
@@ -2109,33 +2331,93 @@ namespace NCC.PRZTools
         {
             try
             {
-                // test parameter value
-                string identifier = "0000000E_0200000_5";
+                //// test parameter value
+                //string identifier = "0000000E_0200000_5";
 
-                NationalGridInfo natGridInfo = new NationalGridInfo(identifier);
+                //NationalGridInfo natGridInfo = new NationalGridInfo(identifier);
 
-                if (!natGridInfo.CellIsValid)
-                {
-                    ProMsgBox.Show("Message: " + natGridInfo.ConstructorMessage);
-                }
-                else
-                {
-                    ProMsgBox.Show(natGridInfo.CellIdentifier);
-                }
+                //if (!natGridInfo.CellIsValid)
+                //{
+                //    ProMsgBox.Show("Message: " + natGridInfo.ConstructorMessage);
+                //}
+                //else
+                //{
+                //    ProMsgBox.Show(natGridInfo.CellIdentifier);
+                //}
 
-                Envelope env = EnvelopeBuilderEx.CreateEnvelope(0, 200000, 100000, 300000, PRZH.GetSR_PRZCanadaAlbers());
+                //Envelope env = EnvelopeBuilderEx.CreateEnvelope(0, 200000, 100000, 300000, PRZH.GetSR_PRZCanadaAlbers());
 
-                Polygon poly = PolygonBuilderEx.CreatePolygon(env, PRZH.GetSR_PRZCanadaAlbers());
+                //Polygon poly = PolygonBuilderEx.CreatePolygon(env, PRZH.GetSR_PRZCanadaAlbers());
 
-                NationalGridInfo natInfo = new NationalGridInfo(poly);
+                //NationalGridInfo natInfo = new NationalGridInfo(poly);
 
-                if (natInfo.CellIsValid)
-                {
-                    ProMsgBox.Show($"Cell Identifier: {natInfo.CellIdentifier}");
-                }
+                //if (natInfo.CellIsValid)
+                //{
+                //    ProMsgBox.Show($"Cell Identifier: {natInfo.CellIdentifier}");
+                //}
 
 
+
+
+
+                // *********************************
+                // (X,Y)
+                /*
                 
+                X = -1,234,567.89
+
+                Study Area MinX = minx
+
+                Dimension D = 0, 1, 2, 3, 4, 5
+                Side Length L = 1, 10, 100, 1000, 10000, 100000
+
+                We need to reduce minx to the nearest X value aligned with the grid of dimension D
+
+                ---
+
+                If D = 0     (this means L = 1)
+                reduce X from -1,234,567.89 to -1,234,567
+
+                X = Math.Floor(X)       -- converts X to the correct (integer) value
+
+                ---
+                */
+
+                // Set up the multiplier
+                double D = 3;
+                int multiplier = (int)Math.Pow(10, D);
+
+
+                // Lower Left Coordinate
+                double X = 0;
+                double Y = 0;
+
+
+                int llX2 = (int)Math.Floor(X);
+                int llY2 = (int)Math.Floor(Y);
+
+                // Lower Left Corner of Study Area is now (x2, y2)
+
+                int llX3 = (llX2 / multiplier) * multiplier;
+                int llY3 = (llY2 / multiplier) * multiplier;
+
+                int NewMinX = ((double)llX3 > X) ? llX3 - multiplier : llX3;
+                int NewMinY = ((double)llY3 > Y) ? llY3 - multiplier : llY3;
+
+                // Adjusted Lower Left Corner is now (NewMinX, NewMinY).  This point aligns with grid of dimension D
+
+                // Next, adjust upper right corner of study area envelope
+                int urX2 = (int)Math.Ceiling(X);
+                int urY2 = (int)Math.Ceiling(Y);
+
+                int urX3 = (urX2 / multiplier) * multiplier;
+                int urY3 = (urY2 / multiplier) * multiplier;
+
+                int NewMaxX = ((double)urX3 < X) ? urX3 + multiplier : urX3;
+                int NewMaxY = ((double)urY3 < Y) ? urY3 + multiplier : urY3;
+
+                ProMsgBox.Show($"llX: {X} \nllY: {Y} \nSimplied X: {llX3} \nSimplified Y: {llY3} \nNew llX: {NewMinX} \nNew llY: {NewMinY} \nurX: {X} \nurY: {Y} \nSimplified X: {urX3} \nSimplified Y: {urY3} \nNew urX: {NewMaxX} \nNew urY: {NewMaxY}");
+
 
 
                 return true;
@@ -2152,4 +2434,19 @@ namespace NCC.PRZTools
 
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
