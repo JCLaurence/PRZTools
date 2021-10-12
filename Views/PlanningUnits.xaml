@@ -130,6 +130,14 @@
                                 GroupName="NatGridDimensions"
                                 IsChecked="{Binding PUSource_Rad_NatGrid_100Km_IsChecked}" 
                                 Content="100 km" />
+                            
+                            <CheckBox
+                                DockPanel.Dock="Left"
+                                Margin="20, 5, 5, 5"
+                                VerticalContentAlignment="Center"
+                                IsChecked="{Binding PUSource_Chk_UseRasterFormat}"
+                                IsEnabled="True"
+                                Content="Raster" />
 
                         </DockPanel>
                     </DockPanel>

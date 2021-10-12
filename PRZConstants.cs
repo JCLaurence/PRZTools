@@ -27,6 +27,8 @@
     }
 
 
+    // SELECTION RULES
+
     public enum SelectionRuleLayerType
     {
         RASTER,
@@ -104,6 +106,12 @@
         BOTH
     }
 
+    public enum PlanningUnitLayerType
+    {
+        FEATURE,
+        RASTER
+    }
+
     #endregion
 
     public static class PRZConstants
@@ -147,6 +155,9 @@
 
         #region GEODATABASE OBJECT NAMES
 
+        // RASTER DATASETS
+        public const string c_RAS_PLANNING_UNITS = "pu_ras";
+
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
         public const string c_FC_STUDY_AREA_MAIN = "study_area";
@@ -161,6 +172,7 @@
         public const string c_FC_TEMP_PUSELRULES_SUFFIX_DSLV = "_dslv";
 
         // TABLES
+        public const string c_TABLE_PU_RAS_LOOKUP = "pu_ras_lookup";
         public const string c_TABLE_SELRULES = "selection_rules";
         public const string c_TABLE_PUSELRULES = "pu_selection_rules";
         public const string c_TABLE_PUBOUNDARY = "pu_boundary";

@@ -202,5 +202,17 @@ namespace NCC.PRZTools.Properties {
                 this["DEFAULT_NATGRID_DIMENSION"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool DEFAULT_PU_USE_RASTER_FORMAT {
+            get {
+                return ((bool)(this["DEFAULT_PU_USE_RASTER_FORMAT"]));
+            }
+            set {
+                this["DEFAULT_PU_USE_RASTER_FORMAT"] = value;
+            }
+        }
     }
 }

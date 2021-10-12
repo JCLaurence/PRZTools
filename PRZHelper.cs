@@ -2,6 +2,7 @@
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Geometry;
+using ArcGIS.Core.Data.Raster;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Dialogs;
@@ -326,6 +327,23 @@ namespace NCC.PRZTools
 
         #region GEODATABASE OBJECT PATHS
 
+        // Planning Unit Raster Path
+        public static string GetPath_Raster_PU()
+        {
+            try
+            {
+                string gdbpath = GetPath_ProjectGDB();
+                string puraspath = Path.Combine(gdbpath, PRZC.c_RAS_PLANNING_UNITS);
+
+                return puraspath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         // Planning Unit FC Path
         public static string GetPath_FC_PU()
         {
@@ -593,6 +611,27 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> RasterExists_PU()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await RasterExists(gdb, PRZC.c_RAS_PLANNING_UNITS);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
         public static async Task<bool> FCExists_PU()
         {
             try
@@ -782,6 +821,27 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> TableExists_PURasLookup()
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, PRZC.c_TABLE_PU_RAS_LOOKUP);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
         #endregion
 
         #region OBJECT RETRIEVAL
@@ -815,6 +875,38 @@ namespace NCC.PRZTools
             catch (Exception)
             {
                 //MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<RasterDataset> GetRaster_PU()
+        {
+            try
+            {
+                // Ensure this method is called on the worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null) return null;
+
+                    try
+                    {
+                        RasterDataset ras = gdb.OpenDataset<RasterDataset>(PRZC.c_RAS_PLANNING_UNITS);
+                        return ras;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
             }
         }
@@ -2122,50 +2214,94 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> RasterExists(Geodatabase geodatabase, string rasterName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    using (RasterDatasetDefinition rasDef = geodatabase.GetDefinition<RasterDatasetDefinition>(rasterName))
+                    {
+                        // Error will be thrown by using statement above if rasterdataset of the supplied name doesn't exist in GDB
+                    }
+                });
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<bool> ClearProjectGDB()
         {
             try
             {
-                await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(async () =>
                 {
                     using (Geodatabase gdb = await GetProjectGDB())
                     {
                         SchemaBuilder schemaBuilder = new SchemaBuilder(gdb);
 
-                        // First, delete all feature datasets
-                        var fdsDefs = gdb.GetDefinitions<FeatureDatasetDefinition>().ToList();
-                        if (fdsDefs.Count > 0)
+                        // First, delete all feature datasets if they exist
+                        foreach (FeatureDatasetDefinition fdsDef in gdb.GetDefinitions<FeatureDatasetDefinition>())
                         {
-                            foreach (var fdsDef in fdsDefs)
+                            using (fdsDef)
                             {
                                 schemaBuilder.Delete(new FeatureDatasetDescription(fdsDef));
+                                schemaBuilder.Build();
                             }
-                            schemaBuilder.Build();
                         }
 
                         // Next, delete all remaining standalone feature classes
-                        var fcDefs = gdb.GetDefinitions<FeatureClassDefinition>().ToList();
-                        if (fcDefs.Count > 0)
+                        foreach (FeatureClassDefinition fcDef in gdb.GetDefinitions<FeatureClassDefinition>())
                         {
-                            foreach (var fcDef in fcDefs)
+                            using (fcDef)
                             {
                                 schemaBuilder.Delete(new FeatureClassDescription(fcDef));
+                                schemaBuilder.Build();
                             }
-                            schemaBuilder.Build();
                         }
 
-                        // Finally, delete all remaining tables
-                        var tabDefs = gdb.GetDefinitions<TableDefinition>().ToList();
-                        if (tabDefs.Count > 0)
+                        // Next, delete all remaining tables
+                        foreach (TableDefinition tDef in gdb.GetDefinitions<TableDefinition>())
                         {
-                            foreach (var tabDef in tabDefs)
+                            using (tDef)
                             {
-                                schemaBuilder.Delete(new TableDescription(tabDef));
+                                schemaBuilder.Delete(new TableDescription(tDef));
+                                schemaBuilder.Build();
                             }
-                            schemaBuilder.Build();
                         }
+
+                        // Finally delete raster datasets using geoprocessing, since I'm not sure how else to do it
+                        string gdbpath = GetPath_ProjectGDB();
+                        var rasDefs = gdb.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName());   // get list of raster dataset names
+
+                        if (rasDefs.Count() > 0)
+                        {
+                            // Declare some generic GP variables
+                            IReadOnlyList<string> toolParams;
+                            IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                            GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                            string toolOutput;
+
+                            string rasters_to_delete = string.Join(";", rasDefs);
+                            toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                return false;
+                            }
+                        }
+
+                        return true;
                     }
-                });
+                }))
+                {
+                    return false;
+                }
 
                 return true;
             }
