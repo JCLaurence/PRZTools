@@ -97,18 +97,6 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("SQUARE")]
-        public string DEFAULT_TILE_SHAPE {
-            get {
-                return ((string)(this["DEFAULT_TILE_SHAPE"]));
-            }
-            set {
-                this["DEFAULT_TILE_SHAPE"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1")]
         public string DEFAULT_TILE_AREA {
             get {
@@ -206,12 +194,36 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool DEFAULT_PU_USE_RASTER_FORMAT {
+        public bool DEFAULT_PU_NATGRID_USE_RASTER_FORMAT {
             get {
-                return ((bool)(this["DEFAULT_PU_USE_RASTER_FORMAT"]));
+                return ((bool)(this["DEFAULT_PU_NATGRID_USE_RASTER_FORMAT"]));
             }
             set {
-                this["DEFAULT_PU_USE_RASTER_FORMAT"] = value;
+                this["DEFAULT_PU_NATGRID_USE_RASTER_FORMAT"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool DEFAULT_PU_CUSTOMGRID_USE_RASTER_FORMAT {
+            get {
+                return ((bool)(this["DEFAULT_PU_CUSTOMGRID_USE_RASTER_FORMAT"]));
+            }
+            set {
+                this["DEFAULT_PU_CUSTOMGRID_USE_RASTER_FORMAT"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("RASTER")]
+        public string DEFAULT_OUTPUT_FORMAT {
+            get {
+                return ((string)(this["DEFAULT_OUTPUT_FORMAT"]));
+            }
+            set {
+                this["DEFAULT_OUTPUT_FORMAT"] = value;
             }
         }
     }

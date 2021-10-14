@@ -20,9 +20,6 @@
     <Setting Name="DEFAULT_CF_GOAL" Type="System.String" Scope="User">
       <Value Profile="(Default)">50</Value>
     </Setting>
-    <Setting Name="DEFAULT_TILE_SHAPE" Type="System.String" Scope="User">
-      <Value Profile="(Default)">SQUARE</Value>
-    </Setting>
     <Setting Name="DEFAULT_TILE_AREA" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
@@ -47,8 +44,14 @@
     <Setting Name="DEFAULT_NATGRID_DIMENSION" Type="System.String" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="DEFAULT_PU_USE_RASTER_FORMAT" Type="System.Boolean" Scope="User">
+    <Setting Name="DEFAULT_PU_NATGRID_USE_RASTER_FORMAT" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="DEFAULT_PU_CUSTOMGRID_USE_RASTER_FORMAT" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="DEFAULT_OUTPUT_FORMAT" Type="System.String" Scope="User">
+      <Value Profile="(Default)">RASTER</Value>
     </Setting>
   </Settings>
 </SettingsFile>

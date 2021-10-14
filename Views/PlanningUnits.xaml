@@ -35,6 +35,7 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
@@ -130,14 +131,6 @@
                                 GroupName="NatGridDimensions"
                                 IsChecked="{Binding PUSource_Rad_NatGrid_100Km_IsChecked}" 
                                 Content="100 km" />
-                            
-                            <CheckBox
-                                DockPanel.Dock="Left"
-                                Margin="20, 5, 5, 5"
-                                VerticalContentAlignment="Center"
-                                IsChecked="{Binding PUSource_Chk_UseRasterFormat}"
-                                IsEnabled="True"
-                                Content="Raster" />
 
                         </DockPanel>
                     </DockPanel>
@@ -163,23 +156,7 @@
 
                             <TextBlock
                                 DockPanel.Dock="Left"
-                                Margin="10, 5, 5, 5" 
-                                VerticalAlignment="Center"
-                                Style="{DynamicResource Esri_TextBlockRegular}"
-                                Text="Tile Shape:" />
-
-                            <ComboBox
-                                DockPanel.Dock="Left"
-                                Width="90"
-                                Margin="5, 1, 5, 1"
-                                VerticalAlignment="Center"
-                                HorizontalContentAlignment="Center"   
-                                ItemsSource="{Binding PUSource_Cmb_CustomGrid_TileShapes}" 
-                                SelectedItem="{Binding PUSource_Cmb_CustomGrid_SelectedTileShape}"/>
-
-                            <TextBlock
-                                DockPanel.Dock="Left"
-                                Margin="5" 
+                                Margin="15, 5, 5, 5" 
                                 VerticalAlignment="Center"
                                 Style="{DynamicResource Esri_TextBlockRegular}"
                                 Text="Tile Area:" />
@@ -368,10 +345,61 @@
                     </DockPanel>
                 </DockPanel>
             </Border>
-
-            <!--Inner Border #3-->
+            
+            <!--- Inner Border #3-->
             <Border 
                 Grid.Row="2"
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock 
+                        DockPanel.Dock="Top"
+                        Margin="5"  
+                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Text="Output Format" />
+
+                    <DockPanel 
+                        DockPanel.Dock="Top"
+                        Height="25"
+                        LastChildFill="False">
+
+                        <TextBlock
+                                DockPanel.Dock="Left"
+                                Margin="15, 5, 5, 5" 
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}"
+                                Text="GIS Format:" />
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center" 
+                            GroupName="GISFormat"
+                            IsChecked="{Binding OutputFormat_Rad_GISFormat_Vector_IsChecked}" 
+                            Content="Vector" />
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center" 
+                            GroupName="GISFormat"
+                            IsChecked="{Binding OutputFormat_Rad_GISFormat_Raster_IsChecked}" 
+                            Content="Raster" />
+
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+            
+            <!--Inner Border #4-->
+            <Border 
+                Grid.Row="3"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}"
@@ -487,9 +515,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #4-->
+            <!--Inner Border #5-->
             <Border 
-                Grid.Row="3"
+                Grid.Row="4"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
@@ -539,10 +567,10 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #5-->
+            <!--Inner Border #6-->
 
             <Border 
-                Grid.Row="4" 
+                Grid.Row="5" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">

@@ -2250,7 +2250,11 @@ namespace NCC.PRZTools
                             using (fdsDef)
                             {
                                 schemaBuilder.Delete(new FeatureDatasetDescription(fdsDef));
-                                schemaBuilder.Build();
+                                if (!schemaBuilder.Build())
+                                {
+                                    ProMsgBox.Show($"Unable to delete the {fdsDef.GetName()} feature dataset.");
+                                    return false;
+                                }
                             }
                         }
 
@@ -2260,7 +2264,11 @@ namespace NCC.PRZTools
                             using (fcDef)
                             {
                                 schemaBuilder.Delete(new FeatureClassDescription(fcDef));
-                                schemaBuilder.Build();
+                                if (!schemaBuilder.Build())
+                                {
+                                    ProMsgBox.Show($"Unable to delete the {fcDef.GetName()} feature class.");
+                                    return false;
+                                }
                             }
                         }
 
@@ -2270,7 +2278,11 @@ namespace NCC.PRZTools
                             using (tDef)
                             {
                                 schemaBuilder.Delete(new TableDescription(tDef));
-                                schemaBuilder.Build();
+                                if (!schemaBuilder.Build())
+                                {
+                                    ProMsgBox.Show($"Unable to delete the {tDef.GetName()} table.");
+                                    return false;
+                                }
                             }
                         }
 
@@ -2292,6 +2304,7 @@ namespace NCC.PRZTools
                             toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
                             if (toolOutput == null)
                             {
+                                ProMsgBox.Show($"Error deleting the following Raster Dataset(s): {rasters_to_delete}");
                                 return false;
                             }
                         }

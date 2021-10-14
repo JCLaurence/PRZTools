@@ -71,12 +71,6 @@
         ERROR
     }
 
-    public enum CustomGridTileShape
-    {
-        SQUARE,
-        HEXAGON
-    }
-
     public enum PRZLayerNames
     {
         MAIN,

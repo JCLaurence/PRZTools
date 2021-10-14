@@ -45,14 +45,10 @@ namespace NCC.PRZTools
 
         #region PLANNING UNIT SOURCE GEOMETRY
 
-        private bool _puSource_Chk_UseRasterFormat;
-
         private bool _puSource_Rad_NatGrid_IsChecked;
         private bool _puSource_Rad_CustomGrid_IsChecked;
         private bool _puSource_Rad_Layer_IsChecked;
 
-        private List<string> _puSource_Cmb_CustomGrid_TileShapes;
-        private string _puSource_Cmb_CustomGrid_SelectedTileShape;
         private string _puSource_Txt_CustomGrid_TileArea;
         private bool _puSource_Rad_TileArea_M_IsChecked;
         private bool _puSource_Rad_TileArea_Ac_IsChecked;
@@ -96,6 +92,13 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region OUTPUT FORMAT
+
+        private bool _outputFormat_Rad_GISFormat_Vector_IsChecked;
+        private bool _outputFormat_Rad_GISFormat_Raster_IsChecked;
+
+        #endregion
+
         #region OUTPUT SPATIAL REFERENCE
 
         private Visibility _outputSR_Vis_Border = Visibility.Visible;
@@ -118,17 +121,6 @@ namespace NCC.PRZTools
         #region PROPERTIES
 
         #region PLANNING UNIT SOURCE GEOMETRY
-
-        public bool PUSource_Chk_UseRasterFormat
-        {
-            get => _puSource_Chk_UseRasterFormat;
-            set
-            {
-                SetProperty(ref _puSource_Chk_UseRasterFormat, value, () => PUSource_Chk_UseRasterFormat);
-                Properties.Settings.Default.DEFAULT_PU_USE_RASTER_FORMAT = value;
-                Properties.Settings.Default.Save();
-            }
-        }
 
         public bool PUSource_Rad_NatGrid_IsChecked
         {
@@ -171,21 +163,6 @@ namespace NCC.PRZTools
                     Properties.Settings.Default.DEFAULT_PU_GEOMETRY_SOURCE = "LAYER";
                     Properties.Settings.Default.Save();
                 }
-            }
-        }
-        public List<string> PUSource_Cmb_CustomGrid_TileShapes
-        {
-            get => _puSource_Cmb_CustomGrid_TileShapes;
-            set => SetProperty(ref _puSource_Cmb_CustomGrid_TileShapes, value, () => PUSource_Cmb_CustomGrid_TileShapes);
-        }
-        public string PUSource_Cmb_CustomGrid_SelectedTileShape
-        {
-            get => _puSource_Cmb_CustomGrid_SelectedTileShape;
-            set
-            {
-                SetProperty(ref _puSource_Cmb_CustomGrid_SelectedTileShape, value, () => PUSource_Cmb_CustomGrid_SelectedTileShape);
-                Properties.Settings.Default.DEFAULT_TILE_SHAPE = value;
-                Properties.Settings.Default.Save();
             }
         }
         public Visibility PUSource_Vis_NatGrid_Controls
@@ -457,6 +434,37 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region OUTPUT FORMAT
+
+        public bool OutputFormat_Rad_GISFormat_Vector_IsChecked
+        {
+            get => _outputFormat_Rad_GISFormat_Vector_IsChecked;
+            set
+            {
+                SetProperty(ref _outputFormat_Rad_GISFormat_Vector_IsChecked, value, () => OutputFormat_Rad_GISFormat_Vector_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_OUTPUT_FORMAT = "VECTOR";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public bool OutputFormat_Rad_GISFormat_Raster_IsChecked
+        {
+            get => _outputFormat_Rad_GISFormat_Raster_IsChecked;
+            set
+            {
+                SetProperty(ref _outputFormat_Rad_GISFormat_Raster_IsChecked, value, () => OutputFormat_Rad_GISFormat_Raster_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.DEFAULT_OUTPUT_FORMAT = "RASTER";
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
+        #endregion
+
         #region OUTPUT SPATIAL REFERENCE
 
         public Visibility OutputSR_Vis_Border
@@ -631,20 +639,6 @@ namespace NCC.PRZTools
                     PUSource_Rad_NatGrid_1Km_IsChecked = true;
                 }
 
-                // Custom Grid - Tile Shapes
-                PUSource_Cmb_CustomGrid_TileShapes = Enum.GetNames(typeof(CustomGridTileShape)).ToList();
-
-                string tile_type = Properties.Settings.Default.DEFAULT_TILE_SHAPE;
-
-                if (string.IsNullOrEmpty(tile_type))
-                {
-                    PUSource_Cmb_CustomGrid_SelectedTileShape = CustomGridTileShape.SQUARE.ToString();
-                }
-                else
-                {
-                    PUSource_Cmb_CustomGrid_SelectedTileShape = (tile_type == CustomGridTileShape.HEXAGON.ToString()) ? CustomGridTileShape.HEXAGON.ToString() : CustomGridTileShape.SQUARE.ToString();
-                }
-
                 // Custom Grid Tile Area
                 string tile_area = Properties.Settings.Default.DEFAULT_TILE_AREA;
 
@@ -725,9 +719,6 @@ namespace NCC.PRZTools
                 {
                     PUSource_Cmb_Layer_FeatureLayers = featureLayers;
                 }
-
-                // Use Raster checkbox setting
-                PUSource_Chk_UseRasterFormat = Properties.Settings.Default.DEFAULT_PU_USE_RASTER_FORMAT;
 
                 #endregion
 
@@ -878,6 +869,25 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region OUTPUT FORMAT
+
+                // GIS Format radio buttons
+                string gis_format = Properties.Settings.Default.DEFAULT_OUTPUT_FORMAT;
+                if (string.IsNullOrEmpty(gis_format) || gis_format == "RASTER")
+                {
+                    OutputFormat_Rad_GISFormat_Raster_IsChecked = true;
+                }
+                else if (gis_format == "VECTOR")
+                {
+                    OutputFormat_Rad_GISFormat_Vector_IsChecked = true;
+                }
+                else
+                {
+                    OutputFormat_Rad_GISFormat_Raster_IsChecked = true;
+                }
+
+                #endregion
+
                 #region OUTPUT SPATIAL REFERENCE
 
                 // Map Spatial Reference
@@ -984,7 +994,13 @@ namespace NCC.PRZTools
 
             try
             {
-                #region VALIDATION I
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
+
+                #region VALIDATION
 
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
@@ -1126,15 +1142,10 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Buffer Distance = " + bu), true, ++val);
 
-                #endregion
-
-                #region VALIDATION II
-
                 // Miscellaneous variables
-                double customgrid_tile_area_m2 = 0;
-                var customgrid_tile_shape = CustomGridTileShape.SQUARE;
                 int natgrid_dimension = 0;
                 int natgrid_sidelength = 0;
+                double customgrid_tile_area_m2 = 0;
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
@@ -1183,37 +1194,9 @@ namespace NCC.PRZTools
                         ProMsgBox.Show("Invalid National Grid dimension specified.", "Validation");
                         return false;
                     }
-
-                    // Notify of Raster Option choice
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Raster option selected: {PUSource_Chk_UseRasterFormat}"), true, ++val);
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
-                    // Validation: Tile Shape
-                    string tile_shape = string.IsNullOrEmpty(_puSource_Cmb_CustomGrid_SelectedTileShape) ? "" : _puSource_Cmb_CustomGrid_SelectedTileShape;
-                    if (tile_shape == "")
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile shape not specified", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Please specify a tile shape", "Validation");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Tile Shape = {tile_shape}"), true, ++val);
-                    }
-
-                    switch (tile_shape)
-                    {
-                        case "SQUARE":
-                            customgrid_tile_shape = CustomGridTileShape.SQUARE;
-                            break;
-                        case "HEXAGON":
-                            customgrid_tile_shape = CustomGridTileShape.HEXAGON;
-                            break;
-                        default:
-                            return false;
-                    }
-
                     // Validation: Tile Area
                     string tile_area_text = string.IsNullOrEmpty(PUSource_Txt_CustomGrid_TileArea) ? "0" : ((PUSource_Txt_CustomGrid_TileArea.Trim() == "") ? "0" : PUSource_Txt_CustomGrid_TileArea.Trim());
 
@@ -1285,6 +1268,37 @@ namespace NCC.PRZTools
                 // Start a stopwatch
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
+
+                #region STRIP MAP AND GDB
+
+                // Remove any PRZ GDB Layers or Tables from Active Map
+                var flyrs = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
+                List<Layer> LayersToDelete = new List<Layer>();
+
+                if (!await RemovePRZLayersAndTables())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to remove layers and standalone tables from PRZ geodatabase");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removed all layers and standalone tables where source = {gdbpath}"), true, ++val);
+                }
+
+                // Delete all Items from Project GDB
+                if (!await PRZH.ClearProjectGDB())
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to delete all feature classes, tables, raster datasets, and feature datasets from " + gdbpath, LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to delete all feature classes, tables, raster datasets, or feature datasets from {gdbpath}");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleted all feature classes, tables, raster datasets, and feature datasets from " + gdbpath), true, ++val);
+                }
+
+                #endregion
 
                 #region STUDY AREA GEOMETRY
 
@@ -1396,463 +1410,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                string toolOutput;
-
-                #region STRIP MAP AND GDB
-
-                // Remove any PRZ GDB Layers or Tables from Active Map
-                var flyrs = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-                List<Layer> LayersToDelete = new List<Layer>();
-
-                if (!await RemovePRZLayersAndTables())
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to remove layers and standalone tables from PRZ geodatabase");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removed all layers and standalone tables where source = {gdbpath}"), true, ++val);
-                }
-
-                // Delete all Items from Project GDB
-                if (!await PRZH.ClearProjectGDB())
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to delete all feature classes, tables, raster datasets, and feature datasets from " + gdbpath, LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to delete all feature classes, tables, raster datasets, or feature datasets from {gdbpath}");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleted all feature classes, tables, raster datasets, and feature datasets from " + gdbpath), true, ++val);
-                }
-
-                #endregion
-
-                #region CREATE PLANNING UNIT RASTER
-
-                if (PUSource_Chk_UseRasterFormat && PUSource_Rad_NatGrid_IsChecked)
-                {
-                    // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
-                    Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(SA_poly_buffer);
-
-                    string tempRaster1 = "TempRas1";
-                    string tempRaster2 = "TempRas2";
-
-                    var res = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
-                    if (!res.success)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extent envelope.\n{res.message}", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{res.message}");
-                        return false;
-                    }
-
-                    // Load the National Grid Tiles
-                    Envelope gridEnv = res.gridEnv;
-                    int tiles_across = res.tilesAcross;
-                    int tiles_up = res.tilesUp;
-                    int side_length = natgrid_sidelength;
-                    object[] o = { tempRaster1, 0, "INTEGER", side_length, gridEnv };
-
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Raster Dataset..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(o);
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset created successfully."), true, ++val);
-                    }
-
-                    // Copy the raster to the correct bitdepth of int32 (to allow storage of humongous ID numbers
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying to better bit depth..."), true, ++val);
-
-                    object[] o2 = { tempRaster1, tempRaster2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "" };
-
-                    toolParams = Geoprocessing.MakeValueArray(o2);
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset copied successfully."), true, ++val);
-                    }
-
-                    // Next step...
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Try next step..."), true, ++val);
-                    if (!await QueuedTask.Run(async () =>
-                    {
-                        try
-                        {
-                            using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
-                            {
-                                if (!await PRZH.RasterExists(geodatabase, tempRaster2))
-                                {
-                                    return false;
-                                }
-
-                                using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(tempRaster2))
-                                {
-                                    // Get the virtual Raster from Band 1 of the Raster Dataset
-                                    int[] bands = { 0 };
-                                    Raster raster = rasterDataset.CreateRaster(bands);
-
-                                    // Create a PixelBlock 1 row high, stretching across all columns
-                                    PixelBlock pixelBlock = raster.CreatePixelBlock(raster.GetWidth(), 1);
-
-                                    // Get the top left corner coords of the top left cell in the envelope (cell 0,0)
-                                    int OriginCell_ULX = Convert.ToInt32(gridEnv.XMin);
-                                    int OriginCell_ULY = Convert.ToInt32(gridEnv.YMax);
-
-                                    int puid = 1;
-
-                                    // Loop through each row of tiles (top to bottom)
-                                    for (int row = 0; row < tiles_up; row++)
-                                    {
-                                        // Read a raster row into the pixel block
-                                        raster.Read(0, row, pixelBlock);
-
-                                        // write the pixel block contents to an array
-                                        int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
-
-                                        // Get the Y-coord of the current row (YMax of row)
-                                        double CurrentCell_ULY = OriginCell_ULY - (row * side_length);
-
-                                        // Loop through each cell (left to right) within the parent row
-                                        for (int col = 0; col < tiles_across; col++)
-                                        {
-                                            // Get the X-coord of the current column (XMin of column)
-                                            double CurrentCell_ULX = OriginCell_ULX + (col * side_length);
-
-                                            // Build the envelope for the current cell
-                                            Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - side_length, CurrentCell_ULX + side_length, CurrentCell_ULY, OutputSR);
-
-                                            if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
-                                            {
-                                                // I need to alter the pixel value here to puid++
-                                                array[col, 0] = puid++;
-                                            }
-                                        }
-
-                                        // write the array values back to the pixel block, even if unchanged
-                                        pixelBlock.SetPixelData(0, array);
-
-                                        // write the pixel block data back to the raster
-                                        raster.Write(0, row, pixelBlock);
-                                    }
-
-                                    // All zeros now are nodata
-                                    raster.SetNoDataValue(0);
-
-                                    // Persist the raster to the geodatabase
-                                    raster.SaveAs(PRZC.c_RAS_PLANNING_UNITS, geodatabase, "GRID");
-                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"saved."), true, ++val);
-                                }
-                            }
-
-                            // Delete the temp rasters
-                            string rasters_to_delete = tempRaster1 + ";" + tempRaster2;
-                            toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error deleting temp rasters.");
-                                return false;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp rasters deleted."), true, ++val);
-                            }
-
-                            // Calculate Statistics on pu raster
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error calculating statistics.");
-                                return false;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated successfully."), true, ++val);
-                            }
-
-                            // Build Pyramids for pu raster
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, -1, "", "", "", "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error building pyramids.");
-                                return false;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
-                            }
-
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something bad.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Something bad here.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something good happened here."), true, ++val);
-                    }
-                }
-
-                return true;
-
-                #endregion
-
-                #region CREATE PLANNING UNIT FC
-
-                string pufcpath = PRZH.GetPath_FC_PU();
-
-                // Build the new empty Planning Unit FC
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error creating the {PRZC.c_FC_PLANNING_UNITS} feature class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Feature class created successfully."), true, ++val);
-                }
-
-                // Add Fields to Planning Unit FC
-                string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
-                string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
-                string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
-                string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
-                string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
-                string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 0 #;";
-                string fldPUAreaAC = PRZC.c_FLD_FC_PU_AREA_AC + " DOUBLE 'Acres' # 0 #;";
-                string fldPUAreaHA = PRZC.c_FLD_FC_PU_AREA_HA + " DOUBLE 'Hectares' # 0 #;";
-                string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM2 + " DOUBLE 'Square km' # 0 #;";
-                string fldCFCount = PRZC.c_FLD_FC_PU_FEATURECOUNT + " LONG 'Conservation Feature Count' # 0 #;";
-                string fldSharedPerim = PRZC.c_FLD_FC_PU_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
-                string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
-                string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
-
-                string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
-
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
-                }
-
-                #region IMPORT PLANNING UNIT FEATURES BASED ON SOURCE TYPE
-
-                if (PUSource_Rad_NatGrid_IsChecked)
-                {
-                    // Retrieve the required grid extent based on the specified National Grid dimension and the buffered study area
-                    var res = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
-
-                    if (!res.success)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extent envelope.\n{res.message}", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{res.message}");
-                        return false;
-                    }
-
-                    // Load the National Grid Tiles
-                    Envelope gridEnv = res.gridEnv;
-                    int tiles_across = res.tilesAcross;
-                    int tiles_up = res.tilesUp;
-                    int side_length = natgrid_sidelength;
-
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Loading the National Grid tiles"), true, ++val);
-                    if (!await LoadNationalGridTiles(SA_poly_buffer, gridEnv, tiles_across, tiles_up, side_length, natgrid_dimension))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error loading tiles.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles loaded"), true, ++val);
-                    }
-
-                }
-                else if (PUSource_Rad_CustomGrid_IsChecked)
-                {
-                    // Assemble the Grid
-                    double tile_edge_length = 0;
-                    double tile_width = 0;
-                    double tile_center_to_right = 0;
-                    double tile_height = 0;
-                    double tile_center_to_top = 0;
-                    int tiles_across = 0;
-                    int tiles_up = 0;
-
-                    switch (customgrid_tile_shape)
-                    {
-                        case CustomGridTileShape.SQUARE:
-                            tile_edge_length = Math.Sqrt(customgrid_tile_area_m2);
-                            tile_width = tile_edge_length;
-                            tile_height = tile_edge_length;
-                            tile_center_to_right = tile_width / 2.0;
-                            tile_center_to_top = tile_height / 2.0;
-                            break;
-                        case CustomGridTileShape.HEXAGON:
-                            tile_edge_length = Math.Sqrt((2 * customgrid_tile_area_m2) / (3 * Math.Sqrt(3)));
-                            tile_width = tile_edge_length * 2;
-                            tile_height = 2 * (tile_edge_length * Math.Sin((60 * Math.PI) / 180));
-                            tile_center_to_right = tile_width / 2;
-                            tile_center_to_top = tile_height / 2;
-                            break;
-                        default:
-                            return false;
-                    }
-
-                    Envelope env = SA_poly_buffer.Extent;
-                    double env_width = env.Width;
-                    double env_height = env.Height;
-                    MapPoint env_ll_point = null;
-
-                    if (!await QueuedTask.Run(() =>
-                    {
-                        try
-                        {
-                            MapPointBuilder mpbuilder = new MapPointBuilder(env.XMin, env.YMin, OutputSR);
-                            env_ll_point = mpbuilder.ToGeometry();
-
-                            return true;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving lower left corner of buffer extent.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error retrieving lower left corner of buffer extent.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"lower left corner of extent retrieved."), true, ++val);
-                    }
-
-                    switch (customgrid_tile_shape)
-                    {
-                        case CustomGridTileShape.SQUARE:
-                            tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
-                            tiles_up = (int)Math.Ceiling(env_height / tile_height) + 3;
-                            break;
-                        case CustomGridTileShape.HEXAGON:
-                            double temp = Math.Round(env_height / tile_center_to_top);
-                            if ((temp % 2) == 1)
-                                temp++;
-                            tiles_up = Convert.ToInt32((temp / 2) + 3);
-                            temp = (((2 * env_width) - (4 * tile_edge_length)) / (3 * tile_edge_length)) + 3;
-                            tiles_across = Convert.ToInt32(temp) + 3;
-                            break;
-                        default:
-                            return false;
-                    }
-
-                    PlanningUnitTileInfo tileinfo = new PlanningUnitTileInfo
-                    {
-                        LL_Point = env_ll_point,
-                        tiles_across = tiles_across,
-                        tiles_up = tiles_up,
-                        tile_area = customgrid_tile_area_m2,
-                        tile_center_to_right = tile_center_to_right,
-                        tile_center_to_top = tile_center_to_top,
-                        tile_edge_length = tile_edge_length,
-                        tile_height = tile_height,
-                        tile_shape = customgrid_tile_shape,
-                        tile_width = tile_width
-                    };
-
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Importing tiles into {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                    if (!await LoadCustomGridTiles_EditOp(tileinfo, SA_poly_buffer))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error importing tiles...", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show("Error importing tiles.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Tiles imported successfully."), true, ++val);
-                    }
-                }
-                else if (PUSource_Rad_Layer_IsChecked)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"unsupported option", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"unsupported option");
-                    return false;
-                }
-
-                #endregion
-
-                // Index the PU ID field
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error indexing field.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
-                }
-
-                #endregion
-
-                #region CREATE STUDY AREA FC
+                #region CREATE STUDY AREA FEATURE CLASSES
 
                 string safcpath = PRZH.GetPath_FC_StudyArea();
 
@@ -1934,10 +1492,6 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study area feature created successfully."), true, ++val);
                 }
-
-                #endregion
-
-                #region CREATE BUFFERED STUDY AREA FC
 
                 string sabufffcpath = PRZH.GetPath_FC_StudyAreaBuffer();
 
@@ -2022,6 +1576,387 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region CREATE PLANNING UNITS
+
+                // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
+                Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(SA_poly_buffer);
+
+                // RASTER OPTION
+                if (OutputFormat_Rad_GISFormat_Raster_IsChecked)
+                {
+                    // Common Raster Stuff here...
+
+                    // National Grid
+                    if (PUSource_Rad_NatGrid_IsChecked)
+                    {
+                        string tempRaster1 = "TempRas1";
+                        string tempRaster2 = "TempRas2";
+
+                        (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+                        if (!gridBounds.success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extent envelope.\n{gridBounds.message}", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{gridBounds.message}");
+                            return false;
+                        }
+
+                        // Load the National Grid Tiles
+                        object[] o = { tempRaster1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Raster Dataset..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(o);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset created successfully."), true, ++val);
+                        }
+
+                        // Copy the raster to the correct bitdepth of int32 (to allow storage of humongous ID numbers
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying to better bit depth..."), true, ++val);
+
+                        object[] o2 = { tempRaster1, tempRaster2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "" };
+
+                        toolParams = Geoprocessing.MakeValueArray(o2);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset copied successfully."), true, ++val);
+                        }
+
+                        // Next step...
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Try next step..."), true, ++val);
+                        if (!await QueuedTask.Run(async () =>
+                        {
+                            try
+                            {
+                                using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                                {
+                                    if (!await PRZH.RasterExists(geodatabase, tempRaster2))
+                                    {
+                                        return false;
+                                    }
+
+                                    using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(tempRaster2))
+                                    {
+                                        // Get the virtual Raster from Band 1 of the Raster Dataset
+                                        int[] bands = { 0 };
+                                        Raster raster = rasterDataset.CreateRaster(bands);
+
+                                        // Create a PixelBlock 1 row high, stretching across all columns
+                                        PixelBlock pixelBlock = raster.CreatePixelBlock(raster.GetWidth(), 1);
+
+                                        // Get the top left corner coords of the top left cell in the envelope (cell 0,0)
+                                        int OriginCell_ULX = Convert.ToInt32(gridBounds.gridEnv.XMin);
+                                        int OriginCell_ULY = Convert.ToInt32(gridBounds.gridEnv.YMax);
+
+                                        int puid = 1;
+
+                                        // Loop through each row of tiles (top to bottom)
+                                        for (int row = 0; row < gridBounds.tilesUp; row++)
+                                        {
+                                            // Read a raster row into the pixel block
+                                            raster.Read(0, row, pixelBlock);
+
+                                            // write the pixel block contents to an array
+                                            int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
+
+                                            // Get the Y-coord of the current row (YMax of row)
+                                            double CurrentCell_ULY = OriginCell_ULY - (row * natgrid_sidelength);
+
+                                            // Loop through each cell (left to right) within the parent row
+                                            for (int col = 0; col < gridBounds.tilesAcross; col++)
+                                            {
+                                                // Get the X-coord of the current column (XMin of column)
+                                                double CurrentCell_ULX = OriginCell_ULX + (col * natgrid_sidelength);
+
+                                                // Build the envelope for the current cell
+                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - natgrid_sidelength, CurrentCell_ULX + natgrid_sidelength, CurrentCell_ULY, OutputSR);
+
+                                                if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
+                                                {
+                                                    // I need to alter the pixel value here to puid++
+                                                    array[col, 0] = puid++;
+                                                }
+                                            }
+
+                                            // write the array values back to the pixel block, even if unchanged
+                                            pixelBlock.SetPixelData(0, array);
+
+                                            // write the pixel block data back to the raster
+                                            raster.Write(0, row, pixelBlock);
+                                        }
+
+                                        // All zeros now are nodata
+                                        raster.SetNoDataValue(0);
+
+                                        // Persist the raster to the geodatabase
+                                        raster.SaveAs(PRZC.c_RAS_PLANNING_UNITS, geodatabase, "GRID");
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"saved."), true, ++val);
+                                    }
+                                }
+
+                                // Delete the temp rasters
+                                string rasters_to_delete = tempRaster1 + ";" + tempRaster2;
+                                toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error deleting temp rasters.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp rasters deleted."), true, ++val);
+                                }
+
+                                // Build Pyramids for pu raster
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, -1, "", "", "", "", "");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error building pyramids.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                                }
+
+                                // Calculate Statistics on pu raster
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS);
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error calculating statistics.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated successfully."), true, ++val);
+                                }
+
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something bad.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Something bad here.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something good happened here."), true, ++val);
+                        }
+                    }
+
+                    // Custom Grid
+                    else if (PUSource_Rad_CustomGrid_IsChecked)
+                    {
+                        // TODO: Implement the Raster-based Custom Grid
+                        ProMsgBox.Show("Not yet...");
+                    }
+
+                    // Features
+                    else if (PUSource_Rad_Layer_IsChecked)
+                    {
+                        // TODO: Implement a Raster-based feature planning unit
+                    }
+                }
+
+                // VECTOR OPTION
+                else if (OutputFormat_Rad_GISFormat_Vector_IsChecked)
+                {
+                    string pufcpath = PRZH.GetPath_FC_PU();
+
+                    // Build the new empty Planning Unit FC
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error creating the {PRZC.c_FC_PLANNING_UNITS} feature class.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Feature class created successfully."), true, ++val);
+                    }
+
+                    // Add Fields to Planning Unit FC
+                    string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
+                    string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                    string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
+                    string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
+                    string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
+                    string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 0 #;";
+                    string fldPUAreaAC = PRZC.c_FLD_FC_PU_AREA_AC + " DOUBLE 'Acres' # 0 #;";
+                    string fldPUAreaHA = PRZC.c_FLD_FC_PU_AREA_HA + " DOUBLE 'Hectares' # 0 #;";
+                    string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM2 + " DOUBLE 'Square km' # 0 #;";
+                    string fldCFCount = PRZC.c_FLD_FC_PU_FEATURECOUNT + " LONG 'Conservation Feature Count' # 0 #;";
+                    string fldSharedPerim = PRZC.c_FLD_FC_PU_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
+                    string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
+                    string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
+
+                    string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
+                    }
+
+
+
+
+                    // National Grid
+                    if (PUSource_Rad_NatGrid_IsChecked)
+                    {
+                        // Retrieve the required grid extent based on the specified National Grid dimension and the buffered study area
+                        var res = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+
+                        if (!res.success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extent envelope.\n{res.message}", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{res.message}");
+                            return false;
+                        }
+
+                        // Load the National Grid Tiles
+                        int tiles_across = res.tilesAcross;
+                        int tiles_up = res.tilesUp;
+                        int side_length = natgrid_sidelength;
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Loading the National Grid tiles"), true, ++val);
+                        if (!await LoadNationalGridTiles(SA_poly_buffer, res.gridEnv, tiles_across, tiles_up, side_length, natgrid_dimension))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error loading tiles.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles loaded"), true, ++val);
+                        }
+                    }
+
+                    // Custom Grid
+                    else if (PUSource_Rad_CustomGrid_IsChecked)
+                    {
+                        // Assemble the Grid
+                        double tile_edge_length = 0;
+                        double tile_width = 0;
+                        double tile_center_to_right = 0;
+                        double tile_height = 0;
+                        double tile_center_to_top = 0;
+                        int tiles_across = 0;
+                        int tiles_up = 0;
+
+                        tile_edge_length = Math.Sqrt(customgrid_tile_area_m2);
+                        tile_width = tile_edge_length;
+                        tile_height = tile_edge_length;
+                        tile_center_to_right = tile_width / 2.0;
+                        tile_center_to_top = tile_height / 2.0;
+
+                        Envelope env = SA_poly_buffer.Extent;
+                        double env_width = env.Width;
+                        double env_height = env.Height;
+                        MapPoint env_ll_point = MapPointBuilderEx.CreateMapPoint(env.XMin, env.YMin, OutputSR);
+
+                        tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
+                        tiles_up = (int)Math.Ceiling(env_height / tile_height) + 3;
+
+                        PlanningUnitTileInfo tileinfo = new PlanningUnitTileInfo
+                        {
+                            LL_Point = env_ll_point,
+                            tiles_across = tiles_across,
+                            tiles_up = tiles_up,
+                            tile_area = customgrid_tile_area_m2,
+                            tile_center_to_right = tile_center_to_right,
+                            tile_center_to_top = tile_center_to_top,
+                            tile_edge_length = tile_edge_length,
+                            tile_height = tile_height,
+                            tile_width = tile_width
+                        };
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Importing tiles into {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
+                        if (!await LoadCustomGridTiles_EditOp(tileinfo, SA_poly_buffer))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error importing tiles...", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show("Error importing tiles.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Tiles imported successfully."), true, ++val);
+                        }
+                    }
+
+                    // Features
+                    else if (PUSource_Rad_Layer_IsChecked)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"unsupported option", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"unsupported option");
+                        return false;
+                    }
+
+                    // Index the PU ID field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+                }
+
+                #endregion
+
                 #region WRAP UP
 
                 // Compact the Geodatabase
@@ -2067,8 +2002,8 @@ namespace NCC.PRZTools
         {
             try
             {
-                List<StandaloneTable> tables_to_delete = new List<StandaloneTable>();
-                List<Layer> layers_to_delete = new List<Layer>();
+                List<StandaloneTable> tables_to_remove = new List<StandaloneTable>();
+                List<Layer> layers_to_remove = new List<Layer>();
 
                 await QueuedTask.Run(async () =>
                 {
@@ -2087,30 +2022,44 @@ namespace NCC.PRZTools
 
                                 if (table_path.StartsWith(gdbpath))
                                 {
-                                    tables_to_delete.Add(standalone_table);
+                                    tables_to_remove.Add(standalone_table);
                                 }
                             }
                         }
 
                         // Layers
-                        var layers = _map.GetLayersAsFlattenedList().ToList();
+                        var layers = _map.GetLayersAsFlattenedList().Where(l => l is RasterLayer);
+
                         foreach (var layer in layers)
                         {
+                            ProMsgBox.Show($"Raster Layer URI: {layer.URI}");
+
                             var uri = layer.GetPath();
+                            ProMsgBox.Show($"Layer Name: {layer.Name}");
                             if (uri != null)
                             {
                                 string layer_path = uri.AbsolutePath;
+                                ProMsgBox.Show($"Layer uri absolute path: {layer_path}");
 
                                 if (layer_path.StartsWith(gdbpath))
                                 {
-                                    layers_to_delete.Add(layer);
+                                    layers_to_remove.Add(layer);
+                                    ProMsgBox.Show($"removing...");
                                 }
+                                else
+                                {
+                                    ProMsgBox.Show("Not removing...");
+                                }
+                            }
+                            else
+                            {
+                                ProMsgBox.Show($"Layer {layer.Name} has no uri");
                             }
                         }
                     }
 
-                    _map.RemoveStandaloneTables(tables_to_delete);
-                    _map.RemoveLayers(layers_to_delete);
+                    _map.RemoveStandaloneTables(tables_to_remove);
+                    _map.RemoveLayers(layers_to_remove);
                     await MapView.Active.RedrawAsync(false);
                 });
 
@@ -2382,31 +2331,10 @@ namespace NCC.PRZTools
                                             double CurrentY;
                                             Polygon tilePoly = null;
 
-                                            switch (tileInfo.tile_shape)
-                                            {
-                                                case CustomGridTileShape.SQUARE:
-                                                    CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
-                                                    CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
-                                                    Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
-                                                    tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
-                                                    break;
-
-                                                case CustomGridTileShape.HEXAGON:
-                                                    CurrentX = tileInfo.LL_Point.X + (col * hex_horizoffset);
-                                                    CurrentY = tileInfo.LL_Point.Y + (row * (2 * tileInfo.tile_center_to_top)) - ((col % 2) * tileInfo.tile_center_to_top);
-
-                                                    List<Coordinate2D> hexcoords = new List<Coordinate2D>();
-
-                                                    hexcoords.Add(new Coordinate2D(CurrentX - tileInfo.tile_center_to_right, CurrentY));
-                                                    hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
-                                                    hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
-                                                    hexcoords.Add(new Coordinate2D(CurrentX + tileInfo.tile_center_to_right, CurrentY));
-                                                    hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
-                                                    hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
-
-                                                    tilePoly = PolygonBuilderEx.CreatePolygon(hexcoords, tileInfo.LL_Point.SpatialReference);
-                                                    break;
-                                            }
+                                            CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
+                                            CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
+                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
+                                            tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
 
                                             // Determine if the tile poly intersects with the study area buffer polygon
                                             if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
@@ -2573,31 +2501,10 @@ namespace NCC.PRZTools
                                         double CurrentY;
                                         Polygon tilePoly = null;
 
-                                        switch (tileInfo.tile_shape)
-                                        {
-                                            case CustomGridTileShape.SQUARE:
-                                                CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
-                                                CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
-                                                Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
-                                                tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
-                                                break;
-
-                                            case CustomGridTileShape.HEXAGON:
-                                                CurrentX = tileInfo.LL_Point.X + (col * hex_horizoffset);
-                                                CurrentY = tileInfo.LL_Point.Y + (row * (2 * tileInfo.tile_center_to_top)) - ((col % 2) * tileInfo.tile_center_to_top);
-
-                                                List<Coordinate2D> hexcoords = new List<Coordinate2D>();
-
-                                                hexcoords.Add(new Coordinate2D(CurrentX - tileInfo.tile_center_to_right, CurrentY));
-                                                hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
-                                                hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY + tileInfo.tile_center_to_top));
-                                                hexcoords.Add(new Coordinate2D(CurrentX + tileInfo.tile_center_to_right, CurrentY));
-                                                hexcoords.Add(new Coordinate2D(CurrentX + (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
-                                                hexcoords.Add(new Coordinate2D(CurrentX - (tileInfo.tile_center_to_right / 2.0), CurrentY - tileInfo.tile_center_to_top));
-
-                                                tilePoly = PolygonBuilderEx.CreatePolygon(hexcoords, tileInfo.LL_Point.SpatialReference);
-                                                break;
-                                        }
+                                        CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
+                                        CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
+                                        Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
+                                        tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
 
                                         // Determine if the tile poly intersects with the study area buffer polygon
                                         if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
