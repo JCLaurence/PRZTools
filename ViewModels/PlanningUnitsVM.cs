@@ -1271,31 +1271,29 @@ namespace NCC.PRZTools
 
                 #region STRIP MAP AND GDB
 
-                // Remove any PRZ GDB Layers or Tables from Active Map
-                var flyrs = _map.GetLayersAsFlattenedList().OfType<FeatureLayer>().ToList();
-                List<Layer> LayersToDelete = new List<Layer>();
-
-                if (!await RemovePRZLayersAndTables())
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removing PRZ layers and standalone tables from map..."), true, ++val);
+                if (!await PRZH.RemovePRZItemsFromMap(_map))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to remove layers and standalone tables from PRZ geodatabase");
+                    ProMsgBox.Show("Unable to remove PRZ layers and standalone tables from map");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removed all layers and standalone tables where source = {gdbpath}"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"All PRZ layers and standalone tables removed from map"), true, ++val);
                 }
 
                 // Delete all Items from Project GDB
-                if (!await PRZH.ClearProjectGDB())
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting all objects from the PRZ project geodatabase at {gdbpath}..."), true, ++val);
+                if (!await PRZH.DeleteProjectGDBContents())
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to delete all feature classes, tables, raster datasets, and feature datasets from " + gdbpath, LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to delete all feature classes, tables, raster datasets, or feature datasets from {gdbpath}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to delete all objects from {gdbpath}.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to delete all objects from {gdbpath}.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleted all feature classes, tables, raster datasets, and feature datasets from " + gdbpath), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleted all objects from {gdbpath}."), true, ++val);
                 }
 
                 #endregion
@@ -1584,26 +1582,30 @@ namespace NCC.PRZTools
                 // RASTER OPTION
                 if (OutputFormat_Rad_GISFormat_Raster_IsChecked)
                 {
-                    // Common Raster Stuff here...
+                    // Common National/Custom Raster stuff goes here...
+
+
 
                     // National Grid
                     if (PUSource_Rad_NatGrid_IsChecked)
                     {
-                        string tempRaster1 = "TempRas1";
-                        string tempRaster2 = "TempRas2";
-
+                        // Get Extent
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national grid extent for study area..."), true, ++val);
                         (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
                         if (!gridBounds.success)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve National Grid extent envelope.\n{gridBounds.message}", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{gridBounds.message}");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve national grid extent.\n\nMessage: {gridBounds.message}", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve national grid extent.\n\nMessage: {gridBounds.message}");
                             return false;
                         }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"National grid extent retrieved."), true, ++val);
+                        }
 
-                        // Load the National Grid Tiles
-                        object[] o = { tempRaster1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
-
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Raster Dataset..."), true, ++val);
+                        // Build Constant Raster
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating preliminary (constant-value) raster..."), true, ++val);
+                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
                         toolParams = Geoprocessing.MakeValueArray(o);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
@@ -1615,13 +1617,13 @@ namespace NCC.PRZTools
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset created successfully."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("PreliminaryRaster dataset created successfully."), true, ++val);
                         }
 
                         // Copy the raster to the correct bitdepth of int32 (to allow storage of humongous ID numbers
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying to better bit depth..."), true, ++val);
 
-                        object[] o2 = { tempRaster1, tempRaster2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "" };
+                        object[] o2 = { PRZC.c_RAS_TEMP_1, PRZC.c_RAS_TEMP_2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "" };
 
                         toolParams = Geoprocessing.MakeValueArray(o2);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
@@ -1645,12 +1647,12 @@ namespace NCC.PRZTools
                             {
                                 using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
                                 {
-                                    if (!await PRZH.RasterExists(geodatabase, tempRaster2))
+                                    if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
                                         return false;
                                     }
 
-                                    using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(tempRaster2))
+                                    using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(PRZC.c_RAS_TEMP_2))
                                     {
                                         // Get the virtual Raster from Band 1 of the Raster Dataset
                                         int[] bands = { 0 };
@@ -1710,7 +1712,7 @@ namespace NCC.PRZTools
                                 }
 
                                 // Delete the temp rasters
-                                string rasters_to_delete = tempRaster1 + ";" + tempRaster2;
+                                string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2;
                                 toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                                 toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
@@ -1757,7 +1759,6 @@ namespace NCC.PRZTools
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated successfully."), true, ++val);
                                 }
 
-
                                 return true;
                             }
                             catch (Exception ex)
@@ -1774,6 +1775,63 @@ namespace NCC.PRZTools
                         else
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something good happened here."), true, ++val);
+                        }
+
+                        // Ensure I've got my new raster...
+                        string puraspath = PRZH.GetPath_Raster_PU();
+                        if (!await PRZH.RasterExists_PU())
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
+                            return false;
+                        }
+
+                        // Build the Raster Attribute table...
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(puraspath, "OVERWRITE");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster attribute table built successfully."), true, ++val);
+                        }
+
+                        // Add fields to Raster Attribute Table
+                        string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
+                        string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
+                        string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
+                        string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
+                        string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 0 #;";
+                        string fldPUAreaAC = PRZC.c_FLD_FC_PU_AREA_AC + " DOUBLE 'Acres' # 0 #;";
+                        string fldPUAreaHA = PRZC.c_FLD_FC_PU_AREA_HA + " DOUBLE 'Hectares' # 0 #;";
+                        string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM2 + " DOUBLE 'Square km' # 0 #;";
+                        string fldCFCount = PRZC.c_FLD_FC_PU_FEATURECOUNT + " LONG 'Conservation Feature Count' # 0 #;";
+                        string fldSharedPerim = PRZC.c_FLD_FC_PU_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
+                        string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
+                        string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
+
+                        string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                         }
                     }
 
@@ -1994,80 +2052,6 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
-                return false;
-            }
-        }
-
-        private async Task<bool> RemovePRZLayersAndTables()
-        {
-            try
-            {
-                List<StandaloneTable> tables_to_remove = new List<StandaloneTable>();
-                List<Layer> layers_to_remove = new List<Layer>();
-
-                await QueuedTask.Run(async () =>
-                {
-                    using (var geodatabase = await PRZH.GetProjectGDB())
-                    {
-                        string gdbpath = geodatabase.GetPath().AbsolutePath;
-
-                        // Standalone Tables
-                        var standalone_tables = _map.StandaloneTables.ToList();
-                        foreach (var standalone_table in standalone_tables)
-                        {
-                            var uri = standalone_table.GetPath();
-                            if (uri != null)
-                            {
-                                string table_path = uri.AbsolutePath;
-
-                                if (table_path.StartsWith(gdbpath))
-                                {
-                                    tables_to_remove.Add(standalone_table);
-                                }
-                            }
-                        }
-
-                        // Layers
-                        var layers = _map.GetLayersAsFlattenedList().Where(l => l is RasterLayer);
-
-                        foreach (var layer in layers)
-                        {
-                            ProMsgBox.Show($"Raster Layer URI: {layer.URI}");
-
-                            var uri = layer.GetPath();
-                            ProMsgBox.Show($"Layer Name: {layer.Name}");
-                            if (uri != null)
-                            {
-                                string layer_path = uri.AbsolutePath;
-                                ProMsgBox.Show($"Layer uri absolute path: {layer_path}");
-
-                                if (layer_path.StartsWith(gdbpath))
-                                {
-                                    layers_to_remove.Add(layer);
-                                    ProMsgBox.Show($"removing...");
-                                }
-                                else
-                                {
-                                    ProMsgBox.Show("Not removing...");
-                                }
-                            }
-                            else
-                            {
-                                ProMsgBox.Show($"Layer {layer.Name} has no uri");
-                            }
-                        }
-                    }
-
-                    _map.RemoveStandaloneTables(tables_to_remove);
-                    _map.RemoveLayers(layers_to_remove);
-                    await MapView.Active.RedrawAsync(false);
-                });
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
@@ -2593,6 +2577,9 @@ namespace NCC.PRZTools
         {
             try
             {
+
+
+
 
                 return true;
             }

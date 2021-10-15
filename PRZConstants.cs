@@ -151,6 +151,8 @@
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
+        public const string c_RAS_TEMP_1 = "TempRas1";
+        public const string c_RAS_TEMP_2 = "TempRas2";
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";

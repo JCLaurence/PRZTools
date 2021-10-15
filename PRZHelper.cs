@@ -1,8 +1,9 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
-using ArcGIS.Core.Geometry;
 using ArcGIS.Core.Data.Raster;
+using ArcGIS.Core.Data.Topology;
+using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Dialogs;
@@ -2234,92 +2235,307 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> ClearProjectGDB()
+        public static async Task<bool> DeleteProjectGDBContents()
         {
             try
             {
                 if (!await QueuedTask.Run(async () =>
                 {
-                    using (Geodatabase gdb = await GetProjectGDB())
+                    try
                     {
-                        SchemaBuilder schemaBuilder = new SchemaBuilder(gdb);
-
-                        // First, delete all feature datasets if they exist
-                        foreach (FeatureDatasetDefinition fdsDef in gdb.GetDefinitions<FeatureDatasetDefinition>())
-                        {
-                            using (fdsDef)
-                            {
-                                schemaBuilder.Delete(new FeatureDatasetDescription(fdsDef));
-                                if (!schemaBuilder.Build())
-                                {
-                                    ProMsgBox.Show($"Unable to delete the {fdsDef.GetName()} feature dataset.");
-                                    return false;
-                                }
-                            }
-                        }
-
-                        // Next, delete all remaining standalone feature classes
-                        foreach (FeatureClassDefinition fcDef in gdb.GetDefinitions<FeatureClassDefinition>())
-                        {
-                            using (fcDef)
-                            {
-                                schemaBuilder.Delete(new FeatureClassDescription(fcDef));
-                                if (!schemaBuilder.Build())
-                                {
-                                    ProMsgBox.Show($"Unable to delete the {fcDef.GetName()} feature class.");
-                                    return false;
-                                }
-                            }
-                        }
-
-                        // Next, delete all remaining tables
-                        foreach (TableDefinition tDef in gdb.GetDefinitions<TableDefinition>())
-                        {
-                            using (tDef)
-                            {
-                                schemaBuilder.Delete(new TableDescription(tDef));
-                                if (!schemaBuilder.Build())
-                                {
-                                    ProMsgBox.Show($"Unable to delete the {tDef.GetName()} table.");
-                                    return false;
-                                }
-                            }
-                        }
-
-                        // Finally delete raster datasets using geoprocessing, since I'm not sure how else to do it
+                        // workspace path
                         string gdbpath = GetPath_ProjectGDB();
-                        var rasDefs = gdb.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName());   // get list of raster dataset names
 
-                        if (rasDefs.Count() > 0)
+                        // Declare some generic GP variables
+                        IReadOnlyList<string> toolParams;
+                        IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                        GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                        string toolOutput;
+
+                        using (Geodatabase geodatabase = await GetProjectGDB())
                         {
-                            // Declare some generic GP variables
-                            IReadOnlyList<string> toolParams;
-                            IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                            GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                            string toolOutput;
+                            // Get list of Relationship Classes
+                            var relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName());
+                            WriteLog($"{relDefs.Count()} Relationship Class(es) found in {gdbpath}...");
 
-                            string rasters_to_delete = string.Join(";", rasDefs);
-                            toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                            if (toolOutput == null)
+                            // Delete all relationship classes
+                            if (relDefs.Count() > 0)
                             {
-                                ProMsgBox.Show($"Error deleting the following Raster Dataset(s): {rasters_to_delete}");
-                                return false;
+                                WriteLog($"Deleting {relDefs.Count()} relationship class(es)...");
+                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", relDefs));
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    WriteLog($"Error deleting relationship class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting relationship class(es).");
+                                    return false;
+                                }
+                                else
+                                {
+                                    WriteLog($"Relationship class(es) deleted.");
+                                }
+                            }
+
+                            // Get list of Feature Dataset names
+                            var fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName());
+                            WriteLog($"{fdsDefs.Count()} Feature Dataset(s) found in {gdbpath}...");
+
+                            // Delete all Feature Datasets
+                            if (fdsDefs.Count() > 0)
+                            {
+                                WriteLog($"Deleting {fdsDefs.Count()} feature dataset(s)...");
+                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsDefs));
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    WriteLog($"Error deleting feature dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting feature dataset(s).");
+                                    return false;
+                                }
+                                else
+                                {
+                                    WriteLog($"Feature dataset(s) deleted.");
+                                }
+                            }
+
+                            // Get list of Raster Dataset names
+                            var rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName());
+                            WriteLog($"{rdsDefs.Count()} Raster Dataset(s) found in {gdbpath}...");
+
+                            // Delete all Raster Datasets
+                            if (rdsDefs.Count() > 0)
+                            {
+                                WriteLog($"Deleting {rdsDefs.Count()} raster dataset(s)...");
+                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsDefs));
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    WriteLog($"Error deleting raster dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting raster dataset(s).");
+                                    return false;
+                                }
+                                else
+                                {
+                                    WriteLog($"Raster dataset(s) deleted.");
+                                }
+                            }
+
+                            // Get list of top-level Feature Classes
+                            var fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName());
+                            WriteLog($"{fcDefs.Count()} Feature Class(es) found in {gdbpath}...");
+
+                            // Delete all Feature Classes
+                            if (fcDefs.Count() > 0)
+                            {
+                                WriteLog($"Deleting {fcDefs.Count()} feature class(es)...");
+                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcDefs));
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    WriteLog($"Error deleting feature class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting feature class(es).");
+                                    return false;
+                                }
+                                else
+                                {
+                                    WriteLog($"Feature class(es) deleted.");
+                                }
+                            }
+
+                            // Get list of tables
+                            var tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName());
+                            WriteLog($"{tabDefs.Count()} Table(s) found in {gdbpath}...");
+
+                            // Delete all tables
+                            if (tabDefs.Count() > 0)
+                            {
+                                WriteLog($"Deleting {tabDefs.Count()} table(s)...");
+                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabDefs));
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    WriteLog($"Error deleting table(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting table(s).");
+                                    return false;
+                                }
+                                else
+                                {
+                                    WriteLog($"Table(s) deleted.");
+                                }
                             }
                         }
 
                         return true;
                     }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
                 }))
                 {
+                    // Message here for user perhaps?
                     return false;
                 }
 
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> RemovePRZItemsFromMap(Map map)
+        {
+            try
+            {
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        // Relevant map contents
+                        var standalone_tables = map.StandaloneTables.ToList();
+                        var layers = map.GetLayersAsFlattenedList().Where(l => (l is FeatureLayer | l is RasterLayer));
+
+                        // Lists of items to remove
+                        List<StandaloneTable> tables_to_remove = new List<StandaloneTable>();
+                        List<Layer> layers_to_remove = new List<Layer>();
+
+                        using (Geodatabase geodatabase = await GetProjectGDB())
+                        {
+                            // Get the Geodatabase Info
+                            var gdbUri = geodatabase.GetPath();
+                            string gdbPath = gdbUri.AbsolutePath;
+
+                            // Process the Standalone Tables
+                            foreach (var standalone_table in standalone_tables)
+                            {
+                                using (Table table = standalone_table.GetTable())
+                                {
+                                    // Ensure table actually exists...
+                                    if (table != null)
+                                    {
+                                        // Table's Datastore
+                                        using (Datastore datastore = table.GetDatastore())
+                                        {
+                                            if (datastore != null)
+                                            {
+                                                Uri datastoreUri = datastore.GetPath();
+                                                if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
+                                                {
+                                                    if (gdbPath == datastoreUri.AbsolutePath)
+                                                    {
+                                                        tables_to_remove.Add(standalone_table);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Process the Layers
+                            foreach (var layer in layers)
+                            {
+                                if (layer is FeatureLayer FL)
+                                {
+                                    using (FeatureClass featureClass = FL.GetFeatureClass())
+                                    {
+                                        if (featureClass != null)
+                                        {
+                                            // Feature Class's Datastore
+                                            using (Datastore datastore = featureClass.GetDatastore())
+                                            {
+                                                if (datastore != null)
+                                                {
+                                                    Uri datastoreUri = datastore.GetPath();
+                                                    if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
+                                                    {
+                                                        if (gdbPath == datastoreUri.AbsolutePath)
+                                                        {
+                                                            layers_to_remove.Add(layer);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else if (layer is RasterLayer RL)
+                                {
+                                    using (Raster raster = RL.GetRaster())
+                                    {
+                                        var rasterDataset = raster.GetRasterDataset();
+
+                                        if (rasterDataset != null)
+                                        {
+                                            // Raster Dataset's Datastore
+                                            using (Datastore datastore = rasterDataset.GetDatastore())
+                                            {
+                                                if (datastore != null)
+                                                {
+                                                    Uri datastoreUri = datastore.GetPath();
+                                                    if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
+                                                    {
+                                                        if (gdbPath == datastoreUri.AbsolutePath)
+                                                        {
+                                                            layers_to_remove.Add(layer);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Remove the items
+
+                        bool removed = false;
+
+                        if (tables_to_remove.Count > 0)
+                        {
+                            map.RemoveStandaloneTables(tables_to_remove);
+                            removed = true;
+                        }
+
+                        if (layers_to_remove.Count > 0)
+                        {
+                            map.RemoveLayers(layers_to_remove);
+                            removed = true;
+                        }
+
+                        if (removed)
+                        {
+                            await MapView.Active.RedrawAsync(false);
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    // Message might go here?
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
         }
