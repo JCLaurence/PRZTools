@@ -310,7 +310,7 @@ namespace NCC.PRZTools
         /// <param name="study_area_geom"></param>
         /// <param name="grid_dimension"></param>
         /// <returns></returns>
-        public static (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetGridBoundsFromStudyArea(Geometry geom, NationalGridDimension gridDimension)
+        public static (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetNatGridBoundsFromStudyArea(Geometry geom, NationalGridDimension gridDimension)
         {
             try
             {

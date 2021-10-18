@@ -3,7 +3,7 @@
 
     #region ENUMERATIONS
 
-    // WHERE TO WORK (WTW)
+    #region WHERE TO WORK
 
     public enum WTWLegendType
     {
@@ -25,6 +25,12 @@
         national,
         missing
     }
+
+    #endregion
+
+    #region PLANNING UNIT GENERATION
+
+    #endregion
 
 
     // SELECTION RULES

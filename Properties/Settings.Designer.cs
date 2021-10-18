@@ -109,10 +109,10 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("M")]
-        public string DEFAULT_TILE_AREA_UNITS {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int DEFAULT_TILE_AREA_UNITS {
             get {
-                return ((string)(this["DEFAULT_TILE_AREA_UNITS"]));
+                return ((int)(this["DEFAULT_TILE_AREA_UNITS"]));
             }
             set {
                 this["DEFAULT_TILE_AREA_UNITS"] = value;
@@ -224,6 +224,42 @@ namespace NCC.PRZTools.Properties {
             }
             set {
                 this["DEFAULT_OUTPUT_FORMAT"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("AREA")]
+        public string DEFAULT_PU_CUSTOMGRID_TYPE {
+            get {
+                return ((string)(this["DEFAULT_PU_CUSTOMGRID_TYPE"]));
+            }
+            set {
+                this["DEFAULT_PU_CUSTOMGRID_TYPE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public string DEFAULT_TILE_SIDE {
+            get {
+                return ((string)(this["DEFAULT_TILE_SIDE"]));
+            }
+            set {
+                this["DEFAULT_TILE_SIDE"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int DEFAULT_TILE_SIDE_UNITS {
+            get {
+                return ((int)(this["DEFAULT_TILE_SIDE_UNITS"]));
+            }
+            set {
+                this["DEFAULT_TILE_SIDE_UNITS"] = value;
             }
         }
     }

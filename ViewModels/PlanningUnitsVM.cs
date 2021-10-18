@@ -43,17 +43,28 @@ namespace NCC.PRZTools
         private ICommand _cmdClearLog;
         private ICommand _cmdTest;
 
+        // lengths
+        private const string c_M = "m";
+        private const string c_KM = "km";
+
+        // areas
+        private const string c_M2 = "m\u00B2";
+        private const string c_AC = "ac";
+        private const string c_HA = "ha";
+        private const string c_KM2 = "km\u00B2";
+
+
         #region PLANNING UNIT SOURCE GEOMETRY
 
         private bool _puSource_Rad_NatGrid_IsChecked;
         private bool _puSource_Rad_CustomGrid_IsChecked;
         private bool _puSource_Rad_Layer_IsChecked;
 
+        private bool _puSource_Rad_CustomGrid_TileArea_IsChecked;
         private string _puSource_Txt_CustomGrid_TileArea;
-        private bool _puSource_Rad_TileArea_M_IsChecked;
-        private bool _puSource_Rad_TileArea_Ac_IsChecked;
-        private bool _puSource_Rad_TileArea_Ha_IsChecked;
-        private bool _puSource_Rad_TileArea_Km_IsChecked;
+
+        private bool _puSource_Rad_CustomGrid_TileSide_IsChecked;
+        private string _puSource_Txt_CustomGrid_TileSide;
 
         private bool _puSource_Rad_NatGrid_1M_IsChecked;
         private bool _puSource_Rad_NatGrid_10M_IsChecked;
@@ -65,9 +76,17 @@ namespace NCC.PRZTools
         private Visibility _puSource_Vis_NatGrid_Controls = Visibility.Collapsed;
         private Visibility _puSource_Vis_CustomGrid_Controls = Visibility.Collapsed;
         private Visibility _puSource_Vis_Layer_Controls = Visibility.Collapsed;
+        private Visibility _puSource_Vis_CustomGrid_TileArea_Controls = Visibility.Hidden;
+        private Visibility _puSource_Vis_CustomGrid_TileSide_Controls = Visibility.Hidden;
 
         private List<FeatureLayer> _puSource_Cmb_Layer_FeatureLayers;
         private FeatureLayer _puSource_Cmb_Layer_SelectedFeatureLayer;
+
+        private Dictionary<int, string> _puSource_Cmb_TileArea_Units;
+        private KeyValuePair<int, string> _puSource_Cmb_TileArea_SelectedUnit;
+
+        private Dictionary<int, string> _puSource_Cmb_TileSide_Units;
+        private KeyValuePair<int, string> _puSource_Cmb_TileSide_SelectedUnit;
 
         #endregion
 
@@ -180,6 +199,17 @@ namespace NCC.PRZTools
             get => _puSource_Vis_Layer_Controls;
             set => SetProperty(ref _puSource_Vis_Layer_Controls, value, () => PUSource_Vis_Layer_Controls);
         }
+        public Visibility PUSource_Vis_CustomGrid_TileArea_Controls
+        {
+            get => _puSource_Vis_CustomGrid_TileArea_Controls;
+            set => SetProperty(ref _puSource_Vis_CustomGrid_TileArea_Controls, value, () => PUSource_Vis_CustomGrid_TileArea_Controls);
+        }
+        public Visibility PUSource_Vis_CustomGrid_TileSide_Controls
+        {
+            get => _puSource_Vis_CustomGrid_TileSide_Controls;
+            set => SetProperty(ref _puSource_Vis_CustomGrid_TileSide_Controls, value, () => PUSource_Vis_CustomGrid_TileSide_Controls);
+        }
+
         public string PUSource_Txt_CustomGrid_TileArea
         {
             get => _puSource_Txt_CustomGrid_TileArea;
@@ -190,6 +220,54 @@ namespace NCC.PRZTools
                 Properties.Settings.Default.Save();
             }
         }
+        public string PUSource_Txt_CustomGrid_TileSide
+        {
+            get => _puSource_Txt_CustomGrid_TileSide;
+            set
+            {
+                SetProperty(ref _puSource_Txt_CustomGrid_TileSide, value, () => PUSource_Txt_CustomGrid_TileSide);
+                Properties.Settings.Default.DEFAULT_TILE_SIDE = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        public Dictionary<int, string> PUSource_Cmb_TileArea_Units
+        {
+            get => _puSource_Cmb_TileArea_Units;
+            set => SetProperty(ref _puSource_Cmb_TileArea_Units, value, () => PUSource_Cmb_TileArea_Units);
+        }
+        public KeyValuePair<int, string> PUSource_Cmb_TileArea_SelectedUnit
+        {
+            get => _puSource_Cmb_TileArea_SelectedUnit;
+            set
+            {
+                SetProperty(ref _puSource_Cmb_TileArea_SelectedUnit, value, () => PUSource_Cmb_TileArea_SelectedUnit);
+                if (!value.Equals(default(KeyValuePair<int, string>)))
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = value.Key;
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+        public Dictionary<int, string> PUSource_Cmb_TileSide_Units
+        {
+            get => _puSource_Cmb_TileSide_Units;
+            set => SetProperty(ref _puSource_Cmb_TileSide_Units, value, () => PUSource_Cmb_TileSide_Units);
+        }
+        public KeyValuePair<int, string> PUSource_Cmb_TileSide_SelectedUnit
+        {
+            get => _puSource_Cmb_TileSide_SelectedUnit;
+            set
+            {
+                SetProperty(ref _puSource_Cmb_TileSide_SelectedUnit, value, () => PUSource_Cmb_TileSide_SelectedUnit);
+                if (!value.Equals(default(KeyValuePair<int, string>)))
+                {
+                    Properties.Settings.Default.DEFAULT_TILE_SIDE_UNITS = value.Key;
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
         public bool PUSource_Rad_NatGrid_1M_IsChecked
         {
             get => _puSource_Rad_NatGrid_1M_IsChecked;
@@ -269,58 +347,89 @@ namespace NCC.PRZTools
             }
         }
 
-        public bool PUSource_Rad_TileArea_M_IsChecked
+        public bool PUSource_Rad_CustomGrid_TileArea_IsChecked
         {
-            get => _puSource_Rad_TileArea_M_IsChecked;
+            get => _puSource_Rad_CustomGrid_TileArea_IsChecked;
             set
             {
-                SetProperty(ref _puSource_Rad_TileArea_M_IsChecked, value, () => PUSource_Rad_TileArea_M_IsChecked);
+                SetProperty(ref _puSource_Rad_CustomGrid_TileArea_IsChecked, value, () => PUSource_Rad_CustomGrid_TileArea_IsChecked);
+                PUSource_Vis_CustomGrid_TileArea_Controls = value ? Visibility.Visible : Visibility.Hidden;
                 if (value)
                 {
-                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "M";
+                    Properties.Settings.Default.DEFAULT_PU_CUSTOMGRID_TYPE = "AREA";
                     Properties.Settings.Default.Save();
                 }
             }
         }
-        public bool PUSource_Rad_TileArea_Ac_IsChecked
+        public bool PUSource_Rad_CustomGrid_TileSide_IsChecked
         {
-            get => _puSource_Rad_TileArea_Ac_IsChecked;
+            get => _puSource_Rad_CustomGrid_TileSide_IsChecked;
             set
             {
-                SetProperty(ref _puSource_Rad_TileArea_Ac_IsChecked, value, () => PUSource_Rad_TileArea_Ac_IsChecked);
+                SetProperty(ref _puSource_Rad_CustomGrid_TileSide_IsChecked, value, () => PUSource_Rad_CustomGrid_TileSide_IsChecked);
+                PUSource_Vis_CustomGrid_TileSide_Controls = value ? Visibility.Visible : Visibility.Hidden;
                 if (value)
                 {
-                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "AC";
+                    Properties.Settings.Default.DEFAULT_PU_CUSTOMGRID_TYPE = "SIDE";
                     Properties.Settings.Default.Save();
                 }
             }
         }
-        public bool PUSource_Rad_TileArea_Ha_IsChecked
-        {
-            get => _puSource_Rad_TileArea_Ha_IsChecked;
-            set
-            {
-                SetProperty(ref _puSource_Rad_TileArea_Ha_IsChecked, value, () => PUSource_Rad_TileArea_Ha_IsChecked);
-                if (value)
-                {
-                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "HA";
-                    Properties.Settings.Default.Save();
-                }
-            }
-        }
-        public bool PUSource_Rad_TileArea_Km_IsChecked
-        {
-            get => _puSource_Rad_TileArea_Km_IsChecked;
-            set
-            {
-                SetProperty(ref _puSource_Rad_TileArea_Km_IsChecked, value, () => PUSource_Rad_TileArea_Km_IsChecked);
-                if (value)
-                {
-                    Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "KM";
-                    Properties.Settings.Default.Save();
-                }
-            }
-        }
+
+
+
+        //public bool PUSource_Rad_TileArea_M_IsChecked
+        //{
+        //    get => _puSource_Rad_TileArea_M_IsChecked;
+        //    set
+        //    {
+        //        SetProperty(ref _puSource_Rad_TileArea_M_IsChecked, value, () => PUSource_Rad_TileArea_M_IsChecked);
+        //        if (value)
+        //        {
+        //            Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "M";
+        //            Properties.Settings.Default.Save();
+        //        }
+        //    }
+        //}
+        //public bool PUSource_Rad_TileArea_Ac_IsChecked
+        //{
+        //    get => _puSource_Rad_TileArea_Ac_IsChecked;
+        //    set
+        //    {
+        //        SetProperty(ref _puSource_Rad_TileArea_Ac_IsChecked, value, () => PUSource_Rad_TileArea_Ac_IsChecked);
+        //        if (value)
+        //        {
+        //            Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "AC";
+        //            Properties.Settings.Default.Save();
+        //        }
+        //    }
+        //}
+        //public bool PUSource_Rad_TileArea_Ha_IsChecked
+        //{
+        //    get => _puSource_Rad_TileArea_Ha_IsChecked;
+        //    set
+        //    {
+        //        SetProperty(ref _puSource_Rad_TileArea_Ha_IsChecked, value, () => PUSource_Rad_TileArea_Ha_IsChecked);
+        //        if (value)
+        //        {
+        //            Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "HA";
+        //            Properties.Settings.Default.Save();
+        //        }
+        //    }
+        //}
+        //public bool PUSource_Rad_TileArea_Km_IsChecked
+        //{
+        //    get => _puSource_Rad_TileArea_Km_IsChecked;
+        //    set
+        //    {
+        //        SetProperty(ref _puSource_Rad_TileArea_Km_IsChecked, value, () => PUSource_Rad_TileArea_Km_IsChecked);
+        //        if (value)
+        //        {
+        //            Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS = "KM";
+        //            Properties.Settings.Default.Save();
+        //        }
+        //    }
+        //}
         public List<FeatureLayer> PUSource_Cmb_Layer_FeatureLayers
         {
             get => _puSource_Cmb_Layer_FeatureLayers;
@@ -639,6 +748,21 @@ namespace NCC.PRZTools
                     PUSource_Rad_NatGrid_1Km_IsChecked = true;
                 }
 
+                // Custom Grid Tile Type
+                string customgridtype = Properties.Settings.Default.DEFAULT_PU_CUSTOMGRID_TYPE;
+                if (string.IsNullOrEmpty(customgridtype) || customgridtype == "AREA")
+                {
+                    PUSource_Rad_CustomGrid_TileArea_IsChecked = true;
+                }
+                else if (customgridtype == "SIDE")
+                {
+                    PUSource_Rad_CustomGrid_TileSide_IsChecked = true;
+                }
+                else
+                {
+                    PUSource_Rad_CustomGrid_TileArea_IsChecked = true;
+                }
+
                 // Custom Grid Tile Area
                 string tile_area = Properties.Settings.Default.DEFAULT_TILE_AREA;
 
@@ -655,24 +779,58 @@ namespace NCC.PRZTools
                     PUSource_Txt_CustomGrid_TileArea = "1";
                 }
 
-                // Custom Grid Tile Area Units
-                string area_units = Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS;
+                // Custom Grid Tile Area Units ComboBox
+                Dictionary<int, string> tileareaunits = new Dictionary<int, string>();
+                tileareaunits.Add(1, "m\u00B2");
+                tileareaunits.Add(2, "ac");
+                tileareaunits.Add(3, "ha");
+                tileareaunits.Add(4, "km\u00B2");
+                PUSource_Cmb_TileArea_Units = tileareaunits;
 
-                switch (area_units)
+                int saved_areaunit = Properties.Settings.Default.DEFAULT_TILE_AREA_UNITS;
+                if (tileareaunits.ContainsKey(saved_areaunit))
                 {
-                    case "M":
-                        PUSource_Rad_TileArea_M_IsChecked = true;
-                        break;
-                    case "AC":
-                        PUSource_Rad_TileArea_Ac_IsChecked = true;
-                        break;
-                    case "HA":
-                        PUSource_Rad_TileArea_Ha_IsChecked = true;
-                        break;
-                    case "KM":
-                    default:
-                        PUSource_Rad_TileArea_Km_IsChecked = true;
-                        break;
+                    KeyValuePair<int, string> kvp = new KeyValuePair<int, string>(saved_areaunit, tileareaunits[saved_areaunit]);
+                    PUSource_Cmb_TileArea_SelectedUnit = kvp;
+                }
+                else
+                {
+                    KeyValuePair<int, string> kvp = new KeyValuePair<int, string>(1, tileareaunits[1]);
+                    PUSource_Cmb_TileArea_SelectedUnit = kvp;
+                }
+
+                // Custom Grid Tile Side
+                string tile_side = Properties.Settings.Default.DEFAULT_TILE_SIDE;
+
+                if (string.IsNullOrEmpty(tile_side))
+                {
+                    PUSource_Txt_CustomGrid_TileSide = "1";
+                }
+                else if (double.TryParse(tile_side, out double tileside))
+                {
+                    PUSource_Txt_CustomGrid_TileSide = (tileside <= 0) ? "1" : tile_side;
+                }
+                else
+                {
+                    PUSource_Txt_CustomGrid_TileSide = "1";
+                }
+
+                // Custom Grid Tile Side Units ComboBox
+                Dictionary<int, string> tilesideunits = new Dictionary<int, string>();
+                tilesideunits.Add(1, "m");
+                tilesideunits.Add(2, "km");
+                PUSource_Cmb_TileSide_Units = tilesideunits;
+
+                int saved_sideunit = Properties.Settings.Default.DEFAULT_TILE_SIDE_UNITS;
+                if (tilesideunits.ContainsKey(saved_sideunit))
+                {
+                    KeyValuePair<int, string> kvp = new KeyValuePair<int, string>(saved_sideunit, tilesideunits[saved_sideunit]);
+                    PUSource_Cmb_TileSide_SelectedUnit = kvp;
+                }
+                else
+                {
+                    KeyValuePair<int, string> kvp = new KeyValuePair<int, string>(1, tilesideunits[1]);
+                    PUSource_Cmb_TileSide_SelectedUnit = kvp;
                 }
 
                 // Feature Layers Listing
@@ -1075,7 +1233,6 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Output Spatial Reference = {OutputSR.Name}"), true, ++val);
 
-
                 // Validation: Study Area Source Geometry
                 if (SASource_Rad_Graphic_IsChecked)
                 {
@@ -1142,10 +1299,13 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Buffer Distance = " + bu), true, ++val);
 
-                // Miscellaneous variables
+                // Nat Grid - Misc
                 int natgrid_dimension = 0;
                 int natgrid_sidelength = 0;
+
+                // Custom Grid - Misc
                 double customgrid_tile_area_m2 = 0;
+                double customgrid_tile_side_m = 0;
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
@@ -1197,46 +1357,126 @@ namespace NCC.PRZTools
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
-                    // Validation: Tile Area
-                    string tile_area_text = string.IsNullOrEmpty(PUSource_Txt_CustomGrid_TileArea) ? "0" : ((PUSource_Txt_CustomGrid_TileArea.Trim() == "") ? "0" : PUSource_Txt_CustomGrid_TileArea.Trim());
+                    // Ensure that one of the two tile options have been selected
+                    if (PUSource_Rad_CustomGrid_TileArea_IsChecked)
+                    {
+                        // Validation: Tile Area
+                        string tile_area_text = string.IsNullOrEmpty(PUSource_Txt_CustomGrid_TileArea) ? "0" : ((PUSource_Txt_CustomGrid_TileArea.Trim() == "") ? "0" : PUSource_Txt_CustomGrid_TileArea.Trim());
 
-                    if (!double.TryParse(tile_area_text, out customgrid_tile_area_m2))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
-                        return false;
+                        if (!double.TryParse(tile_area_text, out customgrid_tile_area_m2))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
+                            ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
+                            return false;
+                        }
+                        else if (customgrid_tile_area_m2 <= 0)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
+                            ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
+                            return false;
+                        }
+                        else
+                        {
+                            string au = "";
+
+                            // validate the selected tile area units
+                            if (PUSource_Cmb_TileArea_SelectedUnit.Equals(default(KeyValuePair<int, string>)))
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No tile area units specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                                ProMsgBox.Show("Please specify the tile area units.", "Validation");
+                                return false;
+                            }
+
+                            switch (PUSource_Cmb_TileArea_SelectedUnit.Key)
+                            {
+                                case 1:
+                                    au = tile_area_text + " m\u00B2";
+                                    break;
+
+                                case 2:
+                                    au = tile_area_text + " ac";
+                                    customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_AC;
+                                    break;
+
+                                case 3:
+                                    au = tile_area_text + " ha";
+                                    customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_HA;
+                                    break;
+
+                                case 4:
+                                    au = tile_area_text + " km\u00B2";
+                                    customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_KM2;
+                                    break;
+
+                                default:
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Invalid tile area units specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                                    ProMsgBox.Show("Invalid tile area units specified.", "Validation");
+                                    return false;
+                            }
+
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
+
+                            // Update the tile side length based on the selected area
+                            customgrid_tile_side_m = Math.Sqrt(customgrid_tile_area_m2);
+                        }
                     }
-                    else if (customgrid_tile_area_m2 <= 0)
+                    else if (PUSource_Rad_CustomGrid_TileSide_IsChecked)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Area", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Please specify a valid Tile Area.  Value must be numeric and greater than 0", "Validation");
-                        return false;
+                        // Validation: Tile Side
+                        string tile_side_text = string.IsNullOrEmpty(PUSource_Txt_CustomGrid_TileSide) ? "0" : ((PUSource_Txt_CustomGrid_TileSide.Trim() == "") ? "0" : PUSource_Txt_CustomGrid_TileSide.Trim());
+
+                        if (!double.TryParse(tile_side_text, out customgrid_tile_side_m))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Side", LogMessageType.VALIDATION_ERROR), true, ++val);
+                            ProMsgBox.Show("Please specify a valid Tile Side.  Value must be numeric and greater than 0", "Validation");
+                            return false;
+                        }
+                        else if (customgrid_tile_side_m <= 0)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Missing or invalid Tile Side", LogMessageType.VALIDATION_ERROR), true, ++val);
+                            ProMsgBox.Show("Please specify a valid Tile Side.  Value must be numeric and greater than 0", "Validation");
+                            return false;
+                        }
+                        else
+                        {
+                            string su = "";
+
+                            // validate the selected tile area units
+                            if (PUSource_Cmb_TileSide_SelectedUnit.Equals(default(KeyValuePair<int, string>)))
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> No tile side units specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                                ProMsgBox.Show("Please specify the tile side units.", "Validation");
+                                return false;
+                            }
+
+                            switch (PUSource_Cmb_TileSide_SelectedUnit.Key)
+                            {
+                                case 1:
+                                    su = tile_side_text + " m";
+                                    break;
+
+                                case 2:
+                                    su = tile_side_text + " km";
+                                    customgrid_tile_side_m *= 1000.0;
+                                    break;
+
+                                default:
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Invalid tile side units specified.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                                    ProMsgBox.Show("Invalid tile side units specified.", "Validation");
+                                    return false;
+                            }
+
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Side = " + su), true, ++val);
+
+                            // Update the tile area based on the selected side (I don't think I need this)
+                            customgrid_tile_area_m2 = Math.Pow(customgrid_tile_side_m, 2);
+                        }
                     }
                     else
                     {
-                        string au = "";
-
-                        if (PUSource_Rad_TileArea_M_IsChecked)
-                        {
-                            au = tile_area_text + " m\xB2";
-                        }
-                        else if (PUSource_Rad_TileArea_Ac_IsChecked)
-                        {
-                            au = tile_area_text + " ac";
-                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_AC;
-                        }
-                        else if (PUSource_Rad_TileArea_Ha_IsChecked)
-                        {
-                            au = tile_area_text + " ha";
-                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_HA;
-                        }
-                        else if (PUSource_Rad_TileArea_Km_IsChecked)
-                        {
-                            au = tile_area_text + " km\xB2";
-                            customgrid_tile_area_m2 /= PRZC.c_CONVERT_M2_TO_KM2;
-                        }
-
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Tile Area = " + au), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Custom Grid tile size not defined either by area or length.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Please specify the Custom Grid tile size, either by area or side length.", "Validation");
+                        return false;
                     }
                 }
                 else if (PUSource_Rad_Layer_IsChecked)
@@ -1591,7 +1831,7 @@ namespace NCC.PRZTools
                     {
                         // Get Extent
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national grid extent for study area..."), true, ++val);
-                        (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+                        (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGridInfo.GetNatGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
                         if (!gridBounds.success)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve national grid extent.\n\nMessage: {gridBounds.message}", LogMessageType.ERROR), true, ++val);
@@ -1902,14 +2142,11 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                     }
 
-
-
-
                     // National Grid
                     if (PUSource_Rad_NatGrid_IsChecked)
                     {
                         // Retrieve the required grid extent based on the specified National Grid dimension and the buffered study area
-                        var res = NationalGridInfo.GetGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+                        var res = NationalGridInfo.GetNatGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
 
                         if (!res.success)
                         {
@@ -1939,44 +2176,23 @@ namespace NCC.PRZTools
                     // Custom Grid
                     else if (PUSource_Rad_CustomGrid_IsChecked)
                     {
-                        // Assemble the Grid
-                        double tile_edge_length = 0;
-                        double tile_width = 0;
-                        double tile_center_to_right = 0;
-                        double tile_height = 0;
-                        double tile_center_to_top = 0;
-                        int tiles_across = 0;
-                        int tiles_up = 0;
+                        // Retrieve the required grid extent based on the custom grid side length and buffered study area
+                        var res = GetCustomGridBoundsFromStudyArea(SA_poly_buffer, customgrid_tile_side_m);
 
-                        tile_edge_length = Math.Sqrt(customgrid_tile_area_m2);
-                        tile_width = tile_edge_length;
-                        tile_height = tile_edge_length;
-                        tile_center_to_right = tile_width / 2.0;
-                        tile_center_to_top = tile_height / 2.0;
-
-                        Envelope env = SA_poly_buffer.Extent;
-                        double env_width = env.Width;
-                        double env_height = env.Height;
-                        MapPoint env_ll_point = MapPointBuilderEx.CreateMapPoint(env.XMin, env.YMin, OutputSR);
-
-                        tiles_across = (int)Math.Ceiling(env_width / tile_width) + 3;
-                        tiles_up = (int)Math.Ceiling(env_height / tile_height) + 3;
-
-                        PlanningUnitTileInfo tileinfo = new PlanningUnitTileInfo
+                        if (!res.success)
                         {
-                            LL_Point = env_ll_point,
-                            tiles_across = tiles_across,
-                            tiles_up = tiles_up,
-                            tile_area = customgrid_tile_area_m2,
-                            tile_center_to_right = tile_center_to_right,
-                            tile_center_to_top = tile_center_to_top,
-                            tile_edge_length = tile_edge_length,
-                            tile_height = tile_height,
-                            tile_width = tile_width
-                        };
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve Custom Grid extent envelope.\n{res.message}", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve Custom Grid extent envelope.\n{res.message}");
+                            return false;
+                        }
+
+                        // Retrieve the vitals of the custom grid extent envelope
+                        int tiles_across = res.tilesAcross;
+                        int tiles_up = res.tilesUp;
+                        double side_length = customgrid_tile_side_m;
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Importing tiles into {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                        if (!await LoadCustomGridTiles_EditOp(tileinfo, SA_poly_buffer))
+                        if (!await LoadCustomGridTiles_EditOp(SA_poly_buffer, res.gridEnv, tiles_across, tiles_up, side_length))
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Error importing tiles...", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show("Error importing tiles.");
@@ -2238,11 +2454,11 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> LoadCustomGridTiles_EditOp(PlanningUnitTileInfo tileInfo, Polygon study_area_buffer_poly)
+        private async Task<bool> LoadCustomGridTiles_EditOp(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, double side_length)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
-            int max = tileInfo.tiles_up;
+            int max = tiles_up;
 
             try
             {
@@ -2274,7 +2490,7 @@ namespace NCC.PRZTools
                 }
 
                 // Do the work here!
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tileInfo.tiles_up * tileInfo.tiles_across} potential tiles)..."), true, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_up * tiles_across} potential tiles)..."), true, max, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -2290,12 +2506,10 @@ namespace NCC.PRZTools
                         loader.SelectModifiedFeatures = false;
 
                         // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
-                        Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(study_area_buffer_poly);
+                        Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(buffered_study_area);
 
                         // Planning Unit ID variable
                         int puid = 1;
-
-                        double hex_horizoffset = tileInfo.tile_center_to_right + (tileInfo.tile_edge_length / 2.0);     // this is specifically for hexagon tiles
                         int flusher = 0;
 
                         using (FeatureClass fc = await PRZH.GetFC_PU())
@@ -2307,18 +2521,18 @@ namespace NCC.PRZTools
                                 using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
                                 using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
                                 {
-                                    for (int row = 0; row < tileInfo.tiles_up; row++)
+                                    for (int row = 0; row < tiles_up; row++)
                                     {
-                                        for (int col = 0; col < tileInfo.tiles_across; col++)
+                                        for (int col = 0; col < tiles_across; col++)
                                         {
                                             double CurrentX;
                                             double CurrentY;
                                             Polygon tilePoly = null;
 
-                                            CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
-                                            CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
-                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
-                                            tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
+                                            CurrentX = gridEnvelope.XMin + (col * side_length);
+                                            CurrentY = gridEnvelope.YMin + (row * side_length);
+                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + side_length, CurrentY + side_length, gridEnvelope.SpatialReference);
+                                            tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, gridEnvelope.SpatialReference);
 
                                             // Determine if the tile poly intersects with the study area buffer polygon
                                             if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
@@ -2573,11 +2787,142 @@ namespace NCC.PRZTools
             }
         }
 
+        private (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetCustomGridBoundsFromStudyArea(Geometry sa_geom, double side_length)
+        {
+            try
+            {
+                #region VALIDATION
+
+                // Ensure that side length is valid
+                if (side_length <= 0)
+                {
+                    return (false, null, "Side length is <= 0", 0, 0);
+                }
+
+                // Ensure that geometry is not null or empty
+                if (sa_geom == null || sa_geom.IsEmpty)
+                {
+                    return (false, null, "Geometry is null or empty", 0, 0);
+                }
+
+                // Ensure the geometry is either an envelope or a polygon
+                if (!(sa_geom is Envelope | sa_geom is Polygon))
+                {
+                    return (false, null, "Geometry is not of type envelope or polygon", 0, 0);
+                }
+
+                // Simplify the geometry
+                if (!GeometryEngine.Instance.IsSimpleAsFeature(sa_geom))
+                {
+                    sa_geom = GeometryEngine.Instance.SimplifyAsFeature(sa_geom);
+                }
+
+                #endregion
+
+                #region GENERATE OUTPUT ENVELOPE
+
+                // Get the study area envelope
+                Envelope sa_envelope = sa_geom.Extent;
+
+                // get some dimensions
+                double envWidth = sa_envelope.Width;
+                double envHeight = sa_envelope.Height;
+
+                // X direction
+                double tiles_across_float = envWidth / side_length;
+                double leftover_distance_across = envWidth % side_length;   // distance in meters
+
+                // Y direction
+                double tiles_up_float = envHeight / side_length;
+                double leftover_distance_up = envHeight % side_length;      // distance in meters
+
+                int tiles_up = 0;
+                int tiles_across = 0;
+
+                double X_adjustment = 0;
+                double Y_adjustment = 0;
+
+                // Process the Width
+                if (leftover_distance_across > 0)
+                {
+                    tiles_across = (int)Math.Ceiling(tiles_across_float);   // bump up tiles across by one
+                    X_adjustment = (side_length - leftover_distance_across) / 2.0;
+                }
+                else
+                {
+                    tiles_across = (int)tiles_across_float;
+                }
+
+                // Process the Height
+                if (leftover_distance_up > 0)
+                {
+                    tiles_up = (int)Math.Ceiling(tiles_up_float);
+                    Y_adjustment = (side_length - leftover_distance_up) / 2.0;
+                }
+                else
+                {
+                    tiles_up = (int)tiles_up_float;
+                }
+
+                // generate Output Envelope
+                double outputXMin = sa_envelope.XMin - X_adjustment;
+                double outputXMax = sa_envelope.XMax + X_adjustment;
+                double outputYMin = sa_envelope.YMin - Y_adjustment;
+                double outputYMax = sa_envelope.YMax + Y_adjustment;
+
+                Envelope outputEnv = EnvelopeBuilderEx.CreateEnvelope(outputXMin, outputYMin, outputXMax, outputYMax, sa_envelope.SpatialReference);
+
+                ProMsgBox.Show($"Side Length: {side_length}\nTiles Across: {tiles_across}\nNew Env Width: {outputEnv.Width}\nNew Tiles Across Count: {outputEnv.Width / side_length}");
+
+                #endregion
+
+                return (true, outputEnv, "Success", tiles_across, tiles_up);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null, ex.Message, 0, 0);
+            }
+        }
+
         private async Task<bool> Test()
         {
             try
             {
 
+                Envelope env = EnvelopeBuilderEx.CreateEnvelope(0, 0, 44.723, 28.8, PRZH.GetSR_PRZCanadaAlbers());
+
+                double envHeight = env.Height;
+                double envWidth = env.Width;
+
+                double tile_side = 6;
+
+                double contains = envWidth / tile_side;
+                double remainder = envWidth % tile_side;
+
+                int columns = 0;
+
+                ProMsgBox.Show($"Contains: {contains}\nRemainder: {remainder}");
+
+                if (remainder != 0)
+                {
+                    // get ceiling of contains.  This is an integral value one greater than the current number of full tile lengths in the envelope width
+                    double ceiling = Math.Ceiling(contains);
+                    columns = (int)ceiling;
+
+                    double reducer = remainder / 2.0;
+
+                    ProMsgBox.Show($"Column Count: {columns}\nExpansion Required: -{reducer}");
+                }
+                else
+                {
+                    columns = (int)contains;
+
+
+                    ProMsgBox.Show($"Column Count: {columns}\nExpansion Required: none");
+                    // contains = integer = number of columns
+                    // tile_side * contains = existing width of envelope
+                }
 
 
 

@@ -154,55 +154,63 @@
                             LastChildFill="False"
                             Visibility="{Binding PUSource_Vis_CustomGrid_Controls}">
 
-                            <TextBlock
+                            <RadioButton
                                 DockPanel.Dock="Left"
-                                Margin="15, 5, 5, 5" 
-                                VerticalAlignment="Center"
-                                Style="{DynamicResource Esri_TextBlockRegular}"
-                                Text="Tile Area:" />
+                                Margin="15, 5, 5, 5"  
+                                VerticalAlignment="Center" 
+                                VerticalContentAlignment="Center" 
+                                GroupName="CustomTileUnit"
+                                IsChecked="{Binding PUSource_Rad_CustomGrid_TileArea_IsChecked}"
+                                Content="Tile Area:" />
 
-                            <TextBox
+                            <DockPanel
                                 DockPanel.Dock="Left"
-                                Margin="5, 1, 5, 1"
-                                Width="40"
-                                Text="{Binding PUSource_Txt_CustomGrid_TileArea}" />
+                                LastChildFill="False"
+                                Visibility="{Binding PUSource_Vis_CustomGrid_TileArea_Controls}">
+
+                                <TextBox
+                                    DockPanel.Dock="Left"
+                                    Margin="5, 1, 5, 1"
+                                    Width="40"
+                                    Text="{Binding PUSource_Txt_CustomGrid_TileArea}" />
+
+                                <ComboBox 
+                                    Margin="1, 1, 5, 1"
+                                    Width="45"
+                                    ItemsSource="{Binding PUSource_Cmb_TileArea_Units}"
+                                    DisplayMemberPath="Value"
+                                    SelectedItem="{Binding PUSource_Cmb_TileArea_SelectedUnit}"/>
+
+                            </DockPanel>
 
                             <RadioButton
                                 DockPanel.Dock="Left"
-                                Margin="5" 
+                                Margin="15, 5, 5, 5"  
                                 VerticalAlignment="Center" 
                                 VerticalContentAlignment="Center" 
-                                GroupName="TileUnits"
-                                IsChecked="{Binding PUSource_Rad_TileArea_M_IsChecked}" 
-                                Content="m&#x00B2;" />
+                                GroupName="CustomTileUnit"
+                                IsChecked="{Binding PUSource_Rad_CustomGrid_TileSide_IsChecked}"
+                                Content="Tile Side Length:" />
 
-                            <RadioButton 
+                            <DockPanel
                                 DockPanel.Dock="Left"
-                                Margin="5" 
-                                VerticalAlignment="Center" 
-                                VerticalContentAlignment="Center" 
-                                GroupName="TileUnits"
-                                IsChecked="{Binding PUSource_Rad_TileArea_Ac_IsChecked}" 
-                                Content="ac" />
+                                LastChildFill="False"
+                                Visibility="{Binding PUSource_Vis_CustomGrid_TileSide_Controls}">
 
-                            <RadioButton
-                                DockPanel.Dock="Left"
-                                Margin="5" 
-                                VerticalAlignment="Center" 
-                                VerticalContentAlignment="Center" 
-                                GroupName="TileUnits"
-                                IsChecked="{Binding PUSource_Rad_TileArea_Ha_IsChecked}" 
-                                Content="ha" />
+                                <TextBox
+                                    DockPanel.Dock="Left"
+                                    Margin="5, 1, 5, 1"
+                                    Width="40"
+                                    Text="{Binding PUSource_Txt_CustomGrid_TileSide}" />
 
-                            <RadioButton 
-                                DockPanel.Dock="Left"
-                                Margin="5" 
-                                VerticalAlignment="Center" 
-                                VerticalContentAlignment="Center" 
-                                GroupName="TileUnits"
-                                IsChecked="{Binding PUSource_Rad_TileArea_Km_IsChecked}" 
-                                Content="km&#x00B2;" />
+                                <ComboBox 
+                                    Margin="1, 1, 5, 1"
+                                    Width="40"
+                                    ItemsSource="{Binding PUSource_Cmb_TileSide_Units}"
+                                    DisplayMemberPath="Value"
+                                    SelectedItem="{Binding PUSource_Cmb_TileSide_SelectedUnit}"/>
 
+                            </DockPanel>
                         </DockPanel>
                     </DockPanel>
 

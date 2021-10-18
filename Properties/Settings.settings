@@ -23,8 +23,8 @@
     <Setting Name="DEFAULT_TILE_AREA" Type="System.String" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
-    <Setting Name="DEFAULT_TILE_AREA_UNITS" Type="System.String" Scope="User">
-      <Value Profile="(Default)">M</Value>
+    <Setting Name="DEFAULT_TILE_AREA_UNITS" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="DEFAULT_PU_GEOMETRY_SOURCE" Type="System.String" Scope="User">
       <Value Profile="(Default)">NATGRID</Value>
@@ -52,6 +52,15 @@
     </Setting>
     <Setting Name="DEFAULT_OUTPUT_FORMAT" Type="System.String" Scope="User">
       <Value Profile="(Default)">RASTER</Value>
+    </Setting>
+    <Setting Name="DEFAULT_PU_CUSTOMGRID_TYPE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">AREA</Value>
+    </Setting>
+    <Setting Name="DEFAULT_TILE_SIDE" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="DEFAULT_TILE_SIDE_UNITS" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
   </Settings>
 </SettingsFile>
