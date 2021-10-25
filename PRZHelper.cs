@@ -6,6 +6,7 @@ using ArcGIS.Core.Data.Topology;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
@@ -20,6 +21,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
+using System.Windows.Input;
 //using System.Windows.Forms;
 //using Excel = Microsoft.Office.Interop.Excel;
 using PRZC = NCC.PRZTools.PRZConstants;
@@ -171,16 +173,6 @@ namespace NCC.PRZTools
         {
             try
             {
-                //// Update the Message
-                //if (string.IsNullOrEmpty(message))
-                //{
-                //    pm.Message = append ? (pm.Message + Environment.NewLine + "") : "";
-                //}
-                //else
-                //{
-                //    pm.Message = append ? (pm.Message + Environment.NewLine + message) : message;
-                //}
-
                 // Update the Message
                 if (message == null)
                 {
@@ -1250,19 +1242,19 @@ namespace NCC.PRZTools
                     case PRZLayerNames.MAIN:
                         return GroupLayerExists_MAIN(map);
 
-                    case PRZLayerNames.STATUS:
+                    case PRZLayerNames.SELRULES:
                         return GroupLayerExists_STATUS(map);
 
-                    case PRZLayerNames.STATUS_INCLUDE:
+                    case PRZLayerNames.SELRULES_INCLUDE:
                         return GroupLayerExists_STATUS_INCLUDE(map);
 
-                    case PRZLayerNames.STATUS_EXCLUDE:
+                    case PRZLayerNames.SELRULES_EXCLUDE:
                         return GroupLayerExists_STATUS_EXCLUDE(map);
 
                     case PRZLayerNames.COST:
                         return GroupLayerExists_COST(map);
 
-                    case PRZLayerNames.FEATURE:
+                    case PRZLayerNames.FEATURES:
                         return GroupLayerExists_FEATURE(map);
 
                     case PRZLayerNames.PU:
@@ -1296,7 +1288,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get list of map-level group layers having matching name
-                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_PRZ && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_MAIN && (l is GroupLayer)).ToList();
 
                 // If at least one match is found, return true.  Otherwise, false.
                 return LIST_layers.Count > 0;
@@ -1343,12 +1335,12 @@ namespace NCC.PRZTools
                     return false;
                 }
 
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
                 {
                     return false;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_INCLUDE && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
@@ -1369,12 +1361,12 @@ namespace NCC.PRZTools
                     return false;
                 }
 
-                if (!PRZLayerExists(map , PRZLayerNames.STATUS))
+                if (!PRZLayerExists(map , PRZLayerNames.SELRULES))
                 {
                     return false;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_EXCLUDE && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
@@ -1427,7 +1419,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_FEATURE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_FEATURES && (l is GroupLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -1529,19 +1521,19 @@ namespace NCC.PRZTools
                     case PRZLayerNames.MAIN:
                         return GetGroupLayer_MAIN(map);
 
-                    case PRZLayerNames.STATUS:
+                    case PRZLayerNames.SELRULES:
                         return GetGroupLayer_STATUS(map);
 
-                    case PRZLayerNames.STATUS_INCLUDE:
+                    case PRZLayerNames.SELRULES_INCLUDE:
                         return GetGroupLayer_STATUS_INCLUDE(map);
 
-                    case PRZLayerNames.STATUS_EXCLUDE:
+                    case PRZLayerNames.SELRULES_EXCLUDE:
                         return GetGroupLayer_STATUS_EXCLUDE(map);
 
                     case PRZLayerNames.COST:
                         return GetGroupLayer_COST(map);
 
-                    case PRZLayerNames.FEATURE:
+                    case PRZLayerNames.FEATURES:
                         return GetGroupLayer_FEATURE(map);
 
                     case PRZLayerNames.PU:
@@ -1573,7 +1565,7 @@ namespace NCC.PRZTools
                     return null;
                 }
 
-                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_PRZ && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = map.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_MAIN && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -1595,7 +1587,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
                 {
                     return null;
                 }
@@ -1623,12 +1615,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_INCLUDE && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
@@ -1651,12 +1643,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_SELRULES_EXCLUDE && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
@@ -1707,13 +1699,13 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.FEATURE))
+                if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
                 {
                     return null;
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_FEATURE && (l is GroupLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_GROUPLAYER_FEATURES && (l is GroupLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -1830,9 +1822,9 @@ namespace NCC.PRZTools
                 GroupLayer GL = null;
 
                 if (container == PRZLayerNames.COST |
-                    container == PRZLayerNames.FEATURE |
-                    container == PRZLayerNames.STATUS_INCLUDE |
-                    container == PRZLayerNames.STATUS_EXCLUDE)
+                    container == PRZLayerNames.FEATURES |
+                    container == PRZLayerNames.SELRULES_INCLUDE |
+                    container == PRZLayerNames.SELRULES_EXCLUDE)
                 {
                     GL = (GroupLayer)GetPRZLayer(map, container);
                 }
@@ -1881,12 +1873,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_INCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
 
                 return LIST_layers;
@@ -1902,12 +1894,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_INCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
                 List<RasterLayer> LIST_layers = GL.Layers.Where(l => l is RasterLayer).Cast<RasterLayer>().ToList();
 
                 return LIST_layers;
@@ -1923,12 +1915,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_INCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l is RasterLayer | l is FeatureLayer).ToList();
 
                 return LIST_layers;
@@ -1945,12 +1937,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_EXCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
 
                 return LIST_layers;
@@ -1966,12 +1958,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_EXCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
                 List<RasterLayer> LIST_layers = GL.Layers.Where(l => l is RasterLayer).Cast<RasterLayer>().ToList();
 
                 return LIST_layers;
@@ -1987,12 +1979,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE))
+                if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.STATUS_EXCLUDE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l is RasterLayer | l is FeatureLayer).ToList();
 
                 return LIST_layers;
@@ -2073,12 +2065,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.FEATURE))
+                if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
                 List<FeatureLayer> LIST_layers = GL.Layers.Where(l => l is FeatureLayer).Cast<FeatureLayer>().ToList();
 
                 return LIST_layers;
@@ -2094,12 +2086,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.FEATURE))
+                if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
                 List<RasterLayer> LIST_layers = GL.Layers.Where(l => l is RasterLayer).Cast<RasterLayer>().ToList();
 
                 return LIST_layers;
@@ -2115,12 +2107,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.FEATURE))
+                if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
                 {
                     return null;
                 }
 
-                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURE);
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
                 List<Layer> LIST_layers = GL.Layers.Where(l => l is RasterLayer | l is FeatureLayer).ToList();
 
                 return LIST_layers;
@@ -2540,6 +2532,322 @@ namespace NCC.PRZTools
             }
         }
 
+        internal static async Task<bool> RedrawPRZLayers(Map map)
+        {
+            try
+            {
+
+                #region VALIDATION
+
+                // Ensure that Project Workspace exists
+                string project_path = GetPath_ProjectFolder();
+                if (!FolderExists_Project())
+                {
+                    ProMsgBox.Show($"Project Workspace does not exist at path {project_path}.");
+                    return false;
+                }
+
+                // Ensure that Project GDB exists
+                string gdb_path = GetPath_ProjectGDB();
+                if (!await ProjectGDBExists())
+                {
+                    ProMsgBox.Show($"Project File Geodatabase does not exist at path {gdb_path}.");
+                    return false;
+                }
+
+                // Remove any PRZ items from the map
+                if (!await RemovePRZItemsFromMap(map))
+                {
+                    ProMsgBox.Show($"Error removing PRZ items from the current map.");
+                    return false;
+                }
+
+                #endregion
+
+                #region PROCESS LAYERS
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+
+                        #region TOP-LEVEL LAYERS
+
+                        // Main PRZ Group Layer
+                        GroupLayer GL_MAIN = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.MAIN))
+                        {
+                            GL_MAIN = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_MAIN);
+                        }
+                        else
+                        {
+                            GL_MAIN = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
+                            map.MoveLayer(GL_MAIN, 0);
+                        }
+
+                        GL_MAIN.SetVisibility(true);
+
+                        // Selection Rules Group Layer
+                        GroupLayer GL_SELRULES = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
+                        {
+                            GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
+                        }
+                        else
+                        {
+                            GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
+                            GL_MAIN.MoveLayer(GL_SELRULES, 0);
+                        }
+
+                        GL_SELRULES.SetVisibility(true);
+
+                        // Cost Group Layer
+                        GroupLayer GL_COST = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.COST))
+                        {
+                            GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
+                        }
+                        else
+                        {
+                            GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
+                            GL_MAIN.MoveLayer(GL_COST, 1);
+                        }
+
+                        GL_COST.SetVisibility(true);
+
+                        // Features Group Layer
+                        GroupLayer GL_FEATURES = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
+                        {
+                            GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
+                        }
+                        else
+                        {
+                            GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
+                            GL_MAIN.MoveLayer(GL_FEATURES, 2);
+                        }
+
+                        GL_FEATURES.SetVisibility(true);
+
+                        // Remove all top-level layers from GL_MAIN that are not supposed to be there
+                        List<Layer> layers_to_delete = new List<Layer>();
+
+                        var all_layers = GL_MAIN.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (lyr is GroupLayer)
+                            {
+                                if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
+                                {
+                                    layers_to_delete.Add(lyr);
+                                }
+                            }
+                            else
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                        }
+
+                        GL_MAIN.RemoveLayers(layers_to_delete);
+
+                        int w = 0;
+
+                        // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
+                        if (await FCExists_PU())
+                        {
+                            string fc_path = GetPath_FC_PU();
+                            Uri uri = new Uri(fc_path);
+                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
+                            await ApplyLegend_PU_Basic(featureLayer);
+                            featureLayer.SetVisibility(true);
+                        }
+                        else if (await RasterExists_PU())
+                        {
+                            string ras_path = GetPath_Raster_PU();
+                            Uri uri = new Uri(ras_path);
+                            RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
+                            // TODO: Renderer for this raster layer
+                            rasterLayer.SetVisibility(true);
+                        }
+
+                        // Add the Study Area Layer (MIGHT NOT EXIST YET)
+                        if (await FCExists_StudyArea())
+                        {
+                            string fc_path = GetPath_FC_StudyArea();
+                            Uri uri = new Uri(fc_path);
+                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
+                            ApplyLegend_SA_Simple(featureLayer);
+                            featureLayer.SetVisibility(true);
+                        }
+
+                        // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
+                        if (await FCExists_StudyAreaBuffer())
+                        {
+                            string fc_path = GetPath_FC_StudyAreaBuffer();
+                            Uri uri = new Uri(fc_path);
+                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
+                            ApplyLegend_SAB_Simple(featureLayer);
+                            featureLayer.SetVisibility(true);
+                        }
+
+                        #endregion
+
+                        #region SELECTION RULE LAYERS
+
+                        // Selection Rules - Include Layers
+                        GroupLayer GL_SELRULES_INCLUDE = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
+                        {
+                            GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
+                        }
+                        else
+                        {
+                            GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
+                            GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
+                        }
+
+                        GL_SELRULES_INCLUDE.SetVisibility(true);
+
+                        // Selection Rules - Exclude Layers
+                        GroupLayer GL_SELRULES_EXCLUDE = null;
+                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
+                        {
+                            GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
+                        }
+                        else
+                        {
+                            GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
+                            GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
+                        }
+
+                        GL_SELRULES_EXCLUDE.SetVisibility(true);
+
+                        // Remove all layers from GL_SELRULES that are not supposed to be there
+                        layers_to_delete = new List<Layer>();
+
+                        all_layers = GL_SELRULES.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (lyr is GroupLayer)
+                            {
+                                if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
+                                {
+                                    layers_to_delete.Add(lyr);
+                                }
+                            }
+                            else
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                        }
+
+                        GL_SELRULES.RemoveLayers(layers_to_delete);
+
+                        // Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
+                        layers_to_delete = new List<Layer>();
+
+                        all_layers = GL_SELRULES_INCLUDE.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                            else
+                            {
+                                lyr.SetVisibility(true);
+                            }
+                        }
+
+                        GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
+
+                        // Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
+                        layers_to_delete = new List<Layer>();
+
+                        all_layers = GL_SELRULES_EXCLUDE.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                            else
+                            {
+                                lyr.SetVisibility(true);
+                            }
+                        }
+
+                        GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
+
+                        #endregion
+
+                        #region COST LAYERS
+
+                        // Remove all layers from GL_COST that are not supposed to be there
+                        layers_to_delete = new List<Layer>();
+
+                        all_layers = GL_COST.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                            else
+                            {
+                                lyr.SetVisibility(true);
+                            }
+                        }
+
+                        GL_COST.RemoveLayers(layers_to_delete);
+
+                        #endregion
+
+                        #region FEATURES LAYERS
+
+                        // Remove all layers from GL_FEATURES that are not supposed to be there
+                        layers_to_delete = new List<Layer>();
+
+                        all_layers = GL_FEATURES.Layers;
+                        foreach (var lyr in all_layers)
+                        {
+                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                            else
+                            {
+                                lyr.SetVisibility(true);
+                            }
+                        }
+
+                        GL_FEATURES.RemoveLayers(layers_to_delete);
+
+                        #endregion
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    // Message might go here?
+                    return false;
+                }
+
+                #endregion
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         #endregion GENERIC DATA METHODS
 

@@ -26,7 +26,6 @@ using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
@@ -231,7 +230,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure three required Layers are present
-                if (!PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_INCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.STATUS_EXCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE) | !PRZH.PRZLayerExists(map, PRZLayerNames.PU))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Layers are missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("PRZ Layers are missing.  Please reload the PRZ Layers and try again.", "Validation");
@@ -239,8 +238,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that at least one Feature Layer is present in either of the two group layers
-                var include_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_INCLUDE, PRZLayerRetrievalType.BOTH);
-                var exclude_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_EXCLUDE, PRZLayerRetrievalType.BOTH);
+                var include_layers = PRZH.GetPRZLayers(map, PRZLayerNames.SELRULES_INCLUDE, PRZLayerRetrievalType.BOTH);
+                var exclude_layers = PRZH.GetPRZLayers(map, PRZLayerNames.SELRULES_EXCLUDE, PRZLayerRetrievalType.BOTH);
 
                 if (include_layers == null || exclude_layers == null)
                 {
@@ -1092,8 +1091,8 @@ namespace NCC.PRZTools
                 List<SelectionRule> rules = new List<SelectionRule>();
 
                 // Get the Layer Lists
-                var include_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_INCLUDE, PRZLayerRetrievalType.BOTH);
-                var exclude_layers = PRZH.GetPRZLayers(map, PRZLayerNames.STATUS_EXCLUDE, PRZLayerRetrievalType.BOTH);
+                var include_layers = PRZH.GetPRZLayers(map, PRZLayerNames.SELRULES_INCLUDE, PRZLayerRetrievalType.BOTH);
+                var exclude_layers = PRZH.GetPRZLayers(map, PRZLayerNames.SELRULES_EXCLUDE, PRZLayerRetrievalType.BOTH);
 
                 // Exit if errors obtaining the lists
                 if (include_layers == null)

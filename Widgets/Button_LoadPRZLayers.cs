@@ -17,7 +17,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using PRZM = NCC.PRZTools.PRZMethods;
+using PRZH = NCC.PRZTools.PRZHelper;
 using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
@@ -28,11 +28,11 @@ namespace NCC.PRZTools
         {
             try
             {
-                var loaded = await PRZM.ValidatePRZGroupLayers();
+                Map map = MapView.Active.Map;
 
-                if (!loaded)
+                if (!await PRZH.RedrawPRZLayers(map))
                 {
-                    MessageBox.Show("Unable to Validate PRZ Layers");
+                    MessageBox.Show("Unable to redraw the PRZ layers");
                     return;
                 }
 

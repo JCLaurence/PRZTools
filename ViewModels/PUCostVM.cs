@@ -28,7 +28,6 @@ using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 
 namespace NCC.PRZTools

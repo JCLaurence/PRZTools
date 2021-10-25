@@ -28,7 +28,6 @@ using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
@@ -205,7 +204,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that the required layers are present
-                if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU) | !PRZH.PRZLayerExists(map, PRZLayerNames.FEATURE))
+                if (!PRZH.PRZLayerExists(map, PRZLayerNames.PU) | !PRZH.PRZLayerExists(map, PRZLayerNames.FEATURES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Layers are missing.  Please reload PRZ layers.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("PRZ Layers are missing.  Please reload the PRZ Layers and try again.", "Validation");
@@ -213,19 +212,19 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that at least one Feature Layer is present in the Feature Group Layer
-                var CF_Layers = PRZH.GetPRZLayers(map, PRZLayerNames.FEATURE, PRZLayerRetrievalType.BOTH);
+                var CF_Layers = PRZH.GetPRZLayers(map, PRZLayerNames.FEATURES, PRZLayerRetrievalType.BOTH);
 
                 if (CF_Layers == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Unable to retrieve contents of {PRZC.c_GROUPLAYER_FEATURE} Group Layer.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to retrieve contents of {PRZC.c_GROUPLAYER_FEATURE} Group Layer.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Unable to retrieve contents of {PRZC.c_GROUPLAYER_FEATURES} Group Layer.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve contents of {PRZC.c_GROUPLAYER_FEATURES} Group Layer.", "Validation");
                     return false;
                 }
 
                 if (CF_Layers.Count == 0)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> No Raster or Feature Layers found within the {PRZC.c_GROUPLAYER_FEATURE} group layer.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"There must be at least one Raster or Feature Layer within either the {PRZC.c_GROUPLAYER_FEATURE} group layer.", "Validation");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> No Raster or Feature Layers found within the {PRZC.c_GROUPLAYER_FEATURES} group layer.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"There must be at least one Raster or Feature Layer within either the {PRZC.c_GROUPLAYER_FEATURES} group layer.", "Validation");
                     return false;
                 }
 
@@ -1041,19 +1040,19 @@ namespace NCC.PRZTools
                 List<FeatureElement> features = new List<FeatureElement>();
 
                 // Get the Layer Lists
-                var LIST_Layers = PRZH.GetPRZLayers(map, PRZLayerNames.FEATURE, PRZLayerRetrievalType.BOTH);
+                var LIST_Layers = PRZH.GetPRZLayers(map, PRZLayerNames.FEATURES, PRZLayerRetrievalType.BOTH);
 
                 // Exit if errors obtaining the lists
                 if (LIST_Layers == null)
                 {
-                    ProMsgBox.Show($"Unable to retrieve layers from the {PRZC.c_GROUPLAYER_FEATURE} group layer...");
+                    ProMsgBox.Show($"Unable to retrieve layers from the {PRZC.c_GROUPLAYER_FEATURES} group layer...");
                     return fail;
                 }
 
                 // Exit if no layers actually returned
                 if (LIST_Layers.Count == 0)
                 {
-                    ProMsgBox.Show($"No valid layers found within the {PRZC.c_GROUPLAYER_FEATURE} group layer...");
+                    ProMsgBox.Show($"No valid layers found within the {PRZC.c_GROUPLAYER_FEATURES} group layer...");
                     return fail;
                 }
 

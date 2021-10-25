@@ -80,11 +80,11 @@
     public enum PRZLayerNames
     {
         MAIN,
-        STATUS,
-        STATUS_INCLUDE,
-        STATUS_EXCLUDE,
+        SELRULES,
+        SELRULES_INCLUDE,
+        SELRULES_EXCLUDE,
         COST,
-        FEATURE,
+        FEATURES,
         PU,
         SA,
         SAB
@@ -120,12 +120,12 @@
         #region LAYER NAMES
 
         // GROUP LAYERS
-        public const string c_GROUPLAYER_PRZ = "PRIORITIZATION TOOLS";
+        public const string c_GROUPLAYER_MAIN = "PRIORITIZATION TOOLS";
         public const string c_GROUPLAYER_COST = "COST";
         public const string c_GROUPLAYER_SELRULES = "SELECTION RULES";
         public const string c_GROUPLAYER_SELRULES_INCLUDE = "INCLUDE";
         public const string c_GROUPLAYER_SELRULES_EXCLUDE = "EXCLUDE";
-        public const string c_GROUPLAYER_FEATURE = "FEATURES";
+        public const string c_GROUPLAYER_FEATURES = "FEATURES";
 
         // FEATURE LAYERS
         public const string c_LAYER_PLANNING_UNITS = "Planning Units";
@@ -159,6 +159,7 @@
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
         public const string c_RAS_TEMP_1 = "TempRas1";
         public const string c_RAS_TEMP_2 = "TempRas2";
+        public const string c_RAS_TEMP_3 = "TempRas3";
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
@@ -185,6 +186,25 @@
         #endregion
 
         #region COLUMN NAMES
+
+        #region RASTER COLUMN NAMES
+
+        public const string c_FLD_RAS_PU_VALUE = "Value";
+        public const string c_FLD_RAS_PU_COUNT = "Count";
+        public const string c_FLD_RAS_PU_ID = c_FLD_FC_PU_ID;
+        public const string c_FLD_RAS_PU_NATGRID_ID = c_FLD_FC_PU_NATGRID_ID;
+        public const string c_FLD_RAS_PU_CONFLICT = c_FLD_FC_PU_CONFLICT;
+        public const string c_FLD_RAS_PU_COST = c_FLD_FC_PU_COST;
+        public const string c_FLD_RAS_PU_AREA_M2 = c_FLD_FC_PU_AREA_M2;
+        public const string c_FLD_RAS_PU_AREA_AC = c_FLD_FC_PU_AREA_AC;
+        public const string c_FLD_RAS_PU_AREA_HA = c_FLD_FC_PU_AREA_HA;
+        public const string c_FLD_RAS_PU_AREA_KM2 = c_FLD_FC_PU_AREA_KM2;
+        public const string c_FLD_RAS_PU_FEATURECOUNT = c_FLD_FC_PU_FEATURECOUNT;
+        public const string c_FLD_RAS_PU_SHARED_PERIM = c_FLD_FC_PU_SHARED_PERIM;
+        public const string c_FLD_RAS_PU_UNSHARED_PERIM = c_FLD_FC_PU_UNSHARED_PERIM;
+        public const string c_FLD_RAS_PU_HAS_UNSHARED_PERIM = c_FLD_FC_PU_HAS_UNSHARED_PERIM;
+
+        #endregion
 
         #region FC COLUMN NAMES
 

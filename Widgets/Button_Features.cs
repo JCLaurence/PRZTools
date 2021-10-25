@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {

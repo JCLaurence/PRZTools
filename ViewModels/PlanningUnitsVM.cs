@@ -23,7 +23,6 @@ using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
@@ -1149,6 +1148,7 @@ namespace NCC.PRZTools
         private async Task<bool> GeneratePlanningUnits()
         {
             int val = 0;
+            int max = 50;
 
             try
             {
@@ -1161,8 +1161,7 @@ namespace NCC.PRZTools
                 #region VALIDATION
 
                 // Initialize ProgressBar and Progress Log
-                int max = 50;
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Selection Rules Generator..."), false, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Planning Unit Generator..."), false, max, ++val);
 
                 // Check for currently unsaved edits in the project
                 if (Project.Current.HasEdits)
@@ -1230,7 +1229,6 @@ namespace NCC.PRZTools
                     ProMsgBox.Show("Please specify an output spatial reference.", "Validation");
                     return false;
                 }
-
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Output Spatial Reference = {OutputSR.Name}"), true, ++val);
 
                 // Validation: Study Area Source Geometry
@@ -1354,6 +1352,7 @@ namespace NCC.PRZTools
                         ProMsgBox.Show("Invalid National Grid dimension specified.", "Validation");
                         return false;
                     }
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Grid dimension = {natgrid_dimension}, side length (m) = {natgrid_sidelength}"), true, ++val);
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
@@ -1824,8 +1823,6 @@ namespace NCC.PRZTools
                 {
                     // Common National/Custom Raster stuff goes here...
 
-
-
                     // National Grid
                     if (PUSource_Rad_NatGrid_IsChecked)
                     {
@@ -1843,21 +1840,26 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"National grid extent retrieved."), true, ++val);
                         }
 
+                        // Retrieve the vitals of the extent envelope
+                        int tiles_across = gridBounds.tilesAcross;
+                        int tiles_up = gridBounds.tilesUp;
+                        double side_length = natgrid_sidelength;
+
                         // Build Constant Raster
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating preliminary (constant-value) raster..."), true, ++val);
-                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
+                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", side_length, gridBounds.gridEnv };
                         toolParams = Geoprocessing.MakeValueArray(o);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
                         if (toolOutput == null)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error creating the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.");
                             return false;
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("PreliminaryRaster dataset created successfully."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_1} raster dataset created successfully."), true, ++val);
                         }
 
                         // Copy the raster to the correct bitdepth of int32 (to allow storage of humongous ID numbers
@@ -1879,8 +1881,11 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset copied successfully."), true, ++val);
                         }
 
-                        // Next step...
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Try next step..."), true, ++val);
+                        // Assign Planning Unit IDs
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Assign Planning Unit ID values to pixels within the buffered study area..."), true, ++val);
+
+                        Dictionary<int, string> identifiers_by_id = new Dictionary<int, string>();
+
                         if (!await QueuedTask.Run(async () =>
                         {
                             try
@@ -1889,6 +1894,8 @@ namespace NCC.PRZTools
                                 {
                                     if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
+                                        ProMsgBox.Show($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset.");
                                         return false;
                                     }
 
@@ -1896,7 +1903,7 @@ namespace NCC.PRZTools
                                     {
                                         // Get the virtual Raster from Band 1 of the Raster Dataset
                                         int[] bands = { 0 };
-                                        Raster raster = rasterDataset.CreateRaster(bands);
+                                        Raster raster = rasterDataset.CreateFullRaster();
 
                                         // Create a PixelBlock 1 row high, stretching across all columns
                                         PixelBlock pixelBlock = raster.CreatePixelBlock(raster.GetWidth(), 1);
@@ -1917,21 +1924,23 @@ namespace NCC.PRZTools
                                             int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
 
                                             // Get the Y-coord of the current row (YMax of row)
-                                            double CurrentCell_ULY = OriginCell_ULY - (row * natgrid_sidelength);
+                                            double CurrentCell_ULY = OriginCell_ULY - (row * side_length);
 
                                             // Loop through each cell (left to right) within the parent row
                                             for (int col = 0; col < gridBounds.tilesAcross; col++)
                                             {
                                                 // Get the X-coord of the current column (XMin of column)
-                                                double CurrentCell_ULX = OriginCell_ULX + (col * natgrid_sidelength);
+                                                double CurrentCell_ULX = OriginCell_ULX + (col * side_length);
 
                                                 // Build the envelope for the current cell
-                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - natgrid_sidelength, CurrentCell_ULX + natgrid_sidelength, CurrentCell_ULY, OutputSR);
+                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - side_length, CurrentCell_ULX + side_length, CurrentCell_ULY, OutputSR);
 
                                                 if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
                                                 {
                                                     // I need to alter the pixel value here to puid++
-                                                    array[col, 0] = puid++;
+                                                    array[col, 0] = puid;
+                                                    identifiers_by_id.Add(puid, NationalGridInfo.GetIdentifierFromULXY((int)CurrentCell_ULX, (int)CurrentCell_ULY, natgrid_dimension));
+                                                    puid++;
                                                 }
                                             }
 
@@ -1940,19 +1949,35 @@ namespace NCC.PRZTools
 
                                             // write the pixel block data back to the raster
                                             raster.Write(0, row, pixelBlock);
+
+                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row);
                                         }
 
-                                        // All zeros now are nodata
-                                        raster.SetNoDataValue(0);
-
                                         // Persist the raster to the geodatabase
-                                        raster.SaveAs(PRZC.c_RAS_PLANNING_UNITS, geodatabase, "GRID");
-                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"saved."), true, ++val);
+                                        raster.SaveAs(PRZC.c_RAS_TEMP_3, geodatabase, "GRID");
+
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_3} raster dataset saved successfully."), true, max, ++val);
                                     }
                                 }
 
+                                // Convert zero values to NoData
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting zeros to NoData..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_3, PRZC.c_RAS_TEMP_3, PRZC.c_RAS_PLANNING_UNITS, "VALUE = 0");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting zeros to NoData.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error converting zeros to NoData.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"NoData values written successfully."), true, ++val);
+                                }
+
                                 // Delete the temp rasters
-                                string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2;
+                                string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2 + ";" + PRZC.c_RAS_TEMP_3;
                                 toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                                 toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
@@ -2008,13 +2033,13 @@ namespace NCC.PRZTools
                             }
                         }))
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something bad.", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Something bad here.");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error assigning Planning Unit IDs to pixels.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error assigning Planning Unit IDs to pixels.");
                             return false;
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Something good happened here."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit IDs assigned."), true, ++val);
                         }
 
                         // Ensure I've got my new raster...
@@ -2073,13 +2098,302 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                         }
+
+                        // Populate raster attribute table
+                        if (!await UpdateRasterAttributeTable(gridBounds.gridEnv, tiles_across, tiles_up, side_length, true, identifiers_by_id))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to populate raster attribute table.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to populate raster attribute table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster attribute table fields populated."), true, ++val);
+                        }
                     }
 
                     // Custom Grid
                     else if (PUSource_Rad_CustomGrid_IsChecked)
                     {
-                        // TODO: Implement the Raster-based Custom Grid
-                        ProMsgBox.Show("Not yet...");
+                        // Get Extent Envelope
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving custom grid extent for study area..."), true, ++val);
+                        var gridBounds = GetCustomGridBoundsFromStudyArea(SA_poly_buffer, customgrid_tile_side_m);
+
+                        if (!gridBounds.success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve Custom Grid extent envelope.\n{gridBounds.message}", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve Custom Grid extent envelope.\n{gridBounds.message}");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Custom Grid extent envelope retrieved."), true, ++val);
+                        }
+
+                        // Retrieve the vitals of the custom grid extent envelope
+                        int tiles_across = gridBounds.tilesAcross;
+                        int tiles_up = gridBounds.tilesUp;
+                        double side_length = customgrid_tile_side_m;
+
+                        // Build Constant Raster
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating preliminary (constant-value) raster..."), true, ++val);
+                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", side_length, gridBounds.gridEnv };
+                        toolParams = Geoprocessing.MakeValueArray(o);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_1} raster dataset created successfully."), true, ++val);
+                        }
+
+                        // Copy the raster to the correct bitdepth of int32 (to allow storage of humongous ID numbers
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying to better bit depth..."), true, ++val);
+
+                        object[] o2 = { PRZC.c_RAS_TEMP_1, PRZC.c_RAS_TEMP_2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "" };
+
+                        toolParams = Geoprocessing.MakeValueArray(o2);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_TEMP_2} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error copying the {PRZC.c_RAS_TEMP_2} raster dataset.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_2} raster dataset copied successfully."), true, ++val);
+                        }
+
+                        // Assign Planning Unit IDs
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Assign Planning Unit ID values to pixels within the buffered study area..."), true, ++val);
+
+                        if (!await QueuedTask.Run(async () =>
+                        {
+                            try
+                            {
+                                using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                                {
+                                    if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
+                                    {
+                                        return false;
+                                    }
+
+                                    using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(PRZC.c_RAS_TEMP_2))
+                                    {
+                                        // Get the virtual Raster from Band 1 of the Raster Dataset
+                                        int[] bands = { 0 };
+                                        Raster raster = rasterDataset.CreateFullRaster();
+
+                                        // Create a PixelBlock 1 row high, stretching across all columns
+                                        PixelBlock pixelBlock = raster.CreatePixelBlock(raster.GetWidth(), 1);
+
+                                        // Get the top left corner coords of the top left cell in the envelope (cell 0,0)
+                                        double OriginCell_ULX = gridBounds.gridEnv.XMin;
+                                        double OriginCell_ULY = gridBounds.gridEnv.YMax;
+
+                                        int puid = 1;
+
+                                        // Loop through each row of tiles (top to bottom)
+                                        for (int row = 0; row < gridBounds.tilesUp; row++)
+                                        {
+                                            // Read a raster row into the pixel block
+                                            raster.Read(0, row, pixelBlock);
+
+                                            // write the pixel block contents to an array
+                                            int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
+
+                                            // Get the Y-coord of the current row (YMax of row)
+                                            double CurrentCell_ULY = OriginCell_ULY - (row * side_length);
+
+                                            // Loop through each cell (left to right) within the parent row
+                                            for (int col = 0; col < gridBounds.tilesAcross; col++)
+                                            {
+                                                // Get the X-coord of the current column (XMin of column)
+                                                double CurrentCell_ULX = OriginCell_ULX + (col * side_length);
+
+                                                // Build the envelope for the current cell
+                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - side_length, CurrentCell_ULX + side_length, CurrentCell_ULY, OutputSR);
+
+                                                if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
+                                                {
+                                                    // I need to alter the pixel value here to puid++
+                                                    array[col, 0] = puid++;
+                                                }
+                                            }
+
+                                            // write the array values back to the pixel block, even if unchanged
+                                            pixelBlock.SetPixelData(0, array);
+
+                                            // write the pixel block data back to the raster
+                                            raster.Write(0, row, pixelBlock);
+
+                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row);
+                                        }
+
+                                        // Persist the raster to the geodatabase
+                                        raster.SaveAs(PRZC.c_RAS_TEMP_3, geodatabase, "GRID");
+
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_3} raster dataset saved successfully."), true, max, ++val);
+                                    }
+                                }
+
+                                // Convert zero values to NoData
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting zeros to NoData..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_3, PRZC.c_RAS_TEMP_3, PRZC.c_RAS_PLANNING_UNITS, "VALUE = 0");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting zeros to NoData.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error converting zeros to NoData.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"NoData values written successfully."), true, ++val);
+                                }
+
+                                // Delete the temp rasters
+                                string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2 + ";" + PRZC.c_RAS_TEMP_3;
+                                toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error deleting temp rasters.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp rasters deleted."), true, ++val);
+                                }
+
+                                // Build Pyramids for pu raster
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, -1, "", "", "", "", "");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error building pyramids.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                                }
+
+                                // Calculate Statistics on pu raster
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS);
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error calculating statistics.");
+                                    return false;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated successfully."), true, ++val);
+                                }
+
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                                return false;
+                            }
+                        }))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error assigning Planning Unit IDs to pixels.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error assigning Planning Unit IDs to pixels.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit IDs assigned."), true, ++val);
+                        }
+
+                        // Ensure I've got my new raster...
+                        string puraspath = PRZH.GetPath_Raster_PU();
+                        if (!await PRZH.RasterExists_PU())
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
+                            return false;
+                        }
+
+                        // Build the Raster Attribute table...
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(puraspath, "OVERWRITE");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster attribute table built successfully."), true, ++val);
+                        }
+
+                        // Add fields to Raster Attribute Table
+                        string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
+                        string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
+                        string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
+                        string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
+                        string fldPUAreaM = PRZC.c_FLD_FC_PU_AREA_M2 + " DOUBLE 'Square m' # 0 #;";
+                        string fldPUAreaAC = PRZC.c_FLD_FC_PU_AREA_AC + " DOUBLE 'Acres' # 0 #;";
+                        string fldPUAreaHA = PRZC.c_FLD_FC_PU_AREA_HA + " DOUBLE 'Hectares' # 0 #;";
+                        string fldPUAreaKM = PRZC.c_FLD_FC_PU_AREA_KM2 + " DOUBLE 'Square km' # 0 #;";
+                        string fldCFCount = PRZC.c_FLD_FC_PU_FEATURECOUNT + " LONG 'Conservation Feature Count' # 0 #;";
+                        string fldSharedPerim = PRZC.c_FLD_FC_PU_SHARED_PERIM + " DOUBLE 'Shared Perimeter (m)' # 0 #;";
+                        string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
+                        string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
+
+                        string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
+                        }
+
+                        // Populate raster attribute table
+                        if (!await UpdateRasterAttributeTable(gridBounds.gridEnv, tiles_across, tiles_up, side_length, false))
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to populate raster attribute table.", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Unable to populate raster attribute table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster attribute table fields populated."), true, ++val);
+                        }
                     }
 
                     // Features
@@ -2163,14 +2477,16 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Loading the National Grid tiles"), true, ++val);
                         if (!await LoadNationalGridTiles(SA_poly_buffer, res.gridEnv, tiles_across, tiles_up, side_length, natgrid_dimension))
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, PM.Current);
                             ProMsgBox.Show($"Error loading tiles.");
                             return false;
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles loaded"), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles loaded"), true, PM.Current);
                         }
+
+                        val = PM.Current;
                     }
 
                     // Custom Grid
@@ -2194,14 +2510,16 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Importing tiles into {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                         if (!await LoadCustomGridTiles_EditOp(SA_poly_buffer, res.gridEnv, tiles_across, tiles_up, side_length))
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error importing tiles...", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show("Error importing tiles.");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Error loading tiles...", LogMessageType.ERROR), true, PM.Current);
+                            ProMsgBox.Show("Error loading tiles.");
                             return false;
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Tiles imported successfully."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Tiles imported successfully."), true, PM.Current);
                         }
+
+                        val = PM.Current;
                     }
 
                     // Features
@@ -2245,10 +2563,10 @@ namespace NCC.PRZTools
                 }
 
                 // Refresh the Map & TOC
-                if (!await PRZM.ValidatePRZGroupLayers())
+                if (!await PRZH.RedrawPRZLayers(_map))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error validating PRZ layers.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error validating PRZ layers.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error redrawing the PRZ layers.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error redrawing the PRZ layers.");
                     return false;
                 }
 
@@ -2275,21 +2593,21 @@ namespace NCC.PRZTools
         private async Task<bool> LoadNationalGridTiles(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, int side_length, int dimension)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
-            int val = 0;
-            int max = tiles_up;
+            int val = PM.Current;
+            int max = PM.Max;
 
             try
             {
                 // Check for currently unsaved edits in the project
                 if (Project.Current.HasEdits)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, ++val);
                 }
 
                 // If editing is disabled, enable it temporarily (and disable again in the finally block)
@@ -2297,18 +2615,18 @@ namespace NCC.PRZTools
                 {
                     if (!await Project.Current.SetIsEditingEnabledAsync(true))
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, max, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
                         return false;
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, max, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, ++val);
                     }
                 }
 
                 // Do the work here!
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_across*tiles_up} potential tiles)..."), true, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_across*tiles_up} potential tiles)..."), true, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -2321,18 +2639,16 @@ namespace NCC.PRZTools
                         loader.ShowProgressor = false;
                         loader.ShowModalMessageAfterFailure = false;
                         loader.SelectNewFeatures = false;
-
+                        loader.SelectModifiedFeatures = false;
 
                         // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
                         Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(buffered_study_area);
 
-                        // Planning Unit ID variable
-                        int puid = 1;
+                        // Grid Origin:  Get top left corner coords of the top left tile in the envelope
+                        double OriginTile_ULX = gridEnvelope.XMin;
+                        double OriginTile_ULY = gridEnvelope.YMax;
 
-                        // Grid values
-                        int XMIN = Convert.ToInt32(gridEnvelope.XMin);
-                        int YMIN = Convert.ToInt32(gridEnvelope.YMin);
-
+                        int puid = 1;   // planning unit id 
                         int flusher = 0;
 
                         using (FeatureClass fc = await PRZH.GetFC_PU())
@@ -2348,21 +2664,21 @@ namespace NCC.PRZTools
                                     {
                                         for (int col = 0; col < tiles_across; col++)
                                         {
-                                            // Tile construction will be based on lower left corner XY and side length
-                                            double CurrentX = XMIN + (col * side_length);
-                                            double CurrentY = YMIN + (row * side_length);
+                                            // Tile construction will be based on the upper left corner XY of the tile
+                                            double CurrentTile_ULX = OriginTile_ULX + (col * side_length);
+                                            double CurrentTile_ULY = OriginTile_ULY - (row * side_length);
 
-                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + side_length, CurrentY + side_length, gridEnvelope.SpatialReference);
+                                            Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentTile_ULX, CurrentTile_ULY - side_length, CurrentTile_ULX + side_length, CurrentTile_ULY, gridEnvelope.SpatialReference);
 
                                             // Determine if the tile poly intersects with the study area buffer polygon
                                             if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
                                             {
                                                 // Create the polygon
-                                                Polygon tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv);
+                                                Polygon tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, gridEnvelope.SpatialReference);
 
                                                 rowBuffer[fcDef.GetShapeField()] = tilePoly;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
-                                                rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_ID] = NationalGridInfo.GetIdentifier(Convert.ToInt32(CurrentX), Convert.ToInt32(CurrentY), dimension);
+                                                rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_ID] = NationalGridInfo.GetIdentifierFromULXY(Convert.ToInt32(CurrentTile_ULX), Convert.ToInt32(CurrentTile_ULY), dimension);
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_AC;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_HA;
@@ -2386,7 +2702,7 @@ namespace NCC.PRZTools
                                             }
                                         }
 
-                                        PRZH.UpdateProgress(PM, null, true, row);
+                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row);
                                     }
 
                                     insertCursor.Flush();
@@ -2427,19 +2743,19 @@ namespace NCC.PRZTools
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error importing National Grid tiles.", LogMessageType.ERROR), true, val++);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error importing National Grid tiles.", LogMessageType.ERROR), true, max, val++);
                     ProMsgBox.Show($"Error importing National Grid tiles.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles imported."), true, val++);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Grid tiles imported."), true, max, val++);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, val++);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, max, val++);
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
@@ -2457,21 +2773,21 @@ namespace NCC.PRZTools
         private async Task<bool> LoadCustomGridTiles_EditOp(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, double side_length)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
-            int val = 0;
-            int max = tiles_up;
+            int val = PM.Current;
+            int max = PM.Max;
 
             try
             {
                 // Check for currently unsaved edits in the project
                 if (Project.Current.HasEdits)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, max, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, ++val);
                 }
 
                 // If editing is disabled, enable it temporarily (and disable again in the finally block)
@@ -2479,18 +2795,18 @@ namespace NCC.PRZTools
                 {
                     if (!await Project.Current.SetIsEditingEnabledAsync(true))
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, max, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
                         return false;
                     }
                     else
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, max, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, ++val);
                     }
                 }
 
                 // Do the work here!
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_up * tiles_across} potential tiles)..."), true, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tiles_up * tiles_across} potential tiles)..."), true, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -2499,7 +2815,7 @@ namespace NCC.PRZTools
                     try
                     {
                         var loader = new EditOperation();
-                        loader.Name = "Tile Loader";
+                        loader.Name = "Custom Grid Tile Loader";
                         loader.ShowProgressor = false;
                         loader.ShowModalMessageAfterFailure = false;
                         loader.SelectNewFeatures = false;
@@ -2508,8 +2824,11 @@ namespace NCC.PRZTools
                         // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
                         Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(buffered_study_area);
 
-                        // Planning Unit ID variable
-                        int puid = 1;
+                        // Grid Origin:  Get top left corner coords of the top left tile in the envelope
+                        double OriginTile_ULX = gridEnvelope.XMin;
+                        double OriginTile_ULY = gridEnvelope.YMax;
+
+                        int puid = 1;   // planning unit id
                         int flusher = 0;
 
                         using (FeatureClass fc = await PRZH.GetFC_PU())
@@ -2525,18 +2844,18 @@ namespace NCC.PRZTools
                                     {
                                         for (int col = 0; col < tiles_across; col++)
                                         {
-                                            double CurrentX;
-                                            double CurrentY;
-                                            Polygon tilePoly = null;
+                                            // Tile construction will be based on the upper left corner XY of the tile
+                                            double CurrentTile_ULX = OriginTile_ULX + (col * side_length);
+                                            double CurrentTile_ULY = OriginTile_ULY - (row * side_length);
 
-                                            CurrentX = gridEnvelope.XMin + (col * side_length);
-                                            CurrentY = gridEnvelope.YMin + (row * side_length);
-                                            Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + side_length, CurrentY + side_length, gridEnvelope.SpatialReference);
-                                            tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, gridEnvelope.SpatialReference);
+                                            Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentTile_ULX, CurrentTile_ULY - side_length, CurrentTile_ULX + side_length, CurrentTile_ULY, gridEnvelope.SpatialReference);
 
                                             // Determine if the tile poly intersects with the study area buffer polygon
-                                            if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
+                                            if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
                                             {
+                                                // create the polygon
+                                                Polygon tilePoly = PolygonBuilder.CreatePolygon(tileEnv, gridEnvelope.SpatialReference);
+
                                                 rowBuffer[fcDef.GetShapeField()] = tilePoly;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
@@ -2562,7 +2881,7 @@ namespace NCC.PRZTools
                                             }
                                         }
 
-                                        PRZH.UpdateProgress(PM, null, true, row);
+                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row);
                                     }
 
                                     insertCursor.Flush();
@@ -2603,164 +2922,19 @@ namespace NCC.PRZTools
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tile import error.", LogMessageType.ERROR), true, val++);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tile import error.", LogMessageType.ERROR), true, max, val++);
                     ProMsgBox.Show($"Tile import Error.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tiles imported."), true, val++);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tiles imported."), true, max, val++);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, val++);
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-            finally
-            {
-                // reset disabled editing status
-                if (edits_are_disabled)
-                {
-                    await Project.Current.SetIsEditingEnabledAsync(false);
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
-                }
-            }
-        }
-
-        private async Task<bool> LoadCustomGridTiles_ApplyEdits(PlanningUnitTileInfo tileInfo, Polygon study_area_buffer_poly)
-        {
-            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
-            int val = 0;
-            int max = tileInfo.tiles_up;
-
-            try
-            {
-                // Check for currently unsaved edits in the project
-                if (Project.Current.HasEdits)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, max, ++val);
-                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, max, ++val);
-                }
-
-                // If editing is disabled, enable it temporarily (and disable again in the finally block)
-                if (edits_are_disabled)
-                {
-                    if (!await Project.Current.SetIsEditingEnabledAsync(true))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, max, ++val);
-                        ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, max, ++val);
-                    }
-                }
-
-                // Do the work here!
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Generating grid tiles (maximum {tileInfo.tiles_up * tileInfo.tiles_across} potential tiles)..."), true, max, ++val);
-
-                if (!await QueuedTask.Run(async () =>
-                {
-                    bool success = false;
-
-                    try
-                    {
-                        // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
-                        Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(study_area_buffer_poly);
-
-                        // Planning Unit ID variable
-                        int puid = 1;
-
-                        double hex_horizoffset = tileInfo.tile_center_to_right + (tileInfo.tile_edge_length / 2.0);     // this is specifically for hexagon tiles
-                        int flusher = 0;
-
-                        using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
-                        using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
-                        using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
-                        using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
-                        {
-                            geodatabase.ApplyEdits(() =>
-                            {
-                                for (int row = 0; row < tileInfo.tiles_up; row++)
-                                {
-                                    for (int col = 0; col < tileInfo.tiles_across; col++)
-                                    {
-                                        double CurrentX;
-                                        double CurrentY;
-                                        Polygon tilePoly = null;
-
-                                        CurrentX = tileInfo.LL_Point.X + (col * tileInfo.tile_edge_length);
-                                        CurrentY = tileInfo.LL_Point.Y + (row * tileInfo.tile_edge_length);
-                                        Envelope tileEnv = EnvelopeBuilderEx.CreateEnvelope(CurrentX, CurrentY, CurrentX + tileInfo.tile_edge_length, CurrentY + tileInfo.tile_edge_length, tileInfo.LL_Point.SpatialReference);
-                                        tilePoly = PolygonBuilderEx.CreatePolygon(tileEnv, tileInfo.LL_Point.SpatialReference);
-
-                                        // Determine if the tile poly intersects with the study area buffer polygon
-                                        if (GeometryEngine.Instance.Intersects(accelerated_buffer, tilePoly))
-                                        {
-                                            rowBuffer[fcDef.GetShapeField()] = tilePoly;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_AC;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_HA;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_AREA_KM2] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_KM2;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_CONFLICT] = 0;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_COST] = 0;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_FEATURECOUNT] = 0;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM] = 0;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_SHARED_PERIM] = 0;
-                                            rowBuffer[PRZC.c_FLD_FC_PU_UNSHARED_PERIM] = 0;
-
-                                            insertCursor.Insert(rowBuffer);
-
-                                            flusher++;
-
-                                            if (flusher == 10000)
-                                            {
-                                                insertCursor.Flush();
-                                                flusher = 0;
-                                            }
-                                        }
-                                    }
-
-                                    PRZH.UpdateProgress(PM, null, true, row);
-                                }
-
-                                insertCursor.Flush();
-                            });
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tile import error.", LogMessageType.ERROR), true, val++);
-                    ProMsgBox.Show($"Tile import Error.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Tiles imported."), true, val++);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, val++);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, max, val++);
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
@@ -2872,8 +3046,6 @@ namespace NCC.PRZTools
 
                 Envelope outputEnv = EnvelopeBuilderEx.CreateEnvelope(outputXMin, outputYMin, outputXMax, outputYMax, sa_envelope.SpatialReference);
 
-                ProMsgBox.Show($"Side Length: {side_length}\nTiles Across: {tiles_across}\nNew Env Width: {outputEnv.Width}\nNew Tiles Across Count: {outputEnv.Width / side_length}");
-
                 #endregion
 
                 return (true, outputEnv, "Success", tiles_across, tiles_up);
@@ -2885,47 +3057,187 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> UpdateRasterAttributeTable(Envelope gridEnv, int tiles_across, int tiles_up, double side_length, bool natgrid, Dictionary<int, string> identifiers_by_id = default(Dictionary<int, string>))
+        {
+            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
+            int val = PM.Current;
+            int max = PM.Max;
+
+            try
+            {
+                // Check for currently unsaved edits in the project
+                if (Project.Current.HasEdits)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, ++val);
+                }
+
+                // If editing is disabled, enable it temporarily (and disable again in the finally block)
+                if (edits_are_disabled)
+                {
+                    if (!await Project.Current.SetIsEditingEnabledAsync(true))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, ++val);
+                    }
+                }
+
+                // Do the work here!
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating raster attribute table..."), true, ++val);
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    bool success = false;
+
+                    try
+                    {
+                        var loader = new EditOperation();
+                        loader.Name = "Raster Attribute Updater";
+                        loader.ShowProgressor = false;
+                        loader.ShowModalMessageAfterFailure = false;
+                        loader.SelectNewFeatures = false;
+                        loader.SelectModifiedFeatures = false;
+
+                        using (Table tab = (await PRZH.GetRaster_PU()).CreateFullRaster().GetAttributeTable())
+                        {
+                            loader.Callback(async (context) =>
+                            {
+                                using (RasterDataset rasterDataset = await PRZH.GetRaster_PU())
+                                using (Raster raster = rasterDataset.CreateFullRaster())
+                                using (Table table = raster.GetAttributeTable())
+                                using (RowCursor rowCursor = table.Search(null, false))
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_VALUE]);
+
+                                            double area_m2 = side_length * side_length;
+
+                                            row[PRZC.c_FLD_RAS_PU_ID] = puid;
+                                            row[PRZC.c_FLD_RAS_PU_CONFLICT] = 0;
+                                            row[PRZC.c_FLD_RAS_PU_COST] = 1;
+                                            row[PRZC.c_FLD_RAS_PU_AREA_M2] = area_m2;
+                                            row[PRZC.c_FLD_RAS_PU_AREA_AC] = area_m2 * PRZC.c_CONVERT_M2_TO_AC;
+                                            row[PRZC.c_FLD_RAS_PU_AREA_HA] = area_m2 * PRZC.c_CONVERT_M2_TO_HA;
+                                            row[PRZC.c_FLD_RAS_PU_AREA_KM2] = area_m2 * PRZC.c_CONVERT_M2_TO_KM2;
+                                            row[PRZC.c_FLD_RAS_PU_FEATURECOUNT] = 0;
+                                            row[PRZC.c_FLD_RAS_PU_SHARED_PERIM] = 0;
+                                            row[PRZC.c_FLD_RAS_PU_UNSHARED_PERIM] = 0;
+                                            row[PRZC.c_FLD_RAS_PU_HAS_UNSHARED_PERIM] = 0;
+
+                                            if (natgrid)
+                                            {
+                                                row[PRZC.c_FLD_RAS_PU_NATGRID_ID] = identifiers_by_id[puid];
+                                            }
+
+                                            row.Store();
+                                            context.Invalidate(row);
+                                        }
+                                    }
+
+                                }
+                            }, tab);
+                        }
+
+                        // Execute all the queued "creates"
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation!  This one might take a while..."), true, max, ++val);
+                        success = loader.Execute();
+
+                        if (success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Performing attribute edits..."), true, max, ++val);
+                            if (!await Project.Current.SaveEditsAsync())
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error performing attribute edits.", LogMessageType.ERROR), true, max, ++val);
+                                ProMsgBox.Show($"Error performing attribute edits.");
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Edits performed."), true, max, ++val);
+                            }
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to update raster attribute table: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
+                            ProMsgBox.Show($"Edit Operation error: unable to update raster attribute table: {loader.ErrorMessage}");
+                        }
+
+                        return success;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating raster attribute table.", LogMessageType.ERROR), true, max, val++);
+                    ProMsgBox.Show($"Error updating raster attribute table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster attribute table updated."), true, max, val++);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, max, val++);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+            finally
+            {
+                // reset disabled editing status
+                if (edits_are_disabled)
+                {
+                    await Project.Current.SetIsEditingEnabledAsync(false);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
+                }
+            }
+        }
+
         private async Task<bool> Test()
         {
             try
             {
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
 
-                Envelope env = EnvelopeBuilderEx.CreateEnvelope(0, 0, 44.723, 28.8, PRZH.GetSR_PRZCanadaAlbers());
+                HashSet<string> hash_identifiers = new HashSet<string>();
 
-                double envHeight = env.Height;
-                double envWidth = env.Width;
-
-                double tile_side = 6;
-
-                double contains = envWidth / tile_side;
-                double remainder = envWidth % tile_side;
-
-                int columns = 0;
-
-                ProMsgBox.Show($"Contains: {contains}\nRemainder: {remainder}");
-
-                if (remainder != 0)
+                for (int row = 0; row < 4700; row++)
                 {
-                    // get ceiling of contains.  This is an integral value one greater than the current number of full tile lengths in the envelope width
-                    double ceiling = Math.Ceiling(contains);
-                    columns = (int)ceiling;
+                    for (int col = 0; col < 5700; col++)
+                    {
+                        // Get Identifier for row+cal
+                        var result = NationalGridInfo.GetIdentifierFromRowColumn(row, col, (int)NationalGridDimension.dim3_1000m);
 
-                    double reducer = remainder / 2.0;
-
-                    ProMsgBox.Show($"Column Count: {columns}\nExpansion Required: -{reducer}");
-                }
-                else
-                {
-                    columns = (int)contains;
-
-
-                    ProMsgBox.Show($"Column Count: {columns}\nExpansion Required: none");
-                    // contains = integer = number of columns
-                    // tile_side * contains = existing width of envelope
+                        if (result.success)
+                        {
+                            hash_identifiers.Add(result.identifier);
+                        }
+                    }
                 }
 
-
-
+                stopwatch.Stop();
+                string m2 = PRZH.GetElapsedTimeInSeconds(stopwatch.Elapsed);
+                ProMsgBox.Show(m2 + "\n" + hash_identifiers.Count.ToString());
                 return true;
             }
             catch (Exception ex)

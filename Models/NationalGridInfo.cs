@@ -9,7 +9,6 @@ using ArcGIS.Core.Geometry;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
 using PRZH = NCC.PRZTools.PRZHelper;
-using PRZM = NCC.PRZTools.PRZMethods;
 
 namespace NCC.PRZTools
 {
@@ -34,6 +33,26 @@ namespace NCC.PRZTools
         dim5_100000m
     }
 
+    /// <summary>
+    /// This class models the behaviour of the national prioritization grids.
+    /// The various grids all share a common outer extent envelope:
+    /// LL (-2500000, 200000), UR (3200000, 4900000)
+    /// The grids use the custom Canada Albers spatial reference
+    /// The grids all share a similar identifier structure
+    /// aaaaaaa[EW]_bbbbbbb_d
+    /// aaaaaaa = X-coordinate (unsigned and padded with leading 0s, always 7 digits)
+    /// EW = E for positive or zero X-coordinate, and W for negative X-coordinate
+    /// bbbbbbb = Y-coordinate (unsigned and padded with leading 0s, always 7 digits)
+    /// d = national grid dimension: 0 = 1m, 1 = 10m, 2 = 100m, 3 = 1000m, 4 = 10000m, 5 = 100000m
+    /// 
+    /// National Grid Maximum Dimensions
+    /// 
+    /// 1 m:
+    /// 10 m:
+    /// 100 m:
+    /// 1000 m: 5700 columns x 4700 rows    (26,790,000 cells)
+    /// 
+    /// </summary>
     public class NationalGridInfo
     {
         static NationalGridInfo()
@@ -78,6 +97,20 @@ namespace NCC.PRZTools
         private const int c_MAX_X_COORDINATE = 3200000;     // Maximum X "
         private const int c_MAX_Y_COORDINATE = 4900000;     // Maximum Y "
 
+        private const int c_ROWCOUNT_0 = 0;
+        private const int c_ROWCOUNT_1 = 0;
+        private const int c_ROWCOUNT_2 = 0;
+        private const int c_ROWCOUNT_3 = 4700;
+        private const int c_ROWCOUNT_4 = 0;
+        private const int c_ROWCOUNT_5 = 0;
+
+        private const int c_COLUMNCOUNT_0 = 0;
+        private const int c_COLUMNCOUNT_1 = 0;
+        private const int c_COLUMNCOUNT_2 = 0;
+        private const int c_COLUMNCOUNT_3 = 5700;
+        private const int c_COLUMNCOUNT_4 = 0;
+        private const int c_COLUMNCOUNT_5 = 0;
+
         private string _cellIdentifier;
         private bool _cellIsValid = false;
         private string _constructorMessage;
@@ -95,22 +128,25 @@ namespace NCC.PRZTools
 
         #region STATIC PROPERTIES
 
-        public static int MIN_X_COORDINATE
-        {
-            get => c_MIN_X_COORDINATE;
-        }
-        public static int MIN_Y_COORDINATE
-        {
-            get => c_MIN_Y_COORDINATE;
-        }
-        public static int MAX_X_COORDINATE
-        {
-            get => c_MAX_X_COORDINATE;
-        }
-        public static int MAX_Y_COORDINATE
-        {
-            get => c_MAX_Y_COORDINATE;
-        }
+        public static int MIN_X_COORDINATE => c_MIN_X_COORDINATE;
+        public static int MIN_Y_COORDINATE => c_MIN_Y_COORDINATE;
+        public static int MAX_X_COORDINATE => c_MAX_X_COORDINATE;
+        public static int MAX_Y_COORDINATE => c_MAX_Y_COORDINATE;
+
+        public static int ROWCOUNT_0 => c_ROWCOUNT_0;
+        public static int ROWCOUNT_1 => c_ROWCOUNT_1;
+        public static int ROWCOUNT_2 => c_ROWCOUNT_2;
+        public static int ROWCOUNT_3 => c_ROWCOUNT_3;
+        public static int ROWCOUNT_4 => c_ROWCOUNT_4;
+        public static int ROWCOUNT_5 => c_ROWCOUNT_5;
+
+        public static int COLUMNCOUNT_0 => c_COLUMNCOUNT_0;
+        public static int COLUMNCOUNT_1 => c_COLUMNCOUNT_1;
+        public static int COLUMNCOUNT_2 => c_COLUMNCOUNT_2;
+        public static int COLUMNCOUNT_3 => c_COLUMNCOUNT_3;
+        public static int COLUMNCOUNT_4 => c_COLUMNCOUNT_4;
+        public static int COLUMNCOUNT_5 => c_COLUMNCOUNT_5;
+
         public static SpatialReference CANADA_ALBERS_SR { get; private set; }
 
         #endregion
@@ -170,21 +206,189 @@ namespace NCC.PRZTools
 
         #region STATIC METHODS
 
-        /// <summary>
-        /// Assembles a National Grid Identifier from the three separate components (x, y, and dimension)
-        /// </summary>
-        /// <param name="XMIN"></param>
-        /// <param name="YMIN"></param>
-        /// <param name="gridDimension"></param>
-        /// <returns></returns>
-        public static string GetIdentifier(int XMIN, int YMIN, int gridDimension)
+        public static (bool success, long cell_number, string message) GetCellNumberFromRowColumn(int row, int col, int gridDimension)
         {
             try
             {
-                string x_suffix = (XMIN < 0) ? "W" : "E";
+                // ROWS AND COLUMNS ARE ONE-BASED INDEXES
 
-                string abscissa = Math.Abs(XMIN).ToString("D7");
-                string ordinate = YMIN.ToString("D7");
+                int rowcount = 0;
+                int colcount = 0;
+
+                switch (gridDimension)
+                {
+                    case 0:
+                        rowcount = c_ROWCOUNT_0;
+                        colcount = c_COLUMNCOUNT_0;
+                        break;
+                    case 1:
+                        rowcount = c_ROWCOUNT_1;
+                        colcount = c_COLUMNCOUNT_1;
+                        break;
+                    case 2:
+                        rowcount = c_ROWCOUNT_2;
+                        colcount = c_COLUMNCOUNT_2;
+                        break;
+                    case 3:
+                        rowcount = c_ROWCOUNT_3;
+                        colcount = c_COLUMNCOUNT_3;
+                        break;
+                    case 4:
+                        rowcount = c_ROWCOUNT_4;
+                        colcount = c_COLUMNCOUNT_4;
+                        break;
+                    case 5:
+                        rowcount = c_ROWCOUNT_5;
+                        colcount = c_COLUMNCOUNT_5;
+                        break;
+                    default:
+                        throw new Exception($"invalid gridDimension parameter supplied: {gridDimension}");
+                }
+
+                if (row < 1 | row > rowcount)
+                {
+                    return (false, -1, $"invalid row {row}");
+                }
+                if (col < 1 | col > colcount)
+                {
+                    return (false, -1, $"invalid column {col}");
+                }
+
+                long cell_number = ((row - 1) * colcount) + col;
+
+                return (true, cell_number, "success");
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, -1, $"row={row}, col={col}, message={ex.Message}");
+            }
+        }
+
+        public static (bool success, string identifier, string message) GetIdentifierFromRowColumn(int row, int col, int gridDimension)
+        {
+            try
+            {
+                // ROWS AND COLUMNS ARE ONE-BASED INDEXES
+
+                int side_length = 0;
+                int rowcount = 0;
+                int colcount = 0;
+
+                switch (gridDimension)
+                {
+                    case 0:
+                        rowcount = c_ROWCOUNT_0;
+                        colcount = c_COLUMNCOUNT_0;
+                        side_length = 1;
+                        break;
+                    case 1:
+                        rowcount = c_ROWCOUNT_1;
+                        colcount = c_COLUMNCOUNT_1;
+                        side_length = 10;
+                        break;
+                    case 2:
+                        rowcount = c_ROWCOUNT_2;
+                        colcount = c_COLUMNCOUNT_2;
+                        side_length = 100;
+                        break;
+                    case 3:
+                        rowcount = c_ROWCOUNT_3;
+                        colcount = c_COLUMNCOUNT_3;
+                        side_length = 1000;
+                        break;
+                    case 4:
+                        rowcount = c_ROWCOUNT_4;
+                        colcount = c_COLUMNCOUNT_4;
+                        side_length = 10000;
+                        break;
+                    case 5:
+                        rowcount = c_ROWCOUNT_5;
+                        colcount = c_COLUMNCOUNT_5;
+                        side_length = 100000;
+                        break;
+                    default:
+                        throw new Exception($"invalid gridDimension parameter supplied: {gridDimension}");
+                }
+
+                if (row < 1 | row > rowcount)
+                {
+                    return (false, "", $"invalid row {row}");
+                }
+                if (col < 1 | col > colcount)
+                {
+                    return (false, "", $"invalid column {col}");
+                }
+
+
+                int UL_X = c_MIN_X_COORDINATE + (side_length * col);
+                int UL_Y = c_MAX_Y_COORDINATE - (side_length * row);
+
+                string identifier = GetIdentifierFromULXY(UL_X, UL_Y, gridDimension);
+
+                return (true, identifier, "success");
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, "", $"row={row}, col={col}, message={ex.Message}");
+            }
+        }
+
+        public static string GetIdentifierFromULXY(int UL_X, int UL_Y, int gridDimension)
+        {
+            try
+            {
+                int side_length = 0;
+
+                switch (gridDimension)
+                {
+                    case 0:
+                        side_length = 1;
+                        break;
+                    case 1:
+                        side_length = 10;
+                        break;
+                    case 2:
+                        side_length = 100;
+                        break;
+                    case 3:
+                        side_length = 1000;
+                        break;
+                    case 4:
+                        side_length = 10000;
+                        break;
+                    case 5:
+                        side_length = 100000;
+                        break;
+                    default:
+                        return "";
+                }
+
+                int LL_X = UL_X;
+                int LL_Y = UL_Y - side_length;
+
+                string identifier = GetIdentifierFromLLXY(LL_X, LL_Y, gridDimension);
+
+                // do anything here with the identifier?
+
+                return identifier;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return "";
+            }
+        }
+
+        public static string GetIdentifierFromLLXY(int LL_X, int LL_Y, int gridDimension)
+        {
+            try
+            {
+                string x_suffix = (LL_X < 0) ? "W" : "E";
+
+                string abscissa = Math.Abs(LL_X).ToString("D7");
+                string ordinate = LL_Y.ToString("D7");
                 string dimension = gridDimension.ToString();
 
                 string identifier = abscissa + x_suffix + "_" + ordinate + "_" + dimension;
@@ -197,10 +401,6 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// Returns an envelope corresponding to the full outer bounds of the National Grid system.
-        /// </summary>
-        /// <returns></returns>
         public static Envelope GetOuterBounds()
         {
             try
@@ -216,12 +416,6 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// For a supplied geometry (of type Polygon or Envelope), determines the spatial relationship between the geometry
-        /// and the National Grid's outer bounds envelope.
-        /// </summary>
-        /// <param name="geom"></param>
-        /// <returns></returns>
         public static (bool success, BoundaryRelationship relationship, string message) SpatialRelationshipWithOuterBounds(Geometry geom)
         {
             try
@@ -303,13 +497,6 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// Returns an Envelope that encompasses the supplied geometry, and that can be filled completely with
-        /// whole square tiles of the size defined by the supplied grid dimension.
-        /// </summary>
-        /// <param name="study_area_geom"></param>
-        /// <param name="grid_dimension"></param>
-        /// <returns></returns>
         public static (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetNatGridBoundsFromStudyArea(Geometry geom, NationalGridDimension gridDimension)
         {
             try
@@ -426,11 +613,6 @@ namespace NCC.PRZTools
 
         #region INSTANCE METHODS
 
-        /// <summary>
-        /// Instantiate a National Grid Info object based on a grid cell polygon.
-        /// </summary>
-        /// <param name="cellPoly"></param>
-        /// <returns></returns>
         private (bool success, string message) GenerateFromPolygon(Polygon cellPoly)
         {
             try
@@ -590,11 +772,6 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// Instantiate a National Grid Info object from a grid cell identifier.
-        /// </summary>
-        /// <param name="identifier"></param>
-        /// <returns></returns>
         private (bool success, string message) GenerateFromIdentifier(string identifier)
         {
             try
@@ -784,8 +961,6 @@ namespace NCC.PRZTools
                     _cell_MinY = cellEnv.YMin;
                     _cell_MaxX = cellEnv.XMax;
                     _cell_MaxY = cellEnv.YMax;
-
-                    // i'm here!!!
 
                     return (true, "Cell polygon lies entirely within the national grid bounds.");
                 }

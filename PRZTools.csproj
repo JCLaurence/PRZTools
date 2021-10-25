@@ -227,7 +227,6 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="PRZHelper.cs" />
-    <Compile Include="PRZMethods.cs" />
     <Compile Include="Views\SettingsWS.xaml.cs">
       <DependentUpon>SettingsWS.xaml</DependentUpon>
     </Compile>
