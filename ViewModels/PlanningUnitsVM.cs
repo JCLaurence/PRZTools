@@ -1902,7 +1902,6 @@ namespace NCC.PRZTools
                                     using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(PRZC.c_RAS_TEMP_2))
                                     {
                                         // Get the virtual Raster from Band 1 of the Raster Dataset
-                                        int[] bands = { 0 };
                                         Raster raster = rasterDataset.CreateFullRaster();
 
                                         // Create a PixelBlock 1 row high, stretching across all columns
@@ -3215,29 +3214,65 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
+                MapView mv = MapView.Active;
+                Layer lyr = mv.GetSelectedLayers().FirstOrDefault();
 
-                HashSet<string> hash_identifiers = new HashSet<string>();
-
-                for (int row = 0; row < 4700; row++)
+                if (lyr == null)
                 {
-                    for (int col = 0; col < 5700; col++)
-                    {
-                        // Get Identifier for row+cal
-                        var result = NationalGridInfo.GetIdentifierFromRowColumn(row, col, (int)NationalGridDimension.dim3_1000m);
-
-                        if (result.success)
-                        {
-                            hash_identifiers.Add(result.identifier);
-                        }
-                    }
+                    ProMsgBox.Show("No Layer Selected");
+                    return false;
+                }
+                else if (!(lyr is RasterLayer))
+                {
+                    ProMsgBox.Show("Layer is not raster layer");
+                    return false;
                 }
 
-                stopwatch.Stop();
-                string m2 = PRZH.GetElapsedTimeInSeconds(stopwatch.Elapsed);
-                ProMsgBox.Show(m2 + "\n" + hash_identifiers.Count.ToString());
+                RasterLayer RL = (RasterLayer)lyr;
+                Dictionary<string, double> DICT_Pixels = new Dictionary<string, double>();
+                Dictionary<long, double> DICT_Pixels2 = new Dictionary<long, double>();
+
+                await QueuedTask.Run(() =>
+                {
+                    using (Raster raster = RL.GetRaster())
+                    {
+                        Envelope env = raster.GetExtent();
+                        int rows = raster.GetHeight();
+                        int cols = raster.GetWidth();
+
+                        using (PixelBlock pixelBlock = raster.CreatePixelBlock(cols, 1))
+                        {
+                            for (int row = 1; row <= rows; row++)
+                            {
+                                // fill a pixel block
+                                raster.Read(0, row - 1, pixelBlock);
+
+                                for (int col = 1; col <= cols; col++)
+                                {
+                                    if (Convert.ToByte(pixelBlock.GetNoDataMaskValue(0, col - 1, 0)) == 1)
+                                    {
+                                        var val = pixelBlock.GetValue(0, col - 1, 0);
+                                        double d = Convert.ToDouble(val);
+
+                                        var result = NationalGridInfo.GetIdentifierFromRowColumn(row, col, 3);
+                                        var result2 = NationalGridInfo.GetCellNumberFromRowColumn(row, col, 3);
+                                        if (result.success && result2.success)
+                                        {
+                                            DICT_Pixels.Add(result.identifier, d);
+                                            DICT_Pixels2.Add(result2.cell_number, d);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+//                ProMsgBox.Show($"Dictionary Entries: {DICT_Pixels.Count}  {DICT_Pixels2.Count}");
+
+                // create table with 2 fields
+                // add rows, one per dictionary entry
+
                 return true;
             }
             catch (Exception ex)

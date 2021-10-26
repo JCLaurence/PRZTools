@@ -320,9 +320,8 @@ namespace NCC.PRZTools
                     return (false, "", $"invalid column {col}");
                 }
 
-
-                int UL_X = c_MIN_X_COORDINATE + (side_length * col);
-                int UL_Y = c_MAX_Y_COORDINATE - (side_length * row);
+                int UL_X = c_MIN_X_COORDINATE + (side_length * (col - 1));
+                int UL_Y = c_MAX_Y_COORDINATE - (side_length * (row - 1));
 
                 string identifier = GetIdentifierFromULXY(UL_X, UL_Y, gridDimension);
 
