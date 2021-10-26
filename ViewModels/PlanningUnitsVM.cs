@@ -14,6 +14,7 @@ using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -3268,10 +3269,122 @@ namespace NCC.PRZTools
                     }
                 });
 
-//                ProMsgBox.Show($"Dictionary Entries: {DICT_Pixels.Count}  {DICT_Pixels2.Count}");
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
 
-                // create table with 2 fields
-                // add rows, one per dictionary entry
+                // Build the empty table
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, "test1", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    ProMsgBox.Show($"Error creating the test1 table.");
+                    return false;
+                }
+
+                // Add Fields
+                string fldCellNumber = "cellnumber LONG 'Cell Number' # 0 #;";
+                string fldIdentifier = "identifier TEXT 'Cell Identifier' 20 # #;";
+                string fldValue = "cellvalue DOUBLE 'Cell Value' # 0 #";
+
+                string flds = fldCellNumber + fldIdentifier + fldValue;
+                string testpath = Path.Combine(gdbpath, "test1");
+
+                toolParams = Geoprocessing.MakeValueArray(testpath, flds);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    ProMsgBox.Show($"Error adding fields");
+                    return false;
+                }
+
+                // Insert values from dictionaries
+                if (!await QueuedTask.Run(async () =>
+                {
+                    bool success = false;
+
+                    try
+                    {
+                        var loader = new EditOperation();
+                        loader.Name = "record creator";
+                        loader.ShowProgressor = false;
+                        loader.ShowModalMessageAfterFailure = false;
+                        loader.SelectNewFeatures = false;
+                        loader.SelectModifiedFeatures = false;
+
+                        if (!await PRZH.TableExists("test1"))
+                        {
+                            return false;
+                        }
+
+                        using (Table tab = await PRZH.GetTable("test1"))
+                        {
+                            loader.Callback(async (context) =>
+                            {
+                                using (Table table = await PRZH.GetTable("test1"))
+                                using (InsertCursor insertCursor = table.CreateInsertCursor())
+                                using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                                {
+                                    long flusher = 0;
+
+                                    var cellNumbers = DICT_Pixels2.Keys.ToList();
+                                    cellNumbers.Sort();
+
+                                    foreach (var num in cellNumbers)
+                                    {
+                                        var val = DICT_Pixels2[num];
+
+                                        rowBuffer["cellnumber"] = num;
+                                        rowBuffer["cellvalue"] = val;
+                                        insertCursor.Insert(rowBuffer);
+
+                                        flusher++;
+
+                                        if (flusher == 10000)
+                                        {
+                                            insertCursor.Flush();
+                                            flusher = 0;
+                                        }
+                                    }
+
+                                    insertCursor.Flush();
+                                }
+                            }, tab);
+                        }
+
+                        // Execute all the queued "creates"
+                        success = loader.Execute();
+
+                        if (success)
+                        {
+                            if (!await Project.Current.SaveEditsAsync())
+                            {
+                                ProMsgBox.Show($"Error saving edits.");
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            ProMsgBox.Show($"Edit Operation error: unable to create tiles: {loader.ErrorMessage}");
+                        }
+
+                        return success;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    ProMsgBox.Show($"Error loading the table :(");
+                    return false;
+                }
 
                 return true;
             }

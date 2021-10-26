@@ -1174,6 +1174,37 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<Table> GetTable(string table_name)
+        {
+            try
+            {
+                Table table = await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await GetProjectGDB())
+                    {
+                        if (gdb == null) return null;
+
+                        try
+                        {
+                            table = gdb.OpenDataset<Table>(table_name);
+                            return table;
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    }
+                });
+
+                return table;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         public static async Task<Table> GetTable(Geodatabase gdb, string table_name)
         {
             try
@@ -1193,6 +1224,37 @@ namespace NCC.PRZTools
                 {
                     return null;
                 }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<FeatureClass> GetFeatureClass(string fc_name)
+        {
+            try
+            {
+                FeatureClass fc = await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await GetProjectGDB())
+                    {
+                        if (gdb == null) return null;
+
+                        try
+                        {
+                            fc = gdb.OpenDataset<FeatureClass>(fc_name);
+                            return fc;
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    }
+                });
+
+                return fc;
             }
             catch (Exception ex)
             {
@@ -2167,6 +2229,26 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> FCExists(string FCName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(gdb, FCName);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
         {
             try
@@ -2187,6 +2269,26 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> TableExists(string TabName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, TabName);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
         {
             try
@@ -2200,6 +2302,26 @@ namespace NCC.PRZTools
                 });
 
                 return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> RasterExists(string rasterName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await RasterExists(gdb, rasterName);
+                }
             }
             catch
             {
