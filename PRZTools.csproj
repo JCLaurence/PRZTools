@@ -492,7 +492,16 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\ComponentStatus_Warn16.png" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Resource Include="ImagesWPF\FolderGrey16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Geodatabase16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\LogFile16.png" />
+    <Resource Include="ImagesWPF\LogFileDelete16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

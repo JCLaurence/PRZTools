@@ -25,7 +25,7 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\temp\\jcfolder")]
+        [global::System.Configuration.DefaultSettingValueAttribute("c:\\temp")]
         public string WORKSPACE_PATH {
             get {
                 return ((string)(this["WORKSPACE_PATH"]));
@@ -37,10 +37,10 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("DIR")]
-        public string WORKSPACE_DISPLAY_MODE {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int WORKSPACE_DISPLAY_MODE {
             get {
-                return ((string)(this["WORKSPACE_DISPLAY_MODE"]));
+                return ((int)(this["WORKSPACE_DISPLAY_MODE"]));
             }
             set {
                 this["WORKSPACE_DISPLAY_MODE"] = value;
@@ -260,6 +260,18 @@ namespace NCC.PRZTools.Properties {
             }
             set {
                 this["DEFAULT_TILE_SIDE_UNITS"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string NATDB_PATH {
+            get {
+                return ((string)(this["NATDB_PATH"]));
+            }
+            set {
+                this["NATDB_PATH"] = value;
             }
         }
     }

@@ -3,10 +3,10 @@
   <Profiles />
   <Settings>
     <Setting Name="WORKSPACE_PATH" Type="System.String" Scope="User">
-      <Value Profile="(Default)">c:\temp\jcfolder</Value>
+      <Value Profile="(Default)">c:\temp</Value>
     </Setting>
-    <Setting Name="WORKSPACE_DISPLAY_MODE" Type="System.String" Scope="User">
-      <Value Profile="(Default)">DIR</Value>
+    <Setting Name="WORKSPACE_DISPLAY_MODE" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="DEFAULT_SELRULE_MIN_THRESHOLD" Type="System.String" Scope="User">
       <Value Profile="(Default)">0</Value>
@@ -61,6 +61,9 @@
     </Setting>
     <Setting Name="DEFAULT_TILE_SIDE_UNITS" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="NATDB_PATH" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>

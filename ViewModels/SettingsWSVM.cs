@@ -1,5 +1,6 @@
 ﻿using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
+using ArcGIS.Core.Data.Raster;
 using ArcGIS.Desktop.Catalog;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
@@ -28,109 +29,149 @@ namespace NCC.PRZTools
         {
         }
 
-        #region Properties
+        #region FIELDS
 
-        private string _currentWorkspacePath = Properties.Settings.Default.WORKSPACE_PATH;
-        public string CurrentWorkspacePath
+        // Commands
+        private ICommand _cmdSelectFolder;
+        private ICommand _cmdSelectDbConnection;
+        private ICommand _cmdInitializeWorkspace;
+        private ICommand _cmdResetWorkspace;
+        private ICommand _cmdExploreWorkspace;
+        private ICommand _cmdViewLogFile;
+        private ICommand _cmdClearLogFile;
+
+        // Other Fields
+        private string _prjSettings_Txt_ProjectFolderPath;
+        private string _prjSettings_Txt_NationalDbPath;
+        private bool _prjSettings_Rad_WSViewer_Dir_IsChecked;
+        private bool _prjSettings_Rad_WSViewer_Gdb_IsChecked;
+        private string _prjSettings_Txt_WorkspaceContents;
+
+        #endregion
+
+        #region PROPERTIES
+        public string PrjSettings_Txt_ProjectFolderPath
         {
-            get => _currentWorkspacePath;
+            get => _prjSettings_Txt_ProjectFolderPath;
             set
             {
-                SetProperty(ref _currentWorkspacePath, value, () => CurrentWorkspacePath);
+                SetProperty(ref _prjSettings_Txt_ProjectFolderPath, value, () => PrjSettings_Txt_ProjectFolderPath);
                 Properties.Settings.Default.WORKSPACE_PATH = value;
                 Properties.Settings.Default.Save();
             }
         }
 
-        private string _workspaceContents;
-        public string WorkspaceContents
+        public string PrjSettings_Txt_NationalDbPath
         {
-            get => _workspaceContents;
-            set => SetProperty(ref _workspaceContents, value, () => WorkspaceContents);
+            get => _prjSettings_Txt_NationalDbPath;
+            set
+            {
+                SetProperty(ref _prjSettings_Txt_NationalDbPath, value, () => PrjSettings_Txt_NationalDbPath);
+                Properties.Settings.Default.NATDB_PATH = value;
+                Properties.Settings.Default.Save();
+            }
         }
 
-        private bool _folderChecked;
-        public bool FolderChecked
+        public string PrjSettings_Txt_WorkspaceContents
         {
-            get => _folderChecked;
-            set => SetProperty(ref _folderChecked, value, () => FolderChecked);
+            get => _prjSettings_Txt_WorkspaceContents;
+            set => SetProperty(ref _prjSettings_Txt_WorkspaceContents, value, () => PrjSettings_Txt_WorkspaceContents);
         }
 
-        private bool _geodatabaseChecked;
-        public bool GeodatabaseChecked
+        public bool PrjSettings_Rad_WSViewer_Dir_IsChecked
         {
-            get => _geodatabaseChecked;
-            set => SetProperty(ref _geodatabaseChecked, value, () => GeodatabaseChecked);
+            get => _prjSettings_Rad_WSViewer_Dir_IsChecked;
+            set
+            {
+                SetProperty(ref _prjSettings_Rad_WSViewer_Dir_IsChecked, value, () => PrjSettings_Rad_WSViewer_Dir_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = (int)WorkspaceDisplayMode.DIR;
+                    Properties.Settings.Default.Save();
+                    DisplayContent(WorkspaceDisplayMode.DIR);
+                }
+            }
         }
 
-        private bool _logChecked;
-        public bool LogChecked
+        public bool PrjSettings_Rad_WSViewer_Gdb_IsChecked
         {
-            get => _logChecked;
-            set => SetProperty(ref _logChecked, value, () => LogChecked);
+            get => _prjSettings_Rad_WSViewer_Gdb_IsChecked;
+            set
+            {
+                SetProperty(ref _prjSettings_Rad_WSViewer_Gdb_IsChecked, value, () => PrjSettings_Rad_WSViewer_Gdb_IsChecked);
+                if (value)
+                {
+                    Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = (int)WorkspaceDisplayMode.GDB;
+                    Properties.Settings.Default.Save();
+                    DisplayContent(WorkspaceDisplayMode.GDB);
+                }
+            }
         }
 
         #endregion
 
-        #region Commands
+        #region COMMANDS
 
-        private ICommand _cmdSelectWorkspaceFolder;
-        public ICommand CmdSelectWorkspaceFolder => _cmdSelectWorkspaceFolder ?? (_cmdSelectWorkspaceFolder = new RelayCommand(() => SelectWorkspaceFolder(), () => true));
+        public ICommand CmdViewLogFile => _cmdViewLogFile ?? (_cmdViewLogFile = new RelayCommand(() => ViewLogFile(), () => true));
 
+        public ICommand CmdClearLogFile => _cmdClearLogFile ?? (_cmdClearLogFile = new RelayCommand(() => ClearLogFile(), () => true));
 
-        private ICommand _cmdInitializeCurrentWorkspace;
-        public ICommand CmdInitializeCurrentWorkspace => _cmdInitializeCurrentWorkspace ?? (_cmdInitializeCurrentWorkspace = new RelayCommand(async () => await InitializeCurrentWorkspace(), () => true));
+        public ICommand CmdSelectFolder => _cmdSelectFolder ?? (_cmdSelectFolder = new RelayCommand(() => SelectFolder(), () => true));
 
+        public ICommand CmdSelectDbConnection => _cmdSelectDbConnection ?? (_cmdSelectDbConnection = new RelayCommand(() => SelectDbConnection(), () => true));
 
-        private ICommand _cmdResetCurrentWorkspace;
-        public ICommand CmdResetCurrentWorkspace => _cmdResetCurrentWorkspace ?? (_cmdResetCurrentWorkspace = new RelayCommand(async () => await ResetCurrentWorkspace(), () => true));
+        public ICommand CmdInitializeWorkspace => _cmdInitializeWorkspace ?? (_cmdInitializeWorkspace = new RelayCommand(async () => await InitializeWorkspace(), () => true));
 
+        public ICommand CmdResetWorkspace => _cmdResetWorkspace ?? (_cmdResetWorkspace = new RelayCommand(async () => await ResetWorkspace(), () => true));
 
-        private ICommand _cmdOpenCurrentWorkspace;
-        public ICommand CmdOpenCurrentWorkspace => _cmdOpenCurrentWorkspace ?? (_cmdOpenCurrentWorkspace = new RelayCommand(() => OpenCurrentWorkspaceInExplorer(), () => true));
-
-
-
-        private ICommand _cmdDisplayFolderContent;
-        public ICommand CmdDisplayFolderContent => _cmdDisplayFolderContent ?? (_cmdDisplayFolderContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.DIR), () => true));
-
-        private ICommand _cmdDisplayGDBContent;
-        public ICommand CmdDisplayGDBContent => _cmdDisplayGDBContent ?? (_cmdDisplayGDBContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.GDB), () => true));
-
-        private ICommand _cmdDisplayLogContent;
-        public ICommand CmdDisplayLogContent => _cmdDisplayLogContent ?? (_cmdDisplayLogContent = new RelayCommand(async () => await DisplayContent(WorkspaceDisplayMode.LOG), () => true));
+        public ICommand CmdExploreWorkspace => _cmdExploreWorkspace ?? (_cmdExploreWorkspace = new RelayCommand(() => ExploreWorkspace(), () => true));
 
         #endregion
 
-        #region Methods
+        #region METHODS
 
         public async Task OnProWinLoaded()
         {
             try
             {
-                string wdm = Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
-
-                // enable the correct radio button
-                if (wdm == WorkspaceDisplayMode.DIR.ToString())
+                // Project Folder
+                string wspath = Properties.Settings.Default.WORKSPACE_PATH;
+                if (string.IsNullOrEmpty(wspath) || string.IsNullOrWhiteSpace(wspath))
                 {
-                    FolderChecked = true;
-                    await DisplayContent(WorkspaceDisplayMode.DIR);
-                }
-                else if (wdm == WorkspaceDisplayMode.GDB.ToString())
-                {
-                    GeodatabaseChecked = true;
-                    await DisplayContent(WorkspaceDisplayMode.GDB);
-                }
-                else if (wdm == WorkspaceDisplayMode.LOG.ToString())
-                {
-                    LogChecked = true;
-                    await DisplayContent(WorkspaceDisplayMode.LOG);
+                    PrjSettings_Txt_ProjectFolderPath = "";
                 }
                 else
                 {
-                    FolderChecked = true;
-                    await DisplayContent(WorkspaceDisplayMode.DIR);
+                    PrjSettings_Txt_ProjectFolderPath = wspath;
                 }
+
+                // National DB
+                string natpath = Properties.Settings.Default.NATDB_PATH;
+                if (string.IsNullOrEmpty(natpath) || string.IsNullOrWhiteSpace(natpath))
+                {
+                    PrjSettings_Txt_NationalDbPath = "";
+                }
+                else
+                {
+                    PrjSettings_Txt_NationalDbPath = natpath;
+                }
+
+                // Workspace Viewer
+                WorkspaceDisplayMode mode = (WorkspaceDisplayMode)Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
+                if (mode == WorkspaceDisplayMode.DIR)
+                {
+                    PrjSettings_Rad_WSViewer_Dir_IsChecked = true;
+                }
+                else if (mode == WorkspaceDisplayMode.GDB)
+                {
+                    PrjSettings_Rad_WSViewer_Gdb_IsChecked = true;
+                }
+                else
+                {
+                    PrjSettings_Rad_WSViewer_Dir_IsChecked = true;
+                }
+
+
             }
             catch (Exception ex)
             {
@@ -138,15 +179,214 @@ namespace NCC.PRZTools
             }
         }
 
-        private void SelectWorkspaceFolder()
+        private async Task DisplayContent(WorkspaceDisplayMode mode)
+        {
+            StringBuilder contents = new StringBuilder("");
+
+            try
+            {
+                string wspath = PrjSettings_Txt_ProjectFolderPath;
+
+                if (mode == WorkspaceDisplayMode.DIR)
+                {
+                    // Validate the Project Folder
+                    if (!Directory.Exists(wspath))
+                    {
+                        contents.AppendLine($"Directory does not exist: {wspath}");
+                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+                        return;
+                    }
+
+                    // Enter top-level info
+                    contents.AppendLine("PRZ PROJECT FOLDER");
+                    contents.AppendLine("******************");
+                    contents.AppendLine("PATH: " + wspath);
+                    contents.AppendLine();
+
+                    // List Directories
+                    string[] subdirs = Directory.GetDirectories(wspath);
+
+                    contents.AppendLine("SUBFOLDERS");
+                    contents.AppendLine("**********");
+
+                    if (subdirs.Length == 0)
+                    {
+                        contents.AppendLine(" > No Subfolders Found");
+                        contents.AppendLine();
+                    }
+                    else
+                    {
+                        foreach (string dir in subdirs)
+                        {
+                            contents.AppendLine(" > " + dir);
+                        }
+
+                        contents.AppendLine();
+                    }
+
+                    // List Files
+                    string[] files = Directory.GetFiles(wspath);
+
+                    contents.AppendLine("FILES");
+                    contents.AppendLine("*****");
+
+                    if (files.Length == 0)
+                    {
+                        contents.AppendLine(" > No Files Found");
+                        contents.AppendLine();
+                    }
+                    else
+                    {
+                        foreach (string file in files)
+                        {
+                            contents.AppendLine(" > " + file);
+                        }
+
+                        contents.AppendLine();
+                    }
+
+                    // EXPORT WTW Folder Contents, if present
+                    string wtwdir = PRZH.GetPath_ExportWTWFolder();
+
+                    if (Directory.Exists(wtwdir))
+                    {
+                        contents.AppendLine("EXPORT_WTW FOLDER FILES");
+                        contents.AppendLine("***********************");
+
+                        string[] wtwfiles = Directory.GetFiles(wtwdir);
+
+                        if (wtwfiles.Length == 0)
+                        {
+                            contents.AppendLine(" > No Files Found");
+                            contents.AppendLine();
+                        }
+                        else
+                        {
+                            foreach (string f in wtwfiles)
+                            {
+                                contents.AppendLine(" > " + f);
+                            }
+
+                            contents.AppendLine();
+                        }
+                    }
+                }
+                else if (mode == WorkspaceDisplayMode.GDB)
+                {
+                    string gdbpath = PRZH.GetPath_ProjectGDB();
+
+                    if (!await PRZH.ProjectGDBExists())
+                    {
+                        contents.AppendLine($"Project Geodatabase does not exist at path: {gdbpath}");
+                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+                        return;
+                    }
+
+                    // Enter top-level info
+                    contents.AppendLine("PROJECT GEODATABASE");
+                    contents.AppendLine("*******************");
+                    contents.AppendLine("PATH: " + gdbpath);
+                    contents.AppendLine();
+
+                    List<string> FCNames = new List<string>();
+                    List<string> RasterNames = new List<string>();
+                    List<string> TableNames = new List<string>();
+
+                    try
+                    {
+                        await QueuedTask.Run(async () =>
+                        {
+                            using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                            {
+                                IReadOnlyList<FeatureClassDefinition> fcDefs = gdb.GetDefinitions<FeatureClassDefinition>();
+
+                                foreach (var fcDef in fcDefs)
+                                {
+                                    FCNames.Add(fcDef.GetName());
+                                }
+
+                                IReadOnlyList<RasterDatasetDefinition> rasDefs = gdb.GetDefinitions<RasterDatasetDefinition>();
+
+                                foreach (var rasDef in rasDefs)
+                                {
+                                    RasterNames.Add(rasDef.GetName());
+                                }
+
+                                IReadOnlyList<TableDefinition> tabDefs = gdb.GetDefinitions<TableDefinition>();
+
+                                foreach (var tabDef in tabDefs)
+                                {
+                                    TableNames.Add(tabDef.GetName());
+                                }
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        contents.AppendLine(ex.Message);
+                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+                        return;
+                    }
+
+                    // List Feature Classes
+                    contents.AppendLine("FEATURE CLASSES");
+                    contents.AppendLine("***************");
+
+                    FCNames.Sort();
+
+                    foreach (string name in FCNames)
+                    {
+                        contents.AppendLine($" > {name}");
+                    }
+
+                    contents.AppendLine();
+
+                    // List Feature Classes
+                    contents.AppendLine("RASTER DATASETS");
+                    contents.AppendLine("***************");
+
+                    RasterNames.Sort();
+
+                    foreach (string name in RasterNames)
+                    {
+                        contents.AppendLine($" > {name}");
+                    }
+
+                    contents.AppendLine();
+
+                    // List Tables
+                    contents.AppendLine("TABLES");
+                    contents.AppendLine("******");
+
+                    TableNames.Sort();
+
+                    foreach (string name in TableNames)
+                    {
+                        contents.AppendLine($" > {name}");
+                    }
+
+                    contents.AppendLine();
+                }
+
+                this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+            }
+            catch (Exception ex)
+            {
+                contents.AppendLine(ex.Message);
+                this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private void SelectFolder()
         {
             try
             {
                 string initDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-                if (Directory.Exists(this.CurrentWorkspacePath))
+                if (Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
                 {
-                    DirectoryInfo di = new DirectoryInfo(CurrentWorkspacePath);
+                    DirectoryInfo di = new DirectoryInfo(PrjSettings_Txt_ProjectFolderPath);
                     DirectoryInfo dip = di.Parent;
 
                     if (dip != null)
@@ -157,7 +397,7 @@ namespace NCC.PRZTools
 
                 OpenItemDialog dlg = new OpenItemDialog
                 {
-                    Title = "Specify a Project Workspace folder",
+                    Title = "Specify a Project Folder",
                     InitialLocation = initDir,
                     MultiSelect = false,
                     AlwaysUseInitialLocation = true,
@@ -178,7 +418,7 @@ namespace NCC.PRZTools
                     return;
                 }
 
-                CurrentWorkspacePath = item.Path;
+                PrjSettings_Txt_ProjectFolderPath = item.Path;
             }
             catch (Exception ex)
             {
@@ -186,14 +426,69 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> InitializeCurrentWorkspace()
+        private void SelectDbConnection()
+        {
+            try
+            {
+                string initDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                if (File.Exists(PrjSettings_Txt_NationalDbPath))
+                {
+                    FileInfo fi = new FileInfo(PrjSettings_Txt_NationalDbPath);
+                    DirectoryInfo di = fi.Directory;
+
+                    if (di != null)
+                    {
+                        initDir = di.FullName;
+                    }
+                }
+
+                // Configure the Browse Filter
+                BrowseProjectFilter bf = new BrowseProjectFilter("esri_browseDialogFilters_databases")
+                {
+                    Name = "Database Connections"
+                };
+
+                OpenItemDialog dlg = new OpenItemDialog
+                {
+                    Title = "Specify a National PRZ Database",
+                    InitialLocation = initDir,
+                    MultiSelect = false,
+                    AlwaysUseInitialLocation = true,
+                    BrowseFilter = bf
+                };
+
+                bool? result = dlg.ShowDialog();
+
+                //if (!result.HasValue || !result.Value || dlg.Items.Count() == 0)
+                if ((dlg.Items == null) || (dlg.Items.Count() < 1))
+                {
+                    return;
+                }
+
+                Item item = dlg.Items.FirstOrDefault();
+
+                if (item == null)
+                {
+                    return;
+                }
+
+                PrjSettings_Txt_NationalDbPath = item.Path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private async Task<bool> InitializeWorkspace()
         {
             try
             {
                 // Validate the current Project Workspace
-                if (!Directory.Exists(CurrentWorkspacePath))
+                if (!Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
                 {
-                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + CurrentWorkspacePath + " does not exist");
+                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + PrjSettings_Txt_ProjectFolderPath + " does not exist");
                     return false;
                 }
 
@@ -210,20 +505,6 @@ namespace NCC.PRZTools
                 }
 
                 #region SUBDIRECTORIES
-
-                // INPUT
-                string input_folder = PRZH.GetPath_InputFolder();
-                if (!Directory.Exists(input_folder))
-                {
-                    Directory.CreateDirectory(input_folder);
-                }
-
-                // OUTPUT
-                string output_folder = PRZH.GetPath_OutputFolder();
-                if (!Directory.Exists(output_folder))
-                {
-                    Directory.CreateDirectory(output_folder);
-                }
 
                 // EXPORT WTW
                 string wtw_folder = PRZH.GetPath_ExportWTWFolder();
@@ -287,21 +568,16 @@ namespace NCC.PRZTools
                 #endregion
 
                 // Refresh the Display
-                if (FolderChecked)
+                if (PrjSettings_Rad_WSViewer_Dir_IsChecked)
                 {
                     await DisplayContent(WorkspaceDisplayMode.DIR);
                 }
-                else if (GeodatabaseChecked)
+                else if (PrjSettings_Rad_WSViewer_Gdb_IsChecked)
                 {
                     await DisplayContent(WorkspaceDisplayMode.GDB);
                 }
-                else if (LogChecked)
-                {
-                    await DisplayContent(WorkspaceDisplayMode.LOG);
-                }
 
                 ProMsgBox.Show("Workspace has been initialized");
-
                 return true;
             }
             catch (Exception ex)
@@ -311,14 +587,14 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ResetCurrentWorkspace()
+        private async Task<bool> ResetWorkspace()
         {
             try
             {
                 // Validate the current Project Workspace
-                if (!Directory.Exists(CurrentWorkspacePath))
+                if (!Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
                 {
-                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + CurrentWorkspacePath + " does not exist");
+                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + PrjSettings_Txt_ProjectFolderPath + " does not exist");
                     return false;
                 }
 
@@ -335,25 +611,6 @@ namespace NCC.PRZTools
                 }
 
                 #region SUBDIRECTORIES
-
-                // INPUT
-                string input_folder = PRZH.GetPath_InputFolder();
-                if (Directory.Exists(input_folder))
-                {
-                    Directory.Delete(input_folder, true);
-                }
-
-                Directory.CreateDirectory(input_folder);
-
-
-                // OUTPUT
-                string output_folder = PRZH.GetPath_OutputFolder();
-                if (Directory.Exists(output_folder))
-                {
-                    Directory.Delete(output_folder, true);
-                }
-
-                Directory.CreateDirectory(output_folder);
 
                 // EXPORT WTW
                 string wtw_folder = PRZH.GetPath_ExportWTWFolder();
@@ -425,17 +682,13 @@ namespace NCC.PRZTools
                 #endregion
 
                 // Refresh the Display
-                if (FolderChecked)
+                if (PrjSettings_Rad_WSViewer_Dir_IsChecked)
                 {
                     await DisplayContent(WorkspaceDisplayMode.DIR);
                 }
-                else if (GeodatabaseChecked)
+                else if (PrjSettings_Rad_WSViewer_Gdb_IsChecked)
                 {
                     await DisplayContent(WorkspaceDisplayMode.GDB);
-                }
-                else if (LogChecked)
-                {
-                    await DisplayContent(WorkspaceDisplayMode.LOG);
                 }
 
                 ProMsgBox.Show("Workspace has been reset");
@@ -449,11 +702,11 @@ namespace NCC.PRZTools
             }
         }
 
-        private void OpenCurrentWorkspaceInExplorer()
+        private void ExploreWorkspace()
         {
             try
             {
-                string fp = CurrentWorkspacePath;
+                string fp = PrjSettings_Txt_ProjectFolderPath;
 
                 if (!Directory.Exists(fp))
                 {
@@ -481,253 +734,65 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task DisplayContent(WorkspaceDisplayMode displayMode)
+        private void ViewLogFile()
         {
-            StringBuilder contents = new StringBuilder("");
-
             try
             {
-                // Save the latest display type
-                Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = displayMode.ToString();
-                Properties.Settings.Default.Save();
+                string wspath = PrjSettings_Txt_ProjectFolderPath;
 
-                string wspath = CurrentWorkspacePath;
-
-                if (displayMode == WorkspaceDisplayMode.DIR)
+                if (!Directory.Exists(wspath))
                 {
-                    // Validate the Project Folder
-                    if (!Directory.Exists(wspath))
-                    {
-                        contents.AppendLine($"Directory does not exist: {wspath}");
-                        this.WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // Enter top-level info
-                    contents.AppendLine("PRZ PROJECT FOLDER");
-                    contents.AppendLine("******************");
-                    contents.AppendLine("PATH: " + wspath);
-                    contents.AppendLine();
-
-                    // List Directories
-                    string[] subdirs = Directory.GetDirectories(wspath);
-
-                    contents.AppendLine("SUBFOLDERS");
-                    contents.AppendLine("**********");
-
-                    if (subdirs.Length == 0)
-                    {
-                        contents.AppendLine(" > No Subfolders Found");
-                        contents.AppendLine();
-                    }
-                    else
-                    {
-                        foreach (string dir in subdirs)
-                        {
-                            contents.AppendLine(" > " + dir);
-                        }
-
-                        contents.AppendLine();
-                    }
-
-                    // List Files
-                    string[] files = Directory.GetFiles(wspath);
-
-                    contents.AppendLine("FILES");
-                    contents.AppendLine("*****");
-
-                    if (files.Length == 0)
-                    {
-                        contents.AppendLine(" > No Files Found");
-                        contents.AppendLine();
-                    }
-                    else
-                    {
-                        foreach (string file in files)
-                        {
-                            contents.AppendLine(" > " + file);
-                        }
-
-                        contents.AppendLine();
-                    }
-
-                    // INPUT Folder Contents, if present
-                    string inputdir = PRZH.GetPath_InputFolder();
-
-                    if (Directory.Exists(inputdir))
-                    {
-                        contents.AppendLine("INPUT FOLDER FILES");
-                        contents.AppendLine("******************");
-
-                        string[] inputfiles = Directory.GetFiles(inputdir);
-
-                        if (inputfiles.Length == 0)
-                        {
-                            contents.AppendLine(" > No Files Found");
-                            contents.AppendLine();
-                        }
-                        else
-                        {
-                            foreach (string f in inputfiles)
-                            {
-                                contents.AppendLine(" > " + f);
-                            }
-
-                            contents.AppendLine();
-                        }
-                    }
-
-                    // OUTPUT Folder Contents, if present
-                    string outputdir = PRZH.GetPath_OutputFolder();
-
-                    if (Directory.Exists(outputdir))
-                    {
-                        contents.AppendLine("OUTPUT FOLDER FILES");
-                        contents.AppendLine("*******************");
-
-                        string[] outputfiles = Directory.GetFiles(outputdir);
-
-                        if (outputfiles.Length == 0)
-                        {
-                            contents.AppendLine(" > No Files Found");
-                            contents.AppendLine();
-                        }
-                        else
-                        {
-                            foreach (string f in outputfiles)
-                            {
-                                contents.AppendLine(" > " + f);
-                            }
-
-                            contents.AppendLine();
-                        }
-                    }
-
-                    // EXPORT WTW Folder Contents, if present
-                    string wtwdir = PRZH.GetPath_ExportWTWFolder();
-
-                    if (Directory.Exists(wtwdir))
-                    {
-                        contents.AppendLine("EXPORT_WTW FOLDER FILES");
-                        contents.AppendLine("***********************");
-
-                        string[] wtwfiles = Directory.GetFiles(wtwdir);
-
-                        if (wtwfiles.Length == 0)
-                        {
-                            contents.AppendLine(" > No Files Found");
-                            contents.AppendLine();
-                        }
-                        else
-                        {
-                            foreach (string f in wtwfiles)
-                            {
-                                contents.AppendLine(" > " + f);
-                            }
-
-                            contents.AppendLine();
-                        }
-                    }
-                }
-                else if (displayMode == WorkspaceDisplayMode.GDB)
-                {
-                    string gdbpath = PRZH.GetPath_ProjectGDB();
-                    bool gdbExists = await PRZH.ProjectGDBExists();
-
-                    if (!gdbExists)
-                    {
-                        contents.AppendLine($"Workspace Geodatabase does not exist at path: {gdbpath}");
-                        this.WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // Enter top-level info
-                    contents.AppendLine("PRZ FILE GEODATABASE WORKSPACE");
-                    contents.AppendLine("*********************************");
-                    contents.AppendLine("PATH:    " + gdbpath);
-                    contents.AppendLine();
-
-                    List<string> FCNames = new List<string>();
-                    List<string> TableNames = new List<string>();
-
-                    try
-                    {
-                        await QueuedTask.Run(async () =>
-                        {
-                            using (Geodatabase gdb = await PRZH.GetProjectGDB())
-                            {
-                                IReadOnlyList<FeatureClassDefinition> fcDefs = gdb.GetDefinitions<FeatureClassDefinition>();
-
-                                foreach (var fcDef in fcDefs)
-                                {
-                                    FCNames.Add(fcDef.GetName());
-                                }
-
-                                IReadOnlyList<TableDefinition> tabDefs = gdb.GetDefinitions<TableDefinition>();
-
-                                foreach (var tabDef in tabDefs)
-                                {
-                                    TableNames.Add(tabDef.GetName());
-                                }
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        contents.AppendLine(ex.Message);
-                        this.WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // List Feature Classes
-                    contents.AppendLine("FEATURE CLASSES");
-                    contents.AppendLine("***************");
-
-                    FCNames.Sort();
-
-                    foreach (string name in FCNames)
-                    {
-                        contents.AppendLine($" > {name}");
-                    }
-
-                    contents.AppendLine();
-
-                    // List Tables
-                    contents.AppendLine("TABLES");
-                    contents.AppendLine("******");
-                    
-                    TableNames.Sort();
-                    
-                    foreach (string name in TableNames)
-                    {
-                        contents.AppendLine($" > {name}");
-                    }
-
-                    contents.AppendLine();
-                }
-                else if (displayMode == WorkspaceDisplayMode.LOG)
-                {
-                    if (PRZH.ProjectLogExists())
-                    {
-                        contents.AppendLine(PRZH.ReadLog());
-                    }
-                    else
-                    {
-                        contents.AppendLine("Project Log File not found at path: " + PRZH.GetPath_ProjectLog());
-                    }
-                }
-                else
-                {
-                    contents.AppendLine("what?");
+                    ProMsgBox.Show("Invalid Project Folder Path..." + Environment.NewLine + Environment.NewLine + wspath + " does not exist");
+                    return;
                 }
 
-                this.WorkspaceContents = contents.ToString();
+                string logpath = PRZH.GetPath_ProjectLog();
+
+                if (!File.Exists(logpath))
+                {
+                    ProMsgBox.Show($"Log file does not exist: {logpath}\nPlease initialize the project workspace.");
+                    return;
+                }
+
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = logpath,
+                    UseShellExecute = true,
+                    Verb = "open"
+                };
+
+                Process.Start(psi);
             }
             catch (Exception ex)
             {
-                contents.AppendLine(ex.Message);
-                this.WorkspaceContents = contents.ToString();
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private void ClearLogFile()
+        {
+            try
+            {
+                // Prompt User for permission to proceed
+                if (ProMsgBox.Show("This will remove all entries from the project log file." + Environment.NewLine + Environment.NewLine +
+                   "Do you wish to proceed?" +
+                   Environment.NewLine + Environment.NewLine +
+                   "Choose wisely...",
+                   "Clear Log File",
+                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
+                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+
+                // Clear the log file
+                PRZH.WriteLog("Log File Cleared.", LogMessageType.INFO, false);
+
+                ProMsgBox.Show("Log File Cleared.");
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
             }
         }
 

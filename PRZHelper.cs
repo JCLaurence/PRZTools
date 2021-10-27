@@ -248,6 +248,20 @@ namespace NCC.PRZTools
             }
         }
 
+        // National DB
+        public static string GetPath_NationalDB()
+        {
+            try
+            {
+                return Properties.Settings.Default.NATDB_PATH;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         // Project Log File
         public static string GetPath_ProjectLog()
         {
@@ -257,40 +271,6 @@ namespace NCC.PRZTools
                 string logpath = Path.Combine(ws, PRZC.c_FILE_PRZ_LOG);
 
                 return logpath;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // Input Subfolder
-        public static string GetPath_InputFolder()
-        {
-            try
-            {
-                string wspath = GetPath_ProjectFolder();
-                string inputfolderpath = Path.Combine(wspath, PRZC.c_DIR_INPUT);
-
-                return inputfolderpath;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // Output Subfolder
-        public static string GetPath_OutputFolder()
-        {
-            try
-            {
-                string wspath = GetPath_ProjectFolder();
-                string outputfolderpath = Path.Combine(wspath, PRZC.c_DIR_OUTPUT);
-
-                return outputfolderpath;
             }
             catch (Exception ex)
             {
@@ -548,40 +528,79 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> NationalDBExists()
+        {
+            try
+            {
+                bool result = await QueuedTask.Run(() =>
+                {
+                    string dbpath = GetPath_NationalDB();
+
+                    if (dbpath == null)
+                    {
+                        return false;
+                    }
+
+                    // Create a Uri
+                    Uri u = new Uri(dbpath);
+
+                    if (Directory.Exists(dbpath))  // It's a folder (file gdb)
+                    {
+                        FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
+
+                        try
+                        {
+                            using (Geodatabase gdb = new Geodatabase(conn)) { }
+                        }
+                        catch (GeodatabaseNotFoundOrOpenedException)
+                        {
+                            return false;
+                        }
+
+                        // I'm here!!!
+
+                        // If I get to this point, the file gdb exists and was successfully opened
+                        return true;
+                    }
+                    else if (File.Exists(dbpath) && dbpath.EndsWith(".sde"))    // It's a connection file (.sde)
+                    {
+                        DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
+                        DatabaseConnectionProperties props = DatabaseClient.GetDatabaseConnectionProperties(conn);
+                        try
+                        {
+                            using (Geodatabase gdb = new Geodatabase(conn)) { }
+                        }
+                        catch (GeodatabaseNotFoundOrOpenedException)
+                        {
+                            return false;
+                        }
+
+                        // If I get to this point, the file gdb exists and was successfully opened
+                        return true;
+
+                    }
+                    else
+                    {
+                        // something else, weird!
+                        return false;
+                    }
+                });
+
+                return result;
+
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         public static bool ProjectLogExists()
         {
             try
             {
                 string path = GetPath_ProjectLog();
                 return File.Exists(path);
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static bool FolderExists_Input()
-        {
-            try
-            {
-                string path = GetPath_InputFolder();
-                return Directory.Exists(path);
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static bool FolderExists_Output()
-        {
-            try
-            {
-                string path = GetPath_OutputFolder();
-                return Directory.Exists(path);
             }
             catch (Exception ex)
             {

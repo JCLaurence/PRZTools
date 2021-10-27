@@ -65,8 +65,7 @@
     public enum WorkspaceDisplayMode
     {
         DIR,    // Workspace Folder contents
-        GDB,    // Workspace File GDB contents
-        LOG     // Workspace Log File contents
+        GDB     // Workspace File GDB contents
     }
 
     public enum LogMessageType
@@ -112,6 +111,12 @@
         RASTER
     }
 
+    public enum NationalDbType
+    {
+        FileGDB,
+        EnterpriseDB
+    }
+
     #endregion
 
     public static class PRZConstants
@@ -137,8 +142,6 @@
         #region FILE AND FOLDER NAMES
 
         // FOLDERS
-        public const string c_DIR_INPUT = "INPUT";                   // not in use
-        public const string c_DIR_OUTPUT = "OUTPUT";                 // not in use
         public const string c_DIR_EXPORT_WTW = "EXPORT_WTW";
 
         // PROJECT FILES

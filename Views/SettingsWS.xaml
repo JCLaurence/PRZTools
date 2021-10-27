@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="Workspace Settings"
+    Title="PRZ Tools Settings"
     Height="500" Width="500" MinHeight="400" MinWidth="400"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
@@ -34,8 +34,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
             <!--Inner Border #1-->
@@ -46,103 +46,140 @@
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}"
-                    LastChildFill="False">
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5" 
-                        Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Specify the Project Workspace" />
+                        Style="{DynamicResource Esri_TextBlockH3}"
+                        Text="Project Settings" />
 
                     <DockPanel
-                        DockPanel.Dock="Top" 
-                        Margin="0"
+                        DockPanel.Dock="Top"
                         LastChildFill="True">
 
                         <Button 
-                            DockPanel.Dock="Left" 
-                            Margin="40,5,5,5" 
-                            Command="{Binding CmdSelectWorkspaceFolder}">
+                            DockPanel.Dock="Left"
+                            Margin="0,0,0,5"
+                            Command="{Binding CmdSelectFolder}">
 
-                            <Image 
-                                Margin="3" 
-                                Source="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" 
-                                Stretch="None" />
+                            <StackPanel
+                                Orientation="Horizontal">
 
+                                <TextBlock
+                                    Margin="5"
+                                    Text="Project Folder" />
+
+                                <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/FolderGrey16.png"
+                                    Stretch="None" />
+
+                            </StackPanel>
                         </Button>
 
                         <TextBlock
-                            Margin="0,0,5,0"
+                            Margin="5"
                             VerticalAlignment="Center"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="{Binding CurrentWorkspacePath}" />
+                            Foreground="{DynamicResource Esri_TextSelectionHighlightBrush}"
+                            Text="{Binding PrjSettings_Txt_ProjectFolderPath}" />
 
                     </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="True">
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="0,0,0,5"
+                            Command="{Binding CmdSelectDbConnection}">
+
+                            <StackPanel
+                                Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="5"
+                                    Text="National Database" />
+
+                                <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/Geodatabase16.png"
+                                    Stretch="None" />
+
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock
+                            Margin="5"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Foreground="{DynamicResource Esri_TextSelectionHighlightBrush}"
+                            Text="{Binding PrjSettings_Txt_NationalDbPath}" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="True">
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="0,0,0,5"
+                            Command="{Binding CmdViewLogFile}">
+
+                            <StackPanel
+                                Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="5"
+                                    Text="View Log File" />
+
+                                <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/LogFile16.png"
+                                    Stretch="None" />
+
+                            </StackPanel>
+                        </Button>
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="5,0,0,5"
+                            Command="{Binding CmdClearLogFile}">
+
+                            <StackPanel
+                                Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="5"
+                                    Text="Clear Log File" />
+
+                                <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/LogFileDelete16.png"
+                                    Stretch="None" />
+
+                            </StackPanel>
+                        </Button>
+                        
+                        <TextBlock
+                            Margin="5"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Foreground="{DynamicResource Esri_TextSelectionHighlightBrush}"
+                            Text="{Binding LogFilePath}" />
+
+                    </DockPanel>
+
                 </DockPanel>
             </Border>
 
             <!--Inner Border #2-->
             <Border
-                Grid.Row="1"
-                Margin="0,0,0,5"
-                BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
-                
-                <DockPanel
-                    LastChildFill="False" 
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-
-                    <Button
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0" 
-                        DockPanel.Dock="Left"
-                        Style="{DynamicResource Esri_Button}"
-                        Command="{Binding CmdInitializeCurrentWorkspace}"
-                        Content="INITIALIZE">
-
-                        <Button.ToolTip>
-                            <StackPanel>
-                                <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,5">Open file</TextBlock>
-                                <TextBlock>
-                        Search your computer or local network
-                        <LineBreak />
-                        for a file and open it for editing.
-                                </TextBlock>
-                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
-                                <WrapPanel>
-                                    <Image Source="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" Margin="0,0,5,0" />
-                                    <TextBlock FontStyle="Italic">Press F1 for more help</TextBlock>
-                                </WrapPanel>
-                            </StackPanel>
-                            
-                        </Button.ToolTip>
-                    </Button>
-
-                    <Button
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0" 
-                        DockPanel.Dock="Left"
-                        Style="{DynamicResource Esri_Button}"
-                        Command="{Binding CmdResetCurrentWorkspace}"
-                        Content="RESET" />
-
-                    <Button
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0" 
-                        DockPanel.Dock="Left"
-                        Style="{DynamicResource Esri_Button}"
-                        Command="{Binding CmdOpenCurrentWorkspace}"
-                        Content="EXPLORE" />
-                </DockPanel>
-            </Border>
-
-            <!--Inner Border #3-->
-            <Border
-                Grid.Row="2" 
+                Grid.Row="1" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -170,8 +207,7 @@
                                 Margin="10, 5"
                                 VerticalContentAlignment="Center"
                                 GroupName="WSContents"
-                                Command="{Binding CmdDisplayFolderContent}" 
-                                IsChecked="{Binding FolderChecked}"
+                                IsChecked="{Binding PrjSettings_Rad_WSViewer_Dir_IsChecked}"
                                 Content="Folder" />
 
                             <RadioButton
@@ -179,18 +215,8 @@
                                 Margin="10, 5"
                                 VerticalContentAlignment="Center"
                                 GroupName="WSContents" 
-                                Command="{Binding CmdDisplayGDBContent}" 
-                                IsChecked="{Binding GeodatabaseChecked}"
+                                IsChecked="{Binding PrjSettings_Rad_WSViewer_Gdb_IsChecked}"
                                 Content="Geodatabase"/>
-
-                            <RadioButton 
-                                DockPanel.Dock="Left"
-                                Margin="10, 5"
-                                VerticalContentAlignment="Center"
-                                GroupName="WSContents" 
-                                Command="{Binding CmdDisplayLogContent}" 
-                                IsChecked="{Binding LogChecked}"
-                                Content="Log"/>
 
                         </DockPanel>
                     </DockPanel>
@@ -198,9 +224,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #4-->
+            <!--Inner Border #3-->
             <Border
-                Grid.Row="3" 
+                Grid.Row="2" 
                 Margin="0"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -210,18 +236,75 @@
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
                     <ScrollViewer
-                    DockPanel.Dock="Top" 
-                    Margin="0"
-                    HorizontalScrollBarVisibility="Auto" 
-                    VerticalScrollBarVisibility="Auto">
+                        DockPanel.Dock="Top"
+                        HorizontalScrollBarVisibility="Auto" 
+                        VerticalScrollBarVisibility="Auto">
 
                         <TextBlock 
-                        Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}" 
-                        Text="{Binding WorkspaceContents}" />
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding PrjSettings_Txt_WorkspaceContents}"/>
 
                     </ScrollViewer>
 
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #4-->
+            <Border
+                Grid.Row="3"
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel
+                    LastChildFill="False" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <Button
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0" 
+                        DockPanel.Dock="Left"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdInitializeWorkspace}"
+                        Content="INITIALIZE">
+
+                        <Button.ToolTip>
+                            <StackPanel>
+                                <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,5">Open file</TextBlock>
+                                <TextBlock>
+                        Search your computer or local network
+                        <LineBreak />
+                        for a file and open it for editing.
+                                </TextBlock>
+                                <Border BorderBrush="Silver" BorderThickness="0,1,0,0" Margin="0,8" />
+                                <WrapPanel>
+                                    <Image Source="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" Margin="0,0,5,0" />
+                                    <TextBlock FontStyle="Italic">Press F1 for more help</TextBlock>
+                                </WrapPanel>
+                            </StackPanel>
+
+                        </Button.ToolTip>
+                    </Button>
+
+                    <Button
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0" 
+                        DockPanel.Dock="Left"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdResetWorkspace}"
+                        Content="RESET" />
+
+                    <Button
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0" 
+                        DockPanel.Dock="Left"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdExploreWorkspace}"
+                        Content="EXPLORE" />
                 </DockPanel>
             </Border>
         </Grid>
