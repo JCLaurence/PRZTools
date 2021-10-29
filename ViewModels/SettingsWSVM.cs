@@ -460,7 +460,6 @@ namespace NCC.PRZTools
 
                 bool? result = dlg.ShowDialog();
 
-                //if (!result.HasValue || !result.Value || dlg.Items.Count() == 0)
                 if ((dlg.Items == null) || (dlg.Items.Count() < 1))
                 {
                     return;

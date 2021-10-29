@@ -476,11 +476,150 @@ namespace NCC.PRZTools
 
         #region OBJECT EXISTENCE
 
+        #region GENERIC OBJECTS
+
+        public static async Task<bool> FCExists(string FCName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(gdb, FCName);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    using (FeatureClassDefinition fcDef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName))
+                    {
+                        // Error will be thrown by using statement above if FC of the supplied name doesn't exist in GDB
+                    }
+                });
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> TableExists(string TabName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(gdb, TabName);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    using (TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName))
+                    {
+                        // Error will be thrown by using statement above if table of the supplied name doesn't exist in GDB
+                    }
+                });
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> RasterExists(string rasterName)
+        {
+            try
+            {
+                using (Geodatabase gdb = await GetProjectGDB())
+                {
+                    if (gdb == null)
+                    {
+                        return false;
+                    }
+
+                    return await RasterExists(gdb, rasterName);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> RasterExists(Geodatabase geodatabase, string rasterName)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    using (RasterDatasetDefinition rasDef = geodatabase.GetDefinition<RasterDatasetDefinition>(rasterName))
+                    {
+                        // Error will be thrown by using statement above if rasterdataset of the supplied name doesn't exist in GDB
+                    }
+                });
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        #endregion
+
+        #region SPECIFIC OBJECTS
+
         public static bool FolderExists_Project()
         {
             try
             {
                 string path = GetPath_ProjectFolder();
+                return Directory.Exists(path);
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static bool FolderExists_ExportWTW()
+        {
+            try
+            {
+                string path = GetPath_ExportWTWFolder();
                 return Directory.Exists(path);
             }
             catch (Exception ex)
@@ -528,21 +667,26 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> NationalDBExists()
+        public static async Task<(bool exists, NationalDbType dbType, string message)> NationalDBExists()
         {
             try
             {
-                bool result = await QueuedTask.Run(() =>
+                return await QueuedTask.Run(() =>
                 {
                     string dbpath = GetPath_NationalDB();
 
                     if (dbpath == null)
                     {
-                        return false;
+                        return (false, NationalDbType.Unknown, "Path to National Database is null");
                     }
 
                     // Create a Uri
                     Uri u = new Uri(dbpath);
+
+                    if (u == null)
+                    {
+                        return (false, NationalDbType.Unknown, "Uri to National Database is null");
+                    }
 
                     if (Directory.Exists(dbpath))  // It's a folder (file gdb)
                     {
@@ -554,44 +698,39 @@ namespace NCC.PRZTools
                         }
                         catch (GeodatabaseNotFoundOrOpenedException)
                         {
-                            return false;
+                            return (false, NationalDbType.Unknown, "Geodatabase not found or opened");
                         }
 
-                        // I'm here!!!
-
                         // If I get to this point, the file gdb exists and was successfully opened
-                        return true;
+                        return (true, NationalDbType.FileGDB, "success");
                     }
                     else if (File.Exists(dbpath) && dbpath.EndsWith(".sde"))    // It's a connection file (.sde)
                     {
                         DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
-                        DatabaseConnectionProperties props = DatabaseClient.GetDatabaseConnectionProperties(conn);
+                        //DatabaseConnectionProperties props = DatabaseClient.GetDatabaseConnectionProperties(conn);
                         try
                         {
                             using (Geodatabase gdb = new Geodatabase(conn)) { }
                         }
                         catch (GeodatabaseNotFoundOrOpenedException)
                         {
-                            return false;
+                            return (false, NationalDbType.Unknown, "Geodatabase not found or opened");
                         }
 
-                        // If I get to this point, the file gdb exists and was successfully opened
-                        return true;
-
+                        // If I get to this point, the enterprise database exists and was successfully opened
+                        return (false, NationalDbType.EnterpriseGDB, "success");
                     }
                     else
                     {
                         // something else, weird!
-                        return false;
+                        return (false, NationalDbType.Unknown, "unable to process national database path");
                     }
                 });
 
-                return result;
-
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                return (false, NationalDbType.Unknown, ex.Message);
             }
         }
 
@@ -601,20 +740,6 @@ namespace NCC.PRZTools
             {
                 string path = GetPath_ProjectLog();
                 return File.Exists(path);
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static bool FolderExists_ExportWTW()
-        {
-            try
-            {
-                string path = GetPath_ExportWTWFolder();
-                return Directory.Exists(path);
             }
             catch (Exception ex)
             {
@@ -856,7 +981,52 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #endregion
+
         #region OBJECT RETRIEVAL
+
+        #region GENERIC OBJECTS
+
+        public static async Task<Geodatabase> GetFileGDB(string path)
+        {
+            try
+            {
+                // Ensure the path is an existing directory
+                if (!Directory.Exists(path))
+                {
+                    return null;
+                }
+
+                // Ensure the Uri is a valid Uri
+
+                Uri uri = new Uri(path);
+                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
+                Geodatabase gdb = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        gdb = new Geodatabase(pathConn);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return gdb;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        #endregion
 
         public static async Task<Geodatabase> GetProjectGDB()
         {
@@ -887,6 +1057,73 @@ namespace NCC.PRZTools
             catch (Exception)
             {
                 //MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<Geodatabase> GetNationalDb()
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // NationalDB Path
+                string dbpath = GetPath_NationalDB();
+
+                // Determine if the database actually exists
+                var result = await NationalDBExists();
+
+                if (!result.exists)
+                {
+                    return null;
+                }
+
+                // Create a Uri
+                Uri u = new Uri(dbpath);
+                if (u == null)
+                {
+                    return null;
+                }
+
+                // Create a geodatabase object
+                Geodatabase gdb = null;
+
+                // get the national geodatabase (depends on type)
+                if (result.dbType == NationalDbType.FileGDB)
+                {
+                    FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
+
+                    try
+                    {
+                        gdb = new Geodatabase(conn);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+                else if (result.dbType == NationalDbType.EnterpriseGDB)
+                {
+                    DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
+
+                    try
+                    {
+                        gdb = new Geodatabase(conn);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+
+                return gdb;
+            }
+            catch (Exception)
+            {
                 return null;
             }
         }
@@ -2208,165 +2445,6 @@ namespace NCC.PRZTools
         #endregion
 
         #region GENERIC DATA METHODS
-
-        public static async Task<Geodatabase> GetFileGDB(string path)
-        {
-            try
-            {
-                // Ensure the path is an existing directory
-                if (!Directory.Exists(path))
-                {
-                    return null;
-                }
-
-                // Ensure the Uri is a valid Uri
-
-                Uri uri = new Uri(path);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-                Geodatabase gdb = null;
-
-                try
-                {
-                    await QueuedTask.Run(() =>
-                    {
-                        gdb = new Geodatabase(pathConn);
-                    });
-
-                }
-                catch (GeodatabaseNotFoundOrOpenedException)
-                {
-                    return null;
-                }
-
-                // If I get to this point, the file gdb exists and was successfully opened
-                return gdb;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<bool> FCExists(string FCName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetProjectGDB())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await FCExists(gdb, FCName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                    using (FeatureClassDefinition fcDef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName))
-                    {
-                        // Error will be thrown by using statement above if FC of the supplied name doesn't exist in GDB
-                    }
-                });
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists(string TabName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetProjectGDB())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, TabName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                    using (TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName))
-                    {
-                        // Error will be thrown by using statement above if table of the supplied name doesn't exist in GDB
-                    }
-                });
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> RasterExists(string rasterName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetProjectGDB())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await RasterExists(gdb, rasterName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> RasterExists(Geodatabase geodatabase, string rasterName)
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                    using (RasterDatasetDefinition rasDef = geodatabase.GetDefinition<RasterDatasetDefinition>(rasterName))
-                    {
-                        // Error will be thrown by using statement above if rasterdataset of the supplied name doesn't exist in GDB
-                    }
-                });
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
 
         public static async Task<bool> DeleteProjectGDBContents()
         {

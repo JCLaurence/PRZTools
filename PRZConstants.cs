@@ -32,6 +32,13 @@
 
     #endregion
 
+    public enum NationalDbType
+    {
+        FileGDB,
+        EnterpriseGDB,
+        Unknown
+    }
+
 
     // SELECTION RULES
 
@@ -109,12 +116,6 @@
     {
         FEATURE,
         RASTER
-    }
-
-    public enum NationalDbType
-    {
-        FileGDB,
-        EnterpriseDB
     }
 
     #endregion
