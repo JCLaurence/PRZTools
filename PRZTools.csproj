@@ -166,15 +166,19 @@
     <Compile Include="Models\YamlWeight.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
     <Compile Include="ViewModels\ExportWTWVM.cs" />
-    <Compile Include="ViewModels\SettingsWTWVM.cs" />
+    <Compile Include="ViewModels\RasterToolsVM.cs" />
+    <Compile Include="ViewModels\RasterToTableVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\ExportWTW.xaml.cs">
       <DependentUpon>ExportWTW.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\SettingsWTW.xaml.cs">
-      <DependentUpon>SettingsWTW.xaml</DependentUpon>
+    <Compile Include="Views\RasterTools.xaml.cs">
+      <DependentUpon>RasterTools.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\RasterToTable.xaml.cs">
+      <DependentUpon>RasterToTable.xaml</DependentUpon>
     </Compile>
     <Compile Include="Widgets\Button_Export_WTW.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Boundary.cs" />
@@ -206,7 +210,7 @@
     <Compile Include="Widgets\Button_BoundaryLengths.cs" />
     <Compile Include="Widgets\Button_SelectionRules.cs" />
     <Compile Include="Widgets\Button_PUCost.cs" />
-    <Compile Include="Widgets\Button_Settings_WTW.cs" />
+    <Compile Include="Widgets\Button_RasterTools.cs" />
     <Compile Include="Widgets\Button_Settings_WS.cs" />
     <Compile Include="Views\PlanningUnits.xaml.cs">
       <DependentUpon>PlanningUnits.xaml</DependentUpon>
@@ -279,6 +283,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\RasterToTable.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\SelectionRules.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -287,7 +295,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\SettingsWTW.xaml">
+    <Page Include="Views\RasterTools.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -501,6 +509,40 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\LogFile16.png" />
     <Resource Include="ImagesWPF\LogFileDelete16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\Settings16.png" />
+    <AddInContent Include="DarkImages\Settings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\Settings16.png" />
+    <AddInContent Include="Images\Settings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Settings16.png" />
+    <Resource Include="ImagesWPF\Settings32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\RasterToolbox16.png" />
+    <AddInContent Include="DarkImages\RasterToolsA32.png" />
+    <AddInContent Include="DarkImages\RasterToolsB32.png" />
+    <AddInContent Include="DarkImages\RasterToolsC32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\RasterToolbox16.png" />
+    <AddInContent Include="Images\RasterToolsA32.png" />
+    <AddInContent Include="Images\RasterToolsB32.png" />
+    <AddInContent Include="Images\RasterToolsC32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\RasterToolbox16.png" />
+    <Resource Include="ImagesWPF\RasterToolsA32.png" />
+    <Resource Include="ImagesWPF\RasterToolsB32.png" />
+    <Resource Include="ImagesWPF\RasterToolsC32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Raster16.png" />
+    <Resource Include="ImagesWPF\Raster32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

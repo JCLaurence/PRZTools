@@ -16,13 +16,16 @@ using System.Windows.Shapes;
 namespace NCC.PRZTools
 {
     /// <summary>
-    /// Interaction logic for SettingsWTW.xaml
+    /// Interaction logic for RasterTools.xaml
     /// </summary>
-    public partial class SettingsWTW : ArcGIS.Desktop.Framework.Controls.ProWindow
+    public partial class RasterTools : ArcGIS.Desktop.Framework.Controls.ProWindow
     {
-        public SettingsWTW()
+        internal RasterToolsVM vm = new RasterToolsVM();
+
+        public RasterTools()
         {
             InitializeComponent();
+            this.DataContext = vm;
         }
     }
 }

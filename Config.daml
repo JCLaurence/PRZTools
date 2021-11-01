@@ -9,27 +9,27 @@
     <Subject>Framework</Subject>
   </AddInInfo>
   <modules>
-    <!--MAIN (ONLY) MODULE-->
+    <!--MODULE-->
     <insertModule id="prz_module_main" className="Module_Main" autoLoad="false" caption="PRZ Tools">
       <tabs>
         <!--MAIN (ONLY)TAB-->
         <tab id="prz_tab_main" caption="PRZ Tools" keytip="z">
-          <group refID="prz_group_settings" />
           <group refID="prz_group_configuration" />
+          <group refID="prz_group_assembly" />
           <group refID="prz_group_export" />
           <group refID="prz_group_display" />
         </tab>
       </tabs>
       <groups>
         <!--SETTINGS GROUP-->
-        <group id="prz_group_settings" caption="Settings" keytip="z">
+        <group id="prz_group_configuration" caption="Tools and Settings" keytip="z">
           <!--Workspace Settings Button-->
           <button refID="prz_button_settings_ws" size="large" />
           <!--Where to Work Settings Button-->
-          <button refID="prz_button_settings_wtw" size="large" />
+          <button refID="prz_button_rastertools" size="large" />
         </group>
-        <!--CONFIGURATION GROUP-->
-        <group id="prz_group_configuration" caption="Project Construction" keytip="z">
+        <!--ASSEMBLY GROUP-->
+        <group id="prz_group_assembly" caption="Project Assembly" keytip="z">
           <!--Planning Unit Generator Dialog Button-->
           <button refID="prz_button_planningunits" size="large" />
           <!--Planning Unit Selection Rules Dialog Button-->
@@ -55,15 +55,15 @@
         </group>
       </groups>
       <controls>
-        <!--SETTINGS CONTROLS-->
+        <!--TOOLS AND SETTINGS CONTROLS-->
         <!--Workspace Settings Dialog Button-->
-        <button id="prz_button_settings_ws" caption="Workspace" className="Button_Settings_WS" keytip="z" loadOnClick="true" smallImage="Images\WorkspaceSettings16.png" largeImage="Images\WorkspaceSettings32.png">
+        <button id="prz_button_settings_ws" caption="Settings" className="Button_Settings_WS" keytip="z" loadOnClick="true" smallImage="Images\Settings16.png" largeImage="Images\Settings32.png">
           <tooltip heading="Workspace Settings">
             Specify the PRZ Tools Workspace Folder, and other neat stuff.
             <disabledText></disabledText></tooltip>
         </button>
-        <!--"Where to Work" Settings Dialog Button-->
-        <button id="prz_button_settings_wtw" keytip="z" caption="Where to Work" className="Button_Settings_WTW" loadOnClick="true" smallImage="Images\Settings_WTW16.png" largeImage="Images\Settings_WTW32.png">
+        <!--Raster Tools Dialog Button-->
+        <button id="prz_button_rastertools" keytip="z" caption="Raster Tools" className="Button_RasterTools" loadOnClick="true" smallImage="Images\RasterTools16.png" largeImage="Images\RasterToolsC32.png">
           <tooltip heading="Tooltip Heading">
             Tooltip text
             <disabledText></disabledText></tooltip>
@@ -141,8 +141,7 @@
         <button id="prz_button_legend_pu_selruleconflicts" keytip="z" caption="Planning Units - Selection Rule Conflicts" className="Button_Legend_PU_SelRuleConflicts" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Planning Unit Legend">
             ToolTip
-            <disabledText></disabledText>
-          </tooltip>
+            <disabledText></disabledText></tooltip>
         </button>
         <!--Legend Button - Planning Unit Cost-->
         <button id="prz_button_legend_pu_cost" keytip="z" caption="Planning Units - Cost" className="Button_Legend_PU_Cost" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="esri_mapping_mapPane">

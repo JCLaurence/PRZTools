@@ -274,5 +274,29 @@ namespace NCC.PRZTools.Properties {
                 this["NATDB_PATH"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string RT_SCRATCH_FGDB {
+            get {
+                return ((string)(this["RT_SCRATCH_FGDB"]));
+            }
+            set {
+                this["RT_SCRATCH_FGDB"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string RT_RASTER_PATH {
+            get {
+                return ((string)(this["RT_RASTER_PATH"]));
+            }
+            set {
+                this["RT_RASTER_PATH"] = value;
+            }
+        }
     }
 }
