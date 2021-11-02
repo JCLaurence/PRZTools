@@ -298,5 +298,17 @@ namespace NCC.PRZTools.Properties {
                 this["RT_RASTER_PATH"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool RT_ZERO_IS_NODATA {
+            get {
+                return ((bool)(this["RT_ZERO_IS_NODATA"]));
+            }
+            set {
+                this["RT_ZERO_IS_NODATA"] = value;
+            }
+        }
     }
 }
