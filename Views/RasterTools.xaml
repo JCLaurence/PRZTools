@@ -81,6 +81,7 @@
                         </Button>
 
                         <TextBlock
+                            DockPanel.Dock="Left"
                             Margin="5"
                             VerticalAlignment="Center"
                             Style="{DynamicResource Esri_TextBlockRegular}"
@@ -116,6 +117,7 @@
                         <Button 
                             DockPanel.Dock="Left"
                             Margin="0,0,0,5"
+                            Padding="5"
                             Command="{Binding CmdRasterToTable}"
                             Style="{DynamicResource Esri_Button}"
                             Content="Convert Raster to Table"/>

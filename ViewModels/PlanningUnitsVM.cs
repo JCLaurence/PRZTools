@@ -1178,7 +1178,7 @@ namespace NCC.PRZTools
 
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.ProjectGDBExists())
+                if (!await PRZH.GDBExists_Project())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
@@ -1191,6 +1191,27 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase is OK: {gdbpath}"), true, ++val);
+                }
+
+                // Validation: Ensure the National db exists (if user has specified National Grid)
+                string natpath = PRZH.GetPath_NationalDB();
+                var result = await PRZH.GDBExists_National();
+                if (PUSource_Rad_NatGrid_IsChecked)
+                {
+                    if (!result.exists)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Geodatabase not found: {natpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("National Database not found at this path:" +
+                                       Environment.NewLine +
+                                       natpath +
+                                       Environment.NewLine + Environment.NewLine +
+                                       "Please specify a valid National Database.", "Validation");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Geodatabase is OK: {gdbpath}"), true, ++val);
+                    }
                 }
 
                 // Validation: Output Spatial Reference
@@ -1891,7 +1912,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                                using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                                 {
                                     if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
@@ -2178,7 +2199,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                                using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                                 {
                                     if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
@@ -2544,6 +2565,18 @@ namespace NCC.PRZTools
                     else
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+                }
+
+                #endregion
+
+                #region NATIONAL DATABASE
+
+                if (PUSource_Rad_NatGrid_IsChecked)
+                {
+                    if (!await ProcessNationalDbTables())
+                    {
+
                     }
                 }
 
@@ -3211,190 +3244,192 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> Test()
+        private async Task<bool> ProcessNationalDbTables()
         {
+            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
+            int val = PM.Current;
+            int max = PM.Max;
+
             try
             {
-                MapView mv = MapView.Active;
-                Layer lyr = mv.GetSelectedLayers().FirstOrDefault();
-
-                if (lyr == null)
+                // Check for currently unsaved edits in the project
+                if (Project.Current.HasEdits)
                 {
-                    ProMsgBox.Show("No Layer Selected");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
                     return false;
                 }
-                else if (!(lyr is RasterLayer))
+                else
                 {
-                    ProMsgBox.Show("Layer is not raster layer");
-                    return false;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has no unsaved edits.  Proceeding..."), true, ++val);
                 }
 
-                RasterLayer RL = (RasterLayer)lyr;
-                Dictionary<string, double> DICT_Pixels = new Dictionary<string, double>();
-                Dictionary<long, double> DICT_Pixels2 = new Dictionary<long, double>();
-
-                await QueuedTask.Run(() =>
+                // If editing is disabled, enable it temporarily (and disable again in the finally block)
+                if (edits_are_disabled)
                 {
-                    using (Raster raster = RL.GetRaster())
+                    if (!await Project.Current.SetIsEditingEnabledAsync(true))
                     {
-                        Envelope env = raster.GetExtent();
-                        int rows = raster.GetHeight();
-                        int cols = raster.GetWidth();
-
-                        using (PixelBlock pixelBlock = raster.CreatePixelBlock(cols, 1))
-                        {
-                            for (int row = 1; row <= rows; row++)
-                            {
-                                // fill a pixel block
-                                raster.Read(0, row - 1, pixelBlock);
-
-                                for (int col = 1; col <= cols; col++)
-                                {
-                                    if (Convert.ToByte(pixelBlock.GetNoDataMaskValue(0, col - 1, 0)) == 1)
-                                    {
-                                        var val = pixelBlock.GetValue(0, col - 1, 0);
-                                        double d = Convert.ToDouble(val);
-
-                                        var result = NationalGridInfo.GetIdentifierFromRowColumn(row, col, 3);
-                                        var result2 = NationalGridInfo.GetCellNumberFromRowColumn(row, col, 3);
-                                        if (result.success && result2.success)
-                                        {
-                                            DICT_Pixels.Add(result.identifier, d);
-                                            DICT_Pixels2.Add(result2.cell_number, d);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                string toolOutput;
-
-                // Build the empty table
-                string gdbpath = PRZH.GetPath_ProjectGDB();
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, "test1", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    ProMsgBox.Show($"Error creating the test1 table.");
-                    return false;
-                }
-
-                // Add Fields
-                string fldCellNumber = "cellnumber LONG 'Cell Number' # 0 #;";
-                string fldIdentifier = "identifier TEXT 'Cell Identifier' 20 # #;";
-                string fldValue = "cellvalue DOUBLE 'Cell Value' # 0 #";
-
-                string flds = fldCellNumber + fldIdentifier + fldValue;
-                string testpath = Path.Combine(gdbpath, "test1");
-
-                toolParams = Geoprocessing.MakeValueArray(testpath, flds);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    ProMsgBox.Show($"Error adding fields");
-                    return false;
-                }
-
-                // Insert values from dictionaries
-                if (!await QueuedTask.Run(async () =>
-                {
-                    bool success = false;
-
-                    try
-                    {
-                        var loader = new EditOperation();
-                        loader.Name = "record creator";
-                        loader.ShowProgressor = false;
-                        loader.ShowModalMessageAfterFailure = false;
-                        loader.SelectNewFeatures = false;
-                        loader.SelectModifiedFeatures = false;
-
-                        if (!await PRZH.TableExists("test1"))
-                        {
-                            return false;
-                        }
-
-                        using (Table tab = await PRZH.GetTable("test1"))
-                        {
-                            loader.Callback(async (context) =>
-                            {
-                                using (Table table = await PRZH.GetTable("test1"))
-                                using (InsertCursor insertCursor = table.CreateInsertCursor())
-                                using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                                {
-                                    long flusher = 0;
-
-                                    var cellNumbers = DICT_Pixels2.Keys.ToList();
-                                    cellNumbers.Sort();
-
-                                    foreach (var num in cellNumbers)
-                                    {
-                                        var val = DICT_Pixels2[num];
-
-                                        rowBuffer["cellnumber"] = num;
-                                        rowBuffer["cellvalue"] = val;
-                                        insertCursor.Insert(rowBuffer);
-
-                                        flusher++;
-
-                                        if (flusher == 10000)
-                                        {
-                                            insertCursor.Flush();
-                                            flusher = 0;
-                                        }
-                                    }
-
-                                    insertCursor.Flush();
-                                }
-                            }, tab);
-                        }
-
-                        // Execute all the queued "creates"
-                        success = loader.Execute();
-
-                        if (success)
-                        {
-                            if (!await Project.Current.SaveEditsAsync())
-                            {
-                                ProMsgBox.Show($"Error saving edits.");
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            ProMsgBox.Show($"Edit Operation error: unable to create tiles: {loader.ErrorMessage}");
-                        }
-
-                        return success;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
                         return false;
                     }
-                }))
-                {
-                    ProMsgBox.Show($"Error loading the table :(");
-                    return false;
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, ++val);
+                    }
                 }
+
+
+                // > Get the National Geodatabase
+                // > Retrieve the list of goals, copy to table
+                // > Retrieve the list of weights, copy to table
+                // > Retrieve the list of selection rules, copy to table
+
+                // > Goal record should include an ID value.
+                // > There should be a corresponding specific Goal table (G00004 where 4 = Goal's ID)
+
+                // > Planning Unit Table has Cell Numbers
+
+                // 1. Read Cell Numbers into HashSet
+                // 2. Foreach Goal in Master Goal Table
+                //      > Find goal table (g0000n)
+                //      > read goal cell numbers & cell values into Dictionary
+                //      > find intersection of Cell Numbers between sets
+                //      > if no intersection, continue
+                //      > else write new local goal table (g0000n)
+                //          - cell number and cell value columns
+
+
+
+                //********************************************************
+
+                //********************************************************
+
+                //// Do the work here!
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing National Database Tables..."), true, ++val);
+
+                //if (!await QueuedTask.Run(async () =>
+                //{
+                //    bool success = false;
+
+                //    try
+                //    {
+                //        var loader = new EditOperation();
+                //        loader.Name = "Raster Attribute Updater";
+                //        loader.ShowProgressor = false;
+                //        loader.ShowModalMessageAfterFailure = false;
+                //        loader.SelectNewFeatures = false;
+                //        loader.SelectModifiedFeatures = false;
+
+                //        using (Table tab = (await PRZH.GetRaster_PU()).CreateFullRaster().GetAttributeTable())
+                //        {
+                //            loader.Callback(async (context) =>
+                //            {
+                //                using (RasterDataset rasterDataset = await PRZH.GetRaster_PU())
+                //                using (Raster raster = rasterDataset.CreateFullRaster())
+                //                using (Table table = raster.GetAttributeTable())
+                //                using (RowCursor rowCursor = table.Search(null, false))
+                //                {
+                //                    while (rowCursor.MoveNext())
+                //                    {
+                //                        using (Row row = rowCursor.Current)
+                //                        {
+                //                            int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_VALUE]);
+
+                //                            double area_m2 = side_length * side_length;
+
+                //                            row[PRZC.c_FLD_RAS_PU_ID] = puid;
+                //                            row[PRZC.c_FLD_RAS_PU_CONFLICT] = 0;
+                //                            row[PRZC.c_FLD_RAS_PU_COST] = 1;
+                //                            row[PRZC.c_FLD_RAS_PU_AREA_M2] = area_m2;
+                //                            row[PRZC.c_FLD_RAS_PU_AREA_AC] = area_m2 * PRZC.c_CONVERT_M2_TO_AC;
+                //                            row[PRZC.c_FLD_RAS_PU_AREA_HA] = area_m2 * PRZC.c_CONVERT_M2_TO_HA;
+                //                            row[PRZC.c_FLD_RAS_PU_AREA_KM2] = area_m2 * PRZC.c_CONVERT_M2_TO_KM2;
+                //                            row[PRZC.c_FLD_RAS_PU_FEATURECOUNT] = 0;
+                //                            row[PRZC.c_FLD_RAS_PU_SHARED_PERIM] = 0;
+                //                            row[PRZC.c_FLD_RAS_PU_UNSHARED_PERIM] = 0;
+                //                            row[PRZC.c_FLD_RAS_PU_HAS_UNSHARED_PERIM] = 0;
+
+                //                            if (natgrid)
+                //                            {
+                //                                row[PRZC.c_FLD_RAS_PU_NATGRID_ID] = identifiers_by_id[puid];
+                //                            }
+
+                //                            row.Store();
+                //                            context.Invalidate(row);
+                //                        }
+                //                    }
+
+                //                }
+                //            }, tab);
+                //        }
+
+                //        // Execute all the queued "creates"
+                //        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation!  This one might take a while..."), true, max, ++val);
+                //        success = loader.Execute();
+
+                //        if (success)
+                //        {
+                //            PRZH.UpdateProgress(PM, PRZH.WriteLog("Performing attribute edits..."), true, max, ++val);
+                //            if (!await Project.Current.SaveEditsAsync())
+                //            {
+                //                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error performing attribute edits.", LogMessageType.ERROR), true, max, ++val);
+                //                ProMsgBox.Show($"Error performing attribute edits.");
+                //                return false;
+                //            }
+                //            else
+                //            {
+                //                PRZH.UpdateProgress(PM, PRZH.WriteLog("Edits performed."), true, max, ++val);
+                //            }
+                //        }
+                //        else
+                //        {
+                //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to update raster attribute table: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
+                //            ProMsgBox.Show($"Edit Operation error: unable to update raster attribute table: {loader.ErrorMessage}");
+                //        }
+
+                //        return success;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                //        return false;
+                //    }
+                //}))
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating raster attribute table.", LogMessageType.ERROR), true, max, val++);
+                //    ProMsgBox.Show($"Error updating raster attribute table.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster attribute table updated."), true, max, val++);
+                //    return true;
+                //}
 
                 return true;
             }
             catch (Exception ex)
             {
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, max, val++);
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return false;
             }
+            finally
+            {
+                // reset disabled editing status
+                if (edits_are_disabled)
+                {
+                    await Project.Current.SetIsEditingEnabledAsync(false);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
+                }
+            }
         }
 
+        private async Task<bool> Test()
+        {
+            return true;
+        }
         #endregion
 
 

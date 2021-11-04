@@ -10,7 +10,8 @@
     mc:Ignorable="d"
     Title="Raster To Table"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/Table32.png" ShowIconOnTitleBar="True"
-    Width="500" MinWidth="400" Height="500" MinHeight="400"
+    SizeToContent="Height"
+    Width="500" MinWidth="400"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
     ResizeMode="CanResize"
@@ -27,7 +28,7 @@
     <!--Outer Border-->
     <Border
         Margin="5" 
-        Padding="5" 
+        Padding="5"
         BorderThickness="1.5"
         BorderBrush="{DynamicResource Esri_BorderBrush}"
         Background="{DynamicResource Esri_DialogFrameBackgroundBrush}">
@@ -83,9 +84,10 @@
 
                         <Button
                             DockPanel.Dock="Left"
-                            Margin="0,0,0,5"
+                            Margin="5,0,0,5"
+                            Padding="5,0"
                             Command="{Binding CmdValidateRaster}"
-                            Content="V">
+                            Content="Validate!">
 
                         </Button>
 
@@ -116,30 +118,22 @@
                     LastChildFill="False" 
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
-                    <TextBlock 
+                    <DockPanel
                         DockPanel.Dock="Top"
-                        Margin="5" 
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Specify the Planning Unit ID Field" />
+                        LastChildFill="True">
 
-                    <ComboBox 
-                        DockPanel.Dock="Top" 
-                        Margin="5,3,5,3" 
-                        ItemsSource="{Binding IntFields}" 
-                        SelectedItem="{Binding SelectedPUIDField}" />
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Table Name:" />
 
-                    <TextBlock
-                        DockPanel.Dock="Top"
-                        Margin="5"
-                        Style="{DynamicResource Esri_TextBlockRegular}"
-                        Text="Specify the Cost Field" />
+                        <TextBox
+                            DockPanel.Dock="Left"
+                            Margin="5, 1, 5, 1"
+                            Text="{Binding TableName}" />
 
-                    <ComboBox 
-                        DockPanel.Dock="Top" 
-                        Margin="5,3,5,3" 
-                        ItemsSource="{Binding NumericFields}" 
-                        SelectedItem="{Binding SelectedCostField}" />
-
+                    </DockPanel>
                 </DockPanel>
             </Border>
 
@@ -155,26 +149,25 @@
 
                     <Button 
                         DockPanel.Dock="Left" 
-                        Margin="5" 
-                        Height="25"
-                        MinWidth="75"
-                        Padding="5"
+                        Margin="0,0,0,5" 
                         Style="{DynamicResource Esri_Button}" 
-                        Command="{Binding CmdOK}" 
-                        CommandParameter="{Binding ElementName=RasterToTableDlg}"
-                        IsEnabled="{Binding CmdOKIsEnabled}"
-                        Content="OK" />
+                        Command="{Binding CmdRasterToTable}">
 
-                    <Button
-                        DockPanel.Dock="Right" 
-                        Margin="5" 
-                        Height="25" 
-                        MinWidth="75"
-                        Padding="5"
-                        Style="{DynamicResource Esri_Button}"
-                        Command="{Binding CmdCancel}" 
-                        CommandParameter="{Binding ElementName=RasterToTableDlg}"
-                        Content="CANCEL" />
+                        <StackPanel
+                                Orientation="Horizontal">
+
+                            <TextBlock
+                                    Margin="5"
+                                    Text="Convert Raster to Table" />
+
+                            <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/Table16.png"
+                                    Stretch="None" />
+
+                        </StackPanel>
+                    </Button>
+
 
                 </DockPanel>
             </Border>

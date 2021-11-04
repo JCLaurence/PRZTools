@@ -33,7 +33,7 @@ namespace NCC.PRZTools
 
         // Commands
         private ICommand _cmdSelectFolder;
-        private ICommand _cmdSelectDbConnection;
+        private ICommand _cmdSelectNationalDb;
         private ICommand _cmdInitializeWorkspace;
         private ICommand _cmdResetWorkspace;
         private ICommand _cmdExploreWorkspace;
@@ -118,7 +118,7 @@ namespace NCC.PRZTools
 
         public ICommand CmdSelectFolder => _cmdSelectFolder ?? (_cmdSelectFolder = new RelayCommand(() => SelectFolder(), () => true));
 
-        public ICommand CmdSelectDbConnection => _cmdSelectDbConnection ?? (_cmdSelectDbConnection = new RelayCommand(() => SelectDbConnection(), () => true));
+        public ICommand CmdSelectNationalDb => _cmdSelectNationalDb ?? (_cmdSelectNationalDb = new RelayCommand(() => SelectNationalDb(), () => true));
 
         public ICommand CmdInitializeWorkspace => _cmdInitializeWorkspace ?? (_cmdInitializeWorkspace = new RelayCommand(async () => await InitializeWorkspace(), () => true));
 
@@ -275,7 +275,7 @@ namespace NCC.PRZTools
                 {
                     string gdbpath = PRZH.GetPath_ProjectGDB();
 
-                    if (!await PRZH.ProjectGDBExists())
+                    if (!await PRZH.GDBExists_Project())
                     {
                         contents.AppendLine($"Project Geodatabase does not exist at path: {gdbpath}");
                         this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
@@ -296,7 +296,7 @@ namespace NCC.PRZTools
                     {
                         await QueuedTask.Run(async () =>
                         {
-                            using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                            using (Geodatabase gdb = await PRZH.GetGDB_Project())
                             {
                                 IReadOnlyList<FeatureClassDefinition> fcDefs = gdb.GetDefinitions<FeatureClassDefinition>();
 
@@ -426,60 +426,6 @@ namespace NCC.PRZTools
             }
         }
 
-        private void SelectDbConnection()
-        {
-            try
-            {
-                string initDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-                if (File.Exists(PrjSettings_Txt_NationalDbPath))
-                {
-                    FileInfo fi = new FileInfo(PrjSettings_Txt_NationalDbPath);
-                    DirectoryInfo di = fi.Directory;
-
-                    if (di != null)
-                    {
-                        initDir = di.FullName;
-                    }
-                }
-
-                // Configure the Browse Filter
-                BrowseProjectFilter bf = new BrowseProjectFilter("esri_browseDialogFilters_databases")
-                {
-                    Name = "Database Connections"
-                };
-
-                OpenItemDialog dlg = new OpenItemDialog
-                {
-                    Title = "Specify a National PRZ Database",
-                    InitialLocation = initDir,
-                    MultiSelect = false,
-                    AlwaysUseInitialLocation = true,
-                    BrowseFilter = bf
-                };
-
-                bool? result = dlg.ShowDialog();
-
-                if ((dlg.Items == null) || (dlg.Items.Count() < 1))
-                {
-                    return;
-                }
-
-                Item item = dlg.Items.FirstOrDefault();
-
-                if (item == null)
-                {
-                    return;
-                }
-
-                PrjSettings_Txt_NationalDbPath = item.Path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
         private async Task<bool> InitializeWorkspace()
         {
             try
@@ -532,7 +478,7 @@ namespace NCC.PRZTools
                 #region GEODATABASE
 
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                bool gdbexists = await PRZH.ProjectGDBExists();
+                bool gdbexists = await PRZH.GDBExists_Project();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
                 if (!gdbexists)
@@ -632,7 +578,7 @@ namespace NCC.PRZTools
                 #region GEODATABASE
 
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                bool gdbexists = await PRZH.ProjectGDBExists();
+                bool gdbexists = await PRZH.GDBExists_Project();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
                 // Create the Geodatabase
@@ -792,6 +738,71 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + System.Reflection.MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private void SelectNationalDb()
+        {
+            try
+            {
+                string initDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                // File Geodatabase
+                if (Directory.Exists(PrjSettings_Txt_NationalDbPath) && Path.IsPathRooted(PrjSettings_Txt_NationalDbPath) && PrjSettings_Txt_NationalDbPath.EndsWith(".gdb"))
+                {
+                    DirectoryInfo di = new DirectoryInfo(PrjSettings_Txt_NationalDbPath);
+                    if (di != null && di.Parent != null)
+                    {
+                        initDir = di.Parent.FullName;
+                    }
+                }
+
+                // Database Connection File (.sde)
+                else if (File.Exists(PrjSettings_Txt_NationalDbPath) && Path.IsPathRooted(PrjSettings_Txt_NationalDbPath) && PrjSettings_Txt_NationalDbPath.EndsWith(".sde"))
+                {
+                    FileInfo fi = new FileInfo(PrjSettings_Txt_NationalDbPath);
+                    if (fi != null && fi.Directory != null)
+                    {
+                        initDir = fi.DirectoryName;
+                    }
+                }
+
+                // Configure the Browse Filter
+                BrowseProjectFilter bf = new BrowseProjectFilter("esri_browseDialogFilters_geodatabases")
+                {
+                    Name = "Geodatabases"
+                };
+
+                OpenItemDialog dlg = new OpenItemDialog
+                {
+                    Title = "Specify a National Database",
+                    InitialLocation = initDir,
+                    MultiSelect = false,
+                    AlwaysUseInitialLocation = true,
+                    BrowseFilter = bf
+                };
+
+                bool? result = dlg.ShowDialog();
+
+                if ((dlg.Items == null) || (dlg.Items.Count() < 1))
+                {
+                    return;
+                }
+
+                Item item = dlg.Items.FirstOrDefault();
+
+                if (item == null)
+                {
+                    return;
+                }
+
+                string thePath = item.Path;
+
+                PrjSettings_Txt_NationalDbPath = thePath;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 

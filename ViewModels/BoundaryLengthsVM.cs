@@ -115,7 +115,7 @@ namespace NCC.PRZTools
 
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.ProjectGDBExists())
+                if (!await PRZH.GDBExists_Project())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
@@ -240,7 +240,7 @@ namespace NCC.PRZTools
                             WhereClause = "LENGTH = 0"
                         };
 
-                        using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                        using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                         using (Table table = await PRZH.GetTable(geodatabase, boundtemp))
                         {
                             table.DeleteRows(QF);
@@ -313,7 +313,7 @@ namespace NCC.PRZTools
 
                     await QueuedTask.Run(async () =>
                     {
-                        using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                        using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                         using (Table table = await PRZH.GetTable(geodatabase, boundtemp))
                         using (RowCursor rowCursor = table.Search(QF))  // recycling cursor!
                         {
@@ -400,7 +400,7 @@ namespace NCC.PRZTools
                             int reccount = 0;   // Track how many rows I write for current puid (do I need this?)
 
                             // get the rows for this puid from the temp table
-                            using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                            using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                             using (Table temptab = await PRZH.GetTable(geodatabase, boundtemp))
                             using (RowCursor searchCursor = temptab.Search(QF))  // recycling cursor!
                             {

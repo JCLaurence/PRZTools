@@ -29,7 +29,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check that Workspace GDB exists
-                var gdbexists = await PRZH.ProjectGDBExists();
+                var gdbexists = await PRZH.GDBExists_Project();
                 if (!gdbexists)
                 {
                     ProMsgBox.Show("Project Workspace GDB does not exist.  Please Initialize or Reset your Project Workspace.");

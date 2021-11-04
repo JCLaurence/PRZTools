@@ -482,7 +482,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -522,7 +522,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -562,7 +562,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -629,7 +629,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> ProjectGDBExists()
+        public static async Task<bool> GDBExists_Project()
         {
             try
             {
@@ -667,7 +667,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool exists, NationalDbType dbType, string message)> NationalDBExists()
+        public static async Task<(bool exists, NationalDbType dbType, string message)> GDBExists_National()
         {
             try
             {
@@ -688,7 +688,7 @@ namespace NCC.PRZTools
                         return (false, NationalDbType.Unknown, "Uri to National Database is null");
                     }
 
-                    if (Directory.Exists(dbpath))  // It's a folder (file gdb)
+                    if (Directory.Exists(dbpath) && Path.IsPathRooted(dbpath) && dbpath.EndsWith(".gdb"))  // It's a folder (file gdb)
                     {
                         FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
 
@@ -704,10 +704,10 @@ namespace NCC.PRZTools
                         // If I get to this point, the file gdb exists and was successfully opened
                         return (true, NationalDbType.FileGDB, "success");
                     }
-                    else if (File.Exists(dbpath) && dbpath.EndsWith(".sde"))    // It's a connection file (.sde)
+                    else if (File.Exists(dbpath) && Path.IsPathRooted(dbpath) && dbpath.EndsWith(".sde"))    // It's a connection file (.sde)
                     {
                         DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
-                        //DatabaseConnectionProperties props = DatabaseClient.GetDatabaseConnectionProperties(conn);
+
                         try
                         {
                             using (Geodatabase gdb = new Geodatabase(conn)) { }
@@ -752,7 +752,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -773,7 +773,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -794,7 +794,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -815,7 +815,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -836,7 +836,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -857,7 +857,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -878,7 +878,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -899,7 +899,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -920,7 +920,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -941,7 +941,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -962,7 +962,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null)
                     {
@@ -1026,9 +1026,52 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<Geodatabase> GetEnterpriseGDB(string path)
+        {
+            try
+            {
+                // Ensure the path is an existing .sde connection file
+                if (!File.Exists(path) || !Path.IsPathRooted(path) || !path.EndsWith(".sde"))
+                {
+                    return null;
+                }
+
+                // Ensure the Uri is a valid Uri
+                Uri uri = new Uri(path);
+                if (uri == null)
+                {
+                    return null;
+                }
+
+                DatabaseConnectionFile connPath = new DatabaseConnectionFile(uri);
+                Geodatabase gdb = null;
+
+                try
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        gdb = new Geodatabase(connPath);
+                    });
+
+                }
+                catch (GeodatabaseNotFoundOrOpenedException)
+                {
+                    return null;
+                }
+
+                // If I get to this point, the file gdb exists and was successfully opened
+                return gdb;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         #endregion
 
-        public static async Task<Geodatabase> GetProjectGDB()
+        public static async Task<Geodatabase> GetGDB_Project()
         {
             try
             {
@@ -1061,7 +1104,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<Geodatabase> GetNationalDb()
+        public static async Task<Geodatabase> GetGDB_National()
         {
             try
             {
@@ -1075,7 +1118,7 @@ namespace NCC.PRZTools
                 string dbpath = GetPath_NationalDB();
 
                 // Determine if the database actually exists
-                var result = await NationalDBExists();
+                var result = await GDBExists_National();
 
                 if (!result.exists)
                 {
@@ -1138,7 +1181,7 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1164,7 +1207,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1194,7 +1237,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1224,7 +1267,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1254,7 +1297,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1284,7 +1327,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1314,7 +1357,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1344,7 +1387,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1374,7 +1417,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1404,7 +1447,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                using (Geodatabase gdb = await GetProjectGDB())
+                using (Geodatabase gdb = await GetGDB_Project())
                 {
                     if (gdb == null) return null;
 
@@ -1436,7 +1479,7 @@ namespace NCC.PRZTools
             {
                 Table table = await QueuedTask.Run(async () =>
                 {
-                    using (Geodatabase gdb = await GetProjectGDB())
+                    using (Geodatabase gdb = await GetGDB_Project())
                     {
                         if (gdb == null) return null;
 
@@ -1494,7 +1537,7 @@ namespace NCC.PRZTools
             {
                 FeatureClass fc = await QueuedTask.Run(async () =>
                 {
-                    using (Geodatabase gdb = await GetProjectGDB())
+                    using (Geodatabase gdb = await GetGDB_Project())
                     {
                         if (gdb == null) return null;
 
@@ -2463,7 +2506,7 @@ namespace NCC.PRZTools
                         GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                         string toolOutput;
 
-                        using (Geodatabase geodatabase = await GetProjectGDB())
+                        using (Geodatabase geodatabase = await GetGDB_Project())
                         {
                             // Get list of Relationship Classes
                             var relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName());
@@ -2619,7 +2662,7 @@ namespace NCC.PRZTools
                         List<StandaloneTable> tables_to_remove = new List<StandaloneTable>();
                         List<Layer> layers_to_remove = new List<Layer>();
 
-                        using (Geodatabase geodatabase = await GetProjectGDB())
+                        using (Geodatabase geodatabase = await GetGDB_Project())
                         {
                             // Get the Geodatabase Info
                             var gdbUri = geodatabase.GetPath();
@@ -2768,7 +2811,7 @@ namespace NCC.PRZTools
 
                 // Ensure that Project GDB exists
                 string gdb_path = GetPath_ProjectGDB();
-                if (!await ProjectGDBExists())
+                if (!await GDBExists_Project())
                 {
                     ProMsgBox.Show($"Project File Geodatabase does not exist at path {gdb_path}.");
                     return false;

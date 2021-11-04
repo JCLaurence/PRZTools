@@ -165,6 +165,13 @@ namespace NCC.PRZTools
         {
             try
             {
+                // Ensure I have a valid scratch workspace
+                if (string.IsNullOrEmpty(Settings_Txt_ScratchFGDBPath) || string.IsNullOrWhiteSpace(Settings_Txt_ScratchFGDBPath))
+                {
+                    ProMsgBox.Show("Please specify a Scratch Workspace.");
+                    return false;
+                }
+
                 #region Show the Raster to Table dialog
 
                 RasterToTable dlg = new RasterToTable
@@ -176,12 +183,7 @@ namespace NCC.PRZTools
                 vm.ParentDlg = this;
 
                 // set other dialog field values here
-                //vm.NumericFields = LIST_NumericFieldNames;
-                //vm.IntFields = LIST_IntFieldNames;
-                //vm.CostParent = this;
-                //vm.DSName = DSName;
-                //vm.DSPath = DSPath;
-                //vm.DSType = DSType;
+                vm.FgdbPath = Settings_Txt_ScratchFGDBPath;
 
                 // Closed Event Handler
                 dlg.Closed += (o, e) =>
@@ -212,176 +214,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                //MapView mv = MapView.Active;
-                //Layer lyr = mv.GetSelectedLayers().FirstOrDefault();
 
-                //if (lyr == null)
-                //{
-                //    ProMsgBox.Show("No Layer Selected");
-                //    return false;
-                //}
-                //else if (!(lyr is RasterLayer))
-                //{
-                //    ProMsgBox.Show("Layer is not raster layer");
-                //    return false;
-                //}
-
-                //RasterLayer RL = (RasterLayer)lyr;
-                //Dictionary<string, double> DICT_Pixels = new Dictionary<string, double>();
-                //Dictionary<long, double> DICT_Pixels2 = new Dictionary<long, double>();
-
-                //await QueuedTask.Run(() =>
-                //{
-                //    using (Raster raster = RL.GetRaster())
-                //    {
-                //        Envelope env = raster.GetExtent();
-                //        int rows = raster.GetHeight();
-                //        int cols = raster.GetWidth();
-
-                //        using (PixelBlock pixelBlock = raster.CreatePixelBlock(cols, 1))
-                //        {
-                //            for (int row = 1; row <= rows; row++)
-                //            {
-                //                // fill a pixel block
-                //                raster.Read(0, row - 1, pixelBlock);
-
-                //                for (int col = 1; col <= cols; col++)
-                //                {
-                //                    if (Convert.ToByte(pixelBlock.GetNoDataMaskValue(0, col - 1, 0)) == 1)
-                //                    {
-                //                        var val = pixelBlock.GetValue(0, col - 1, 0);
-                //                        double d = Convert.ToDouble(val);
-
-                //                        var result = NationalGridInfo.GetIdentifierFromRowColumn(row, col, 3);
-                //                        var result2 = NationalGridInfo.GetCellNumberFromRowColumn(row, col, 3);
-                //                        if (result.success && result2.success)
-                //                        {
-                //                            DICT_Pixels.Add(result.identifier, d);
-                //                            DICT_Pixels2.Add(result2.cell_number, d);
-                //                        }
-                //                    }
-                //                }
-                //            }
-                //        }
-                //    }
-                //});
-
-                //// Some GP variables
-                //IReadOnlyList<string> toolParams;
-                //IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                //GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                //string toolOutput;
-
-                //// Build the empty table
-                //string gdbpath = PRZH.GetPath_ProjectGDB();
-                //toolParams = Geoprocessing.MakeValueArray(gdbpath, "test1", "", "", "");
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                //toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    ProMsgBox.Show($"Error creating the test1 table.");
-                //    return false;
-                //}
-
-                //// Add Fields
-                //string fldCellNumber = "cellnumber LONG 'Cell Number' # 0 #;";
-                //string fldIdentifier = "identifier TEXT 'Cell Identifier' 20 # #;";
-                //string fldValue = "cellvalue DOUBLE 'Cell Value' # 0 #";
-
-                //string flds = fldCellNumber + fldIdentifier + fldValue;
-                //string testpath = Path.Combine(gdbpath, "test1");
-
-                //toolParams = Geoprocessing.MakeValueArray(testpath, flds);
-                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                //toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
-                //if (toolOutput == null)
-                //{
-                //    ProMsgBox.Show($"Error adding fields");
-                //    return false;
-                //}
-
-                //// Insert values from dictionaries
-                //if (!await QueuedTask.Run(async () =>
-                //{
-                //    bool success = false;
-
-                //    try
-                //    {
-                //        var loader = new EditOperation();
-                //        loader.Name = "record creator";
-                //        loader.ShowProgressor = false;
-                //        loader.ShowModalMessageAfterFailure = false;
-                //        loader.SelectNewFeatures = false;
-                //        loader.SelectModifiedFeatures = false;
-
-                //        if (!await PRZH.TableExists("test1"))
-                //        {
-                //            return false;
-                //        }
-
-                //        using (Table tab = await PRZH.GetTable("test1"))
-                //        {
-                //            loader.Callback(async (context) =>
-                //            {
-                //                using (Table table = await PRZH.GetTable("test1"))
-                //                using (InsertCursor insertCursor = table.CreateInsertCursor())
-                //                using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                //                {
-                //                    long flusher = 0;
-
-                //                    var cellNumbers = DICT_Pixels2.Keys.ToList();
-                //                    cellNumbers.Sort();
-
-                //                    foreach (var num in cellNumbers)
-                //                    {
-                //                        var val = DICT_Pixels2[num];
-
-                //                        rowBuffer["cellnumber"] = num;
-                //                        rowBuffer["cellvalue"] = val;
-                //                        insertCursor.Insert(rowBuffer);
-
-                //                        flusher++;
-
-                //                        if (flusher == 10000)
-                //                        {
-                //                            insertCursor.Flush();
-                //                            flusher = 0;
-                //                        }
-                //                    }
-
-                //                    insertCursor.Flush();
-                //                }
-                //            }, tab);
-                //        }
-
-                //        // Execute all the queued "creates"
-                //        success = loader.Execute();
-
-                //        if (success)
-                //        {
-                //            if (!await Project.Current.SaveEditsAsync())
-                //            {
-                //                ProMsgBox.Show($"Error saving edits.");
-                //                return false;
-                //            }
-                //        }
-                //        else
-                //        {
-                //            ProMsgBox.Show($"Edit Operation error: unable to create tiles: {loader.ErrorMessage}");
-                //        }
-
-                //        return success;
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                //        return false;
-                //    }
-                //}))
-                //{
-                //    ProMsgBox.Show($"Error loading the table :(");
-                //    return false;
-                //}
 
                 return true;
             }

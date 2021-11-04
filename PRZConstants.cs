@@ -187,6 +187,10 @@
         public const string c_TABLE_PUFEATURES = "pu_features";
         public const string c_TABLE_COSTSTATS = "pu_cost";      // this will change soon
 
+        // NATIONAL DB TABLES
+        public const string c_TABLE_NAT_GOAL = "goal";
+        public const string c_TABLE_NAT_PREFIX_GOAL = "g_";
+
         #endregion
 
         #region COLUMN NAMES
@@ -236,6 +240,15 @@
         #endregion
 
         #region TABLE COLUMN NAMES
+
+        // NATIONAL DB - MASTER GOAL TABLE
+        public const string c_FLD_TAB_NAT_GOALS_ID = "id";
+        public const string c_FLD_TAB_NAT_GOALS_NAME = "name";
+        public const string c_FLD_TAB_NAT_GOALS_THEME = "theme";
+
+        // NATIONAL DB - INDIVIDUAL GOAL TABLES
+        public const string c_FLD_TAB_NAT_GOAL_CELL_NUMBER = "cell_number";
+        public const string c_FLD_TAB_NAT_GOAL_CELL_VALUE = "cell_value";
 
         // PU + FEATURES
         public const string c_FLD_TAB_PUCF_ID = c_FLD_FC_PU_ID;

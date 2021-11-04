@@ -296,7 +296,7 @@ namespace NCC.PRZTools
                 {
                     try
                     {
-                        using (Geodatabase geodatabase = await PRZH.GetProjectGDB())
+                        using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                         using (FeatureClass fc = await PRZH.GetFeatureClass(geodatabase, temppufc))
                         {
                             if (fc == null)

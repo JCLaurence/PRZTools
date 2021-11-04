@@ -200,7 +200,7 @@ namespace NCC.PRZTools
 
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.ProjectGDBExists())
+                if (!await PRZH.GDBExists_Project())
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
@@ -1687,7 +1687,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                                using (Geodatabase gdb = await PRZH.GetGDB_Project())
                                 using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
                                 {
                                     if (fc == null)
@@ -1883,7 +1883,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase gdb = await PRZH.GetProjectGDB())
+                                using (Geodatabase gdb = await PRZH.GetGDB_Project())
                                 using (Table table = await PRZH.GetTable(gdb, tabname))
                                 using (RowCursor rowCursor = table.Search())
                                 {
