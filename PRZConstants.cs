@@ -39,6 +39,19 @@
         Unknown
     }
 
+    public enum NationalElementType
+    {
+        Goal = 1,
+        Weight,
+        Include,
+        Exclude
+    }
+
+    public enum NationalElementStatus
+    {
+        Active = 1,
+        Inactive
+    }
 
     // SELECTION RULES
 
@@ -188,8 +201,9 @@
         public const string c_TABLE_COSTSTATS = "pu_cost";      // this will change soon
 
         // NATIONAL DB TABLES
-        public const string c_TABLE_NAT_GOAL = "goal";
-        public const string c_TABLE_NAT_PREFIX_GOAL = "g_";
+        public const string c_TABLE_NAT_ELEMENTS = "element";
+        public const string c_TABLE_NAT_THEMES = "theme";
+        public const string c_TABLE_NAT_PREFIX_ELEMENT = "e";
 
         #endregion
 
@@ -241,14 +255,21 @@
 
         #region TABLE COLUMN NAMES
 
-        // NATIONAL DB - MASTER GOAL TABLE
-        public const string c_FLD_TAB_NAT_GOALS_ID = "id";
-        public const string c_FLD_TAB_NAT_GOALS_NAME = "name";
-        public const string c_FLD_TAB_NAT_GOALS_THEME = "theme";
+        // NATIONAL DB - THEME TABLE
+        public const string c_FLD_TAB_THEME_THEME_ID = "theme_id";          // long
+        public const string c_FLD_TAB_THEME_NAME = "name";                  // text
 
-        // NATIONAL DB - INDIVIDUAL GOAL TABLES
-        public const string c_FLD_TAB_NAT_GOAL_CELL_NUMBER = "cell_number";
-        public const string c_FLD_TAB_NAT_GOAL_CELL_VALUE = "cell_value";
+        // NATIONAL DB - ELEMENT TABLE
+        public const string c_FLD_TAB_ELEMENT_ELEMENT_ID = "element_id";    // long
+        public const string c_FLD_TAB_ELEMENT_NAME = "name";                // text
+        public const string c_FLD_TAB_ELEMENT_TYPE = "type";                // short (domain)
+        public const string c_FLD_TAB_ELEMENT_STATUS = "status";            // short (domain)
+        public const string c_FLD_TAB_ELEMENT_THEME_ID = "theme_id";        // long
+        public const string c_FLD_TAB_ELEMENT_DATAPATH = "data_path";       // text
+
+        // NATIONAL DB - ELEMENT VALUE TABLES
+        public const string c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER = "cell_number";
+        public const string c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE = "cell_value";
 
         // PU + FEATURES
         public const string c_FLD_TAB_PUCF_ID = c_FLD_FC_PU_ID;

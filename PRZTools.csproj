@@ -153,6 +153,7 @@
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\FeatureElement.cs" />
+    <Compile Include="Models\NatElement.cs" />
     <Compile Include="Models\NationalGridInfo.cs" />
     <Compile Include="Models\PlanningUnitTileInfo.cs" />
     <Compile Include="Models\SelectionRule.cs" />

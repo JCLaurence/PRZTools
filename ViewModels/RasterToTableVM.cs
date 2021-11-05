@@ -555,13 +555,13 @@ namespace NCC.PRZTools
                 }
 
                 // Add Fields
-                string fldCellNumber = "cellnumber LONG 'Cell Number' # 0 #;";
-                string fldValue = "cellvalue DOUBLE 'Cell Value' # 0 #";
+                string fldCellNumber = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
+                string fldCellValue = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #";
 
-                string flds = fldCellNumber + fldValue;
-                string testpath = Path.Combine(FgdbPath, TableName);
+                string flds = fldCellNumber + fldCellValue;
+                string tablePath = Path.Combine(FgdbPath, TableName);
 
-                toolParams = Geoprocessing.MakeValueArray(testpath, flds);
+                toolParams = Geoprocessing.MakeValueArray(tablePath, flds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: FgdbPath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -603,8 +603,8 @@ namespace NCC.PRZTools
                                     {
                                         var val = DICT_Pixels[num];
 
-                                        rowBuffer["cellnumber"] = num;
-                                        rowBuffer["cellvalue"] = val;
+                                        rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = num;
+                                        rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = val;
                                         insertCursor.Insert(rowBuffer);
 
                                         flusher++;
@@ -651,13 +651,13 @@ namespace NCC.PRZTools
                 }
 
                 // Add Attribute Index
-                List<string> LIST_ix = new List<string>() { "cellnumber" };
-                toolParams = Geoprocessing.MakeValueArray(testpath, LIST_ix, "ix_cellnumber", "", "");
+                List<string> LIST_ix = new List<string>() { PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER };
+                toolParams = Geoprocessing.MakeValueArray(tablePath, LIST_ix, "ix_" + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: FgdbPath);
                 toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
                 {
-                    ProMsgBox.Show("Error adding index to cellnumber field");
+                    ProMsgBox.Show($"Error adding index to {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} field");
                     return false;
                 }
 

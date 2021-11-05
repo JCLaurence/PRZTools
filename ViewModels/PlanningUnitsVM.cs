@@ -2576,8 +2576,12 @@ namespace NCC.PRZTools
                 {
                     if (!await ProcessNationalDbTables())
                     {
-
+                        ProMsgBox.Show("Error processing National Tables");
+                        return false;
                     }
+
+
+
                 }
 
                 #endregion
@@ -3252,6 +3256,12 @@ namespace NCC.PRZTools
 
             try
             {
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
+
                 // Check for currently unsaved edits in the project
                 if (Project.Current.HasEdits)
                 {
@@ -3280,11 +3290,6 @@ namespace NCC.PRZTools
                 }
 
 
-                // > Get the National Geodatabase
-                // > Retrieve the list of goals, copy to table
-                // > Retrieve the list of weights, copy to table
-                // > Retrieve the list of selection rules, copy to table
-
                 // > Goal record should include an ID value.
                 // > There should be a corresponding specific Goal table (G00004 where 4 = Goal's ID)
 
@@ -3299,7 +3304,56 @@ namespace NCC.PRZTools
                 //      > else write new local goal table (g0000n)
                 //          - cell number and cell value columns
 
+                #region RETRIEVE INFO FROM ELEMENTS TABLE
 
+                // COPY THE ELEMENT TABLE
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string natdbpath = PRZH.GetPath_NationalDB();
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_ELEMENTS} Table..."), true, ++val);
+                string inputelempath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_ELEMENTS);
+                toolParams = Geoprocessing.MakeValueArray(inputelempath, PRZC.c_TABLE_NAT_ELEMENTS, "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying {PRZC.c_TABLE_NAT_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying {PRZC.c_TABLE_NAT_ELEMENTS} table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
+                }
+
+                // COPY THE THEMES TABLE
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_THEMES} Table..."), true, ++val);
+                string inputthemepath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_THEMES);
+                toolParams = Geoprocessing.MakeValueArray(inputthemepath, PRZC.c_TABLE_NAT_THEMES, "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying {PRZC.c_TABLE_NAT_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying {PRZC.c_TABLE_NAT_THEMES} table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
+                }
+
+                // BUILD LISTING OF ELEMENTS
+                //  - ELEMENT ID
+                //  - ELEMENT TYPE
+                //  - ELEMENT NAME
+                //  - THEME ID
+                //  - THEME NAME
+                //  - DATA PATH
+
+
+
+                #endregion
 
                 //********************************************************
 
