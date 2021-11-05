@@ -1590,6 +1590,143 @@ namespace NCC.PRZTools
             }
         }
 
+        #region NAT DB LIST RETRIEVAL
+
+        public static async Task<List<NatTheme>> GetNationalThemes()
+        {
+            try
+            {
+                List<NatTheme> themes = new List<NatTheme>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    // quit if table doesn't exist
+                    if (!await TableExists(PRZC.c_TABLE_NAT_THEMES))
+                    {
+                        return false;
+                    }
+
+                    // build themes list
+                    using (Table table = await GetTable(PRZC.c_TABLE_NAT_THEMES))
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                NatTheme theme = new NatTheme()
+                                {
+                                    ThemeID = Convert.ToInt32(row[PRZC.c_FLD_TAB_THEME_THEME_ID]),
+                                    ThemeName = (string)row[PRZC.c_FLD_TAB_THEME_NAME],
+                                    ThemeCode = (string)row[PRZC.c_FLD_TAB_THEME_CODE]
+                                };
+
+                                themes.Add(theme);
+                            }
+                        }
+                    }
+
+                    return true;
+                }))
+                {
+                    return null;
+                }
+
+                return themes;  // could have zero or more items in the list
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<List<NatElement>> GetNationalElements()
+        {
+            try
+            {
+                List<NatElement> elements = new List<NatElement>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    // quit if table doesn't exist
+                    if (!await TableExists(PRZC.c_TABLE_NAT_ELEMENTS))
+                    {
+                        return false;
+                    }
+
+                    // build elements list
+                    using (Table table = await GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                NatElement element = new NatElement()
+                                {
+                                    ElementID = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_ELEMENT_ID]),
+                                    ElementName = (string)row[PRZC.c_FLD_TAB_ELEMENT_NAME],
+                                    ElementType = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_TYPE]),
+                                    ElementStatus = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_STATUS]),
+                                    ElementDataPath = (string)row[PRZC.c_FLD_TAB_ELEMENT_DATAPATH],
+                                    ThemeID = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_THEME_ID]),
+                                    Presence = (int)NationalElementPresence.Absent   // default to absent, check for presence (and update) later
+                                };
+
+                                elements.Add(element);
+                            }
+                        }
+                    }
+
+                    // update theme names
+                    List<NatTheme> themes = await GetNationalThemes();
+                    if (themes != null)
+                    {
+                        foreach (NatElement element in elements)
+                        {
+                            int theme_id = element.ThemeID;
+
+                            if (theme_id <= 0)
+                            {
+                                element.ThemeName = "INVALID THEME ID";
+                                element.ThemeCode = "---";
+                            }
+                            else
+                            {
+                                NatTheme theme = themes.FirstOrDefault(t => t.ThemeID == theme_id);
+
+                                if (theme != null)
+                                {
+                                    element.ThemeName = theme.ThemeName;
+                                    element.ThemeCode = theme.ThemeCode;
+                                }
+                                else
+                                {
+                                    element.ThemeName = "NO CORRESPONDING THEME";
+                                    element.ThemeCode = "???";
+                                }
+                            }
+                        }
+                    }
+
+                    return true;
+                }))
+                {
+                    return null;
+                }
+
+                return elements;  // could have zero or more items in the list
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        #endregion
+
         #endregion
 
         #region LAYER EXISTENCE

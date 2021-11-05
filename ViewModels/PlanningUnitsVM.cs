@@ -3304,7 +3304,7 @@ namespace NCC.PRZTools
                 //      > else write new local goal table (g0000n)
                 //          - cell number and cell value columns
 
-                #region RETRIEVE INFO FROM ELEMENTS TABLE
+                #region RETRIEVE AND PREPARE INFO FROM NATIONAL DATABASE
 
                 // COPY THE ELEMENT TABLE
                 string gdbpath = PRZH.GetPath_ProjectGDB();
@@ -3326,6 +3326,26 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
                 }
 
+                // INSERT EXTRA FIELDS INTO ELEMENT TABLE
+                string fldPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 #;";
+
+                string flds = fldPresence;
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_ELEMENTS, flds);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {PRZC.c_TABLE_NAT_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the {PRZC.c_TABLE_NAT_ELEMENTS} table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
+                }
+
                 // COPY THE THEMES TABLE
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_THEMES} Table..."), true, ++val);
                 string inputthemepath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_THEMES);
@@ -3343,13 +3363,33 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
                 }
 
-                // BUILD LISTING OF ELEMENTS
-                //  - ELEMENT ID
-                //  - ELEMENT TYPE
-                //  - ELEMENT NAME
-                //  - THEME ID
-                //  - THEME NAME
-                //  - DATA PATH
+                // Build list of Themes
+                List<NatTheme> themes = await PRZH.GetNationalThemes();
+
+                if (themes == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Themes", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve list of National Themes");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} National Themes"), true, ++val);
+                }
+
+                // Build list of Elements
+                List<NatElement> elements = await PRZH.GetNationalElements();
+
+                if (elements == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Elements", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve list of National Elements");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elements.Count} National Elements"), true, ++val);
+                }
 
 
 
@@ -3482,7 +3522,46 @@ namespace NCC.PRZTools
 
         private async Task<bool> Test()
         {
-            return true;
+            try
+            {
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                    {
+                        ProMsgBox.Show(table.GetCount().ToString());
+
+                        using (RowCursor rowCursor = table.Search())
+                        {
+                            if (rowCursor.Current == null)
+                            {
+                                ProMsgBox.Show("null");
+                            }
+                            else
+                            {
+                                ProMsgBox.Show("Not a null row ??");
+                            }
+
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    ProMsgBox.Show(row[PRZC.c_FLD_TAB_THEME_NAME].ToString());
+                                }
+                            }
+                        }
+
+                    }
+
+                });
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message);
+                return false;
+            }
         }
         #endregion
 

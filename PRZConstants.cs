@@ -53,6 +53,12 @@
         Inactive
     }
 
+    public enum NationalElementPresence
+    {
+        Present = 1,
+        Absent
+    }
+
     // SELECTION RULES
 
     public enum SelectionRuleLayerType
@@ -258,6 +264,7 @@
         // NATIONAL DB - THEME TABLE
         public const string c_FLD_TAB_THEME_THEME_ID = "theme_id";          // long
         public const string c_FLD_TAB_THEME_NAME = "name";                  // text
+        public const string c_FLD_TAB_THEME_CODE = "code";                  // text
 
         // NATIONAL DB - ELEMENT TABLE
         public const string c_FLD_TAB_ELEMENT_ELEMENT_ID = "element_id";    // long
@@ -266,6 +273,7 @@
         public const string c_FLD_TAB_ELEMENT_STATUS = "status";            // short (domain)
         public const string c_FLD_TAB_ELEMENT_THEME_ID = "theme_id";        // long
         public const string c_FLD_TAB_ELEMENT_DATAPATH = "data_path";       // text
+        public const string c_FLD_TAB_ELEMENT_PRESENCE = "presence";        // short (domain)
 
         // NATIONAL DB - ELEMENT VALUE TABLES
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER = "cell_number";

@@ -42,8 +42,11 @@ namespace NCC.PRZTools
 
         public string ThemeName { get; set; }
 
+        public string ThemeCode { get; set; }
+
         public string ElementTable { get; private set; }
 
+        public int Presence { get; set; }
 
     }
 }
