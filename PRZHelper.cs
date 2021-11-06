@@ -1641,7 +1641,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<List<NatElement>> GetNationalElements()
+        public static async Task<List<NatElement>> GetNationalElements(NationalElementType? type, NationalElementStatus? status)
         {
             try
             {
@@ -1655,9 +1655,38 @@ namespace NCC.PRZTools
                         return false;
                     }
 
-                    // build elements list
+                    // assemble whereclause
+                    string whereclause = "";
+                    if (type == null)
+                    {
+                        if (status == null)
+                        {
+                            whereclause = "";
+                        }
+                        else
+                        {
+                            whereclause = PRZC.c_FLD_TAB_ELEMENT_STATUS + " = " + ((int)status).ToString();
+                        }
+                    }
+                    else
+                    {
+                        if (status == null)
+                        {
+                            whereclause = PRZC.c_FLD_TAB_ELEMENT_TYPE + " = " + ((int)type).ToString();
+                        }
+                        else
+                        {
+                            whereclause = PRZC.c_FLD_TAB_ELEMENT_STATUS + " = " + ((int)status).ToString() + " And " + PRZC.c_FLD_TAB_ELEMENT_TYPE + " = " + ((int)type).ToString();
+                        }
+                    }
+
+                    QueryFilter queryFilter = new QueryFilter()
+                    {
+                        WhereClause = whereclause
+                    };
+
                     using (Table table = await GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
-                    using (RowCursor rowCursor = table.Search())
+                    using (RowCursor rowCursor = table.Search(queryFilter))
                     {
                         while (rowCursor.MoveNext())
                         {
@@ -1717,6 +1746,60 @@ namespace NCC.PRZTools
                 }
 
                 return elements;  // could have zero or more items in the list
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<HashSet<long>> GetStudyAreaCellNumbers(PlanningUnitLayerType layerType)
+        {
+            try
+            {
+                HashSet<long> set = new HashSet<long>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    string gdbpath = GetPath_ProjectGDB();
+                    if (!await GDBExists_Project())
+                    {
+                        return false;
+                    }
+
+                    if (layerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        string pufcpath = GetPath_FC_PU();
+                        if (!await FCExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter();
+                        // I'm here
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+
+                        }
+
+                    }
+                    else if (layerType == PlanningUnitLayerType.RASTER)
+                    {
+
+                    }
+
+                    return true;
+                }))
+                {
+                    return null;
+                }
+                else
+                {
+                    return set;
+                }
             }
             catch (Exception ex)
             {

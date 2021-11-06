@@ -220,7 +220,8 @@
         public const string c_FLD_RAS_PU_VALUE = "Value";
         public const string c_FLD_RAS_PU_COUNT = "Count";
         public const string c_FLD_RAS_PU_ID = c_FLD_FC_PU_ID;
-        public const string c_FLD_RAS_PU_NATGRID_ID = c_FLD_FC_PU_NATGRID_ID;
+        //public const string c_FLD_RAS_PU_NATGRID_ID = c_FLD_FC_PU_NATGRID_ID;
+        public const string c_FLD_RAS_PU_NATGRID_CELL_NUMBER = c_FLD_FC_PU_NATGRID_CELL_NUMBER;
         public const string c_FLD_RAS_PU_CONFLICT = c_FLD_FC_PU_CONFLICT;
         public const string c_FLD_RAS_PU_COST = c_FLD_FC_PU_COST;
         public const string c_FLD_RAS_PU_AREA_M2 = c_FLD_FC_PU_AREA_M2;
@@ -238,7 +239,8 @@
 
         // PLANNING UNITS
         public const string c_FLD_FC_PU_ID = "id";
-        public const string c_FLD_FC_PU_NATGRID_ID = "natgrid_id";
+        //public const string c_FLD_FC_PU_NATGRID_ID = "natgrid_id";
+        public const string c_FLD_FC_PU_NATGRID_CELL_NUMBER = "natgrid_cell_number";
         public const string c_FLD_FC_PU_EFFECTIVE_RULE = "effective_rule";
         public const string c_FLD_FC_PU_COST = "cost";
         public const string c_FLD_FC_PU_AREA_M2 = "area_m2";

@@ -350,7 +350,7 @@ namespace NCC.PRZTools
                             return false;
                         }
 
-                        SpatialReference NatGridSR = NationalGridInfo.CANADA_ALBERS_SR;
+                        SpatialReference NatGridSR = NationalGrid.CANADA_ALBERS_SR;
 
                         string NatGridSR_wkt = NatGridSR.Wkt.Replace(NatGridSR.Name, "");
                         string rasterSR_wkt = rasterSR.Wkt.Replace(rasterSR.Name, "");
@@ -365,9 +365,9 @@ namespace NCC.PRZTools
                         int rows = raster.GetHeight();
                         int cols = raster.GetWidth();
 
-                        if (rows != NationalGridInfo.ROWCOUNT_3 || cols != NationalGridInfo.COLUMNCOUNT_3)
+                        if (rows != NationalGrid.c_NATGRID_ROWS_DIM3 || cols != NationalGrid.c_NATGRID_COLUMNS_DIM3)
                         {
-                            ProMsgBox.Show($"Incorrect raster size.  Raster has {rows} rows and {cols} columns.\nRaster must have {NationalGridInfo.ROWCOUNT_3} rows and {NationalGridInfo.COLUMNCOUNT_3} columns.");
+                            ProMsgBox.Show($"Incorrect raster size.  Raster has {rows} rows and {cols} columns.\nRaster must have {NationalGrid.c_NATGRID_ROWS_DIM3} rows and {NationalGrid.c_NATGRID_COLUMNS_DIM3} columns.");
                             return false;
                         }
 
@@ -389,14 +389,14 @@ namespace NCC.PRZTools
                         double rasterMaxX = Math.Round(rasterEnv.XMax, 3, MidpointRounding.AwayFromZero);
                         double rasterMaxY = Math.Round(rasterEnv.YMax, 3, MidpointRounding.AwayFromZero);
 
-                        if (Convert.ToDouble(NationalGridInfo.MIN_X_COORDINATE) != rasterMinX |
-                            Convert.ToDouble(NationalGridInfo.MIN_Y_COORDINATE) != rasterMinY |
-                            Convert.ToDouble(NationalGridInfo.MAX_X_COORDINATE) != rasterMaxX |
-                            Convert.ToDouble(NationalGridInfo.MAX_Y_COORDINATE) != rasterMaxY)
+                        if (Convert.ToDouble(NationalGrid.c_NATGRID_ENV_XMIN) != rasterMinX |
+                            Convert.ToDouble(NationalGrid.c_NATGRID_ENV_YMIN) != rasterMinY |
+                            Convert.ToDouble(NationalGrid.c_NATGRID_ENV_XMAX) != rasterMaxX |
+                            Convert.ToDouble(NationalGrid.c_NATGRID_ENV_YMAX) != rasterMaxY)
                         {
                             ProMsgBox.Show("Raster envelope does not match National Grid envelope.\n" +
                                             $"Raster envelope XMin: {rasterMinX} YMin: {rasterMinY} XMax: {rasterMaxX} YMax: {rasterMaxY}\n" +
-                                            $"National Grid envelope XMin: {NationalGridInfo.MIN_X_COORDINATE} YMin: {NationalGridInfo.MIN_Y_COORDINATE} XMax: {NationalGridInfo.MAX_X_COORDINATE} YMax: {NationalGridInfo.MAX_Y_COORDINATE}");
+                                            $"National Grid envelope XMin: {NationalGrid.c_NATGRID_ENV_XMIN} YMin: {NationalGrid.c_NATGRID_ENV_YMIN} XMax: {NationalGrid.c_NATGRID_ENV_XMAX} YMax: {NationalGrid.c_NATGRID_ENV_YMAX}");
                             return false;
                         }
 
@@ -504,7 +504,7 @@ namespace NCC.PRZTools
                                                 {
                                                     if (d != 0)
                                                     {
-                                                        var result = NationalGridInfo.GetCellNumberFromRowColumn(row, col, 3);
+                                                        var result = NationalGrid.GetCellNumberFromRowColumn(row, col, NationalGridDimension.SideLength_1000m);
                                                         if (result.success)
                                                         {
                                                             DICT_Pixels.Add(result.cell_number, d);
@@ -513,7 +513,7 @@ namespace NCC.PRZTools
                                                 }
                                                 else
                                                 {
-                                                    var result = NationalGridInfo.GetCellNumberFromRowColumn(row, col, 3);
+                                                    var result = NationalGrid.GetCellNumberFromRowColumn(row, col, NationalGridDimension.SideLength_1000m);
                                                     if (result.success)
                                                     {
                                                         DICT_Pixels.Add(result.cell_number, d);

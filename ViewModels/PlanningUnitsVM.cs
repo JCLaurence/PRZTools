@@ -1320,8 +1320,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Buffer Distance = " + bu), true, ++val);
 
                 // Nat Grid - Misc
-                int natgrid_dimension = 0;
                 int natgrid_sidelength = 0;
+                NationalGridDimension dimension = NationalGridDimension.SideLength_1m;
 
                 // Custom Grid - Misc
                 double customgrid_tile_area_m2 = 0;
@@ -1340,32 +1340,32 @@ namespace NCC.PRZTools
                     // calculate dimension and side length
                     if (PUSource_Rad_NatGrid_1M_IsChecked)
                     {
-                        natgrid_dimension = 0;
+                        dimension = NationalGridDimension.SideLength_1m;
                         natgrid_sidelength = 1;
                     }
                     else if (PUSource_Rad_NatGrid_10M_IsChecked)
                     {
-                        natgrid_dimension = 1;
+                        dimension = NationalGridDimension.SideLength_10m;
                         natgrid_sidelength = 10;
                     }
                     else if (PUSource_Rad_NatGrid_100M_IsChecked)
                     {
-                        natgrid_dimension = 2;
+                        dimension = NationalGridDimension.SideLength_100m;
                         natgrid_sidelength = 100;
                     }
                     else if (PUSource_Rad_NatGrid_1Km_IsChecked)
                     {
-                        natgrid_dimension = 3;
+                        dimension = NationalGridDimension.SideLength_1000m;
                         natgrid_sidelength = 1000;
                     }
                     else if (PUSource_Rad_NatGrid_10Km_IsChecked)
                     {
-                        natgrid_dimension = 4;
+                        dimension = NationalGridDimension.SideLength_10000m;
                         natgrid_sidelength = 10000;
                     }
                     else if (PUSource_Rad_NatGrid_100Km_IsChecked)
                     {
-                        natgrid_dimension = 5;
+                        dimension = NationalGridDimension.SideLength_100000m;
                         natgrid_sidelength = 100000;
                     }
                     else
@@ -1374,7 +1374,7 @@ namespace NCC.PRZTools
                         ProMsgBox.Show("Invalid National Grid dimension specified.", "Validation");
                         return false;
                     }
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Grid dimension = {natgrid_dimension}, side length (m) = {natgrid_sidelength}"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Grid dimension = {dimension}, side length (m) = {natgrid_sidelength}"), true, ++val);
                 }
                 else if (PUSource_Rad_CustomGrid_IsChecked)
                 {
@@ -1850,7 +1850,7 @@ namespace NCC.PRZTools
                     {
                         // Get Extent
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national grid extent for study area..."), true, ++val);
-                        (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGridInfo.GetNatGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+                        (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) gridBounds = NationalGrid.GetNatGridBoundsFromStudyArea(SA_poly_buffer, dimension);
                         if (!gridBounds.success)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve national grid extent.\n\nMessage: {gridBounds.message}", LogMessageType.ERROR), true, ++val);
@@ -1862,14 +1862,9 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"National grid extent retrieved."), true, ++val);
                         }
 
-                        // Retrieve the vitals of the extent envelope
-                        int tiles_across = gridBounds.tilesAcross;
-                        int tiles_up = gridBounds.tilesUp;
-                        double side_length = natgrid_sidelength;
-
                         // Build Constant Raster
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating preliminary (constant-value) raster..."), true, ++val);
-                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", side_length, gridBounds.gridEnv };
+                        object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
                         toolParams = Geoprocessing.MakeValueArray(o);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
@@ -1906,7 +1901,8 @@ namespace NCC.PRZTools
                         // Assign Planning Unit IDs
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Assign Planning Unit ID values to pixels within the buffered study area..."), true, ++val);
 
-                        Dictionary<int, string> identifiers_by_id = new Dictionary<int, string>();
+                        //Dictionary<int, string> identifiers_by_id = new Dictionary<int, string>();
+                        Dictionary<int, long> cell_numbers_by_id = new Dictionary<int, long>();
 
                         if (!await QueuedTask.Run(async () =>
                         {
@@ -1936,31 +1932,36 @@ namespace NCC.PRZTools
                                         int puid = 1;
 
                                         // Loop through each row of tiles (top to bottom)
-                                        for (int row = 0; row < gridBounds.tilesUp; row++)
+                                        for (int row = 1; row <= gridBounds.tilesUp; row++)
                                         {
                                             // Read a raster row into the pixel block
-                                            raster.Read(0, row, pixelBlock);
+                                            raster.Read(0, row - 1, pixelBlock);
 
                                             // write the pixel block contents to an array
                                             int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
 
                                             // Get the Y-coord of the current row (YMax of row)
-                                            double CurrentCell_ULY = OriginCell_ULY - (row * side_length);
+                                            double CurrentCell_ULY = OriginCell_ULY - ((row - 1) * natgrid_sidelength);
 
                                             // Loop through each cell (left to right) within the parent row
-                                            for (int col = 0; col < gridBounds.tilesAcross; col++)
+                                            for (int col = 1; col <= gridBounds.tilesAcross; col++)
                                             {
                                                 // Get the X-coord of the current column (XMin of column)
-                                                double CurrentCell_ULX = OriginCell_ULX + (col * side_length);
+                                                double CurrentCell_ULX = OriginCell_ULX + ((col - 1) * natgrid_sidelength);
 
                                                 // Build the envelope for the current cell
-                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - side_length, CurrentCell_ULX + side_length, CurrentCell_ULY, OutputSR);
+                                                Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - natgrid_sidelength, CurrentCell_ULX + natgrid_sidelength, CurrentCell_ULY, OutputSR);
 
                                                 if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
                                                 {
                                                     // I need to alter the pixel value here to puid++
-                                                    array[col, 0] = puid;
-                                                    identifiers_by_id.Add(puid, NationalGridInfo.GetIdentifierFromULXY((int)CurrentCell_ULX, (int)CurrentCell_ULY, natgrid_dimension));
+                                                    array[col - 1, 0] = puid;
+                                                    //identifiers_by_id.Add(puid, NationalGridInfo.GetIdentifierFromULXY((int)CurrentCell_ULX, (int)CurrentCell_ULY, dimension));
+                                                    var cn = NationalGrid.GetCellNumberFromULXY(Convert.ToInt32(CurrentCell_ULX), Convert.ToInt32(CurrentCell_ULY), dimension);
+                                                    if (cn.success)
+                                                    {
+                                                        cell_numbers_by_id.Add(puid, cn.cell_number);
+                                                    }
                                                     puid++;
                                                 }
                                             }
@@ -1969,9 +1970,9 @@ namespace NCC.PRZTools
                                             pixelBlock.SetPixelData(0, array);
 
                                             // write the pixel block data back to the raster
-                                            raster.Write(0, row, pixelBlock);
+                                            raster.Write(0, row - 1, pixelBlock);
 
-                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row);
+                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row - 1);
                                         }
 
                                         // Persist the raster to the geodatabase
@@ -2090,7 +2091,8 @@ namespace NCC.PRZTools
 
                         // Add fields to Raster Attribute Table
                         string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
-                        string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        //string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        string fldNatGridCellNum = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + " LONG 'National Grid Cell Number' # 0 #;";
                         string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
                         string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                         string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
@@ -2103,7 +2105,7 @@ namespace NCC.PRZTools
                         string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
                         string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
 
-                        string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+                        string flds = fldPUID + fldNatGridCellNum + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
@@ -2121,7 +2123,7 @@ namespace NCC.PRZTools
                         }
 
                         // Populate raster attribute table
-                        if (!await UpdateRasterAttributeTable(gridBounds.gridEnv, tiles_across, tiles_up, side_length, true, identifiers_by_id))
+                        if (!await UpdateRasterAttributeTable(gridBounds.gridEnv, gridBounds.tilesAcross, gridBounds.tilesUp, natgrid_sidelength, true, cell_numbers_by_id))
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to populate raster attribute table.", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Unable to populate raster attribute table.");
@@ -2222,22 +2224,22 @@ namespace NCC.PRZTools
                                         int puid = 1;
 
                                         // Loop through each row of tiles (top to bottom)
-                                        for (int row = 0; row < gridBounds.tilesUp; row++)
+                                        for (int row = 1; row <= gridBounds.tilesUp; row++)
                                         {
                                             // Read a raster row into the pixel block
-                                            raster.Read(0, row, pixelBlock);
+                                            raster.Read(0, row - 1, pixelBlock);
 
                                             // write the pixel block contents to an array
                                             int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
 
                                             // Get the Y-coord of the current row (YMax of row)
-                                            double CurrentCell_ULY = OriginCell_ULY - (row * side_length);
+                                            double CurrentCell_ULY = OriginCell_ULY - ((row - 1) * side_length);
 
                                             // Loop through each cell (left to right) within the parent row
-                                            for (int col = 0; col < gridBounds.tilesAcross; col++)
+                                            for (int col = 1; col <= gridBounds.tilesAcross; col++)
                                             {
                                                 // Get the X-coord of the current column (XMin of column)
-                                                double CurrentCell_ULX = OriginCell_ULX + (col * side_length);
+                                                double CurrentCell_ULX = OriginCell_ULX + ((col - 1) * side_length);
 
                                                 // Build the envelope for the current cell
                                                 Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentCell_ULX, CurrentCell_ULY - side_length, CurrentCell_ULX + side_length, CurrentCell_ULY, OutputSR);
@@ -2245,7 +2247,7 @@ namespace NCC.PRZTools
                                                 if (GeometryEngine.Instance.Intersects(accelerated_buffer, tileEnv))
                                                 {
                                                     // I need to alter the pixel value here to puid++
-                                                    array[col, 0] = puid++;
+                                                    array[col - 1, 0] = puid++;
                                                 }
                                             }
 
@@ -2253,9 +2255,9 @@ namespace NCC.PRZTools
                                             pixelBlock.SetPixelData(0, array);
 
                                             // write the pixel block data back to the raster
-                                            raster.Write(0, row, pixelBlock);
+                                            raster.Write(0, row - 1, pixelBlock);
 
-                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row);
+                                            PRZH.UpdateProgress(PM, null, true, gridBounds.tilesUp, row - 1);
                                         }
 
                                         // Persist the raster to the geodatabase
@@ -2374,7 +2376,8 @@ namespace NCC.PRZTools
 
                         // Add fields to Raster Attribute Table
                         string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
-                        string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        //string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                        string fldNatGridCellNum = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + " LONG 'National Grid Cell Number' # 0 #;";
                         string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
                         string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                         string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
@@ -2387,7 +2390,7 @@ namespace NCC.PRZTools
                         string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
                         string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
 
-                        string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+                        string flds = fldPUID + fldNatGridCellNum + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
@@ -2447,7 +2450,8 @@ namespace NCC.PRZTools
 
                     // Add Fields to Planning Unit FC
                     string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # # #;";
-                    string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                    //string fldNatGridID = PRZC.c_FLD_FC_PU_NATGRID_ID + " TEXT 'National Grid ID' 20 # #;";
+                    string fldNatGridCellNum = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + " LONG 'National Grid Cell Number' # 0 #;";
                     string fldPUEffectiveRule = PRZC.c_FLD_FC_PU_EFFECTIVE_RULE + " TEXT 'Effective Rule' 10 # #;";
                     string fldConflict = PRZC.c_FLD_FC_PU_CONFLICT + " LONG 'Rule Conflict' # 0 #;";
                     string fldPUCost = PRZC.c_FLD_FC_PU_COST + " DOUBLE 'Cost' # 1 #;";
@@ -2460,7 +2464,7 @@ namespace NCC.PRZTools
                     string fldUnsharedPerim = PRZC.c_FLD_FC_PU_UNSHARED_PERIM + " DOUBLE 'Unshared Perimeter (m)' # 0 #;";
                     string fldHasUnsharedPerim = PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM + " LONG 'Has Unshared Perimeter' # 0 #;";
 
-                    string flds = fldPUID + fldNatGridID + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
+                    string flds = fldPUID + fldNatGridCellNum + fldPUEffectiveRule + fldConflict + fldPUCost + fldPUAreaM + fldPUAreaAC + fldPUAreaHA + fldPUAreaKM + fldCFCount + fldSharedPerim + fldUnsharedPerim + fldHasUnsharedPerim;
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
@@ -2481,7 +2485,7 @@ namespace NCC.PRZTools
                     if (PUSource_Rad_NatGrid_IsChecked)
                     {
                         // Retrieve the required grid extent based on the specified National Grid dimension and the buffered study area
-                        var res = NationalGridInfo.GetNatGridBoundsFromStudyArea(SA_poly_buffer, (NationalGridDimension)natgrid_dimension);
+                        var res = NationalGrid.GetNatGridBoundsFromStudyArea(SA_poly_buffer, dimension);
 
                         if (!res.success)
                         {
@@ -2489,14 +2493,15 @@ namespace NCC.PRZTools
                             ProMsgBox.Show($"Unable to retrieve National Grid extent envelope.\n{res.message}");
                             return false;
                         }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieved National Grid extent envelope for study area."), true, ++val);
+                        }
+                        //ProMsgBox.Show($"Dimension: {dimension}\nXMin: {res.gridEnv.XMin}\nYMin: {res.gridEnv.YMin}\nXMax: {res.gridEnv.XMax}\nYMax: {res.gridEnv.YMax}\nTilesAcross: {res.tilesAcross}\nTiles Up: {res.tilesUp}\nSide Length: {natgrid_sidelength}");
 
                         // Load the National Grid Tiles
-                        int tiles_across = res.tilesAcross;
-                        int tiles_up = res.tilesUp;
-                        int side_length = natgrid_sidelength;
-
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Loading the National Grid tiles"), true, ++val);
-                        if (!await LoadNationalGridTiles(SA_poly_buffer, res.gridEnv, tiles_across, tiles_up, side_length, natgrid_dimension))
+                        if (!await LoadNationalGridTiles(SA_poly_buffer, res.gridEnv, res.tilesAcross, res.tilesUp, natgrid_sidelength, dimension))
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error loading tiles", LogMessageType.ERROR), true, PM.Current);
                             ProMsgBox.Show($"Error loading tiles.");
@@ -2627,7 +2632,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> LoadNationalGridTiles(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, int side_length, int dimension)
+        private async Task<bool> LoadNationalGridTiles(Polygon buffered_study_area, Envelope gridEnvelope, int tiles_across, int tiles_up, int side_length, NationalGridDimension dimension)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = PM.Current;
@@ -2697,13 +2702,13 @@ namespace NCC.PRZTools
                                 using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
                                 using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
                                 {
-                                    for (int row = 0; row < tiles_up; row++)
+                                    for (int row = 1; row <= tiles_up; row++)
                                     {
-                                        for (int col = 0; col < tiles_across; col++)
+                                        for (int col = 1; col <= tiles_across; col++)
                                         {
                                             // Tile construction will be based on the upper left corner XY of the tile
-                                            double CurrentTile_ULX = OriginTile_ULX + (col * side_length);
-                                            double CurrentTile_ULY = OriginTile_ULY - (row * side_length);
+                                            double CurrentTile_ULX = OriginTile_ULX + ((col - 1) * side_length);
+                                            double CurrentTile_ULY = OriginTile_ULY - ((row - 1) * side_length);
 
                                             Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentTile_ULX, CurrentTile_ULY - side_length, CurrentTile_ULX + side_length, CurrentTile_ULY, gridEnvelope.SpatialReference);
 
@@ -2715,7 +2720,14 @@ namespace NCC.PRZTools
 
                                                 rowBuffer[fcDef.GetShapeField()] = tilePoly;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_ID] = puid++;
-                                                rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_ID] = NationalGridInfo.GetIdentifierFromULXY(Convert.ToInt32(CurrentTile_ULX), Convert.ToInt32(CurrentTile_ULY), dimension);
+                                                //rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_ID] = NationalGridInfo.GetIdentifierFromULXY(Convert.ToInt32(CurrentTile_ULX), Convert.ToInt32(CurrentTile_ULY), dimension);
+
+                                                var cn = NationalGrid.GetCellNumberFromULXY(Convert.ToInt32(CurrentTile_ULX), Convert.ToInt32(CurrentTile_ULY), dimension);
+                                                if (cn.success)
+                                                {
+                                                    rowBuffer[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER] = cn.cell_number;
+                                                }
+
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_M2] = tilePoly.Area;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_AC] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_AC;
                                                 rowBuffer[PRZC.c_FLD_FC_PU_AREA_HA] = tilePoly.Area * PRZC.c_CONVERT_M2_TO_HA;
@@ -2739,7 +2751,7 @@ namespace NCC.PRZTools
                                             }
                                         }
 
-                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row);
+                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row - 1);
                                     }
 
                                     insertCursor.Flush();
@@ -2877,13 +2889,13 @@ namespace NCC.PRZTools
                                 using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
                                 using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
                                 {
-                                    for (int row = 0; row < tiles_up; row++)
+                                    for (int row = 1; row <= tiles_up; row++)
                                     {
-                                        for (int col = 0; col < tiles_across; col++)
+                                        for (int col = 1; col <= tiles_across; col++)
                                         {
                                             // Tile construction will be based on the upper left corner XY of the tile
-                                            double CurrentTile_ULX = OriginTile_ULX + (col * side_length);
-                                            double CurrentTile_ULY = OriginTile_ULY - (row * side_length);
+                                            double CurrentTile_ULX = OriginTile_ULX + ((col - 1) * side_length);
+                                            double CurrentTile_ULY = OriginTile_ULY - ((row - 1) * side_length);
 
                                             Envelope tileEnv = EnvelopeBuilder.CreateEnvelope(CurrentTile_ULX, CurrentTile_ULY - side_length, CurrentTile_ULX + side_length, CurrentTile_ULY, gridEnvelope.SpatialReference);
 
@@ -2918,7 +2930,7 @@ namespace NCC.PRZTools
                                             }
                                         }
 
-                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row);
+                                        PRZH.UpdateProgress(PM, null, true, tiles_up, row - 1);
                                     }
 
                                     insertCursor.Flush();
@@ -3094,7 +3106,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> UpdateRasterAttributeTable(Envelope gridEnv, int tiles_across, int tiles_up, double side_length, bool natgrid, Dictionary<int, string> identifiers_by_id = default(Dictionary<int, string>))
+        private async Task<bool> UpdateRasterAttributeTable(Envelope gridEnv, int tiles_across, int tiles_up, double side_length, bool natgrid, Dictionary<int, long> cell_numbers_by_id = default(Dictionary<int, long>))
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = PM.Current;
@@ -3176,7 +3188,8 @@ namespace NCC.PRZTools
 
                                             if (natgrid)
                                             {
-                                                row[PRZC.c_FLD_RAS_PU_NATGRID_ID] = identifiers_by_id[puid];
+                                                //row[PRZC.c_FLD_RAS_PU_NATGRID_ID] = identifiers_by_id[puid];
+                                                row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER] = cell_numbers_by_id[puid];
                                             }
 
                                             row.Store();
@@ -3368,32 +3381,40 @@ namespace NCC.PRZTools
 
                 if (themes == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Themes", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve list of National Themes");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Themes.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve list of National Themes.");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} National Themes"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} National Themes."), true, ++val);
                 }
 
-                // Build list of Elements
-                List<NatElement> elements = await PRZH.GetNationalElements();
+                // Build list of Active Elements
+                List<NatElement> elements = await PRZH.GetNationalElements(null, NationalElementStatus.Active);
 
                 if (elements == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Elements", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve list of National Elements");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of active National Elements.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve list of active National Elements");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elements.Count} National Elements"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elements.Count} active National Elements."), true, ++val);
                 }
+
+                #endregion
+
+                #region BUILD HASHSET OF STUDY AREA CELL NUMBERS
+
+                // Iterate through the Planning Unit Attribute Table (Raster or Feature)
+                // and copy the cell numbers into a hashset
 
 
 
                 #endregion
+
 
                 //********************************************************
 
