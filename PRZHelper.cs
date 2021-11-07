@@ -558,6 +558,37 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<bool> NatTableExists(string TabName)
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Geodatabase gdb = await GetGDB_National())
+                        {
+                            if (gdb == null)
+                            {
+                                return false;
+                            }
+
+                            return await TableExists(gdb, TabName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                });
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static async Task<bool> RasterExists(string rasterName)
         {
             try
@@ -1590,6 +1621,38 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<Table> GetNatTable(string table_name)
+        {
+            try
+            {
+                Table table = await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase gdb = await GetGDB_National())
+                    {
+                        if (gdb == null) return null;
+
+                        try
+                        {
+                            table = gdb.OpenDataset<Table>(table_name);
+                            return table;
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    }
+                });
+
+                return table;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+
         #region NAT DB LIST RETRIEVAL
 
         public static async Task<List<NatTheme>> GetNationalThemes()
@@ -1754,7 +1817,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<HashSet<long>> GetStudyAreaCellNumbers(PlanningUnitLayerType layerType)
+        public static async Task<HashSet<long>> GetPlanningUnitCellNumbers(PlanningUnitLayerType layerType)
         {
             try
             {
@@ -1762,7 +1825,6 @@ namespace NCC.PRZTools
 
                 if (!await QueuedTask.Run(async () =>
                 {
-                    string gdbpath = GetPath_ProjectGDB();
                     if (!await GDBExists_Project())
                     {
                         return false;
@@ -1770,25 +1832,57 @@ namespace NCC.PRZTools
 
                     if (layerType == PlanningUnitLayerType.FEATURE)
                     {
-                        string pufcpath = GetPath_FC_PU();
                         if (!await FCExists_PU())
                         {
                             return false;
                         }
 
-                        QueryFilter queryFilter = new QueryFilter();
-                        // I'm here
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + " IS NOT NULL"
+                        };
 
                         using (Table table = await GetFC_PU())
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
-
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    set.Add(cellnum);
+                                }
+                            }
                         }
-
                     }
                     else if (layerType == PlanningUnitLayerType.RASTER)
                     {
+                        if (!await RasterExists_PU())
+                        {
+                            return false;
+                        }
 
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + " IS NOT NULL"
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+                                    set.Add(cellnum);
+                                }
+                            }
+                        }
                     }
 
                     return true;
@@ -1805,6 +1899,71 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return null;
+            }
+        }
+
+        public static async Task<(bool result, Dictionary<long, double> dict)> GetElementTableIntersection(string table_name, HashSet<long> puCellNumbers)
+        {
+            try
+            {
+                Dictionary<long, double> dict = new Dictionary<long, double>();
+
+                // national db exists?
+                if (!(await GDBExists_National()).exists)
+                {
+                    ProMsgBox.Show($"Unable to retrieve National DB.");
+                    return (false, new Dictionary<long, double>());
+                }
+
+                // table exists?
+                if (!await NatTableExists(table_name))
+                {
+                    ProMsgBox.Show($"Table does not exist in national database: {table_name}");
+                    return (false, new Dictionary<long, double>());
+                }
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        using (Table table = await GetNatTable(table_name))
+                        using (RowCursor rowCursor = table.Search())
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    var a = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                    var b = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+
+                                    if (puCellNumbers.Contains(a))
+                                    {
+                                        dict.Add(a, b);
+                                    }
+                                }
+                            }
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    return (false, new Dictionary<long, double>());
+                }
+                else
+                {
+                    return (true, dict);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, new Dictionary<long, double>());
             }
         }
 

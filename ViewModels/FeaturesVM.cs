@@ -366,10 +366,10 @@ namespace NCC.PRZTools
                 string fldCFEnabled = PRZC.c_FLD_TAB_CF_ENABLED + " LONG 'Enabled' # 1 #;";
                 string fldCFHidden = PRZC.c_FLD_TAB_CF_HIDDEN + " LONG 'Hidden' # 0 #;";
 
-                string fldCFArea_m2 = PRZC.c_FLD_TAB_CF_AREA_M2 + " DOUBLE 'Total Area (m2)' # 0, #;";
-                string fldCFArea_ac = PRZC.c_FLD_TAB_CF_AREA_AC + " DOUBLE 'Total Area (ac)' # 0, #;";
-                string fldCFArea_ha = PRZC.c_FLD_TAB_CF_AREA_HA + " DOUBLE 'Total Area (ha)' # 0, #;";
-                string fldCFArea_km2 = PRZC.c_FLD_TAB_CF_AREA_KM2 + " DOUBLE 'Total Area (km2)' # 0, #;";
+                string fldCFArea_m2 = PRZC.c_FLD_TAB_CF_AREA_M2 + " DOUBLE 'Total Area (m2)' # 0 #;";
+                string fldCFArea_ac = PRZC.c_FLD_TAB_CF_AREA_AC + " DOUBLE 'Total Area (ac)' # 0 #;";
+                string fldCFArea_ha = PRZC.c_FLD_TAB_CF_AREA_HA + " DOUBLE 'Total Area (ha)' # 0 #;";
+                string fldCFArea_km2 = PRZC.c_FLD_TAB_CF_AREA_KM2 + " DOUBLE 'Total Area (km2)' # 0 #;";
                 string fldCFPUCount = PRZC.c_FLD_TAB_CF_PUCOUNT + " LONG 'Planning Unit Count' # 0 #;";
 
                 string fldCFLayerName = PRZC.c_FLD_TAB_CF_LYR_NAME + " TEXT 'Source Layer Name' 300 # #;";

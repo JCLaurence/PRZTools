@@ -347,7 +347,7 @@ namespace NCC.PRZTools
                 }
 
                 // Now create the new table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Bounary Length Table..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Boundary Length Table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_PUBOUNDARY, "", "", "Boundary Lengths");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);

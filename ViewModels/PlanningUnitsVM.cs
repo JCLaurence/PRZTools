@@ -1839,11 +1839,13 @@ namespace NCC.PRZTools
 
                 // Prepare an accelerated buffer poly for use in the GeometryEngine's 'intersects' method (potentially helps speed things up)
                 Polygon accelerated_buffer = (Polygon)GeometryEngine.Instance.AccelerateForRelationalOperations(SA_poly_buffer);
-
+                PlanningUnitLayerType puLayerType = PlanningUnitLayerType.FEATURE;
+                
                 // RASTER OPTION
                 if (OutputFormat_Rad_GISFormat_Raster_IsChecked)
                 {
                     // Common National/Custom Raster stuff goes here...
+                    puLayerType = PlanningUnitLayerType.RASTER;
 
                     // National Grid
                     if (PUSource_Rad_NatGrid_IsChecked)
@@ -2430,6 +2432,8 @@ namespace NCC.PRZTools
                 // VECTOR OPTION
                 else if (OutputFormat_Rad_GISFormat_Vector_IsChecked)
                 {
+                    puLayerType = PlanningUnitLayerType.FEATURE;
+
                     string pufcpath = PRZH.GetPath_FC_PU();
 
                     // Build the new empty Planning Unit FC
@@ -2579,7 +2583,7 @@ namespace NCC.PRZTools
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    if (!await ProcessNationalDbTables())
+                    if (!await ProcessNationalDbTables(puLayerType))
                     {
                         ProMsgBox.Show("Error processing National Tables");
                         return false;
@@ -3261,7 +3265,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ProcessNationalDbTables()
+        private async Task<bool> ProcessNationalDbTables(PlanningUnitLayerType puLayerType)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = PM.Current;
@@ -3301,21 +3305,6 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing enabled."), true, ++val);
                     }
                 }
-
-
-                // > Goal record should include an ID value.
-                // > There should be a corresponding specific Goal table (G00004 where 4 = Goal's ID)
-
-                // > Planning Unit Table has Cell Numbers
-
-                // 1. Read Cell Numbers into HashSet
-                // 2. Foreach Goal in Master Goal Table
-                //      > Find goal table (g0000n)
-                //      > read goal cell numbers & cell values into Dictionary
-                //      > find intersection of Cell Numbers between sets
-                //      > if no intersection, continue
-                //      > else write new local goal table (g0000n)
-                //          - cell number and cell value columns
 
                 #region RETRIEVE AND PREPARE INFO FROM NATIONAL DATABASE
 
@@ -3406,14 +3395,99 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region BUILD HASHSET OF STUDY AREA CELL NUMBERS
+                #region RETRIEVE INTERSECTING ELEMENTS
 
-                // Iterate through the Planning Unit Attribute Table (Raster or Feature)
-                // and copy the cell numbers into a hashset
+                // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
 
+                HashSet<long> puCellNumbers = await PRZH.GetPlanningUnitCellNumbers(puLayerType);
+
+                if (puCellNumbers == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the cell number hashset.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve the cell number hashset.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {puCellNumbers.Count} cell numbers."), true, ++val);
+                }
+
+                foreach (var element in elements)
+                {
+                    var (result, dict) = await PRZH.GetElementTableIntersection(element.ElementTable, puCellNumbers);
+
+                    if (!result)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve values from the {element.ElementTable} table.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve values from the {element.ElementTable} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {dict.Keys.Count} values from the {element.ElementTable} table."), true, ++val);
+                    }
+
+                    // Create the table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {element.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, element.ElementTable, "", "", "Element " + element.ElementID.ToString("D5"));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {element.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error creating the {element.ElementTable} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {element.ElementTable} table."), true, ++val);
+                    }
+
+                    // Add fields to the table
+                    string fldCellNum = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
+                    string fldCellVal = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #;";
+
+                    string fields = fldCellNum + fldCellVal;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {element.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(element.ElementTable, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {element.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error adding fields to the {element.ElementTable} table.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields added successfully."), true, ++val);
+                    }
+
+                    // add record for each KVP in dict
+                    // I'm here!!!
+
+                    // index the cell number column
+
+                }
 
 
                 #endregion
+
+
+
+
+
+
+                // 1. Read Cell Numbers into HashSet
+                // 2. Foreach Goal in Master Goal Table
+                //      > Find goal table (g0000n)
+                //      > read goal cell numbers & cell values into Dictionary
+                //      > find intersection of Cell Numbers between sets
+                //      > if no intersection, continue
+                //      > else write new local goal table (g0000n)
+                //          - cell number and cell value columns
+
 
 
                 //********************************************************
