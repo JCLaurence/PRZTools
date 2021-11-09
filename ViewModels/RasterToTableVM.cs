@@ -350,16 +350,24 @@ namespace NCC.PRZTools
                             return false;
                         }
 
-                        SpatialReference NatGridSR = NationalGrid.CANADA_ALBERS_SR;
+                        var AlbersSRTest = PRZH.SpatialReferenceIsPRZCanadaAlbers(rasterSR);
 
-                        string NatGridSR_wkt = NatGridSR.Wkt.Replace(NatGridSR.Name, "");
-                        string rasterSR_wkt = rasterSR.Wkt.Replace(rasterSR.Name, "");
-
-                        if (!string.Equals(NatGridSR_wkt, rasterSR_wkt, StringComparison.OrdinalIgnoreCase))
+                        if (!AlbersSRTest.match)
                         {
-                            ProMsgBox.Show("Raster spatial reference does not equal the required National Grid Albers projection.");
+                            ProMsgBox.Show($"Raster spatial reference does not equal the required National Grid Albers projection.\n{AlbersSRTest.message}");
                             return false;
                         }
+
+                        //SpatialReference NatGridSR = NationalGrid.CANADA_ALBERS_SR;
+
+                        //string NatGridSR_wkt = NatGridSR.Wkt.Replace(NatGridSR.Name, "");
+                        //string rasterSR_wkt = rasterSR.Wkt.Replace(rasterSR.Name, "");
+
+                        //if (!string.Equals(NatGridSR_wkt, rasterSR_wkt, StringComparison.OrdinalIgnoreCase))
+                        //{
+                        //    ProMsgBox.Show("Raster spatial reference does not equal the required National Grid Albers projection.");
+                        //    return false;
+                        //}
 
                         // Row and Column Count
                         int rows = raster.GetHeight();

@@ -4466,6 +4466,42 @@ namespace NCC.PRZTools
             }
         }
 
+        public static (bool match, string message) SpatialReferenceIsPRZCanadaAlbers(SpatialReference TestSR)
+        {
+            try
+            {
+                if (TestSR == null)
+                {
+                    return (false, "Spatial Reference is null");
+                }
+                else if (TestSR.IsUnknown)
+                {
+                    return (false, "Spatial Reference is null");
+                }
+
+                SpatialReference AlbersSR = GetSR_PRZCanadaAlbers();
+
+                if (AlbersSR == null)
+                {
+                    return (false, "Unable to retrieve PRZ Albers projection");
+                }
+
+                // Get the WKT, eliminate the names + GCS names to eliminate name differences where otherwise equal
+                string TestSR_WKT = TestSR.Wkt.Replace(TestSR.Name, "").Replace(TestSR.Gcs.Name, "");
+                string AlbersSR_WKT = AlbersSR.Wkt.Replace(AlbersSR.Name, "").Replace(AlbersSR.Gcs.Name, "");
+
+                bool result = string.Equals(AlbersSR_WKT, TestSR_WKT, StringComparison.OrdinalIgnoreCase);
+
+                return result ? (true, "Spatial References are equivalent") : (false, "Spatial References are not equivalent");
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, ex.Message);
+            }
+        }
+
         #endregion
 
         #region MISCELLANEOUS
