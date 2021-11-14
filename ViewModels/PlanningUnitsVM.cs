@@ -1558,6 +1558,68 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleted all objects from {gdbpath}."), true, ++val);
                 }
 
+                ProMsgBox.Show("deleted all gdb items (including domains, in theory)");
+                int count = 0;
+                await QueuedTask.Run(async () =>
+                {
+                    using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
+                    {
+                        count = geodatabase.GetDomains().Count;
+                    }
+                });
+                ProMsgBox.Show($"domains remaining: {count}");
+
+                // Create the ElementPresence domain
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} coded value domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Domain created."), true, ++val);
+                }
+
+                // Add coded value #1
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 1 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Present, NationalElementPresence.Present.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
+                // Add coded value #2
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Absent, NationalElementPresence.Absent.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
+                ProMsgBox.Show("STOPPING");
+                return false;
+
                 #endregion
 
                 #region STUDY AREA GEOMETRY
@@ -3305,34 +3367,6 @@ namespace NCC.PRZTools
 
                 #region RETRIEVE AND PREPARE INFO FROM NATIONAL DATABASE
 
-                // CREATE A PRESENCE CODED VALUE DOMAIN
-                //await QueuedTask.Run(async () =>
-                //{
-                //    using (Geodatabase gdb = await PRZH.GetGDB_Project())
-                //    {
-                //        using (var domain = gdb.GetDomains().FirstOrDefault(d => d.GetName() == "ElementPresence"))
-                //        {
-                //            if (domain != null)
-                //            {
-
-                //            }
-                //        }
-
-                //            CodedValueDomainDescription cvDomainDescr = new CodedValueDomainDescription("ElementPresence",
-                //                FieldType.SmallInteger,
-                //                new SortedList<object, string> { { 1, NationalElementPresence.Present.ToString() }, { 2, NationalElementPresence.Absent.ToString() } })
-                //            {
-                //                SplitPolicy = SplitPolicy.Duplicate,
-                //                MergePolicy = MergePolicy.DefaultValue
-                //            };
-
-                //        SchemaBuilder schemaBuilder = new SchemaBuilder(gdb);
-
-                //        schemaBuilder.Create(cvDomainDescr);
-                //        schemaBuilder.Build();
-                //    }
-                //});
-
                 // COPY THE ELEMENT TABLE
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 string natdbpath = PRZH.GetPath_NationalDB();
@@ -3354,7 +3388,7 @@ namespace NCC.PRZTools
                 }
 
                 // INSERT EXTRA FIELDS INTO ELEMENT TABLE
-                string fldPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 #;";
+                string fldPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_ELEMENT_PRESENCE + "';";
                 string flds = fldPresence;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
@@ -3371,6 +3405,9 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                 }
+
+                ProMsgBox.Show("Stopping");
+                return false;
 
                 // COPY THE THEMES TABLE
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_THEMES} Table..."), true, ++val);
@@ -3721,30 +3758,56 @@ namespace NCC.PRZTools
             {
                 await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                    using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
                     {
-                        ProMsgBox.Show(table.GetCount().ToString());
+                        SchemaBuilder schemaBuilder = new SchemaBuilder(geodatabase);
 
-                        using (RowCursor rowCursor = table.Search())
+                        using (var domain = geodatabase.GetDomains().FirstOrDefault(d => d.GetName() == "ElementPresence"))
                         {
-                            if (rowCursor.Current == null)
+                            if (domain != null && domain is CodedValueDomain cvd)
                             {
-                                ProMsgBox.Show("null");
+                                ProMsgBox.Show("Found it");
+                                CodedValueDomainDescription descr = new CodedValueDomainDescription(cvd);
+                                schemaBuilder.Delete(descr);
+                                if (!schemaBuilder.Build())
+                                {
+                                    string errormessages = string.Join(" -- ", schemaBuilder.ErrorMessages);
+                                    ProMsgBox.Show(errormessages);
+                                    return;
+                                }
+                                else
+                                {
+                                    ProMsgBox.Show("Deleted it!");
+                                }
                             }
                             else
                             {
-                                ProMsgBox.Show("Not a null row ??");
-                            }
-
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    ProMsgBox.Show(row[PRZC.c_FLD_TAB_THEME_NAME].ToString());
-                                }
+                                ProMsgBox.Show("It ain't there");
                             }
                         }
 
+                        CodedValueDomainDescription cvDomainDescr = new CodedValueDomainDescription(
+                            "ElementPresence",
+                            FieldType.SmallInteger,
+                            new SortedList<object, string> { { 1, NationalElementPresence.Present.ToString() }, { 2, NationalElementPresence.Absent.ToString() } })
+                        {
+                            SplitPolicy = SplitPolicy.Duplicate,
+                            MergePolicy = MergePolicy.DefaultValue
+                        };
+
+                        schemaBuilder.Create(cvDomainDescr);
+                        ProMsgBox.Show("building...");
+
+                        if (!schemaBuilder.Build())
+                        {
+                            string errormessages = string.Join(" -- ", schemaBuilder.ErrorMessages);
+                            ProMsgBox.Show(errormessages);
+                            return;
+                        }
+                        else
+                        {
+                            ProMsgBox.Show("Built it!");
+                        }
                     }
 
                 });

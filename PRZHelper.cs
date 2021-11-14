@@ -2885,120 +2885,156 @@ namespace NCC.PRZTools
                         GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
                         string toolOutput;
 
+                        List<string> relDefs = null;
+                        List<string> fdsDefs = null;
+                        List<string> rdsDefs = null;
+                        List<string> fcDefs = null;
+                        List<string> tabDefs = null;
+                        List<string> domainNames = null;
+
+                        // Populate the lists of existing objects
                         using (Geodatabase geodatabase = await GetGDB_Project())
                         {
                             // Get list of Relationship Classes
-                            var relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName());
-                            WriteLog($"{relDefs.Count()} Relationship Class(es) found in {gdbpath}...");
-
-                            // Delete all relationship classes
-                            if (relDefs.Count() > 0)
-                            {
-                                WriteLog($"Deleting {relDefs.Count()} relationship class(es)...");
-                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", relDefs));
-                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                                if (toolOutput == null)
-                                {
-                                    WriteLog($"Error deleting relationship class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                                    ProMsgBox.Show($"Error deleting relationship class(es).");
-                                    return false;
-                                }
-                                else
-                                {
-                                    WriteLog($"Relationship class(es) deleted.");
-                                }
-                            }
+                            relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
+                            WriteLog($"{relDefs.Count} Relationship Class(es) found in {gdbpath}...");
 
                             // Get list of Feature Dataset names
-                            var fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName());
-                            WriteLog($"{fdsDefs.Count()} Feature Dataset(s) found in {gdbpath}...");
-
-                            // Delete all Feature Datasets
-                            if (fdsDefs.Count() > 0)
-                            {
-                                WriteLog($"Deleting {fdsDefs.Count()} feature dataset(s)...");
-                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsDefs));
-                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                                if (toolOutput == null)
-                                {
-                                    WriteLog($"Error deleting feature dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                                    ProMsgBox.Show($"Error deleting feature dataset(s).");
-                                    return false;
-                                }
-                                else
-                                {
-                                    WriteLog($"Feature dataset(s) deleted.");
-                                }
-                            }
+                            fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
+                            WriteLog($"{fdsDefs.Count} Feature Dataset(s) found in {gdbpath}...");
 
                             // Get list of Raster Dataset names
-                            var rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName());
-                            WriteLog($"{rdsDefs.Count()} Raster Dataset(s) found in {gdbpath}...");
-
-                            // Delete all Raster Datasets
-                            if (rdsDefs.Count() > 0)
-                            {
-                                WriteLog($"Deleting {rdsDefs.Count()} raster dataset(s)...");
-                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsDefs));
-                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                                if (toolOutput == null)
-                                {
-                                    WriteLog($"Error deleting raster dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                                    ProMsgBox.Show($"Error deleting raster dataset(s).");
-                                    return false;
-                                }
-                                else
-                                {
-                                    WriteLog($"Raster dataset(s) deleted.");
-                                }
-                            }
+                            rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
+                            WriteLog($"{rdsDefs.Count} Raster Dataset(s) found in {gdbpath}...");
 
                             // Get list of top-level Feature Classes
-                            var fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName());
-                            WriteLog($"{fcDefs.Count()} Feature Class(es) found in {gdbpath}...");
-
-                            // Delete all Feature Classes
-                            if (fcDefs.Count() > 0)
-                            {
-                                WriteLog($"Deleting {fcDefs.Count()} feature class(es)...");
-                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcDefs));
-                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                                if (toolOutput == null)
-                                {
-                                    WriteLog($"Error deleting feature class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                                    ProMsgBox.Show($"Error deleting feature class(es).");
-                                    return false;
-                                }
-                                else
-                                {
-                                    WriteLog($"Feature class(es) deleted.");
-                                }
-                            }
+                            fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
+                            WriteLog($"{fcDefs.Count} Feature Class(es) found in {gdbpath}...");
 
                             // Get list of tables
-                            var tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName());
-                            WriteLog($"{tabDefs.Count()} Table(s) found in {gdbpath}...");
+                            tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
+                            WriteLog($"{tabDefs.Count} Table(s) found in {gdbpath}...");
 
-                            // Delete all tables
-                            if (tabDefs.Count() > 0)
+                            // Get list of domains
+                            domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
+                            WriteLog($"{domainNames.Count} domain(s) found in {gdbpath}...");
+                        }
+
+                        // Delete those objects using geoprocessing tools
+                        // Relationship Classes
+                        if (relDefs.Count > 0)
+                        {
+                            WriteLog($"Deleting {relDefs.Count} relationship class(es)...");
+                            toolParams = Geoprocessing.MakeValueArray(string.Join(";", relDefs));
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
                             {
-                                WriteLog($"Deleting {tabDefs.Count()} table(s)...");
-                                toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabDefs));
-                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                WriteLog($"Error deleting relationship class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                ProMsgBox.Show($"Error deleting relationship class(es).");
+                                return false;
+                            }
+                            else
+                            {
+                                WriteLog($"Relationship class(es) deleted.");
+                            }
+                        }
+
+                        // Feature Datasets
+                        if (fdsDefs.Count > 0)
+                        {
+                            WriteLog($"Deleting {fdsDefs.Count} feature dataset(s)...");
+                            toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsDefs));
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                WriteLog($"Error deleting feature dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                ProMsgBox.Show($"Error deleting feature dataset(s).");
+                                return false;
+                            }
+                            else
+                            {
+                                WriteLog($"Feature dataset(s) deleted.");
+                            }
+                        }
+
+                        // Raster Datasets
+                        if (rdsDefs.Count > 0)
+                        {
+                            WriteLog($"Deleting {rdsDefs.Count} raster dataset(s)...");
+                            toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsDefs));
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                WriteLog($"Error deleting raster dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                ProMsgBox.Show($"Error deleting raster dataset(s).");
+                                return false;
+                            }
+                            else
+                            {
+                                WriteLog($"Raster dataset(s) deleted.");
+                            }
+                        }
+
+                        // Feature Classes
+                        if (fcDefs.Count > 0)
+                        {
+                            WriteLog($"Deleting {fcDefs.Count} feature class(es)...");
+                            toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcDefs));
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                WriteLog($"Error deleting feature class(es). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                ProMsgBox.Show($"Error deleting feature class(es).");
+                                return false;
+                            }
+                            else
+                            {
+                                WriteLog($"Feature class(es) deleted.");
+                            }
+                        }
+
+                        // Tables
+                        if (tabDefs.Count > 0)
+                        {
+                            WriteLog($"Deleting {tabDefs.Count} table(s)...");
+                            toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabDefs));
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                            toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                            if (toolOutput == null)
+                            {
+                                WriteLog($"Error deleting table(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                ProMsgBox.Show($"Error deleting table(s).");
+                                return false;
+                            }
+                            else
+                            {
+                                WriteLog($"Table(s) deleted.");
+                            }
+                        }
+
+                        // Domains
+                        if (domainNames.Count > 0)
+                        {
+                            WriteLog($"Deleting {domainNames.Count} domain(s)...");
+                            foreach (string domainName in domainNames)
+                            {
+                                WriteLog($"Deleting {domainName} domain...");
+                                toolParams = Geoprocessing.MakeValueArray(gdbpath, domainName);
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                                toolOutput = await RunGPTool("DeleteDomain_management", toolParams, toolEnvs, toolFlags);
                                 if (toolOutput == null)
                                 {
-                                    WriteLog($"Error deleting table(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                                    ProMsgBox.Show($"Error deleting table(s).");
+                                    WriteLog($"Error deleting {domainName} domain. GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                    ProMsgBox.Show($"Error deleting {domainName} domain.");
                                     return false;
                                 }
                                 else
                                 {
-                                    WriteLog($"Table(s) deleted.");
+                                    WriteLog($"Domain deleted.");
                                 }
                             }
                         }

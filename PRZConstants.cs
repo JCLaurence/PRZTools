@@ -178,6 +178,9 @@
 
         #region GEODATABASE OBJECT NAMES
 
+        // DOMAINS
+        public const string c_DOMAIN_ELEMENT_PRESENCE = "ElementPresence";
+
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
         public const string c_RAS_TEMP_1 = "TempRas1";
