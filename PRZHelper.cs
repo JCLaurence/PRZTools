@@ -757,11 +757,74 @@ namespace NCC.PRZTools
                         return (false, NationalDbType.Unknown, "unable to process national database path");
                     }
                 });
-
             }
             catch (Exception ex)
             {
                 return (false, NationalDbType.Unknown, ex.Message);
+            }
+        }
+
+        public static async Task<(bool exists, PlanningUnitLayerType puLayerType, string message)> PUExists()
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    string gdbpath = GetPath_ProjectGDB();
+
+                    if (gdbpath == null)
+                    {
+                        return (false, PlanningUnitLayerType.UNKNOWN, "Path to Project Geodatabase is null");
+                    }
+
+                    // Create a Uri
+                    Uri u = new Uri(gdbpath);
+
+                    if (u == null)
+                    {
+                        return (false, PlanningUnitLayerType.UNKNOWN, "Uri to Project Geodatabase is null");
+                    }
+
+                    if (Directory.Exists(gdbpath) && Path.IsPathRooted(gdbpath) && gdbpath.EndsWith(".gdb"))  // It's a folder (file gdb)
+                    {
+                        FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
+
+                        try
+                        {
+                            using (Geodatabase gdb = new Geodatabase(conn)) { }
+                        }
+                        catch (GeodatabaseNotFoundOrOpenedException)
+                        {
+                            return (false, PlanningUnitLayerType.UNKNOWN, "Geodatabase not found or opened");
+                        }
+
+                        // If I get to this point, the file gdb exists and was successfully opened
+                        // Now figure out if the planning unit feature class or planning unit raster dataset is present
+
+                        if (await FCExists_PU())
+                        {
+                            return (true, PlanningUnitLayerType.FEATURE, "success");
+                        }
+                        else if (await RasterExists_PU())
+                        {
+                            return (true, PlanningUnitLayerType.RASTER, "success");
+                        }
+                        else
+                        {
+                            return (false, PlanningUnitLayerType.UNKNOWN, "No Planning Unit dataset exists in Project GDB");
+                        }
+                    }
+                    else
+                    {
+                        // something else, weird!
+                        return (false, PlanningUnitLayerType.UNKNOWN, "Unable to process path to Project Geodatabase");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+
+                return (false, PlanningUnitLayerType.UNKNOWN, ex.Message);
             }
         }
 
@@ -2893,36 +2956,45 @@ namespace NCC.PRZTools
                         List<string> domainNames = null;
 
                         // Populate the lists of existing objects
-                        using (Geodatabase geodatabase = await GetGDB_Project())
+                        try
                         {
-                            // Get list of Relationship Classes
-                            relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
-                            WriteLog($"{relDefs.Count} Relationship Class(es) found in {gdbpath}...");
+                            using (Geodatabase geodatabase = await GetGDB_Project())
+                            {
+                                // Get list of Relationship Classes
+                                relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
+                                WriteLog($"{relDefs.Count} Relationship Class(es) found in {gdbpath}...");
 
-                            // Get list of Feature Dataset names
-                            fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
-                            WriteLog($"{fdsDefs.Count} Feature Dataset(s) found in {gdbpath}...");
+                                // Get list of Feature Dataset names
+                                fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
+                                WriteLog($"{fdsDefs.Count} Feature Dataset(s) found in {gdbpath}...");
 
-                            // Get list of Raster Dataset names
-                            rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
-                            WriteLog($"{rdsDefs.Count} Raster Dataset(s) found in {gdbpath}...");
+                                // Get list of Raster Dataset names
+                                rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
+                                WriteLog($"{rdsDefs.Count} Raster Dataset(s) found in {gdbpath}...");
 
-                            // Get list of top-level Feature Classes
-                            fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
-                            WriteLog($"{fcDefs.Count} Feature Class(es) found in {gdbpath}...");
+                                // Get list of top-level Feature Classes
+                                fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
+                                WriteLog($"{fcDefs.Count} Feature Class(es) found in {gdbpath}...");
 
-                            // Get list of tables
-                            tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
-                            WriteLog($"{tabDefs.Count} Table(s) found in {gdbpath}...");
+                                // Get list of tables
+                                tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
+                                WriteLog($"{tabDefs.Count} Table(s) found in {gdbpath}...");
 
-                            // Get list of domains
-                            domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
-                            WriteLog($"{domainNames.Count} domain(s) found in {gdbpath}...");
+                                // Get list of domains
+                                domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
+                                WriteLog($"{domainNames.Count} domain(s) found in {gdbpath}...");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            WriteLog($"Error retrieving geodatabase objects.");
+                            ProMsgBox.Show($"Error retrieving geodatabase objects.\n{ex.Message}");
+                            return false;
                         }
 
                         // Delete those objects using geoprocessing tools
                         // Relationship Classes
-                        if (relDefs.Count > 0)
+                        if (relDefs != null && relDefs.Count > 0)
                         {
                             WriteLog($"Deleting {relDefs.Count} relationship class(es)...");
                             toolParams = Geoprocessing.MakeValueArray(string.Join(";", relDefs));
@@ -2941,7 +3013,7 @@ namespace NCC.PRZTools
                         }
 
                         // Feature Datasets
-                        if (fdsDefs.Count > 0)
+                        if (fdsDefs != null && fdsDefs.Count > 0)
                         {
                             WriteLog($"Deleting {fdsDefs.Count} feature dataset(s)...");
                             toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsDefs));
@@ -2960,7 +3032,7 @@ namespace NCC.PRZTools
                         }
 
                         // Raster Datasets
-                        if (rdsDefs.Count > 0)
+                        if (rdsDefs != null && rdsDefs.Count > 0)
                         {
                             WriteLog($"Deleting {rdsDefs.Count} raster dataset(s)...");
                             toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsDefs));
@@ -2979,7 +3051,7 @@ namespace NCC.PRZTools
                         }
 
                         // Feature Classes
-                        if (fcDefs.Count > 0)
+                        if (fcDefs != null && fcDefs.Count > 0)
                         {
                             WriteLog($"Deleting {fcDefs.Count} feature class(es)...");
                             toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcDefs));
@@ -2998,7 +3070,7 @@ namespace NCC.PRZTools
                         }
 
                         // Tables
-                        if (tabDefs.Count > 0)
+                        if (tabDefs != null && tabDefs.Count > 0)
                         {
                             WriteLog($"Deleting {tabDefs.Count} table(s)...");
                             toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabDefs));
@@ -3017,7 +3089,7 @@ namespace NCC.PRZTools
                         }
 
                         // Domains
-                        if (domainNames.Count > 0)
+                        if (domainNames != null && domainNames.Count > 0)
                         {
                             WriteLog($"Deleting {domainNames.Count} domain(s)...");
                             foreach (string domainName in domainNames)

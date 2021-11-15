@@ -1558,17 +1558,6 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleted all objects from {gdbpath}."), true, ++val);
                 }
 
-                ProMsgBox.Show("deleted all gdb items (including domains, in theory)");
-                int count = 0;
-                await QueuedTask.Run(async () =>
-                {
-                    using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
-                    {
-                        count = geodatabase.GetDomains().Count;
-                    }
-                });
-                ProMsgBox.Show($"domains remaining: {count}");
-
                 // Create the ElementPresence domain
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} coded value domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -1616,9 +1605,6 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
                 }
-
-                ProMsgBox.Show("STOPPING");
-                return false;
 
                 #endregion
 
@@ -3405,9 +3391,6 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                 }
-
-                ProMsgBox.Show("Stopping");
-                return false;
 
                 // COPY THE THEMES TABLE
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_THEMES} Table..."), true, ++val);

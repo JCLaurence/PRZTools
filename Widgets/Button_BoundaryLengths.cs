@@ -17,7 +17,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                #region Project Workspace  and PUFC Check
+                #region Project Workspace and Planning Unit Check
 
                 // Check that WS exists
                 bool wsexists = PRZH.FolderExists_Project();
@@ -35,11 +35,11 @@ namespace NCC.PRZTools
                     return;
                 }
 
-                // Check that Planning Unit FC exists
-                var pufcexists = await PRZH.FCExists_PU();
-                if (!pufcexists)
+                // Check for presence of Planning Unit data
+                var result = await PRZH.PUExists();
+                if (!result.exists)
                 {
-                    ProMsgBox.Show("Planning Unit Feature Class does not exist.  You must construct a Planning Unit Feature Class first.");
+                    ProMsgBox.Show("Planning Unit Feature Class or Raster Dataset not found in the project geodatabase.");
                     return;
                 }
 
@@ -68,7 +68,7 @@ namespace NCC.PRZTools
                     }
                 };
 
-                var result = dlg.ShowDialog();
+                var result2 = dlg.ShowDialog();
 
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!

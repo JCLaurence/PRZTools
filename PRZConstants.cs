@@ -133,6 +133,7 @@
 
     public enum PlanningUnitLayerType
     {
+        UNKNOWN,
         FEATURE,
         RASTER
     }
