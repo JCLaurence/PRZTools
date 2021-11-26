@@ -2061,7 +2061,9 @@ namespace NCC.PRZTools
                         return GroupLayerExists_FEATURE(map);
 
                     case PRZLayerNames.PU:
-                        return FeatureLayerExists_PU(map);
+                        bool fle = FeatureLayerExists_PU(map);
+                        bool rle = RasterLayerExists_PU(map);
+                        return (fle | rle);
 
                     case PRZLayerNames.SA:
                         return FeatureLayerExists_SA(map);
@@ -2311,6 +2313,32 @@ namespace NCC.PRZTools
             }
         }
 
+        public static bool RasterLayerExists_PU(Map map)
+        {
+            try
+            {
+                if (map == null)
+                {
+                    return false;
+                }
+
+                if (!PRZLayerExists(map, PRZLayerNames.MAIN))
+                {
+                    return false;
+                }
+
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is RasterLayer)).ToList();
+
+                return LIST_layers.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
         #endregion
 
         #region SINGLE LAYER RETRIEVAL
@@ -2340,7 +2368,9 @@ namespace NCC.PRZTools
                         return GetGroupLayer_FEATURE(map);
 
                     case PRZLayerNames.PU:
-                        return GetFeatureLayer_PU(map);
+                        Layer fl = GetFeatureLayer_PU(map);
+                        Layer rl = GetRasterLayer_PU(map);
+                        return fl ?? rl;
 
                     case PRZLayerNames.SA:
                         return GetFeatureLayer_SA(map);
@@ -2530,7 +2560,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!PRZLayerExists(map, PRZLayerNames.PU))
+                if (!FeatureLayerExists_PU(map))
                 {
                     return null;
                 }
@@ -2603,6 +2633,35 @@ namespace NCC.PRZTools
                 else
                 {
                     return LIST_layers[0] as FeatureLayer;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static RasterLayer GetRasterLayer_PU(Map map)
+        {
+            try
+            {
+                if (!RasterLayerExists_PU(map))
+                {
+                    return null;
+                }
+
+                GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is RasterLayer)).ToList();
+
+                if (LIST_layers.Count == 0)
+                {
+                    return null;
+                }
+                else
+                {
+                    return LIST_layers[0] as RasterLayer;
                 }
 
             }
