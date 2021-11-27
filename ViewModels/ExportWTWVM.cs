@@ -199,6 +199,8 @@ namespace NCC.PRZTools
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the WTW Exporter..."), false, max, ++val);
 
+                // I'm here!!!
+
                 #region VALIDATION
 
                 // Ensure the ExportWTW folder exists
