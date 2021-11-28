@@ -254,12 +254,29 @@ namespace NCC.PRZTools
                         }
                     }
 
-                    // Construct Temp Table from Polygon Neighbors tool
+                    // Delete the temp table if present
                     string boundtemp = "boundtemp";
+                    if (await PRZH.TableExists(boundtemp))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {boundtemp} table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(boundtemp);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {boundtemp} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error deleting the {boundtemp} table.");
+                            return false;
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{boundtemp} table deleted successfully."), true, ++val);
+                        }
+                    }
 
                     // Polygon Neighbors tool
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Polygon Neighbors geoprocessing tool..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PUFL, boundtemp, PRZC.c_FLD_FC_PU_ID, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
+                    toolParams = Geoprocessing.MakeValueArray(pufcpath, boundtemp, PRZC.c_FLD_FC_PU_ID, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await PRZH.RunGPTool("PolygonNeighbors_analysis", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
@@ -347,75 +364,217 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Node connection records deleted."), true, ++val);
                     }
 
+                    // Index both temp table id fields
+                    string fldSource = "src_" + PRZC.c_FLD_FC_PU_ID;
+                    string fldNeighbour = "nbr_" + PRZC.c_FLD_FC_PU_ID;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing both id fields..."), true, ++val);
+                    List<string> index_fields = new List<string>() { fldSource, fldNeighbour };
+                    toolParams = Geoprocessing.MakeValueArray(boundtemp, index_fields, "ixTemp", "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields indexed successfully."), true, ++val);
+                    }
+
                     #endregion
 
                     #region CALCULATE EXTERIOR PLANNING UNITS AND CREATE FINAL TABLE
 
                     // First, get the perimeter of each planning unit
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting list of Planning Unit IDs..."), true, ++val);
                     List<int> LIST_PUID = new List<int>();                                                  // ALL PLANNING UNIT IDS
                     Dictionary<int, double> DICT_PUID_and_perimeter = new Dictionary<int, double>();        // ALL PLANNING UNIT IDS AND THEIR PERIMETERS
 
-                    await QueuedTask.Run(async () =>
+                    if (!await QueuedTask.Run(async () =>
                     {
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
-                        using (RowCursor rowCursor = featureClass.Search(null, false))
+                        try
                         {
-                            while (rowCursor.MoveNext())
+                            using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                            using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
                             {
-                                using (Feature feature = (Feature)rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(feature[PRZC.c_FLD_FC_PU_ID]);
-                                    Polygon polygon = (Polygon)feature.GetShape();
-                                    double perim = polygon.Length;
-
-                                    LIST_PUID.Add(puid);
-
-                                    if (puid > 0)
-                                    {
-                                        DICT_PUID_and_perimeter.Add(puid, Math.Round(perim, 2, MidpointRounding.AwayFromZero));
-                                    }
-                                }
-                            }
-                        }
-                    });
-
-                    LIST_PUID.Sort();   // sort the list (not required I don't think...)
-
-                    // Now, for each PUID, sum the boundary lengths from the temp bounds table
-                    // this gives me the total SHARED perimeter for each planning unit
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Summing the shared perimeters per planning unit..."), true, ++val);
-                    Dictionary<int, double> DICT_PUID_and_shared_perim = new Dictionary<int, double>();                         // ALL PLANNING UNIT IDS AND THEIR SHARED PERIMETERS
-                    string fldSource = "src_" + PRZC.c_FLD_FC_PU_ID;
-                    string fldNeighbour = "nbr_" + PRZC.c_FLD_FC_PU_ID;
-
-                    await QueuedTask.Run(async () =>
-                    {
-                        using (Table table = await PRZH.GetTable(boundtemp))
-                        {
-                            foreach (int puid in LIST_PUID)
-                            {
-                                double lengthsum = 0;
+                                string length_field = fcDef.GetLengthField();
 
                                 QueryFilter QF = new QueryFilter
                                 {
-                                    WhereClause = fldSource + " = " + puid.ToString() + " Or " + fldNeighbour + " = " + puid.ToString()         // BOUNDTEMP ID COLUMN NAMES
+                                    SubFields = PRZC.c_FLD_FC_PU_ID + "," + length_field,
+                                    WhereClause = ""
                                 };
 
-                                using (RowCursor rowCursor = table.Search(QF, false))
+                                using (RowCursor rowCursor = featureClass.Search(QF, false))
                                 {
                                     while (rowCursor.MoveNext())
                                     {
                                         using (Row row = rowCursor.Current)
                                         {
-                                            lengthsum += Convert.ToDouble(row["LENGTH"]);
+                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                            double perim = Convert.ToDouble(row[length_field]);
+
+                                            LIST_PUID.Add(puid);
+                                            if (puid > 0)
+                                            {
+                                                DICT_PUID_and_perimeter.Add(puid, Math.Round(perim, 2, MidpointRounding.AwayFromZero));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                            return false;
+                        }
+                    }))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of planning unit ids.", LogMessageType.ERROR), true, max, val++);
+                        ProMsgBox.Show($"Error retrieving list of planning unit ids.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"planning unit ids retrieved."), true, max, val++);
+                    }
+
+                    // Get the summed LENGTH values for each puid
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting lengths..."), true, ++val);
+                    Dictionary<int, double> source_puid_length = new Dictionary<int, double>();
+                    Dictionary<int, double> neighbour_puid_length = new Dictionary<int, double>();
+
+                    if (!await QueuedTask.Run(async () =>
+                    {
+                        try
+                        {
+                            using (Table table = await PRZH.GetTable(boundtemp))
+                            {
+                                QueryFilter QF = new QueryFilter();
+
+                                using (RowCursor rowCursor = table.Search())
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            int src_puid = Convert.ToInt32(row[fldSource]);
+                                            int nbr_puid = Convert.ToInt32(row[fldNeighbour]);
+                                            double perim = Convert.ToDouble(row["LENGTH"]);
+
+                                            // source
+                                            if (source_puid_length.ContainsKey(src_puid))
+                                            {
+                                                source_puid_length[src_puid] += perim;
+                                            }
+                                            else
+                                            {
+                                                source_puid_length.Add(src_puid, perim);
+                                            }
+
+                                            // neighbour
+                                            if (neighbour_puid_length.ContainsKey(nbr_puid))
+                                            {
+                                                neighbour_puid_length[nbr_puid] += perim;
+                                            }
+                                            else
+                                            {
+                                                neighbour_puid_length.Add(nbr_puid, perim);
+                                            }
                                         }
                                     }
                                 }
 
-                                DICT_PUID_and_shared_perim.Add(puid, Math.Round(lengthsum, 2, MidpointRounding.AwayFromZero));
+                                //foreach (int puid in LIST_PUID)
+                                //{
+                                //    double lengthsum = 0;
+
+                                //    // First get the first column matches
+                                //    QF.WhereClause = fldSource + " = " + puid.ToString();
+
+                                //    using (RowCursor rowCursor = table.Search(QF))
+                                //    {
+                                //        while (rowCursor.MoveNext())
+                                //        {
+                                //            using (Row row = rowCursor.Current)
+                                //            {
+                                //                lengthsum += Convert.ToDouble(row["LENGTH"]);
+                                //            }
+                                //        }
+                                //    }
+
+                                //    // Then get the second column matches
+                                //    QF.WhereClause = fldNeighbour + " = " + puid.ToString();
+
+                                //    using (RowCursor rowCursor = table.Search(QF))
+                                //    {
+                                //        while (rowCursor.MoveNext())
+                                //        {
+                                //            using (Row row = rowCursor.Current)
+                                //            {
+                                //                lengthsum += Convert.ToDouble(row["LENGTH"]);
+                                //            }
+                                //        }
+                                //    }
+
+                                //    // store the sum
+                                //    DICT_PUID_and_shared_perim.Add(puid, Math.Round(lengthsum, 2, MidpointRounding.AwayFromZero));
+
+                                //    blofeld++;
+
+                                //    if (blofeld == 1000)
+                                //    {
+                                //        marker = marker + 1000;
+                                //        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Blofeld: {marker} of {LIST_PUID.Count}"), true, ++val);
+                                //        blofeld = 0;
+                                //    }
+                                //}
                             }
+
+                            return true;
                         }
-                    });
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                            return false;
+                        }
+                    }))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error getting lengths.", LogMessageType.ERROR), true, max, val++);
+                        ProMsgBox.Show($"Error getting lengths");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Lengths retrieved."), true, max, val++);
+                    }
+
+                    // Build a single dictionary of shared perimeter lengths by puid
+                    Dictionary<int, double> DICT_PUID_and_shared_perim = new Dictionary<int, double>();                         // ALL PLANNING UNIT IDS AND THEIR SHARED PERIMETERS
+
+                    foreach (int id in LIST_PUID)
+                    {
+                        double src_length = 0;
+                        double nbr_length = 0;
+
+                        if (source_puid_length.ContainsKey(id))
+                        {
+                            src_length = Math.Round(source_puid_length[id], 2, MidpointRounding.AwayFromZero);
+                        }
+                        if (neighbour_puid_length.ContainsKey(id))
+                        {
+                            nbr_length = Math.Round(neighbour_puid_length[id], 2, MidpointRounding.AwayFromZero);
+                        }
+
+                        DICT_PUID_and_shared_perim.Add(id, src_length + nbr_length);
+                    }
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dictionary filled."), true, max, val++);
 
                     // Populate a Dictionary of puids and self-intersecting perimeter lengths
                     Dictionary<int, double> DICT_PUID_and_selfint_perim = new Dictionary<int, double>();    // will have an entry for EVERY PUID
@@ -433,7 +592,7 @@ namespace NCC.PRZTools
                     // Now create the new table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Boundary Length Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_PUBOUNDARY, "", "", "Boundary Lengths");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
                     {
@@ -454,7 +613,8 @@ namespace NCC.PRZTools
 
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to Boundary Lengths table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(boundpath, flds);
-                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, null, toolFlags);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to Boundary Lengths table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -490,53 +650,54 @@ namespace NCC.PRZTools
                                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                                     {
-                                        // Iterate through each PUID
-                                        foreach (int puid in LIST_PUID)
+                                        // Go through the temp table
+                                        using (Table tempTable = await PRZH.GetTable(boundtemp))
                                         {
-                                            QueryFilter QF = new QueryFilter
+                                            foreach (int puid in LIST_PUID)
                                             {
-                                                WhereClause = fldSource + " = " + puid.ToString()
-                                            };
-
-                                            // get the rows for this puid from the temp table
-                                            using (Table temptab = await PRZH.GetTable(boundtemp))
-                                            using (RowCursor searchCursor = temptab.Search(QF))  // recycling cursor!
-                                            {
-                                                while (searchCursor.MoveNext())
+                                                QueryFilter QF = new QueryFilter
                                                 {
-                                                    using (Row row = searchCursor.Current)
+                                                    WhereClause = fldSource + " = " + puid.ToString()
+                                                };
+
+                                                using (RowCursor searchCursor = tempTable.Search(QF, false))
+                                                {
+                                                    while (searchCursor.MoveNext())
                                                     {
-                                                        int srcid1 = Convert.ToInt32(row[fldSource]);
-                                                        int srcid2 = Convert.ToInt32(row[fldNeighbour]);
-                                                        double perim = Convert.ToDouble(row["LENGTH"]);
-
-                                                        // Fill the row buffer
-                                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = srcid1;
-                                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = srcid2;
-                                                        rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = perim;
-
-                                                        // Insert new record
-                                                        insertCursor.Insert(rowBuffer);
-                                                        flusher++;
-                                                        if (flusher == 1000)
+                                                        using (Row row = searchCursor.Current)
                                                         {
-                                                            insertCursor.Flush();
-                                                            flusher = 0;
+                                                            int srcid1 = Convert.ToInt32(row[fldSource]);
+                                                            int srcid2 = Convert.ToInt32(row[fldNeighbour]);
+                                                            double perim = Convert.ToDouble(row["LENGTH"]);
+
+                                                            // Fill the row buffer
+                                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = srcid1;
+                                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = srcid2;
+                                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = perim;
+
+                                                            // Insert new record
+                                                            insertCursor.Insert(rowBuffer);
+                                                            flusher++;
+                                                            if (flusher == 1000)
+                                                            {
+                                                                insertCursor.Flush();
+                                                                flusher = 0;
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
 
-                                            // Add one extra row for this puid, IF that puid has unshared perim
-                                            double selfperim = DICT_PUID_and_selfint_perim[puid];
+                                                // Add one extra row for this puid, IF that puid has unshared perim
+                                                double selfperim = DICT_PUID_and_selfint_perim[puid];
 
-                                            if (selfperim > 0)
-                                            {
-                                                rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = puid;
-                                                rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = puid;
-                                                rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = selfperim;
-                                                insertCursor.Insert(rowBuffer);
-                                                insertCursor.Flush();
+                                                if (selfperim > 0)
+                                                {
+                                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = puid;
+                                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = puid;
+                                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = selfperim;
+                                                    insertCursor.Insert(rowBuffer);
+                                                    insertCursor.Flush();
+                                                }
                                             }
                                         }
 
@@ -546,7 +707,7 @@ namespace NCC.PRZTools
                             }
 
                             // Execute all the queued "creates"
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation!  This one might take a while..."), true, max, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation!  Adding records..."), true, max, ++val);
                             success = loader.Execute();
 
                             if (success)
@@ -618,37 +779,6 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully deleted the temp table."), true, ++val);
                     }
-
-                    //// Update the boundary columns in PUFC
-                    ///// TODO: Do I even need to do this?
-                    //PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating boundary columns in PU FC..."), true, ++val);
-
-                    //await QueuedTask.Run(async () =>
-                    //{
-                    //    using (Table table = await PRZH.GetFC_PU())
-                    //    using (RowCursor rowCursor = table.Search(null, false))
-                    //    {
-                    //        while (rowCursor.MoveNext())
-                    //        {
-                    //            using (Row row = rowCursor.Current)
-                    //            {
-                    //                int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                    //                double sharedperim = DICT_PUID_and_shared_perim[puid];
-                    //                double selfintperim = DICT_PUID_and_selfint_perim[puid];
-
-                    //                // set the indicator field
-                    //                row[PRZC.c_FLD_FC_PU_HAS_UNSHARED_PERIM] = (selfintperim > 0) ? 1 : 0;
-
-                    //                // set the two perim fields
-                    //                row[PRZC.c_FLD_FC_PU_SHARED_PERIM] = sharedperim;
-                    //                row[PRZC.c_FLD_FC_PU_UNSHARED_PERIM] = selfintperim;
-
-                    //                row.Store();
-                    //            }
-                    //        }
-                    //    }
-                    //});
 
                     #endregion
                 }

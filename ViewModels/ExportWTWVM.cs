@@ -195,16 +195,23 @@ namespace NCC.PRZTools
                 // Initialize a few thingies
                 Map map = MapView.Active.Map;
 
+                // Some GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.Default; //GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                string toolOutput;
+
+                // Some paths
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string exportdirpath = PRZH.GetPath_ExportWTWFolder();
+
                 // Initialize ProgressBar and Progress Log
                 int max = 50;
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the WTW Exporter..."), false, max, ++val);
 
-                // I'm here!!!
-
                 #region VALIDATION
 
                 // Ensure the ExportWTW folder exists
-                string exportpath = PRZH.GetPath_ExportWTWFolder();
                 if (!PRZH.FolderExists_ExportWTW())
                 {
                     ProMsgBox.Show($"The {PRZC.c_DIR_EXPORT_WTW} folder does not exist in your project workspace." + Environment.NewLine + Environment.NewLine +
@@ -212,9 +219,17 @@ namespace NCC.PRZTools
                     return false;
                 }
 
+                // Determine if the Planning Unit data is present
+                var pu_presence = await PRZH.PUExists();
+                if (!pu_presence.exists)
+                {
+                    ProMsgBox.Show("No planning unit feature class or raster found in project geodatabase.");
+                    return false;
+                }
+
                 // Prompt the user for permission to proceed
                 if (ProMsgBox.Show("If you proceed, all files in the following folder will be deleted and/or overwritten:" + Environment.NewLine +
-                    exportpath + Environment.NewLine + Environment.NewLine +
+                    exportdirpath + Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
                    "Choose wisely...",
@@ -226,12 +241,8 @@ namespace NCC.PRZTools
                     return false;
                 }
 
-                #endregion
-
-                #region PREPARATION
-
                 // Delete all existing files within export dir
-                DirectoryInfo di = new DirectoryInfo(exportpath);
+                DirectoryInfo di = new DirectoryInfo(exportdirpath);
 
                 try
                 {
@@ -247,13 +258,13 @@ namespace NCC.PRZTools
                 }
                 catch (Exception ex)
                 {
-                    ProMsgBox.Show("Unable to delete files & subfolders within " + exportpath + Environment.NewLine + Environment.NewLine + ex.Message);
+                    ProMsgBox.Show("Unable to delete files & subfolders within " + exportdirpath + Environment.NewLine + Environment.NewLine + ex.Message);
                     return false;
                 }
 
                 #endregion
 
-                #region GENERATE THE SHAPEFILE
+                #region GENERATE PLANNING UNITS
 
                 // Start a stopwatch
                 Stopwatch stopwatch = new Stopwatch();
@@ -262,211 +273,265 @@ namespace NCC.PRZTools
                 // Prepare the necessary output coordinate system
                 SpatialReference OutputSR = SpatialReferenceBuilder.CreateSpatialReference(4326);   // (WGS84 (GCS)
 
-                // Some GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                string toolOutput;
-
-                string gdbpath = PRZH.GetPath_ProjectGDB();
-                string pufcpath = PRZH.GetPath_FC_PU();
-                string exportdirpath = PRZH.GetPath_ExportWTWFolder();
-                string exportfcpath = Path.Combine(exportdirpath, PRZC.c_FILE_WTW_EXPORT_SHP);
-
-                // Copy PUFC, project at the same time
-                string temppufc = "temppu_wtw";
-
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Making a temp copy of the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(pufcpath, temppufc, "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
+                // Export the Spatial Data to Shapefile or Raster
+                if (pu_presence.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class copied successfully..."), true, ++val);
-                }
-
-                // Delete all unnecessary fields from the temp fc
-                List<string> LIST_DeleteFields = new List<string>();
-
-                if (!await QueuedTask.Run(async () =>
-                {
-                    try
+                    // Confirm that fc is present
+                    if (!await PRZH.FCExists_PU())
                     {
-                        using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
-                        using (FeatureClass fc = await PRZH.GetFeatureClass(geodatabase, temppufc))
-                        {
-                            if (fc == null)
-                            {
-                                return false;
-                            }
-
-                            FeatureClassDefinition fcDef = fc.GetDefinition();
-                            List<Field> fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
-                                                                            && f.Name != PRZC.c_FLD_FC_PU_ID
-                                                                            && f.Name != fcDef.GetShapeField()
-                                                                            && f.Name != fcDef.GetAreaField()
-                                                                            && f.Name != fcDef.GetLengthField()
-                                                                            ).ToList();
-
-                            foreach (Field field in fields)
-                            {
-                                LIST_DeleteFields.Add(field.Name);
-                            }
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        ProMsgBox.Show($"{PRZC.c_FC_PLANNING_UNITS} feature class not found in project geodatabase.");
                         return false;
                     }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to assemble the list of deletable fields");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature class copied."), true, ++val);
-                }
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Removing unnecessary fields from the temporary feature class..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(temppufc, LIST_DeleteFields);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from temporary feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error deleting fields from temporary feature class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
-                }
+                    // more paths
+                    string source_fc_path = PRZH.GetPath_FC_PU();
+                    string output_fc_file = PRZC.c_FILE_WTW_EXPORT_SPATIAL + ".shp";
+                    string output_fc_path = Path.Combine(exportdirpath, output_fc_file);
 
-                // Repair geometry
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(temppufc);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error repairing geometry.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error repairing geometry.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Geometry successfully repaired"), true, ++val);
-                }
+                    // Copy PU FC to temp shapefile
+                    string tempfc = "tempshape";
 
-                // Export to Shapefile in EXPORT_WTW folder
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Exporting Shapefile..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(temppufc, exportfcpath);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error exporting shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error exporting shapefile.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile exported."), true, ++val);
-                }
-
-                // Finally, delete the temp feature class
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature class..."), true);
-
-                toolParams = Geoprocessing.MakeValueArray(temppufc, "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temporary feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
-                    ProMsgBox.Show("Error deleting temporary feature class.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Temporary feature class deleted."), true);
-                }
-
-                // Delete the two no-longer-required area and length fields from the shapefile
-                LIST_DeleteFields = new List<string>();
-
-                if (!await QueuedTask.Run(() =>
-                {
-                    try
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Making a temp copy of the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(source_fc_path, tempfc, "", "", "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
                     {
-                        FileSystemConnectionPath fsConn = new FileSystemConnectionPath(new Uri(exportdirpath), FileSystemDatastoreType.Shapefile);
-
-                        using (FileSystemDatastore fsDS = new FileSystemDatastore(fsConn))
-                        using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_FILE_WTW_EXPORT_SHP))
-                        {
-                            if (shpFC == null)
-                            {
-                                return false;
-                            }
-
-                            FeatureClassDefinition fcDef = shpFC.GetDefinition();
-                            List<Field> fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
-                                                                            && f.Name != PRZC.c_FLD_FC_PU_ID
-                                                                            && f.Name != fcDef.GetShapeField()
-                                                                            ).ToList();
-
-                            foreach (Field field in fields)
-                            {
-                                LIST_DeleteFields.Add(field.Name);
-                            }
-                        }
-
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.");
                         return false;
                     }
-                }))
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class copied successfully..."), true, ++val);
+                    }
+
+                    // Populate list of unnecessary field names
+                    List<string> LIST_DeleteFields = new List<string>();
+
+                    if (!await QueuedTask.Run(async () =>
+                    {
+                        try
+                        {
+                            using (FeatureClass fc = await PRZH.GetFeatureClass(tempfc))
+                            using (FeatureClassDefinition fcDef = fc.GetDefinition())
+                            {
+                                var fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
+                                                                                && f.Name != PRZC.c_FLD_FC_PU_ID
+                                                                                && f.Name != fcDef.GetShapeField()
+                                                                                && f.Name != fcDef.GetAreaField()
+                                                                                && f.Name != fcDef.GetLengthField()).Select(f => f.Name);
+
+                                LIST_DeleteFields = fields.ToList();
+                            }
+
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                            return false;
+                        }
+                    }))
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Unable to assemble the list of deletable fields");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature class copied."), true, ++val);
+                    }
+
+                    // Delete the unnecessary fields
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Removing unnecessary fields..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(tempfc, LIST_DeleteFields);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error deleting fields.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
+                    }
+
+                    ProMsgBox.Show("Bort");
+                    return true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                }
+                else if (pu_presence.puLayerType == PlanningUnitLayerType.RASTER)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the list of deletable shapefile fields.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error retrieving the list of deletable shapefile fields.");
-                    return false;
+                    // Confirm that raster is present
+                    if (!await PRZH.RasterExists_PU())
+                    {
+                        ProMsgBox.Show($"{PRZC.c_RAS_PLANNING_UNITS} raster not found in project geodatabase.");
+                        return false;
+                    }
+
+                    // more paths
+                    string source_raster_path = PRZH.GetPath_Raster_PU();
+                    string output_raster_file = PRZC.c_FILE_WTW_EXPORT_SPATIAL + ".tif";
+                    string output_raster_path = Path.Combine(exportdirpath, output_raster_file);
+
+                    // Copy Raster, convert to TIFF format
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_RAS_PLANNING_UNITS} raster to TIFF format..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(source_raster_path, output_raster_path, "", "", "", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error copying the {PRZC.c_FC_PLANNING_UNITS} feature class.");
+                        return false;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class copied successfully..."), true, ++val);
+                    }
+
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields retrieved."), true, ++val);
-                }
-
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting unnecessary fields from shapefile..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(exportfcpath, LIST_DeleteFields);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: exportdirpath);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error deleting fields from shapefile.");
+                    ProMsgBox.Show("Planning Unit type unknown... Huh?");
                     return false;
                 }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
-                }
-
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile Export Complete!"), true, ++val);
 
                 #endregion
+
+                //#region GENERATE THE SHAPEFILE
+
+
+                //// Repair geometry
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
+                //toolParams = Geoprocessing.MakeValueArray(temppufc);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error repairing geometry.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error repairing geometry.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Geometry successfully repaired"), true, ++val);
+                //}
+
+                //// Export to Shapefile in EXPORT_WTW folder
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Exporting Shapefile..."), true, ++val);
+                //toolParams = Geoprocessing.MakeValueArray(temppufc, exportfcpath);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                //toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error exporting shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error exporting shapefile.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile exported."), true, ++val);
+                //}
+
+                //// Finally, delete the temp feature class
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting temporary feature class..."), true);
+
+                //toolParams = Geoprocessing.MakeValueArray(temppufc, "");
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting temporary feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true);
+                //    ProMsgBox.Show("Error deleting temporary feature class.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Temporary feature class deleted."), true);
+                //}
+
+                //// Delete the two no-longer-required area and length fields from the shapefile
+                //LIST_DeleteFields = new List<string>();
+
+                //if (!await QueuedTask.Run(() =>
+                //{
+                //    try
+                //    {
+                //        FileSystemConnectionPath fsConn = new FileSystemConnectionPath(new Uri(exportdirpath), FileSystemDatastoreType.Shapefile);
+
+                //        using (FileSystemDatastore fsDS = new FileSystemDatastore(fsConn))
+                //        using (FeatureClass shpFC = fsDS.OpenDataset<FeatureClass>(PRZC.c_FILE_WTW_EXPORT_SHP))
+                //        {
+                //            if (shpFC == null)
+                //            {
+                //                return false;
+                //            }
+
+                //            FeatureClassDefinition fcDef = shpFC.GetDefinition();
+                //            List<Field> fields = fcDef.GetFields().Where(f => f.Name != fcDef.GetObjectIDField()
+                //                                                            && f.Name != PRZC.c_FLD_FC_PU_ID
+                //                                                            && f.Name != fcDef.GetShapeField()
+                //                                                            ).ToList();
+
+                //            foreach (Field field in fields)
+                //            {
+                //                LIST_DeleteFields.Add(field.Name);
+                //            }
+                //        }
+
+                //        return true;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                //        return false;
+                //    }
+                //}))
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the list of deletable shapefile fields.", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error retrieving the list of deletable shapefile fields.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields retrieved."), true, ++val);
+                //}
+
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting unnecessary fields from shapefile..."), true, ++val);
+                //toolParams = Geoprocessing.MakeValueArray(exportfcpath, LIST_DeleteFields);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: exportdirpath);
+                //toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields from shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show("Error deleting fields from shapefile.");
+                //    return false;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
+                //}
+
+                //PRZH.UpdateProgress(PM, PRZH.WriteLog("Shapefile Export Complete!"), true, ++val);
+
+                //#endregion
 
                 #region GET MASTER PLANNING UNIT ID LIST
 

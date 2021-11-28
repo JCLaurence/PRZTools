@@ -171,6 +171,7 @@
 
         // EXPORT WTW FILES
         public const string c_FILE_WTW_EXPORT_SHP = "WTW_GEOMETRY.shp";
+        public const string c_FILE_WTW_EXPORT_SPATIAL = "WTW_SPATIAL";
         public const string c_FILE_WTW_EXPORT_ATTR = "WTW_ATTRIBUTE.csv";
         public const string c_FILE_WTW_EXPORT_BND = "WTW_BOUNDARY.dat";
         public const string c_FILE_WTW_EXPORT_YAML = "WTW_CONFIG.yaml";
