@@ -6,6 +6,7 @@ using ArcGIS.Core.Data.Topology;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Dialogs;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
@@ -3658,6 +3659,31 @@ namespace NCC.PRZTools
         }
 
         #endregion GENERIC DATA METHODS
+
+        #region EDIT OPERATIONS
+
+        public static EditOperation GetEditOperation(string name)
+        {
+            try
+            {
+                EditOperation editOp = new EditOperation();
+
+                editOp.Name = name ?? "unnamed edit operation";
+                editOp.ShowProgressor = false;
+                editOp.ShowModalMessageAfterFailure = false;
+                editOp.SelectNewFeatures = false;
+                editOp.SelectModifiedFeatures = false;
+
+                return editOp;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        #endregion
 
         #region LIST AND DICTIONARY RETRIEVAL
 
