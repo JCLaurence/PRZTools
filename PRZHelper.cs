@@ -3734,6 +3734,163 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<List<int>> GetList_PUID(PlanningUnitLayerType puLayerType)
+        {
+            try
+            {
+                List<int> ids = new List<int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        if (puLayerType == PlanningUnitLayerType.FEATURE)
+                        {
+                            using (Table table = await GetFC_PU())
+                            using (RowCursor rowCursor = table.Search())
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                        if (id > 0)
+                                        {
+                                            ids.Add(id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else if (puLayerType == PlanningUnitLayerType.RASTER)
+                        {
+                            using (RasterDataset rasterDataset = await GetRaster_PU())
+                            using (Raster raster = rasterDataset.CreateFullRaster())
+                            using (Table table = raster.GetAttributeTable())
+                            using (RowCursor rowCursor = table.Search())
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int id = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                        if (id > 0)
+                                        {
+                                            ids.Add(id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            return false;
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    return null;
+                }
+                else
+                {
+                    ids.Sort();
+                    return ids;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        public static async Task<HashSet<int>> GetHashSet_PUID(PlanningUnitLayerType puLayerType)
+        {
+            try
+            {
+                HashSet<int> ids = new HashSet<int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        if (puLayerType == PlanningUnitLayerType.FEATURE)
+                        {
+                            using (Table table = await GetFC_PU())
+                            using (RowCursor rowCursor = table.Search())
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                        if (id > 0)
+                                        {
+                                            ids.Add(id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else if (puLayerType == PlanningUnitLayerType.RASTER)
+                        {
+                            using (RasterDataset rasterDataset = await GetRaster_PU())
+                            using (Raster raster = rasterDataset.CreateFullRaster())
+                            using (Table table = raster.GetAttributeTable())
+                            using (RowCursor rowCursor = table.Search())
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int id = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                        if (id > 0)
+                                        {
+                                            ids.Add(id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            return false;
+                        }
+
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    return null;
+                }
+                else
+                {
+                    return ids;
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
         public static async Task<HashSet<int>> GetHashSet_PUID()
         {
             try
