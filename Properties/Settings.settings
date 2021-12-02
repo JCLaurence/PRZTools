@@ -74,5 +74,8 @@
     <Setting Name="RT_ZERO_IS_NODATA" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
+    <Setting Name="WTW_SPATIAL_FORMAT" Type="System.String" Scope="User">
+      <Value Profile="(Default)">RASTER</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

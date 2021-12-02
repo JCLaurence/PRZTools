@@ -310,5 +310,17 @@ namespace NCC.PRZTools.Properties {
                 this["RT_ZERO_IS_NODATA"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("RASTER")]
+        public string WTW_SPATIAL_FORMAT {
+            get {
+                return ((string)(this["WTW_SPATIAL_FORMAT"]));
+            }
+            set {
+                this["WTW_SPATIAL_FORMAT"] = value;
+            }
+        }
     }
 }

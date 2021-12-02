@@ -202,6 +202,9 @@
         public const string c_FC_TEMP_PUSELRULES_SUFFIX_INT = "_int";
         public const string c_FC_TEMP_PUSELRULES_SUFFIX_DSLV = "_dslv";
 
+        public const string c_FC_TEMP_WTW_FC1 = "wtw_fc_temp1";
+        public const string c_FC_TEMP_WTW_FC2 = "wtw_fc_temp2";
+
         // TABLES
         public const string c_TABLE_PU_RAS_LOOKUP = "pu_ras_lookup";
         public const string c_TABLE_SELRULES = "selection_rules";

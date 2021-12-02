@@ -9,11 +9,12 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="Export Project To 'Where to Work' Application" 
-    Height="400" Width="500" MinHeight="400" MinWidth="500"
+    Height="500" Width="500" MinHeight="500" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/ExportToWTW32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
     >
+    
     <controls:ProWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -35,11 +36,65 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
             <!--Inner Border #1-->
             <Border
-                Grid.Row="0" 
+                Grid.Row="0"
+                Margin="0,0,0,5"
+                BorderThickness="1.5" 
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"  
+                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Text="Export Settings" />
+
+                    <DockPanel 
+                        DockPanel.Dock="Top"
+                        Height="25"
+                        LastChildFill="False">
+
+                        <TextBlock
+                                DockPanel.Dock="Left"
+                                Margin="15, 5, 5, 5" 
+                                VerticalAlignment="Center"
+                                Style="{DynamicResource Esri_TextBlockRegular}"
+                                Text="Spatial Format:" />
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center" 
+                            GroupName="SpatialFormat"
+                            IsChecked="{Binding Settings_Rad_SpatialFormat_Vector_IsChecked}" 
+                            Content="Vector" />
+
+                        <RadioButton
+                            DockPanel.Dock="Left"
+                            Margin="5" 
+                            VerticalAlignment="Center" 
+                            VerticalContentAlignment="Center" 
+                            GroupName="SpatialFormat"
+                            IsChecked="{Binding Settings_Rad_SpatialFormat_Raster_IsChecked}"
+                            IsEnabled="False"
+                            Content="Raster" />
+
+                    </DockPanel>
+                </DockPanel>
+
+            </Border>
+            
+            <!--Inner Border #2-->
+            <Border
+                Grid.Row="1" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5" 
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -67,7 +122,7 @@
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Planning Unit Feature Class" />
+                            Text="{Binding Txt_PlanningUnitLabel}" />
 
                     </DockPanel>
 
@@ -143,57 +198,11 @@
 
             </Border>
 
-            <!--Inner Border #2-->
-            <Border 
-                Grid.Row="1" 
-                Margin="0,0,0,5"
-                BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
-
-                <DockPanel 
-                    LastChildFill="False" 
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
-
-                    <Button 
-                        DockPanel.Dock="Left"
-                        Margin="5" 
-                        Padding="5,0,5,0"
-                        Height="25" 
-                        Style="{DynamicResource Esri_Button}"   
-                        Command="{Binding CmdExport}"
-                        IsEnabled="{Binding ExportIsEnabled}"
-                        Content="EXPORT!" />
-
-                    <Button 
-                        DockPanel.Dock="Right" 
-                        Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"  
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"  
-                        Style="{DynamicResource Esri_Button}" 
-                        IsEnabled="False"
-                        Content="EXISTING INFO" />
-
-                </DockPanel>
-            </Border>
 
             <!--Inner Border #3-->
             <Border 
                 Grid.Row="2" 
+                Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}" >
 
@@ -241,6 +250,54 @@
                     </ScrollViewer>
                 </DockPanel>
             </Border>
+
+            <!--Inner Border #4-->
+            <Border 
+                Grid.Row="3"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False" 
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Height="25" 
+                        Style="{DynamicResource Esri_Button}"   
+                        Command="{Binding CmdExport}"
+                        IsEnabled="{Binding ExportIsEnabled}"
+                        Content="EXPORT!" />
+
+                    <Button 
+                        DockPanel.Dock="Right" 
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"  
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"  
+                        Style="{DynamicResource Esri_Button}" 
+                        IsEnabled="False"
+                        Content="EXISTING INFO" />
+
+                </DockPanel>
+            </Border>
+
         </Grid>
     </Border>
 
