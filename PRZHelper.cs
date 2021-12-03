@@ -1716,6 +1716,7 @@ namespace NCC.PRZTools
             }
         }
 
+        #endregion
 
         #region NATIONAL TABLE DATA RETRIEVAL
 
@@ -1770,126 +1771,10 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<List<NatElement>> GetNationalElements(NationalElementType? type, NationalElementStatus? status)
-        {
-            try
-            {
-                List<NatElement> elements = new List<NatElement>();
-
-                if (!await QueuedTask.Run(async () =>
-                {
-                    // quit if table doesn't exist
-                    if (!await TableExists(PRZC.c_TABLE_NAT_ELEMENTS))
-                    {
-                        return false;
-                    }
-
-                    // assemble whereclause
-                    string whereclause = "";
-                    if (type == null)
-                    {
-                        if (status == null)
-                        {
-                            whereclause = "";
-                        }
-                        else
-                        {
-                            whereclause = PRZC.c_FLD_TAB_ELEMENT_STATUS + " = " + ((int)status).ToString();
-                        }
-                    }
-                    else
-                    {
-                        if (status == null)
-                        {
-                            whereclause = PRZC.c_FLD_TAB_ELEMENT_TYPE + " = " + ((int)type).ToString();
-                        }
-                        else
-                        {
-                            whereclause = PRZC.c_FLD_TAB_ELEMENT_STATUS + " = " + ((int)status).ToString() + " And " + PRZC.c_FLD_TAB_ELEMENT_TYPE + " = " + ((int)type).ToString();
-                        }
-                    }
-
-                    QueryFilter queryFilter = new QueryFilter()
-                    {
-                        WhereClause = whereclause
-                    };
-
-                    using (Table table = await GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
-                    using (RowCursor rowCursor = table.Search(queryFilter))
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                NatElement element = new NatElement()
-                                {
-                                    ElementID = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_ELEMENT_ID]),
-                                    ElementName = (string)row[PRZC.c_FLD_TAB_ELEMENT_NAME],
-                                    ElementType = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_TYPE]),
-                                    ElementStatus = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_STATUS]),
-                                    ElementDataPath = (string)row[PRZC.c_FLD_TAB_ELEMENT_DATAPATH],
-                                    ThemeID = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_THEME_ID]),
-                                    Presence = (int)NationalElementPresence.Absent   // default to absent, check for presence (and update) later
-                                };
-
-                                elements.Add(element);
-                            }
-                        }
-                    }
-
-                    // update theme names
-                    List<NatTheme> themes = await GetNationalThemes();
-                    if (themes != null)
-                    {
-                        foreach (NatElement element in elements)
-                        {
-                            int theme_id = element.ThemeID;
-
-                            if (theme_id <= 0)
-                            {
-                                element.ThemeName = "INVALID THEME ID";
-                                element.ThemeCode = "---";
-                            }
-                            else
-                            {
-                                NatTheme theme = themes.FirstOrDefault(t => t.ThemeID == theme_id);
-
-                                if (theme != null)
-                                {
-                                    element.ThemeName = theme.ThemeName;
-                                    element.ThemeCode = theme.ThemeCode;
-                                }
-                                else
-                                {
-                                    element.ThemeName = "NO CORRESPONDING THEME";
-                                    element.ThemeCode = "???";
-                                }
-                            }
-                        }
-                    }
-
-                    return true;
-                }))
-                {
-                    return null;
-                }
-
-                elements.Sort((a, b) => a.ElementID.CompareTo(b.ElementID));
-
-                return elements;  // could have zero or more items in the list
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
         public static async Task<List<NatElement>> GetNationalElements(NationalElementType? type, NationalElementStatus? status, NationalElementPresence? presence)
         {
             try
             {
-                // I'm here!!!!!
                 List<NatElement> elements = new List<NatElement>();
 
                 if (!await QueuedTask.Run(async () =>
@@ -1915,7 +1800,7 @@ namespace NCC.PRZTools
                                     ElementStatus = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_STATUS]),
                                     ElementDataPath = (string)row[PRZC.c_FLD_TAB_ELEMENT_DATAPATH],
                                     ThemeID = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_THEME_ID]),
-                                    Presence = (int)NationalElementPresence.Absent   // default to absent, check for presence (and update) later
+                                    ElementPresence = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_PRESENCE])
                                 };
 
                                 elements.Add(element);
@@ -1961,15 +1846,20 @@ namespace NCC.PRZTools
                 }
 
                 // Now filter the list based on filter criteria
-                if (type != null)
-                {
-                    elements = elements.Where(e => e.ElementType == ((int)type)).ToList();
-                }
 
+                // By Type
+                IEnumerable<NatElement> v = (type != null) ? elements.Where(e => e.ElementType == ((int)type)) : elements;
 
-                elements.Sort((a, b) => a.ElementID.CompareTo(b.ElementID));
+                // By Status
+                v = (status != null) ? v.Where(e => e.ElementStatus == ((int)status)) : v;
 
-                return elements;  // could have zero or more items in the list
+                // By Presence
+                v = (presence != null) ? v.Where(e => e.ElementPresence == ((int)presence)) : v;
+
+                // Sort by Element ID
+                v.OrderBy(e => e.ElementID);
+
+                return v.ToList();  // could have zero or more elements
             }
             catch (Exception ex)
             {
@@ -2128,7 +2018,362 @@ namespace NCC.PRZTools
             }
         }
 
-        #endregion
+        public static async Task<(bool success, Dictionary<long, int> dict)> GetCellNumbersAndPUIDs(PlanningUnitLayerType layerType)
+        {
+            try
+            {
+                Dictionary<long, int> dict = new Dictionary<long, int>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    if (!await GDBExists_Project())
+                    {
+                        return false;
+                    }
+
+                    if (layerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (layerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }))
+                {
+                    return (false, null);
+                }
+                else
+                {
+                    return (true, dict);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null);
+            }
+        }
+
+        public static async Task<(bool success, Dictionary<int, long> dict)> GetPUIDsAndCellNumbers(PlanningUnitLayerType layerType)
+        {
+            try
+            {
+                Dictionary<int, long> dict = new Dictionary<int, long>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    if (!await GDBExists_Project())
+                    {
+                        return false;
+                    }
+
+                    if (layerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (layerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }))
+                {
+                    return (false, null);
+                }
+                else
+                {
+                    return (true, dict);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null);
+            }
+        }
+
+        public static async Task<(bool success, double value, string message)> GetValueFromElementTable(int element_id, long cell_number)
+        {
+            double value = -9999;
+
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, value, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                string table_name = GetElementTableName(element_id);
+                if (table_name == "")
+                {
+                    return (false, value, "Unable to retrieve element table name");
+                }
+
+                // Verify that table exists in project GDB
+                if (!await TableExists(table_name))
+                {
+                    return (false, value, $"Element table {table_name} not found in project geodatabase");
+                }
+
+                // retrieve the value for the cell number in the element table
+
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    QueryFilter queryFilter = new QueryFilter
+                    {
+                        WhereClause = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " = " + cell_number
+                    };
+
+                    using (Table table = await GetTable(table_name))
+                    {
+                        // Row Count
+                        int rows = table.GetCount(queryFilter);
+
+                        if (rows == 1)
+                        {
+                            using (RowCursor rowCursor = table.Search(queryFilter))
+                            {
+                                if (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+                                        return (true, "success");
+                                    }
+                                }
+                                else
+                                {
+                                    return (false, "no match found");
+                                }
+                            }
+                        }
+                        else if (rows == 0)
+                        {
+                            return (false, "no match found");
+                        }
+                        else if (rows > 1)
+                        {
+                            return (false, "more than one matching cell number found");
+                        }
+                        else
+                        {
+                            return (false, "there was a resounding kaboom");
+                        }
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, value, "success");
+                }
+                else
+                {
+                    return (false, value, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, value, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable(int element_id)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, null, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                string table_name = GetElementTableName(element_id);
+                if (table_name == "")
+                {
+                    return (false, null, "Unable to retrieve element table name");
+                }
+
+                // Verify that table exists in project GDB
+                if (!await TableExists(table_name))
+                {
+                    return (false, null, $"Element table {table_name} not found in project geodatabase");
+                }
+
+                // retrieve the dictionary of cell numbers and associated values
+                Dictionary<long, double> dict = new Dictionary<long, double>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await GetTable(table_name))
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                long cellnum = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                double cellval = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+
+                                if (cellnum > 0 && cellval > 0 && !dict.ContainsKey(cellnum))
+                                {
+                                    dict.Add(cellnum, cellval);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static string GetElementTableName(int element_id)
+        {
+            try
+            {
+                if (element_id > 99999 || element_id < 1)
+                {
+                    throw new Exception($"Element ID {element_id} is out of range (1 to 99999)");
+                }
+                else
+                {
+                    return PRZC.c_TABLE_NAT_PREFIX_ELEMENT + element_id.ToString("D5");
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message);
+                return "";
+            }
+        }
 
         #endregion
 

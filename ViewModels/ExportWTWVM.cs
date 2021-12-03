@@ -1,4 +1,6 @@
-﻿using ArcGIS.Core.CIM;
+﻿//#define TEST
+
+using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
@@ -62,6 +64,7 @@ namespace NCC.PRZTools
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         private ICommand _cmdExport;
         private ICommand _cmdClearLog;
+        private ICommand _cmdTest;
 
         #endregion
 
@@ -151,6 +154,8 @@ namespace NCC.PRZTools
         #region COMMANDS
 
         public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(() => ExportWTWPackage(), () => true));
+
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
 
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
@@ -495,6 +500,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
+#if TEST
                 #region EXPORT SPATIAL DATA
 
                 if (Settings_Rad_SpatialFormat_Vector_IsChecked)
@@ -544,16 +550,13 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region GET PUID AND NATGRID CELL NUMBER DICTIONARY
+#endif
 
-                // I'm here!!!!
+                #region GET PUID AND NATGRID CELLNUMBER LISTS AND DICTIONARIES
 
-                #endregion
-
-                #region GET MASTER PLANNING UNIT ID LIST
-
-                var PUIDs = await PRZH.GetHashSet_PUID(pu_result.puLayerType);
-                if (PUIDs == null)
+                // Get the Planning Unit IDs
+                HashSet<int> puids = await PRZH.GetHashSet_PUID(pu_result.puLayerType);
+                if (puids == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve master list of Planning Unit IDs", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("Unable to retrieve master list of Planning Unit IDs");
@@ -561,16 +564,353 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {PUIDs.Count} IDs."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {puids.Count} IDs."), true, ++val);
                 }
+                List<int> PUIDs = puids.ToList();
+                PUIDs.Sort();
+
+                // Get the National Grid Cell Numbers
+                HashSet<long> nums = await PRZH.GetPlanningUnitCellNumbers(pu_result.puLayerType);
+                if (nums == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve master list of National Grid Cell Numbers", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve master list of National Grid Cell Numbers");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {nums.Count} IDs."), true, ++val);
+                }
+                List<long> CellNums = nums.ToList();
+                CellNums.Sort();
+
+                var puidcell = await PRZH.GetPUIDsAndCellNumbers(pu_result.puLayerType);
+                if (!puidcell.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve dictionary of PUIDs and associated Cell Numbers", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve dictionary of PUIDs and associated Cell Numbers");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {puidcell.dict.Count} PUID > Cell Number entries"), true, ++val);
+                }
+
+                var cellpuid = await PRZH.GetCellNumbersAndPUIDs(pu_result.puLayerType);
+                if (!cellpuid.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve dictionary of Cell Numbers and associated PUIDs", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Unable to retrieve dictionary of Cell Numbers and associated PUIDs");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {cellpuid.dict.Count} Cell Number > PUID entries"), true, ++val);
+                }
+
+                var DICT_PUID_and_CN = puidcell.dict;
+                var DICT_CN_and_puids = cellpuid.dict;
 
                 #endregion
 
-                #region GENERATE AND ZIP THE BOUNDARY CSV
+                #region GET NATIONAL TABLE CONTENTS
+
+                // Get the National Themes (list of NatTheme objects sorted by Theme ID)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes."), true, ++val);
+                var themes = await PRZH.GetNationalThemes();
+                if (themes == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national themes.");
+                    return false;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} national themes."), true, ++val);
+
+                // Get the Goals
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Goal} elements."), true, ++val);
+                var goals = await PRZH.GetNationalElements(NationalElementType.Goal, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (goals == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Goal} elements.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving {NationalElementType.Goal} elements.");
+                    return false;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goals.Count} {NationalElementType.Goal} elements."), true, ++val);
+
+                // Get the Weights
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Weight} elements."), true, ++val);
+                var weights = await PRZH.GetNationalElements(NationalElementType.Weight, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (weights == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Weight} elements.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving {NationalElementType.Weight} elements.");
+                    return false;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weights.Count} {NationalElementType.Weight} elements."), true, ++val);
+
+                // Get the Includes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Include} elements."), true, ++val);
+                var includes = await PRZH.GetNationalElements(NationalElementType.Include, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (includes == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Include} elements.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving {NationalElementType.Include} elements.");
+                    return false;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {includes.Count} {NationalElementType.Include} elements."), true, ++val);
+
+                // Get the Excludes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Exclude} elements."), true, ++val);
+                var excludes = await PRZH.GetNationalElements(NationalElementType.Exclude, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (excludes == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Exclude} elements.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving {NationalElementType.Exclude} elements.");
+                    return false;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {excludes.Count} {NationalElementType.Exclude} elements."), true, ++val);
+
+                #endregion
+
+                #region GENERATE THE ATTRIBUTE CSV
+
+                string attributepath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_ATTR);
+
+                var csvConfig_Attr = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    HasHeaderRecord = false, // this is default
+                    NewLine = Environment.NewLine
+                };
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating attribute CSV..."), true, ++val);
+                using (var writer = new StreamWriter(attributepath))
+                using (var csv = new CsvWriter(writer, csvConfig_Attr))
+                {
+                    #region ADD COLUMN HEADERS (ROW 1)
+
+                    // First, the goals
+                    for (int i = 0; i < goals.Count; i++)
+                    {
+                        csv.WriteField(goals[i].ElementTable);
+                    }
+
+                    // Next, the weights
+                    for (int i = 0; i < weights.Count; i++)
+                    {
+                        csv.WriteField(weights[i].ElementTable);
+                    }
+
+                    // Next, the includes
+                    for (int i = 0; i < includes.Count; i++)
+                    {
+                        csv.WriteField(includes[i].ElementTable);
+                    }
+
+                    // Next, the excludes
+                    for (int i = 0; i < excludes.Count; i++)
+                    {
+                        csv.WriteField(excludes[i].ElementTable);
+                    }
+
+                    // Finally include the Planning Unit ID column
+                    csv.WriteField("_index");
+                    csv.NextRecord();   // First line is done!
+
+                    #endregion
+
+                    #region ADD DATA ROWS (ROWS 2 -> N)
+
+                    for (int i = 0; i < PUIDs.Count; i++)
+                    {
+                        int puid = PUIDs[i];
+                        long cellnum = DICT_PUID_and_CN[puid];
+
+                        // Goal Values
+                        for (int j = 0; j < goals.Count; j++)
+                        {
+                            NatElement goal = goals[j];
+                            string tablename = goal.ElementTable;
+
+
+                        }
+
+
+                        csv.WriteField(cellnum);
+                        csv.WriteField(puid);
+                        csv.NextRecord();
+                    }
+
+                    #endregion
+
+
+
+                    //    #region ADD REMAINING ROWS
+
+                    //    for (int i = 0; i < LIST_PUIDs.Count; i++)  // each iteration = single planning unit record = single CSV row
+                    //    {
+                    //        int puid = LIST_PUIDs[i];
+
+                    //        #region FEATURE COLUMN VALUES
+
+                    //        if (!await QueuedTask.Run(async () =>
+                    //        {
+                    //            try
+                    //            {
+                    //                QueryFilter featureQF = new QueryFilter
+                    //                {
+                    //                    WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {puid}",
+                    //                    SubFields = string.Join(",", AreaFieldNames_Features)
+                    //                };
+
+                    //                using (Table table = await PRZH.GetTable_PUFeatures())
+                    //                using (RowCursor rowCursor = table.Search(featureQF, true))
+                    //                {
+                    //                    while (rowCursor.MoveNext())
+                    //                    {
+                    //                        using (Row row = rowCursor.Current)
+                    //                        {
+                    //                            for (int n = 0; n < AreaFieldNames_Features.Count; n++)
+                    //                            {
+                    //                                double area_m2 = Math.Round(Convert.ToDouble(row[AreaFieldNames_Features[n]]), 2, MidpointRounding.AwayFromZero);
+
+                    //                                // *** THESE ARE OPTIONAL *********************************
+                    //                                double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
+                    //                                double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
+                    //                                double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
+                    //                                // ********************************************************
+
+                    //                                csv.WriteField(area_m2);    // make this user-specifiable (e.g. user picks an output unit)
+                    //                            }
+                    //                        }
+                    //                    }
+                    //                }
+
+                    //                return true;
+                    //            }
+                    //            catch (Exception ex)
+                    //            {
+                    //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                    //                return false;
+                    //            }
+                    //        }))
+                    //        {
+                    //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing features values to CSV.", LogMessageType.ERROR), true, ++val);
+                    //            ProMsgBox.Show($"Error writing Features values to CSV.");
+                    //            return false;
+                    //        }
+
+                    //        #endregion
+
+                    //        #region INCLUDE AND EXCLUDE SELECTION RULES COLUMN VALUES
+
+                    //        if (!await QueuedTask.Run(async () =>
+                    //        {
+                    //            try
+                    //            {
+                    //                // Merge the Include and Exclude State Field names
+                    //                List<string> StateFieldNames = StateFieldNames_Includes.Concat(StateFieldNames_Excludes).ToList();
+
+                    //                if (StateFieldNames.Count == 0)
+                    //                {
+                    //                    return true;    // no point proceeding with selection rules, there aren't any
+                    //                }
+
+                    //                QueryFilter selruleQF = new QueryFilter
+                    //                {
+                    //                    WhereClause = $"{PRZC.c_FLD_TAB_PUSELRULES_ID} = {puid}",
+                    //                    SubFields = string.Join(",", StateFieldNames)
+                    //                };
+
+                    //                using (Table table = await PRZH.GetTable_PUSelRules())
+                    //                using (RowCursor rowCursor = table.Search(selruleQF, true))
+                    //                {
+                    //                    while (rowCursor.MoveNext())
+                    //                    {
+                    //                        using (Row row = rowCursor.Current)
+                    //                        {
+                    //                            // First write the includes
+                    //                            for (int n = 0; n < StateFieldNames_Includes.Count; n++)
+                    //                            {
+                    //                                int state = Convert.ToInt32(row[StateFieldNames_Includes[n]]);  // will be a zero or 1
+                    //                                csv.WriteField(state);
+                    //                            }
+
+                    //                            // Next write the excludes
+                    //                            for (int n = 0; n < StateFieldNames_Excludes.Count; n++)
+                    //                            {
+                    //                                int state = Convert.ToInt32(row[StateFieldNames_Excludes[n]]);  // will be a zero or 1
+                    //                                csv.WriteField(state);
+                    //                            }
+                    //                        }
+                    //                    }
+                    //                }
+
+                    //                return true;
+                    //            }
+                    //            catch (Exception ex)
+                    //            {
+                    //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                    //                return false;
+                    //            }
+                    //        }))
+                    //        {
+                    //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing selection rule values to CSV.", LogMessageType.ERROR), true, ++val);
+                    //            ProMsgBox.Show($"Error writing selection rule values to CSV.");
+                    //            return false;
+                    //        }
+
+                    //        #endregion
+
+                    //        #region WEIGHTS COLUMN VALUES
+
+
+
+                    //        #endregion
+
+                    //        // Write the Planning Unit ID to the final column
+                    //        csv.WriteField(puid);
+
+                    //        // Finish the line
+                    //        csv.NextRecord();
+                    //    }
+
+                    //    #endregion
+                    //}
+
+                }
+
+                // Compress Attribute CSV to gzip format
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zipping attribute CSV."), true, ++val);
+                FileInfo attribfi = new FileInfo(attributepath);
+                FileInfo attribzgipfi = new FileInfo(string.Concat(attribfi.FullName, ".gz"));
+
+                using (FileStream fileToBeZippedAsStream = attribfi.OpenRead())
+                using (FileStream gzipTargetAsStream = attribzgipfi.Create())
+                using (GZipStream gzipStream = new GZipStream(gzipTargetAsStream, CompressionMode.Compress))
+                {
+                    try
+                    {
+                        fileToBeZippedAsStream.CopyTo(gzipStream);
+                    }
+                    catch (Exception ex)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error zipping attribute CSV.\n{ex.Message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error zipping attribute CSV.\n{ex.Message}");
+                        return false;
+                    }
+                }
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Attribute CSV zipped."), true, ++val);
+
+                #endregion
+
+#if TEST
+
+#region GENERATE AND ZIP THE BOUNDARY CSV
 
                 string bndpath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_BND);
 
-                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+                var csvConfig_Bnd = new CsvConfiguration(CultureInfo.InvariantCulture)
                 {
                     HasHeaderRecord = false, // this is default
                     NewLine = Environment.NewLine
@@ -578,7 +918,7 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating boundary CSV..."), true, ++val);
                 using (var writer = new StreamWriter(bndpath))
-                using (var csv = new CsvWriter(writer, csvConfig))
+                using (var csv = new CsvWriter(writer, csvConfig_Bnd))
                 {
                     // *** ROW 1 => COLUMN NAMES
 
@@ -653,227 +993,12 @@ namespace NCC.PRZTools
                         return false;
                     }
                 }
+
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Boundary CSV zipped."), true, ++val);
 
-                #endregion
+#endregion
 
-                #region GET NATIONAL TABLE CONTENTS
-
-                // Get the National Themes (list of NatTheme objects sorted by Theme ID)
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes."), true, ++val);
-                var themes = await PRZH.GetNationalThemes();
-                if (themes == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national themes.");
-                    return false;
-                }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} national themes."), true, ++val);
-
-                // Get the National Elements (list of active NatElement objects sorted by Element ID)
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving active national elements."), true, ++val);
-                var elements = await PRZH.GetNationalElements(null, NationalElementStatus.Active);
-                if (elements == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving active national elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving active national elements.");
-                    return false;
-                }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elements.Count} active national elements."), true, ++val);
-
-                #endregion
-
-
-                #region GENERATE THE ATTRIBUTE CSV
-
-                string attributepath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_ATTR);
-
-                //using (var writer = new StreamWriter(attributepath))
-                //using (var csv = new CsvWriter(writer, csvConfig))
-                //{
-                //#region ADD COLUMN HEADERS (ROW 1)
-
-                //// First, add the Feature Variable Name Columns
-                //for (int i = 0; i < LIST_FeatureIDs.Count; i++)
-                //{
-                //    csv.WriteField(DICT_Features[LIST_FeatureIDs[i]].variable_name);
-                //}
-
-                //// Now the Include columns
-                //for (int i = 0; i < LIST_IncludeIDs.Count; i++)
-                //{
-                //    csv.WriteField(DICT_Includes[LIST_IncludeIDs[i]].variable_name);
-                //}
-
-                //// Now the Exclude columns
-                //for (int i = 0; i < LIST_ExcludeIDs.Count; i++)
-                //{
-                //    csv.WriteField(DICT_Excludes[LIST_ExcludeIDs[i]].variable_name);
-                //}
-
-                //// Insert the PU ID Column => must the "_index" and must be the final column in the attributes CSV
-                //csv.WriteField("_index");
-                //csv.NextRecord();   // First line is done!
-
-                //    #endregion
-
-                //    #region ADD REMAINING ROWS
-
-                //    for (int i = 0; i < LIST_PUIDs.Count; i++)  // each iteration = single planning unit record = single CSV row
-                //    {
-                //        int puid = LIST_PUIDs[i];
-
-                //        #region FEATURE COLUMN VALUES
-
-                //        if (!await QueuedTask.Run(async () =>
-                //        {
-                //            try
-                //            {
-                //                QueryFilter featureQF = new QueryFilter
-                //                {
-                //                    WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {puid}",
-                //                    SubFields = string.Join(",", AreaFieldNames_Features)
-                //                };
-
-                //                using (Table table = await PRZH.GetTable_PUFeatures())
-                //                using (RowCursor rowCursor = table.Search(featureQF, true))
-                //                {
-                //                    while (rowCursor.MoveNext())
-                //                    {
-                //                        using (Row row = rowCursor.Current)
-                //                        {
-                //                            for (int n = 0; n < AreaFieldNames_Features.Count; n++)
-                //                            {
-                //                                double area_m2 = Math.Round(Convert.ToDouble(row[AreaFieldNames_Features[n]]), 2, MidpointRounding.AwayFromZero);
-
-                //                                // *** THESE ARE OPTIONAL *********************************
-                //                                double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                //                                double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                //                                double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
-                //                                // ********************************************************
-
-                //                                csv.WriteField(area_m2);    // make this user-specifiable (e.g. user picks an output unit)
-                //                            }
-                //                        }
-                //                    }
-                //                }
-
-                //                return true;
-                //            }
-                //            catch (Exception ex)
-                //            {
-                //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                //                return false;
-                //            }
-                //        }))
-                //        {
-                //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing features values to CSV.", LogMessageType.ERROR), true, ++val);
-                //            ProMsgBox.Show($"Error writing Features values to CSV.");
-                //            return false;
-                //        }
-
-                //        #endregion
-
-                //        #region INCLUDE AND EXCLUDE SELECTION RULES COLUMN VALUES
-
-                //        if (!await QueuedTask.Run(async () =>
-                //        {
-                //            try
-                //            {
-                //                // Merge the Include and Exclude State Field names
-                //                List<string> StateFieldNames = StateFieldNames_Includes.Concat(StateFieldNames_Excludes).ToList();
-
-                //                if (StateFieldNames.Count == 0)
-                //                {
-                //                    return true;    // no point proceeding with selection rules, there aren't any
-                //                }
-
-                //                QueryFilter selruleQF = new QueryFilter
-                //                {
-                //                    WhereClause = $"{PRZC.c_FLD_TAB_PUSELRULES_ID} = {puid}",
-                //                    SubFields = string.Join(",", StateFieldNames)
-                //                };
-
-                //                using (Table table = await PRZH.GetTable_PUSelRules())
-                //                using (RowCursor rowCursor = table.Search(selruleQF, true))
-                //                {
-                //                    while (rowCursor.MoveNext())
-                //                    {
-                //                        using (Row row = rowCursor.Current)
-                //                        {
-                //                            // First write the includes
-                //                            for (int n = 0; n < StateFieldNames_Includes.Count; n++)
-                //                            {
-                //                                int state = Convert.ToInt32(row[StateFieldNames_Includes[n]]);  // will be a zero or 1
-                //                                csv.WriteField(state);
-                //                            }
-
-                //                            // Next write the excludes
-                //                            for (int n = 0; n < StateFieldNames_Excludes.Count; n++)
-                //                            {
-                //                                int state = Convert.ToInt32(row[StateFieldNames_Excludes[n]]);  // will be a zero or 1
-                //                                csv.WriteField(state);
-                //                            }
-                //                        }
-                //                    }
-                //                }
-
-                //                return true;
-                //            }
-                //            catch (Exception ex)
-                //            {
-                //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                //                return false;
-                //            }
-                //        }))
-                //        {
-                //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing selection rule values to CSV.", LogMessageType.ERROR), true, ++val);
-                //            ProMsgBox.Show($"Error writing selection rule values to CSV.");
-                //            return false;
-                //        }
-
-                //        #endregion
-
-                //        #region WEIGHTS COLUMN VALUES
-
-
-
-                //        #endregion
-
-                //        // Write the Planning Unit ID to the final column
-                //        csv.WriteField(puid);
-
-                //        // Finish the line
-                //        csv.NextRecord();
-                //    }
-
-                //    #endregion
-                //}
-
-                //// Compress Attribute CSV to gzip format
-                //FileInfo attribfi = new FileInfo(attributepath);
-                //FileInfo attribzgipfi = new FileInfo(string.Concat(attribfi.FullName, ".gz"));
-
-                //using (FileStream fileToBeZippedAsStream = attribfi.OpenRead())
-                //using (FileStream gzipTargetAsStream = attribzgipfi.Create())
-                //using (GZipStream gzipStream = new GZipStream(gzipTargetAsStream, CompressionMode.Compress))
-                //{
-                //    try
-                //    {
-                //        fileToBeZippedAsStream.CopyTo(gzipStream);
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        ProMsgBox.Show("Unable to compress the Attribute CSV file to GZIP..." + Environment.NewLine + Environment.NewLine + ex.Message);
-                //        return false;
-                //    }
-                //}
-
-                #endregion
-
-
-
-
+#endif
 
                 ProMsgBox.Show("Export of WTW Files Complete :)");
 
@@ -1235,21 +1360,6 @@ namespace NCC.PRZTools
                     }
                 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 return (true, "success");
             }
             catch (Exception ex)
@@ -1260,11 +1370,59 @@ namespace NCC.PRZTools
 
 
 
+        private async Task<bool> Test()
+        {
+            try
+            {
+                var a = await PRZH.GetValueFromElementTable(21, 19677416);
+
+                if (!a.success)
+                {
+                    ProMsgBox.Show($"Unable to retrieve Element 21 value for Cell Number 19677416\n{a.message}");
+                }
+                else
+                {
+                    ProMsgBox.Show($"Element 21 value for Cell Number 19677416: {a.value}");
+                }
+
+                a = await PRZH.GetValueFromElementTable(21, 19677415);
+
+                if (!a.success)
+                {
+                    ProMsgBox.Show($"Unable to retrieve Element 21 value for Cell Number 19677415\n{a.message}");
+                }
+                else
+                {
+                    ProMsgBox.Show($"Element 21 value for Cell Number 19677415: {a.value}");
+                }
+
+                a = await PRZH.GetValueFromElementTable(20, 19677415);
+
+                if (!a.success)
+                {
+                    ProMsgBox.Show($"Unable to retrieve Element 20 value for Cell Number 19677415\n{a.message}");
+                }
+                else
+                {
+                    ProMsgBox.Show($"Element 20 value for Cell Number 19677415: {a.value}");
+                }
+
+
+
+                ProMsgBox.Show("Bort");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         private void Placeholder()
         {
 
-            #region COMPILE FEATURE INFORMATION
+#region COMPILE FEATURE INFORMATION
 
             //// First, retrieve key info from the Feature Table
             //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving records from the {PRZC.c_TABLE_FEATURES} table..."), true, ++val);
@@ -1329,9 +1487,9 @@ namespace NCC.PRZTools
             //    AreaFieldNames_Features.Add(DICT_Features[LIST_FeatureIDs[k]].area_field_name);
             //}
 
-            #endregion
+#endregion
 
-            #region COMPILE SELECTION RULE INFORMATION
+#region COMPILE SELECTION RULE INFORMATION
 
             //// Retrieve key information from the Selection Rule table
 
@@ -1416,15 +1574,15 @@ namespace NCC.PRZTools
             //    StateFieldNames_Excludes.Add(DICT_Excludes[LIST_ExcludeIDs[k]].state_field_name);
             //}
 
-            #endregion
+#endregion
 
-            #region COMPILE WEIGHTS INFORMATION
+#region COMPILE WEIGHTS INFORMATION
 
             // TODO: Add this
 
-            #endregion
+#endregion
 
-            #region GENERATE THE ATTRIBUTE CSV
+#region GENERATE THE ATTRIBUTE CSV
 
             //string attributepath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_ATTR);
 
@@ -1631,9 +1789,9 @@ namespace NCC.PRZTools
             //    }
             //}
 
-            #endregion
+#endregion
 
-            #region GENERATE THE YAML CONFIG FILE
+#region GENERATE THE YAML CONFIG FILE
 
             //#region FEATURES
 
@@ -1743,11 +1901,11 @@ namespace NCC.PRZTools
 
             //#endregion
 
-            #endregion
+#endregion
 
         }
 
-        #endregion
+#endregion
 
 
     }

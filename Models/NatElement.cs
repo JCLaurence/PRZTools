@@ -46,7 +46,7 @@ namespace NCC.PRZTools
 
         public string ElementTable { get; private set; }
 
-        public int Presence { get; set; }
+        public int ElementPresence { get; set; }
 
     }
 }

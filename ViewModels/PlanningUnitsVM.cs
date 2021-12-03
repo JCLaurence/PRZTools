@@ -3424,7 +3424,7 @@ namespace NCC.PRZTools
                 }
 
                 // Build list of Active Elements
-                List<NatElement> elements = await PRZH.GetNationalElements(null, NationalElementStatus.Active);
+                List<NatElement> elements = await PRZH.GetNationalElements(null, NationalElementStatus.Active, null);
 
                 if (elements == null)
                 {
