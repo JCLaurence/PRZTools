@@ -2018,6 +2018,122 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<(bool success, Dictionary<long, int> dict, string message)> GetCellNumbersAndPUIDs()
+        {
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, null, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, null, "Planning Unit dataset not found.");
+                }
+
+                // Create the dictionary
+                Dictionary<long, int> dict = new Dictionary<long, int>();
+
+                // Populate the dictionary
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (!await GDBExists_Project())
+                    {
+                        return (false, "Project GDB not found");
+                    }
+
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, dict, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null, ex.Message);
+            }
+        }
+
         public static async Task<(bool success, Dictionary<long, int> dict)> GetCellNumbersAndPUIDs(PlanningUnitLayerType layerType)
         {
             try
@@ -2088,6 +2204,104 @@ namespace NCC.PRZTools
                                     if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
                                     {
                                         dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                    return true;
+                }))
+                {
+                    return (false, null);
+                }
+                else
+                {
+                    return (true, dict);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, null);
+            }
+        }
+
+        public static async Task<(bool success, Dictionary<int, long> dict)> GetPUIDsAndCellNumbers()
+        {
+            // I'm here!!!
+            try
+            {
+                Dictionary<int, long> dict = new Dictionary<int, long>();
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    if (!await GDBExists_Project())
+                    {
+                        return false;
+                    }
+
+                    if (layerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (layerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return false;
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
                                     }
                                 }
                             }
@@ -2212,7 +2426,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, double value, string message)> GetValueFromElementTable(int element_id, long cell_number)
+        public static async Task<(bool success, double value, string message)> GetValueFromElementTable_CellNum(int element_id, long cell_number)
         {
             double value = -9999;
 
@@ -2300,7 +2514,103 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable(int element_id)
+        public static async Task<(bool success, double value, string message)> GetValueFromElementTable_PUID(int element_id, int puid)
+        {
+            double value = -9999;
+
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, value, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                string table_name = GetElementTableName(element_id);
+                if (table_name == "")
+                {
+                    return (false, value, "Unable to retrieve element table name");
+                }
+
+                // Verify that table exists in project GDB
+                if (!await TableExists(table_name))
+                {
+                    return (false, value, $"Element table {table_name} not found in project geodatabase");
+                }
+
+                // Retrieve the cell number for the provided puid
+                var result = await GetCellNumberFromPUID(puid);
+                if (!result.success)
+                {
+                    return (false, value, result.message);
+                }
+
+                long cell_number = result.cell_number;
+
+                // retrieve the value for the cell number in the element table
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    QueryFilter queryFilter = new QueryFilter
+                    {
+                        WhereClause = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " = " + cell_number
+                    };
+
+                    using (Table table = await GetTable(table_name))
+                    {
+                        // Row Count
+                        int rows = table.GetCount(queryFilter);
+
+                        if (rows == 1)
+                        {
+                            using (RowCursor rowCursor = table.Search(queryFilter))
+                            {
+                                if (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+                                        return (true, "success");
+                                    }
+                                }
+                                else
+                                {
+                                    return (false, "no match found");
+                                }
+                            }
+                        }
+                        else if (rows == 0)
+                        {
+                            return (false, "no match found");
+                        }
+                        else if (rows > 1)
+                        {
+                            return (false, "more than one matching cell number found");
+                        }
+                        else
+                        {
+                            return (false, "there was a resounding kaboom");
+                        }
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, value, "success");
+                }
+                else
+                {
+                    return (false, value, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, value, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable_CellNum(int element_id)
         {
             try
             {
@@ -2355,6 +2665,65 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable_PUID(int element_id)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, null, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                string table_name = GetElementTableName(element_id);
+                if (table_name == "")
+                {
+                    return (false, null, "Unable to retrieve element table name");
+                }
+
+                // Verify that table exists in project GDB
+                if (!await TableExists(table_name))
+                {
+                    return (false, null, $"Element table {table_name} not found in project geodatabase");
+                }
+
+                // Get the Dictionaries of CellNumber keys, PUID values
+
+
+                // retrieve the dictionary of cell numbers and associated values
+                Dictionary<int, double> dict = new Dictionary<int, double>();
+
+                await QueuedTask.Run(async () =>
+                {
+                    using (Table table = await GetTable(table_name))
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                long cellnum = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                double cellval = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+
+                                if (cellnum > 0 && cellval > 0 && !dict.ContainsKey(cellnum))
+                                {
+                                    dict.Add(cellnum, cellval);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+
         public static string GetElementTableName(int element_id)
         {
             try
@@ -2372,6 +2741,330 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message);
                 return "";
+            }
+        }
+
+        public static async Task<(bool success, long cell_number, string message)> GetCellNumberFromPUID(int puid)
+        {
+            long cell_number = -9999;
+
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, cell_number, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, cell_number, "Planning Unit dataset not found.");
+                }
+
+                // Get the Cell Number
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = $"{PRZC.c_FLD_FC_PU_ID} = {puid}"
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        {
+                            // Row Count
+                            int rows = table.GetCount(queryFilter);
+
+                            if (rows == 1)
+                            {
+                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                {
+                                    if (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+
+                                            if (cell_number > 0)
+                                            {
+                                                return (true, "success");
+                                            }
+                                            else
+                                            {
+                                                return (false, "cell number value is zero or lower.");
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return (false, "no matching puid found");
+                                    }
+                                }
+                            }
+                            else if (rows == 0)
+                            {
+                                return (false, "no matching puid found");
+                            }
+                            else if (rows > 1)
+                            {
+                                return (false, "more than one matching puid found");
+                            }
+                            else
+                            {
+                                return (false, "there was a resounding kaboom");
+                            }
+                        }
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = $"{PRZC.c_FLD_RAS_PU_ID} = {puid}"
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        {
+                            // Row Count
+                            int rows = table.GetCount(queryFilter);
+
+                            if (rows == 1)
+                            {
+                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                {
+                                    if (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            cell_number = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+
+                                            if (cell_number > 0)
+                                            {
+                                                return (true, "success");
+                                            }
+                                            else
+                                            {
+                                                return (false, "cell number value is zero or lower.");
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return (false, "no matching puid found");
+                                    }
+                                }
+                            }
+                            else if (rows == 0)
+                            {
+                                return (false, "no matching puid found");
+                            }
+                            else if (rows > 1)
+                            {
+                                return (false, "more than one matching puid found");
+                            }
+                            else
+                            {
+                                return (false, "there was a resounding kaboom");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, cell_number, "success");
+                }
+                else
+                {
+                    return (false, cell_number, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, cell_number, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, long cell_number, string message)> GetPUIDFromCellNumber(long cell_number)
+        {
+            int puid = -9999;
+
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, cell_number, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, cell_number, "Planning Unit dataset not found.");
+                }
+
+                // Get the PUID
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = $"{PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER} = {cell_number}"
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        {
+                            // Row Count
+                            int rows = table.GetCount(queryFilter);
+
+                            if (rows == 1)
+                            {
+                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                {
+                                    if (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                            if (puid > 0)
+                                            {
+                                                return (true, "success");
+                                            }
+                                            else
+                                            {
+                                                return (false, "PUID value is zero or lower.");
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return (false, "no matching cell number found");
+                                    }
+                                }
+                            }
+                            else if (rows == 0)
+                            {
+                                return (false, "no matching cell number found");
+                            }
+                            else if (rows > 1)
+                            {
+                                return (false, "more than one matching cell number found");
+                            }
+                            else
+                            {
+                                return (false, "there was a resounding kaboom");
+                            }
+                        }
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER,
+                            WhereClause = $"{PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER} = {cell_number}"
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        {
+                            // Row Count
+                            int rows = table.GetCount(queryFilter);
+
+                            if (rows == 1)
+                            {
+                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                {
+                                    if (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                            if (puid > 0)
+                                            {
+                                                return (true, "success");
+                                            }
+                                            else
+                                            {
+                                                return (false, "puid value is zero or lower.");
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        return (false, "no matching cell number found");
+                                    }
+                                }
+                            }
+                            else if (rows == 0)
+                            {
+                                return (false, "no matching cell number found");
+                            }
+                            else if (rows > 1)
+                            {
+                                return (false, "more than one matching cell number found");
+                            }
+                            else
+                            {
+                                return (false, "there was a resounding kaboom");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, puid, "success");
+                }
+                else
+                {
+                    return (false, puid, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return (false, puid, ex.Message);
             }
         }
 

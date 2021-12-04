@@ -672,6 +672,12 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region ASSEMBLE ELEMENT LISTS
+
+
+
+                #endregion
+
                 #region GENERATE THE ATTRIBUTE CSV
 
                 string attributepath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_ATTR);
@@ -1374,7 +1380,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                var a = await PRZH.GetValueFromElementTable(21, 19677416);
+                var a = await PRZH.GetValueFromElementTable_CellNum(21, 19677416);
 
                 if (!a.success)
                 {
@@ -1385,7 +1391,7 @@ namespace NCC.PRZTools
                     ProMsgBox.Show($"Element 21 value for Cell Number 19677416: {a.value}");
                 }
 
-                a = await PRZH.GetValueFromElementTable(21, 19677415);
+                a = await PRZH.GetValueFromElementTable_CellNum(21, 19677415);
 
                 if (!a.success)
                 {
@@ -1396,7 +1402,7 @@ namespace NCC.PRZTools
                     ProMsgBox.Show($"Element 21 value for Cell Number 19677415: {a.value}");
                 }
 
-                a = await PRZH.GetValueFromElementTable(20, 19677415);
+                a = await PRZH.GetValueFromElementTable_CellNum(20, 19677415);
 
                 if (!a.success)
                 {
