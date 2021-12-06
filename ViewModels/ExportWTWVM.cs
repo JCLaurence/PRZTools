@@ -556,39 +556,33 @@ namespace NCC.PRZTools
 
                 // Get the Planning Unit IDs
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Planning Unit IDs..."), true, ++val);
-                var outcome = await PRZH.GetPUIDs();
-                if (!outcome.success)
+                var puid_outcome = await PRZH.GetPUIDList();
+                if (!puid_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs.\n{outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs.\n{puid_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{puid_outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{outcome.puids.Count} Planning Unit IDs retrieved."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{puid_outcome.puids.Count} Planning Unit IDs retrieved."), true, ++val);
                 }
-
-                // Convert to list and sort
-                List<int> PUIDs = outcome.puids.ToList();
-                PUIDs.Sort();
+                List<int> PUIDs = puid_outcome.puids;
 
                 // Get the National Grid Cell Numbers
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Cell Numbers..."), true, ++val);
-                var outcome2 = await PRZH.GetCellNumbers();
-                if (!outcome2.success)
+                var cellnum_outcome = await PRZH.GetCellNumberList();
+                if (!cellnum_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Cell Numbers.\n{outcome2.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving Cell Numbers.\n{outcome2.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{outcome2.cell_numbers.Count} Cell Numbers retrieved."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{cellnum_outcome.cell_numbers.Count} Cell Numbers retrieved."), true, ++val);
                 }
-
-                // Convert to list and sort
-                List<long> CellNumbers = outcome2.cell_numbers.ToList();
-                CellNumbers.Sort();
+                List<long> CellNumbers = cellnum_outcome.cell_numbers;
 
                 // Get the (PUID, Cell Number) Dictionary
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting the (PUID, Cell Number) dictionary."), true, ++val);
@@ -705,9 +699,103 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region ASSEMBLE ELEMENT LISTS
+                #region ASSEMBLE ELEMENT VALUE DICTIONARIES
 
+                // Get the Goal Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Goals dictionary ({goals.Count} goals)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_Goals = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < goals.Count; i++)
+                {
+                    // Get the goal
+                    NatElement goal = goals[i];
 
+                    // Get the values dictionary for this goal
+                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(goal.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Goals dictionary
+                        DICT_Goals.Add(goal.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Goals dictionary
+                        DICT_Goals.Add(goal.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Weight Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Weights dictionary ({weights.Count} weights)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_Weights = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < weights.Count; i++)
+                {
+                    // Get the weight
+                    NatElement weight = weights[i];
+
+                    // Get the values dictionary for this weight
+                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(weight.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Weights dictionary
+                        DICT_Weights.Add(weight.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Weights dictionary
+                        DICT_Weights.Add(weight.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Includes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Includes dictionary ({includes.Count} includes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_Includes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < includes.Count; i++)
+                {
+                    // Get the include
+                    NatElement include = includes[i];
+
+                    // Get the values dictionary for this include
+                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(include.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Includes dictionary
+                        DICT_Includes.Add(include.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Includes dictionary
+                        DICT_Includes.Add(include.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Excludes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Excludes dictionary ({excludes.Count} excludes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_Excludes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < excludes.Count; i++)
+                {
+                    // Get the exclude
+                    NatElement exclude = excludes[i];
+
+                    // Get the values dictionary for this exclude
+                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(exclude.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Excludes dictionary
+                        DICT_Excludes.Add(exclude.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Excludes dictionary
+                        DICT_Excludes.Add(exclude.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
 
                 #endregion
 
@@ -755,167 +843,133 @@ namespace NCC.PRZTools
                     csv.WriteField("_index");
                     csv.NextRecord();   // First line is done!
 
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Headers added."), true, ++val);
+
                     #endregion
 
                     #region ADD DATA ROWS (ROWS 2 -> N)
 
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Writing values..."), true, ++val);
                     for (int i = 0; i < PUIDs.Count; i++)
                     {
                         int puid = PUIDs[i];
-                        long cellnum = DICT_PUID_and_CN[puid];
 
-                        // Goal Values
+                        // Goals
                         for (int j = 0; j < goals.Count; j++)
                         {
+                            // Get the goal
                             NatElement goal = goals[j];
-                            string tablename = goal.ElementTable;
 
+                            if (DICT_Goals.ContainsKey(goal.ElementID))
+                            {
+                                var d = DICT_Goals[goal.ElementID]; // this is the dictionary of puid > value for this element id
 
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + goal
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + goal
+                                csv.WriteField(0);
+                            }
                         }
 
 
-                        csv.WriteField(cellnum);
+                        // Weights
+                        for (int j = 0; j < weights.Count; j++)
+                        {
+                            // Get the weight
+                            NatElement weight = weights[j];
+
+                            if (DICT_Weights.ContainsKey(weight.ElementID))
+                            {
+                                var d = DICT_Weights[weight.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + weight
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + weight
+                                csv.WriteField(0);
+                            }
+                        }
+
+                        // Includes
+                        for (int j = 0; j < includes.Count; j++)
+                        {
+                            // Get the include
+                            NatElement include = includes[j];
+
+                            if (DICT_Includes.ContainsKey(include.ElementID))
+                            {
+                                var d = DICT_Includes[include.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + include
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + include
+                                csv.WriteField(0);
+                            }
+                        }
+
+                        // Excludes
+                        for (int j = 0; j < excludes.Count; j++)
+                        {
+                            // Get the exclude
+                            NatElement exclude = excludes[j];
+
+                            if (DICT_Excludes.ContainsKey(exclude.ElementID))
+                            {
+                                var d = DICT_Excludes[exclude.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + exclude
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + exclude
+                                csv.WriteField(0);
+                            }
+                        }
+
+                        // Finally, write the Planning Unit ID and end the row
                         csv.WriteField(puid);
                         csv.NextRecord();
                     }
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PUIDs.Count} data rows written to CSV."), true, ++val);
 
                     #endregion
-
-
-
-                    //    #region ADD REMAINING ROWS
-
-                    //    for (int i = 0; i < LIST_PUIDs.Count; i++)  // each iteration = single planning unit record = single CSV row
-                    //    {
-                    //        int puid = LIST_PUIDs[i];
-
-                    //        #region FEATURE COLUMN VALUES
-
-                    //        if (!await QueuedTask.Run(async () =>
-                    //        {
-                    //            try
-                    //            {
-                    //                QueryFilter featureQF = new QueryFilter
-                    //                {
-                    //                    WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {puid}",
-                    //                    SubFields = string.Join(",", AreaFieldNames_Features)
-                    //                };
-
-                    //                using (Table table = await PRZH.GetTable_PUFeatures())
-                    //                using (RowCursor rowCursor = table.Search(featureQF, true))
-                    //                {
-                    //                    while (rowCursor.MoveNext())
-                    //                    {
-                    //                        using (Row row = rowCursor.Current)
-                    //                        {
-                    //                            for (int n = 0; n < AreaFieldNames_Features.Count; n++)
-                    //                            {
-                    //                                double area_m2 = Math.Round(Convert.ToDouble(row[AreaFieldNames_Features[n]]), 2, MidpointRounding.AwayFromZero);
-
-                    //                                // *** THESE ARE OPTIONAL *********************************
-                    //                                double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                    //                                double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-                    //                                double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
-                    //                                // ********************************************************
-
-                    //                                csv.WriteField(area_m2);    // make this user-specifiable (e.g. user picks an output unit)
-                    //                            }
-                    //                        }
-                    //                    }
-                    //                }
-
-                    //                return true;
-                    //            }
-                    //            catch (Exception ex)
-                    //            {
-                    //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                    //                return false;
-                    //            }
-                    //        }))
-                    //        {
-                    //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing features values to CSV.", LogMessageType.ERROR), true, ++val);
-                    //            ProMsgBox.Show($"Error writing Features values to CSV.");
-                    //            return false;
-                    //        }
-
-                    //        #endregion
-
-                    //        #region INCLUDE AND EXCLUDE SELECTION RULES COLUMN VALUES
-
-                    //        if (!await QueuedTask.Run(async () =>
-                    //        {
-                    //            try
-                    //            {
-                    //                // Merge the Include and Exclude State Field names
-                    //                List<string> StateFieldNames = StateFieldNames_Includes.Concat(StateFieldNames_Excludes).ToList();
-
-                    //                if (StateFieldNames.Count == 0)
-                    //                {
-                    //                    return true;    // no point proceeding with selection rules, there aren't any
-                    //                }
-
-                    //                QueryFilter selruleQF = new QueryFilter
-                    //                {
-                    //                    WhereClause = $"{PRZC.c_FLD_TAB_PUSELRULES_ID} = {puid}",
-                    //                    SubFields = string.Join(",", StateFieldNames)
-                    //                };
-
-                    //                using (Table table = await PRZH.GetTable_PUSelRules())
-                    //                using (RowCursor rowCursor = table.Search(selruleQF, true))
-                    //                {
-                    //                    while (rowCursor.MoveNext())
-                    //                    {
-                    //                        using (Row row = rowCursor.Current)
-                    //                        {
-                    //                            // First write the includes
-                    //                            for (int n = 0; n < StateFieldNames_Includes.Count; n++)
-                    //                            {
-                    //                                int state = Convert.ToInt32(row[StateFieldNames_Includes[n]]);  // will be a zero or 1
-                    //                                csv.WriteField(state);
-                    //                            }
-
-                    //                            // Next write the excludes
-                    //                            for (int n = 0; n < StateFieldNames_Excludes.Count; n++)
-                    //                            {
-                    //                                int state = Convert.ToInt32(row[StateFieldNames_Excludes[n]]);  // will be a zero or 1
-                    //                                csv.WriteField(state);
-                    //                            }
-                    //                        }
-                    //                    }
-                    //                }
-
-                    //                return true;
-                    //            }
-                    //            catch (Exception ex)
-                    //            {
-                    //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                    //                return false;
-                    //            }
-                    //        }))
-                    //        {
-                    //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing selection rule values to CSV.", LogMessageType.ERROR), true, ++val);
-                    //            ProMsgBox.Show($"Error writing selection rule values to CSV.");
-                    //            return false;
-                    //        }
-
-                    //        #endregion
-
-                    //        #region WEIGHTS COLUMN VALUES
-
-
-
-                    //        #endregion
-
-                    //        // Write the Planning Unit ID to the final column
-                    //        csv.WriteField(puid);
-
-                    //        // Finish the line
-                    //        csv.NextRecord();
-                    //    }
-
-                    //    #endregion
-                    //}
-
                 }
 
                 // Compress Attribute CSV to gzip format
@@ -945,7 +999,7 @@ namespace NCC.PRZTools
 
 #if TEST
 
-#region GENERATE AND ZIP THE BOUNDARY CSV
+                #region GENERATE AND ZIP THE BOUNDARY CSV
 
                 string bndpath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_BND);
 
@@ -1035,9 +1089,15 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Boundary CSV zipped."), true, ++val);
 
-#endregion
+                #endregion
 
 #endif
+
+                #region GENERATE THE YAML FILE
+
+
+
+                #endregion
 
                 ProMsgBox.Show("Export of WTW Files Complete :)");
 

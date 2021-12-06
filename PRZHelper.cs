@@ -2392,7 +2392,7 @@ namespace NCC.PRZTools
         /// success == false means the hashset was not retrieved, and the message string explains why.
         /// </summary>
         /// <returns></returns>
-        public static async Task<(bool success, HashSet<int> puids, string message)> GetPUIDs()
+        public static async Task<(bool success, HashSet<int> puids, string message)> GetPUIDHashset()
         {
             try
             {
@@ -2501,12 +2501,42 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
+        /// Returns a sorted list of Planning Unit IDs from the existing Planning Unit dataset (raster or feature).
+        /// Return value follows the success (bool), object (list), string (message) pattern.
+        /// success == false means the list was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<int> puids, string message)> GetPUIDList()
+        {
+            try
+            {
+                var outcome = await GetPUIDHashset();
+
+                if (outcome.success)
+                {
+                    List<int> puids = outcome.puids.ToList();
+                    puids.Sort();
+
+                    return (true, puids, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Retrieves a Hashset of National Grid Cell Numbers from the existing Planning Unit dataset (either Feature or Raster).
         /// Return value follows the success (bool), object (hashset), string (message) pattern.
         /// success == false means the hashset was not retrieved, and the message string explains why.
         /// </summary>
         /// <returns></returns>
-        public static async Task<(bool success, HashSet<long> cell_numbers, string message)> GetCellNumbers()
+        public static async Task<(bool success, HashSet<long> cell_numbers, string message)> GetCellNumberHashset()
         {
             try
             {
@@ -2614,7 +2644,35 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Returns a sorted list of National Grid Cell Numbers from the existing Planning Unit dataset (raster or feature).
+        /// Return value follows the success (bool), object (list), string (message) pattern.
+        /// success == false means the list was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<long> cell_numbers, string message)> GetCellNumberList()
+        {
+            try
+            {
+                var outcome = await GetCellNumberHashset();
 
+                if (outcome.success)
+                {
+                    List<long> cellnums = outcome.cell_numbers.ToList();
+                    cellnums.Sort();
+
+                    return (true, cellnums, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
 
 
 

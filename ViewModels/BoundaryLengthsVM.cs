@@ -461,7 +461,7 @@ namespace NCC.PRZTools
 
                 // Get Planning Unit IDs
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting Planning Unit IDs..."), true, ++val);
-                var outcome = await PRZH.GetPUIDs();
+                var outcome = await PRZH.GetPUIDHashset();
                 if (!outcome.success)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs\n{outcome.message}", LogMessageType.ERROR), true, ++val);

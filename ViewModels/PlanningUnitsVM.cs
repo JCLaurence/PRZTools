@@ -3445,7 +3445,7 @@ namespace NCC.PRZTools
 
                 // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
 
-                var outcome = await PRZH.GetCellNumbers();
+                var outcome = await PRZH.GetCellNumberHashset();
                 if (!outcome.success)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell numbers\n{outcome.message}", LogMessageType.ERROR), true, ++val);
