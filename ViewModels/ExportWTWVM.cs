@@ -555,120 +555,153 @@ namespace NCC.PRZTools
                 #region GET PUID AND NATGRID CELLNUMBER LISTS AND DICTIONARIES
 
                 // Get the Planning Unit IDs
-                HashSet<int> puids = await PRZH.GetHashSet_PUID(pu_result.puLayerType);
-                if (puids == null)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Planning Unit IDs..."), true, ++val);
+                var outcome = await PRZH.GetPUIDs();
+                if (!outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve master list of Planning Unit IDs", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve master list of Planning Unit IDs");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs.\n{outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {puids.Count} IDs."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{outcome.puids.Count} Planning Unit IDs retrieved."), true, ++val);
                 }
-                List<int> PUIDs = puids.ToList();
+
+                // Convert to list and sort
+                List<int> PUIDs = outcome.puids.ToList();
                 PUIDs.Sort();
 
                 // Get the National Grid Cell Numbers
-                HashSet<long> nums = await PRZH.GetPlanningUnitCellNumbers(pu_result.puLayerType);
-                if (nums == null)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Cell Numbers..."), true, ++val);
+                var outcome2 = await PRZH.GetCellNumbers();
+                if (!outcome2.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve master list of National Grid Cell Numbers", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve master list of National Grid Cell Numbers");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Cell Numbers.\n{outcome2.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Cell Numbers.\n{outcome2.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {nums.Count} IDs."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{outcome2.cell_numbers.Count} Cell Numbers retrieved."), true, ++val);
                 }
-                List<long> CellNums = nums.ToList();
-                CellNums.Sort();
 
-                var puidcell = await PRZH.GetPUIDsAndCellNumbers(pu_result.puLayerType);
+                // Convert to list and sort
+                List<long> CellNumbers = outcome2.cell_numbers.ToList();
+                CellNumbers.Sort();
+
+                // Get the (PUID, Cell Number) Dictionary
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting the (PUID, Cell Number) dictionary."), true, ++val);
+                var puidcell = await PRZH.GetPUIDsAndCellNumbers();
                 if (!puidcell.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve dictionary of PUIDs and associated Cell Numbers", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve dictionary of PUIDs and associated Cell Numbers");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {puidcell.dict.Count} PUID > Cell Number entries"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved the dictionary ({puidcell.dict.Count} entries)."), true, ++val);
                 }
 
-                var cellpuid = await PRZH.GetCellNumbersAndPUIDs(pu_result.puLayerType);
+                // store the dictionary
+                var DICT_PUID_and_CN = puidcell.dict;
+
+                // Get the (Cell Number, PUID) Dictionary
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting the (Cell Number, PUID) dictionary."), true, ++val);
+                var cellpuid = await PRZH.GetCellNumbersAndPUIDs();
                 if (!cellpuid.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve dictionary of Cell Numbers and associated PUIDs", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve dictionary of Cell Numbers and associated PUIDs");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {cellpuid.dict.Count} Cell Number > PUID entries"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved the dictionary ({cellpuid.dict.Count} entries)."), true, ++val);
                 }
 
-                var DICT_PUID_and_CN = puidcell.dict;
+                // store the dictionary
                 var DICT_CN_and_puids = cellpuid.dict;
 
                 #endregion
 
                 #region GET NATIONAL TABLE CONTENTS
 
-                // Get the National Themes (list of NatTheme objects sorted by Theme ID)
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes."), true, ++val);
-                var themes = await PRZH.GetNationalThemes();
-                if (themes == null)
+                // Get the National Themes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
+                var theme_outcome = await PRZH.GetNationalThemes();
+                if (!theme_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national themes.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national themes.\n{theme_outcome.message}");
                     return false;
                 }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} national themes."), true, ++val);
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {theme_outcome.themes.Count} national themes."), true, ++val);
+                }
+                List<NatTheme> themes = theme_outcome.themes;
 
-                // Get the Goals
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Goal} elements."), true, ++val);
-                var goals = await PRZH.GetNationalElements(NationalElementType.Goal, NationalElementStatus.Active, NationalElementPresence.Present);
-                if (goals == null)
+                // Get the goals
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Goal} elements..."), true, ++val);
+                var goal_outcome = await PRZH.GetNationalElements(NationalElementType.Goal, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (!goal_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Goal} elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving {NationalElementType.Goal} elements.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}");
                     return false;
                 }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goals.Count} {NationalElementType.Goal} elements."), true, ++val);
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goal_outcome.elements.Count} national {NationalElementType.Goal} elements."), true, ++val);
+                }
+                List<NatElement> goals = goal_outcome.elements;
 
-                // Get the Weights
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Weight} elements."), true, ++val);
-                var weights = await PRZH.GetNationalElements(NationalElementType.Weight, NationalElementStatus.Active, NationalElementPresence.Present);
-                if (weights == null)
+                // Get the weights
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Weight} elements..."), true, ++val);
+                var weight_outcome = await PRZH.GetNationalElements(NationalElementType.Weight, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (!weight_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Weight} elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving {NationalElementType.Weight} elements.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}");
                     return false;
                 }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weights.Count} {NationalElementType.Weight} elements."), true, ++val);
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weight_outcome.elements.Count} national {NationalElementType.Weight} elements."), true, ++val);
+                }
+                List<NatElement> weights = weight_outcome.elements;
 
-                // Get the Includes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Include} elements."), true, ++val);
-                var includes = await PRZH.GetNationalElements(NationalElementType.Include, NationalElementStatus.Active, NationalElementPresence.Present);
-                if (includes == null)
+                // Get the includes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Include} elements..."), true, ++val);
+                var include_outcome = await PRZH.GetNationalElements(NationalElementType.Include, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (!include_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Include} elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving {NationalElementType.Include} elements.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}");
                     return false;
                 }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {includes.Count} {NationalElementType.Include} elements."), true, ++val);
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {include_outcome.elements.Count} national {NationalElementType.Include} elements."), true, ++val);
+                }
+                List<NatElement> includes = include_outcome.elements;
 
-                // Get the Excludes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving {NationalElementType.Exclude} elements."), true, ++val);
-                var excludes = await PRZH.GetNationalElements(NationalElementType.Exclude, NationalElementStatus.Active, NationalElementPresence.Present);
-                if (excludes == null)
+                // Get the excludes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Exclude} elements..."), true, ++val);
+                var exclude_outcome = await PRZH.GetNationalElements(NationalElementType.Exclude, NationalElementStatus.Active, NationalElementPresence.Present);
+                if (!exclude_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving {NationalElementType.Exclude} elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving {NationalElementType.Exclude} elements.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}");
                     return false;
                 }
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {excludes.Count} {NationalElementType.Exclude} elements."), true, ++val);
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {exclude_outcome.elements.Count} national {NationalElementType.Exclude} elements."), true, ++val);
+                }
+                List<NatElement> excludes = exclude_outcome.elements;
 
                 #endregion
 
@@ -1380,39 +1413,12 @@ namespace NCC.PRZTools
         {
             try
             {
-                var a = await PRZH.GetValueFromElementTable_CellNum(21, 19677416);
 
-                if (!a.success)
-                {
-                    ProMsgBox.Show($"Unable to retrieve Element 21 value for Cell Number 19677416\n{a.message}");
-                }
-                else
-                {
-                    ProMsgBox.Show($"Element 21 value for Cell Number 19677416: {a.value}");
-                }
+                object o = null;
 
-                a = await PRZH.GetValueFromElementTable_CellNum(21, 19677415);
+                string t = (string)o;
 
-                if (!a.success)
-                {
-                    ProMsgBox.Show($"Unable to retrieve Element 21 value for Cell Number 19677415\n{a.message}");
-                }
-                else
-                {
-                    ProMsgBox.Show($"Element 21 value for Cell Number 19677415: {a.value}");
-                }
-
-                a = await PRZH.GetValueFromElementTable_CellNum(20, 19677415);
-
-                if (!a.success)
-                {
-                    ProMsgBox.Show($"Unable to retrieve Element 20 value for Cell Number 19677415\n{a.message}");
-                }
-                else
-                {
-                    ProMsgBox.Show($"Element 20 value for Cell Number 19677415: {a.value}");
-                }
-
+                ProMsgBox.Show($"t isnullorempty: {string.IsNullOrEmpty(t)}");
 
 
                 ProMsgBox.Show("Bort");

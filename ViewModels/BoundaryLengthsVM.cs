@@ -460,9 +460,20 @@ namespace NCC.PRZTools
                 #region TABULATE PUIDS, PERIMETERS, AND SHARED EDGES
 
                 // Get Planning Unit IDs
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting list of Planning Unit IDs..."), true, ++val);
-                HashSet<int> PUIDs = await PRZH.GetHashSet_PUID(pu_result.puLayerType);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {PUIDs.Count} Planning Unit IDs"), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting Planning Unit IDs..."), true, ++val);
+                var outcome = await PRZH.GetPUIDs();
+                if (!outcome.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs\n{outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{outcome.message}");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {outcome.puids.Count} Planning Unit IDs"), true, ++val);
+                }
+
+                HashSet<int> PUIDs = outcome.puids;
 
                 // Get full perimeters of each planning unit
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting planning unit perimeters..."), true, ++val);

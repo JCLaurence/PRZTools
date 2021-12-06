@@ -3409,33 +3409,35 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
                 }
 
-                // Build list of Themes
-                List<NatTheme> themes = await PRZH.GetNationalThemes();
-
-                if (themes == null)
+                // Get the National Themes (list of NatTheme objects sorted by Theme ID)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
+                var theme_outcome = await PRZH.GetNationalThemes();
+                if (!theme_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of National Themes.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve list of National Themes.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national themes.\n{theme_outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {themes.Count} National Themes."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {theme_outcome.themes.Count} national themes."), true, ++val);
                 }
+                List<NatTheme> themes = theme_outcome.themes;
 
-                // Build list of Active Elements
-                List<NatElement> elements = await PRZH.GetNationalElements(null, NationalElementStatus.Active, null);
-
-                if (elements == null)
+                // Get the Active National Elements
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national elements..."), true, ++val);
+                var elem_outcome = await PRZH.GetNationalElements();
+                if (!elem_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve list of active National Elements.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve list of active National Elements");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national elements.\n{elem_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national elements.\n{elem_outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elements.Count} active National Elements."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {elem_outcome.elements.Count} national elements."), true, ++val);
                 }
+                List<NatElement> elements = elem_outcome.elements;
 
                 #endregion
 
@@ -3443,18 +3445,19 @@ namespace NCC.PRZTools
 
                 // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
 
-                HashSet<long> puCellNumbers = await PRZH.GetPlanningUnitCellNumbers(puLayerType);
-
-                if (puCellNumbers == null)
+                var outcome = await PRZH.GetCellNumbers();
+                if (!outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the cell number hashset.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to retrieve the cell number hashset.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell numbers\n{outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve cell numbers\n{outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {puCellNumbers.Count} cell numbers."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {outcome.cell_numbers.Count} cell numbers."), true, ++val);
                 }
+
+                HashSet<long> puCellNumbers = outcome.cell_numbers;
 
                 List<int> elements_with_intersection = new List<int>();
 
