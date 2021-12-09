@@ -281,7 +281,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the temp table if present
-                if (await PRZH.TableExists(temp_table))
+                if (await PRZH.TableExists_Project(temp_table))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {temp_table} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(temp_table);
@@ -300,7 +300,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the temp fc if present
-                if (await PRZH.FCExists(temp_fc))
+                if (await PRZH.FCExists_Project(temp_fc))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {temp_fc} feature class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(temp_fc);

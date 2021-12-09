@@ -1,4 +1,4 @@
-﻿//#define TEST
+﻿#define TEST
 
 using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
@@ -51,7 +51,7 @@ namespace NCC.PRZTools
         private bool _settings_Rad_SpatialFormat_Raster_IsChecked;
         private string _txt_PlanningUnitLabel;
 
-        private SpatialReference Export_SR = SpatialReferences.WebMercator;
+        private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
 
 
 
@@ -624,7 +624,7 @@ namespace NCC.PRZTools
 
                 // Get the National Themes
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
-                var theme_outcome = await PRZH.GetNationalThemes();
+                var theme_outcome = await PRZH.GetNationalThemes(NationalThemePresence.Present);
                 if (!theme_outcome.success)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
@@ -700,6 +700,8 @@ namespace NCC.PRZTools
                 #endregion
 
                 #region ASSEMBLE ELEMENT VALUE DICTIONARIES
+
+                // Populate a unique list of active themes
 
                 // Get the Goal Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Goals dictionary ({goals.Count} goals)..."), true, ++val);
@@ -1093,9 +1095,201 @@ namespace NCC.PRZTools
 
 #endif
 
+
                 #region GENERATE THE YAML FILE
 
+                #region THEMES & GOALS
 
+                // Create the yamlTheme list
+                List<YamlTheme> yamlThemes = new List<YamlTheme>();
+
+                for (int i = 0; i < themes.Count; i++)
+                {
+                    NatTheme theme = themes[i];
+
+                    // Get all goals belonging to this theme
+                    List<NatElement> theme_goals = goals.Where(g => g.ThemeID == theme.ThemeID).OrderBy(g => g.ElementID).ToList();
+
+                    // Skip this theme if (through some weird alternate universe) it has no associated goals
+                    if (theme_goals.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    // Assemble the yaml Goal list
+                    List<YamlFeature> yamlGoals = new List<YamlFeature>();
+
+                    // Populate the yaml Goal list
+                    for (int j = 0; j < theme_goals.Count; j++)
+                    {
+                        // Get the goal element
+                        NatElement goal = theme_goals[j];
+
+                        // Build the Yaml Legend
+                        YamlLegend yamlLegend = new YamlLegend();   // default legend
+
+                        // Build the Yaml Variable
+                        YamlVariable yamlVariable = new YamlVariable();
+                        yamlVariable.index = goal.ElementTable;
+                        yamlVariable.units = "m\xB2";   // not sure about this one
+                        yamlVariable.provenance = WTWProvenanceType.national.ToString();
+                        yamlVariable.legend = yamlLegend;
+
+                        // Build the Yaml Goal
+                        YamlFeature yamlGoal = new YamlFeature();
+                        yamlGoal.name = goal.ElementName;
+                        yamlGoal.status = true; // enabled or disabled
+                        yamlGoal.visible = true;
+                        yamlGoal.hidden = false;
+                        yamlGoal.goal = 0.5;        // needs to be retrieved from somewhere, or just left to 0.5
+                        yamlGoal.variable = yamlVariable;
+
+                        // Add to list
+                        yamlGoals.Add(yamlGoal);
+                    }
+
+                    // Create the Yaml Theme
+                    YamlTheme yamlTheme = new YamlTheme();
+
+                    yamlTheme.name = theme.ThemeName;
+                    yamlTheme.feature = yamlGoals.ToArray();
+
+                    // Add to list
+                    yamlThemes.Add(yamlTheme);
+                }
+
+                #endregion
+
+                #region WEIGHTS
+
+                // Create the yaml Weights list
+                List<YamlWeight> yamlWeights = new List<YamlWeight>();
+
+                for (int i = 0; i < weights.Count; i++)
+                {
+                    // Get the weight
+                    NatElement weight = weights[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = weight.ElementTable;
+                    yamlVariable.units = "bananas";
+                    yamlVariable.provenance = WTWProvenanceType.national.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Weight
+                    YamlWeight yamlWeight = new YamlWeight();
+                    yamlWeight.name = weight.ElementName;
+                    yamlWeight.status = true; // enabled or disabled
+                    yamlWeight.visible = true;
+                    yamlWeight.hidden = false;
+                    yamlWeight.factor = 0;                  // what's this?
+                    yamlWeight.variable = yamlVariable;
+
+                    // Add to list
+                    yamlWeights.Add(yamlWeight);
+                }
+
+                #endregion
+
+                #region INCLUDES
+
+                // Create the yaml Includes list
+                List<YamlInclude> yamlIncludes = new List<YamlInclude>();
+
+                for (int i = 0; i < includes.Count; i++)
+                {
+                    // Get the include
+                    NatElement include = includes[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = include.ElementTable;
+                    yamlVariable.units = "borts";
+                    yamlVariable.provenance = WTWProvenanceType.national.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Include
+                    YamlInclude yamlInclude = new YamlInclude();
+                    yamlInclude.name = include.ElementName;
+                    yamlInclude.mandatory = false;      // what's this
+                    yamlInclude.status = true; // enabled or disabled
+                    yamlInclude.visible = true;
+                    yamlInclude.hidden = false;
+                    yamlInclude.variable = yamlVariable;
+
+                    // Add to list
+                    yamlIncludes.Add(yamlInclude);
+                }
+
+                #endregion
+
+                #region EXCLUDES
+
+                // Create the yaml Excludes list
+                List<YamlExclude> yamlExcludes = new List<YamlExclude>();
+
+                for (int i = 0; i < excludes.Count; i++)
+                {
+                    // Get the exclude
+                    NatElement exclude = excludes[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = exclude.ElementTable;
+                    yamlVariable.units = "umps";
+                    yamlVariable.provenance = WTWProvenanceType.national.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Exclude
+                    YamlExclude yamlExclude = new YamlExclude();
+                    yamlExclude.name = exclude.ElementName;
+                    yamlExclude.mandatory = false;      // what's this
+                    yamlExclude.status = true; // enabled or disabled
+                    yamlExclude.visible = true;
+                    yamlExclude.hidden = false;
+                    yamlExclude.variable = yamlVariable;
+
+                    // Add to list
+                    yamlExcludes.Add(yamlExclude);
+                }
+
+                #endregion
+
+                #region YAML PACKAGE
+
+                YamlPackage yamlPackage = new YamlPackage();
+                yamlPackage.name = "TEMP PROJECT NAME";                 // Could be customized later, or derived from the ArcGIS Pro project name
+                yamlPackage.mode = WTWModeType.advanced.ToString();     // Which of these should I use?
+                yamlPackage.themes = yamlThemes.ToArray();
+                yamlPackage.weights = yamlWeights.ToArray();
+                yamlPackage.includes = yamlIncludes.ToArray();
+                // yamlPackage.excludes = yamlExcludes.ToArray();       // Excludes are not part of the yaml schema (yet)
+
+                ISerializer builder = new SerializerBuilder().DisableAliases().Build();
+                string the_yaml = builder.Serialize(yamlPackage);
+
+                string yamlpath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_YAML);
+                try
+                {
+                    File.WriteAllText(yamlpath, the_yaml);
+                }
+                catch (Exception ex)
+                {
+                    ProMsgBox.Show("Unable to write the Yaml Config File..." + Environment.NewLine + Environment.NewLine + ex.Message);
+                    return false;
+                }
+
+                #endregion
 
                 #endregion
 
@@ -1278,7 +1472,7 @@ namespace NCC.PRZTools
                 // Delete temp feature classes
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC1} and {PRZC.c_FC_TEMP_WTW_FC2} feature classes..."), true, ++val);
 
-                if (await PRZH.FCExists(PRZC.c_FC_TEMP_WTW_FC1))
+                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC1))
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC1);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
@@ -1294,7 +1488,7 @@ namespace NCC.PRZTools
                     }
                 }
 
-                if (await PRZH.FCExists(PRZC.c_FC_TEMP_WTW_FC2))
+                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2))
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
@@ -1443,7 +1637,7 @@ namespace NCC.PRZTools
 
                 // Delete temp feature class
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC2} feature class..."), true, ++val);
-                if (await PRZH.FCExists(PRZC.c_FC_TEMP_WTW_FC2))
+                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2))
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
@@ -1473,12 +1667,6 @@ namespace NCC.PRZTools
         {
             try
             {
-
-                object o = null;
-
-                string t = (string)o;
-
-                ProMsgBox.Show($"t isnullorempty: {string.IsNullOrEmpty(t)}");
 
 
                 ProMsgBox.Show("Bort");
@@ -1977,7 +2165,7 @@ namespace NCC.PRZTools
 
         }
 
-#endregion
+        #endregion
 
 
     }

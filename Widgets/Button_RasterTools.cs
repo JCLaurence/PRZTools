@@ -38,34 +38,34 @@ namespace NCC.PRZTools
 
                 #region MapView Check
 
-                // Ensure that there is an active MapView
-                var mapView = MapView.Active;
-                if (mapView == null)
-                {
-                    ProMsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
-                    return;
-                }
+                //// Ensure that there is an active MapView
+                //var mapView = MapView.Active;
+                //if (mapView == null)
+                //{
+                //    ProMsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
+                //    return;
+                //}
 
-                // Ensure that MapView is ready to work with
-                if (!mapView.IsReady)
-                {
-                    ProMsgBox.Show("The Map View is not ready!  Try again later.");
-                    return;
-                }
+                //// Ensure that MapView is ready to work with
+                //if (!mapView.IsReady)
+                //{
+                //    ProMsgBox.Show("The Map View is not ready!  Try again later.");
+                //    return;
+                //}
 
-                // Ensure that the MapView is a regular 2D MapView
-                if (mapView.ViewingMode != MapViewingMode.Map)
-                {
-                    ProMsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
-                    return;
-                }
+                //// Ensure that the MapView is a regular 2D MapView
+                //if (mapView.ViewingMode != MapViewingMode.Map)
+                //{
+                //    ProMsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
+                //    return;
+                //}
 
-                Map map = mapView.Map;
-                if (map.MapType != MapType.Map)
-                {
-                    ProMsgBox.Show("The Map must be of type 'Map'");
-                    return;
-                }
+                //Map map = mapView.Map;
+                //if (map.MapType != MapType.Map)
+                //{
+                //    ProMsgBox.Show("The Map must be of type 'Map'");
+                //    return;
+                //}
 
                 #endregion
 

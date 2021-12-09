@@ -9,7 +9,7 @@
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
     Title="RASTER TOOLS"
-    Height="400" Width="500" MinHeight="300"
+    Height="400" Width="500" MinHeight="300" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
@@ -121,6 +121,22 @@
                             Command="{Binding CmdRasterToTable}"
                             Style="{DynamicResource Esri_Button}"
                             Content="Convert Raster to Table"/>
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="5,0,0,5"
+                            Padding="5"
+                            Command="{Binding CmdNationalRaster_Zero}"
+                            Style="{DynamicResource Esri_Button}"
+                            Content="National Raster (zeros)"/>
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="5,0,0,5"
+                            Padding="5"
+                            Command="{Binding CmdNationalRaster_CellNum}"
+                            Style="{DynamicResource Esri_Button}"
+                            Content="National Raster (cell numbers)"/>
 
                     </DockPanel>
 

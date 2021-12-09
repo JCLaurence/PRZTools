@@ -1195,8 +1195,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the National db exists (if user has specified National Grid)
-                string natpath = PRZH.GetPath_NationalDB();
-                var result = await PRZH.GDBExists_National();
+                string natpath = PRZH.GetPath_NatGDB();
+                var result = await PRZH.GDBExists_Nat();
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
                     if (!result.exists)
@@ -1593,6 +1593,54 @@ namespace NCC.PRZTools
                 // Add coded value #2
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Absent, NationalElementPresence.Absent.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
+                // Create the ThemePresence domain
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_THEME_PRESENCE} coded value domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {PRZC.c_DOMAIN_THEME_PRESENCE} domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating {PRZC.c_DOMAIN_THEME_PRESENCE} domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Domain created."), true, ++val);
+                }
+
+                // Add coded value #1
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 1 to the {PRZC.c_DOMAIN_THEME_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, (int)NationalThemePresence.Present, NationalThemePresence.Present.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
+                // Add coded value #2
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_THEME_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, (int)NationalThemePresence.Absent, NationalThemePresence.Absent.ToString());
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
                 if (toolOutput == null)
@@ -3355,7 +3403,7 @@ namespace NCC.PRZTools
 
                 // COPY THE ELEMENT TABLE
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string natdbpath = PRZH.GetPath_NationalDB();
+                string natdbpath = PRZH.GetPath_NatGDB();
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_ELEMENTS} Table..."), true, ++val);
                 string inputelempath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_ELEMENTS);
@@ -3374,8 +3422,8 @@ namespace NCC.PRZTools
                 }
 
                 // INSERT EXTRA FIELDS INTO ELEMENT TABLE
-                string fldPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_ELEMENT_PRESENCE + "';";
-                string flds = fldPresence;
+                string fldElemPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_ELEMENT_PRESENCE + "';";
+                string flds = fldElemPresence;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_ELEMENTS, flds);
@@ -3407,6 +3455,25 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table copied successfully."), true, ++val);
+                }
+
+                // INSERT EXTRA FIELDS INTO THEME TABLE
+                string fldThemePresence = PRZC.c_FLD_TAB_THEME_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_THEME_PRESENCE + "';";
+                flds = fldThemePresence;
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_THEMES, flds);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the local {PRZC.c_TABLE_NAT_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the local {PRZC.c_TABLE_NAT_THEMES} table.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
                 }
 
                 // Get the National Themes (list of NatTheme objects sorted by Theme ID)
@@ -3445,46 +3512,52 @@ namespace NCC.PRZTools
 
                 // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
 
-                var outcome = await PRZH.GetCellNumberHashset();
-                if (!outcome.success)
+                var gethash_outcome = await PRZH.GetCellNumberHashset();
+                if (!gethash_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell numbers\n{outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to retrieve cell numbers\n{outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell numbers\n{gethash_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve cell numbers\n{gethash_outcome.message}");
                     return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {outcome.cell_numbers.Count} cell numbers."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {gethash_outcome.cell_numbers.Count} cell numbers."), true, ++val);
                 }
 
-                HashSet<long> puCellNumbers = outcome.cell_numbers;
+                HashSet<long> puCellNumbers = gethash_outcome.cell_numbers;
 
                 List<int> elements_with_intersection = new List<int>();
+                HashSet<int> themes_with_intersection = new HashSet<int>();
 
                 foreach (var element in elements)
                 {
-                    var (result, dict) = await PRZH.GetElementTableIntersection(element.ElementTable, puCellNumbers);
+                    // Attempt to retrieve intersection dictionary
+                    var getint_outcome = await PRZH.GetElementIntersection(element.ElementTable, puCellNumbers);
 
-                    // attempt to get intersection failed
-                    if (!result)
+                    if (!getint_outcome.success)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve values from the {element.ElementTable} table.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Unable to retrieve values from the {element.ElementTable} table.");
+                        // Failed, exit
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve values from the {element.ElementTable} table.\n{getint_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve values from the {element.ElementTable} table.\n{getint_outcome.message}");
                         return false;
                     }
-
-                    // no intersection
-                    else if (dict.Count == 0)
+                    else if (getint_outcome.dict.Count == 0)
                     {
+                        // No intersection, continue
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: no intersection with planning units."), true, ++val);
                         continue;
                     }
-
-                    // intersection!
                     else
                     {
+                        // Intersection found, deal with it
                         elements_with_intersection.Add(element.ElementID);
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: intersection with {dict.Keys.Count} planning units."), true, ++val);
+
+                        if (element.ThemeID > 0)
+                        {
+                            themes_with_intersection.Add(element.ThemeID);
+                        }
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: intersection with {getint_outcome.dict.Count} planning units."), true, ++val);
                     }
 
                     // Create the table
@@ -3548,7 +3621,7 @@ namespace NCC.PRZTools
                                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                                     {
-                                        foreach(var kvp in dict)
+                                        foreach(var kvp in getint_outcome.dict)
                                         {
                                             rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = kvp.Key;
                                             rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = kvp.Value;
@@ -3716,8 +3789,101 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Field updated."), true, val++);
-                    return true;
                 }
+
+                #endregion
+
+                #region UPDATE THE LOCAL THEME TABLE PRESENCE FIELD
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field in local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
+
+                if (!await QueuedTask.Run(async () =>
+                {
+                    bool success = false;
+
+                    try
+                    {
+                        var loader = new EditOperation();
+                        loader.Name = $"{PRZC.c_FLD_TAB_THEME_PRESENCE} updater";
+                        loader.ShowProgressor = false;
+                        loader.ShowModalMessageAfterFailure = false;
+                        loader.SelectNewFeatures = false;
+                        loader.SelectModifiedFeatures = false;
+
+                        using (Table tab = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                        {
+                            loader.Callback(async (context) =>
+                            {
+                                using (Table table = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                                using (RowCursor rowCursor = table.Search(null, false))
+                                {
+                                    while (rowCursor.MoveNext())
+                                    {
+                                        using (Row row = rowCursor.Current)
+                                        {
+                                            int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_THEME_THEME_ID]);
+
+                                            if (themes_with_intersection.Contains(theme_id))
+                                            {
+                                                row[PRZC.c_FLD_TAB_THEME_PRESENCE] = (int)NationalThemePresence.Present;
+                                            }
+                                            else
+                                            {
+                                                row[PRZC.c_FLD_TAB_THEME_PRESENCE] = (int)NationalThemePresence.Absent;
+                                            }
+
+                                            row.Store();
+                                            context.Invalidate(row);
+                                        }
+                                    }
+                                }
+                            }, tab);
+                        }
+
+                        // Execute all the queued "creates"
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation - updating element record presence..."), true, max, ++val);
+                        success = loader.Execute();
+
+                        if (success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving updates..."), true, max, ++val);
+                            if (!await Project.Current.SaveEditsAsync())
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving updates.", LogMessageType.ERROR), true, max, ++val);
+                                ProMsgBox.Show($"Error saving updates.");
+                                return false;
+                            }
+                            else
+                            {
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updates saved."), true, max, ++val);
+                            }
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to update records: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
+                            ProMsgBox.Show($"Edit Operation error: unable to update records: {loader.ErrorMessage}");
+                        }
+
+                        return success;
+                    }
+                    catch (Exception ex)
+                    {
+                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                        return false;
+                    }
+                }))
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field.", LogMessageType.ERROR), true, val++);
+                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Field updated."), true, val++);
+                }
+
+                // we're done here
+                return true;
 
                 #endregion
             }

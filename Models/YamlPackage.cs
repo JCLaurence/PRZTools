@@ -23,7 +23,7 @@ namespace NCC.PRZTools
         public string author_email = "richard.schuster@natureconservancy.ca";
 
         // Name of shapefile - .shp extension and no path (e.g. the_shapefile.shp)
-        public string spatial_path = PRZC.c_FILE_WTW_EXPORT_SHP;
+        public string spatial_path = PRZC.c_FILE_WTW_EXPORT_SPATIAL + ".shp";
 
         // Name of attribute csv file - .csv extension and no path (e.g. the_attributes.csv)
         public string attribute_path = PRZC.c_FILE_WTW_EXPORT_ATTR;

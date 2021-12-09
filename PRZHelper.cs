@@ -249,12 +249,26 @@ namespace NCC.PRZTools
             }
         }
 
-        // National DB
-        public static string GetPath_NationalDB()
+        // National GDB
+        public static string GetPath_NatGDB()
         {
             try
             {
                 return Properties.Settings.Default.NATDB_PATH;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        // Raster Tools Scratch Geodatabase
+        public static string GetPath_RTScratchGDB()
+        {
+            try
+            {
+                return Properties.Settings.Default.RT_SCRATCH_FGDB;
             }
             catch (Exception ex)
             {
@@ -296,6 +310,7 @@ namespace NCC.PRZTools
                 return null;
             }
         }
+
 
         #endregion
 
@@ -477,35 +492,17 @@ namespace NCC.PRZTools
 
         #region OBJECT EXISTENCE
 
-        #region GENERIC OBJECTS
+        #region GENERIC OBJECT EXISTENCE
 
-        public static async Task<bool> FCExists(string FCName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetGDB_Project())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
+        // Very Generic!
 
-                    return await FCExists(gdb, FCName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> FCExists(Geodatabase geodatabase, string FCName)
+        public static async Task<bool> FCExists(Geodatabase geodatabase, string fc_name)
         {
             try
             {
                 await QueuedTask.Run(() =>
                 {
-                    using (FeatureClassDefinition fcDef = geodatabase.GetDefinition<FeatureClassDefinition>(FCName))
+                    using (FeatureClassDefinition fcDef = geodatabase.GetDefinition<FeatureClassDefinition>(fc_name))
                     {
                         // Error will be thrown by using statement above if FC of the supplied name doesn't exist in GDB
                     }
@@ -519,33 +516,13 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> TableExists(string TabName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetGDB_Project())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, TabName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists(Geodatabase geodatabase, string TabName)
+        public static async Task<bool> TableExists(Geodatabase geodatabase, string table_name)
         {
             try
             {
                 await QueuedTask.Run(() =>
                 {
-                    using (TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(TabName))
+                    using (TableDefinition tabdef = geodatabase.GetDefinition<TableDefinition>(table_name))
                     {
                         // Error will be thrown by using statement above if table of the supplied name doesn't exist in GDB
                     }
@@ -559,64 +536,13 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> NatTableExists(string TabName)
-        {
-            try
-            {
-                return await QueuedTask.Run(async () =>
-                {
-                    try
-                    {
-                        using (Geodatabase gdb = await GetGDB_National())
-                        {
-                            if (gdb == null)
-                            {
-                                return false;
-                            }
-
-                            return await TableExists(gdb, TabName);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                });
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> RasterExists(string rasterName)
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetGDB_Project())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await RasterExists(gdb, rasterName);
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static async Task<bool> RasterExists(Geodatabase geodatabase, string rasterName)
+        public static async Task<bool> RasterExists(Geodatabase geodatabase, string raster_name)
         {
             try
             {
                 await QueuedTask.Run(() =>
                 {
-                    using (RasterDatasetDefinition rasDef = geodatabase.GetDefinition<RasterDatasetDefinition>(rasterName))
+                    using (RasterDatasetDefinition rasDef = geodatabase.GetDefinition<RasterDatasetDefinition>(raster_name))
                     {
                         // Error will be thrown by using statement above if rasterdataset of the supplied name doesn't exist in GDB
                     }
@@ -629,9 +555,184 @@ namespace NCC.PRZTools
                 return false;
             }
         }
+
+        // Project GDB objects by name
+
+        public static async Task<bool> FCExists_Project(string fc_name)
+        {
+            try
+            {
+                using (Geodatabase geodatabase = await GetGDB_Project())
+                {
+                    if (geodatabase == null)
+                    {
+                        return false;
+                    }
+
+                    return await FCExists(geodatabase, fc_name);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> TableExists_Project(string table_name)
+        {
+            try
+            {
+                using (Geodatabase geodatabase = await GetGDB_Project())
+                {
+                    if (geodatabase == null)
+                    {
+                        return false;
+                    }
+
+                    return await TableExists(geodatabase, table_name);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> RasterExists_Project(string raster_name)
+        {
+            try
+            {
+                using (Geodatabase geodatabase = await GetGDB_Project())
+                {
+                    if (geodatabase == null)
+                    {
+                        return false;
+                    }
+
+                    return await RasterExists(geodatabase, raster_name);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // RTScratch GDB objects by name
+
+        public static async Task<bool> FCExists_RTScratch(string fc_name)
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    // retrieve geodatabase
+                    var outcome = await GetGDB_RTScratch();
+
+                    if (!outcome.success)
+                    {
+                        return false;
+                    }
+
+                    // determine existence
+                    using (Geodatabase geodatabase = outcome.geodatabase)
+                    {
+                        return await FCExists(geodatabase, fc_name);
+                    }
+                });
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> TableExists_RTScratch(string table_name)
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    // retrieve geodatabase
+                    var outcome = await GetGDB_RTScratch();
+
+                    if (!outcome.success)
+                    {
+                        return false;
+                    }
+
+                    // determine existence
+                    using (Geodatabase geodatabase = outcome.geodatabase)
+                    {
+                        return await TableExists(geodatabase, table_name);
+                    }
+                });
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static async Task<bool> RasterExists_RTScratch(string raster_name)
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    // retrieve geodatabase
+                    var outcome = await GetGDB_RTScratch();
+
+                    if (!outcome.success)
+                    {
+                        return false;
+                    }
+
+                    // determine existence
+                    using (Geodatabase geodatabase = outcome.geodatabase)
+                    {
+                        return await RasterExists(geodatabase, raster_name);
+                    }
+                });
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // National GDB tables by name
+
+        public static async Task<bool> TableExists_Nat(string table_name)
+        {
+            try
+            {
+                return await QueuedTask.Run(async () =>
+                {
+                    // retrieve geodatabase
+                    var outcome = await GetGDB_Nat();
+
+                    if (!outcome.success)
+                    {
+                        return false;
+                    }
+
+                    // determine existence
+                    using (Geodatabase geodatabase = outcome.geodatabase)
+                    {
+                        return await TableExists(geodatabase, table_name);
+                    }
+                });
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         #endregion
 
-        #region SPECIFIC OBJECTS
+        #region SPECIFIC OBJECT EXISTENCE
 
         public static bool FolderExists_Project()
         {
@@ -699,13 +800,52 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool exists, NationalDbType dbType, string message)> GDBExists_National()
+        public static async Task<(bool exists, string message)> GDBExists_RTScratch()
+        {
+            try
+            {
+                var outcome = await QueuedTask.Run(() =>
+                {
+                    // get path
+                    string gdbpath = GetPath_RTScratchGDB();
+
+                    if (gdbpath == null)
+                    {
+                        return (false, "Unable to retrieve path to RT Scratch Geodatabase");
+                    }
+
+                    // Construct Uri and connection object
+                    Uri u = new Uri(gdbpath);
+                    FileGeodatabaseConnectionPath fgcpath = new FileGeodatabaseConnectionPath(u);
+
+                    try
+                    {
+                        using (Geodatabase gdb = new Geodatabase(fgcpath)) { }
+                    }
+                    catch (GeodatabaseNotFoundOrOpenedException e)
+                    {
+                        return (false, e.Message);
+                    }
+
+                    // If I get to this point, the file gdb exists and was successfully opened
+                    return (true, "success");
+                });
+
+                return outcome;
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        public static async Task<(bool exists, NationalDbType dbType, string message)> GDBExists_Nat()
         {
             try
             {
                 return await QueuedTask.Run(() =>
                 {
-                    string dbpath = GetPath_NationalDB();
+                    string dbpath = GetPath_NatGDB();
 
                     if (dbpath == null)
                     {
@@ -1053,32 +1193,11 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<bool> TableExists_PURasLookup()
-        {
-            try
-            {
-                using (Geodatabase gdb = await GetGDB_Project())
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_PU_RAS_LOOKUP);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
         #endregion
 
         #endregion
 
-        #region OBJECT RETRIEVAL
+        #region GEODATABASE OBJECT RETRIEVAL
 
         #region GENERIC OBJECTS
 
@@ -1166,6 +1285,10 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region SPECIFIC OBJECTS
+
+        #region GEODATABASES
+
         public static async Task<Geodatabase> GetGDB_Project()
         {
             try
@@ -1199,7 +1322,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<Geodatabase> GetGDB_National()
+        public static async Task<(bool success, Geodatabase geodatabase, string message)> GetGDB_Nat()
         {
             try
             {
@@ -1209,62 +1332,289 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // NationalDB Path
-                string dbpath = GetPath_NationalDB();
+                // Nat Geodatabase Path
+                string gdbpath = GetPath_NatGDB();
 
                 // Determine if the database actually exists
-                var result = await GDBExists_National();
+                var outcome = await GDBExists_Nat();
 
-                if (!result.exists)
+                if (!outcome.exists)
                 {
-                    return null;
+                    return (false, null, outcome.message);
                 }
 
                 // Create a Uri
-                Uri u = new Uri(dbpath);
-                if (u == null)
-                {
-                    return null;
-                }
+                Uri u = new Uri(gdbpath);
 
                 // Create a geodatabase object
-                Geodatabase gdb = null;
+                Geodatabase geodatabase = null;
 
-                // get the national geodatabase (depends on type)
-                if (result.dbType == NationalDbType.FileGDB)
+                if (outcome.dbType == NationalDbType.FileGDB)
                 {
                     FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
 
                     try
                     {
-                        gdb = new Geodatabase(conn);
+                        geodatabase = new Geodatabase(conn);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        return null;
+                        return (false, null, ex.Message);
                     }
                 }
-                else if (result.dbType == NationalDbType.EnterpriseGDB)
+                else if (outcome.dbType == NationalDbType.EnterpriseGDB)
                 {
                     DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
 
                     try
                     {
-                        gdb = new Geodatabase(conn);
+                        geodatabase = new Geodatabase(conn);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        return null;
+                        return (false, null, ex.Message);
                     }
                 }
 
-                return gdb;
+                return (true, geodatabase, "success");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return null;
+                return (false, null, ex.Message);
             }
         }
+
+        public static async Task<(bool success, Geodatabase geodatabase, string message)> GetGDB_RTScratch()
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // RT Scratch Geodatabase Path
+                string gdbpath = GetPath_RTScratchGDB();
+
+                // Determine if the database actually exists
+                var outcome = await GDBExists_RTScratch();
+
+                if (!outcome.exists)
+                {
+                    return (false, null, outcome.message);
+                }
+
+                // Create a Uri
+                Uri uri = new Uri(gdbpath);
+                FileGeodatabaseConnectionPath connpath = new FileGeodatabaseConnectionPath(uri);
+
+                // Try to create a geodatabase object from the connection path object
+                Geodatabase gdb = null;
+
+                try
+                {
+                    gdb = new Geodatabase(connpath);
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, ex.Message);
+                }
+
+                // If I make it to here, the geodatabase has been created
+                return (true, gdb, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region RTSCRATCH GDB OBJECTS
+
+        public static async Task<(bool success, FeatureClass featureclass, string message)> GetFeatureClass_RTScratch(string fc_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase exists
+                var gdbexists_outcome = await GDBExists_RTScratch();
+                if (!gdbexists_outcome.exists)
+                {
+                    return (false, null, gdbexists_outcome.message);
+                }
+
+                // Retrieve geodatabase
+                var getgdb_outcome = await GetGDB_RTScratch();
+                if (!getgdb_outcome.success)
+                {
+                    return (false, null, getgdb_outcome.message);
+                }
+
+                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                {
+                    // ensure feature class exists
+                    if (!await FCExists(geodatabase, fc_name))
+                    {
+                        return (false, null, "Feature class not found in geodatabase");
+                    }
+
+                    // get the feature class
+                    FeatureClass featureClass = geodatabase.OpenDataset<FeatureClass>(fc_name);
+
+                    return (true, featureClass, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, Table table, string message)> GetTable_RTScratch(string table_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase exists
+                var gdbexists_outcome = await GDBExists_RTScratch();
+                if (!gdbexists_outcome.exists)
+                {
+                    return (false, null, gdbexists_outcome.message);
+                }
+
+                // Retrieve geodatabase
+                var getgdb_outcome = await GetGDB_RTScratch();
+                if (!getgdb_outcome.success)
+                {
+                    return (false, null, getgdb_outcome.message);
+                }
+
+                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                {
+                    // ensure table exists
+                    if (!await TableExists(geodatabase, table_name))
+                    {
+                        return (false, null, "Table not found in geodatabase");
+                    }
+
+                    // get the table
+                    Table table = geodatabase.OpenDataset<Table>(table_name);
+
+                    return (true, table, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, RasterDataset rasterDataset, string message)> GetRaster_RTScratch(string raster_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase exists
+                var gdbexists_outcome = await GDBExists_RTScratch();
+                if (!gdbexists_outcome.exists)
+                {
+                    return (false, null, gdbexists_outcome.message);
+                }
+
+                // Retrieve geodatabase
+                var getgdb_outcome = await GetGDB_RTScratch();
+                if (!getgdb_outcome.success)
+                {
+                    return (false, null, getgdb_outcome.message);
+                }
+
+                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                {
+                    // ensure raster exists
+                    if (!await RasterExists(geodatabase, raster_name))
+                    {
+                        return (false, null, "Raster not found in geodatabase");
+                    }
+
+                    // get the raster
+                    RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(raster_name);
+
+                    return (true, rasterDataset, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region NAT GDB OBJECTS
+
+        public static async Task<(bool success, Table table, string message)> GetTable_Nat(string table_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase exists
+                var gdbexists_outcome = await GDBExists_Nat();
+                if (!gdbexists_outcome.exists)
+                {
+                    return (false, null, gdbexists_outcome.message);
+                }
+
+                // Retrieve geodatabase
+                var getgdb_outcome = await GetGDB_Nat();
+                if (!getgdb_outcome.success)
+                {
+                    return (false, null, getgdb_outcome.message);
+                }
+
+                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                {
+                    // ensure table exists
+                    if (!await TableExists(geodatabase, table_name))
+                    {
+                        return (false, null, "Table not found in geodatabase");
+                    }
+
+                    // get the table
+                    Table table = geodatabase.OpenDataset<Table>(table_name);
+
+                    return (true, table, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
 
         public static async Task<RasterDataset> GetRaster_PU()
         {
@@ -1685,36 +2035,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<Table> GetNatTable(string table_name)
-        {
-            try
-            {
-                Table table = await QueuedTask.Run(async () =>
-                {
-                    using (Geodatabase gdb = await GetGDB_National())
-                    {
-                        if (gdb == null) return null;
-
-                        try
-                        {
-                            table = gdb.OpenDataset<Table>(table_name);
-                            return table;
-                        }
-                        catch
-                        {
-                            return null;
-                        }
-                    }
-                });
-
-                return table;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
+        #endregion
 
         #endregion
 
@@ -1758,7 +2079,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Theme table
-                if (!await TableExists(PRZC.c_TABLE_NAT_THEMES))
+                if (!await TableExists_Project(PRZC.c_TABLE_NAT_THEMES))
                 {
                     return (false, null, $"{PRZC.c_TABLE_NAT_THEMES} table not found in project geodatabase");
                 }
@@ -1779,6 +2100,7 @@ namespace NCC.PRZTools
                                 int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_THEME_THEME_ID]);
                                 string name = (string)row[PRZC.c_FLD_TAB_THEME_NAME];
                                 string code = (string)row[PRZC.c_FLD_TAB_THEME_CODE];
+                                int theme_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_THEME_PRESENCE]);
 
                                 if (id > 0 && !string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
                                 {
@@ -1786,7 +2108,8 @@ namespace NCC.PRZTools
                                     {
                                         ThemeID = id,
                                         ThemeName = name,
-                                        ThemeCode = code
+                                        ThemeCode = code,
+                                        ThemePresence = theme_presence
                                     };
 
                                     themes.Add(theme);
@@ -1816,6 +2139,36 @@ namespace NCC.PRZTools
             }
         }
 
+        public static async Task<(bool success, List<NatTheme> themes, string message)> GetNationalThemes(NationalThemePresence? presence)
+        {
+            try
+            {
+                // Get the full Theme list
+                var outcome = await GetNationalThemes();
+
+                if (!outcome.success)
+                {
+                    return (false, null, outcome.message);
+                }
+
+                List<NatTheme> themes = outcome.themes;
+
+                // Filter the list based on filter criteria:
+
+                // By Presence
+                IEnumerable<NatTheme> v = (presence != null) ? themes.Where(t => t.ThemePresence == ((int)presence)) : themes;
+
+                // Sort by Theme ID
+                v.OrderBy(t => t.ThemeID);
+
+                return (true, v.ToList(), "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
         public static async Task<(bool success, List<NatElement> elements, string message)> GetNationalElements()
         {
             try
@@ -1827,7 +2180,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Element table
-                if (!await TableExists(PRZC.c_TABLE_NAT_ELEMENTS))
+                if (!await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS))
                 {
                     return (false, null, $"{PRZC.c_TABLE_NAT_ELEMENTS} table not found in project geodatabase");
                 }
@@ -1992,7 +2345,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists(table_name))
+                if (!await TableExists_Project(table_name))
                 {
                     return (false, value, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2084,7 +2437,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists(table_name))
+                if (!await TableExists_Project(table_name))
                 {
                     return (false, value, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2183,7 +2536,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists(table_name))
+                if (!await TableExists_Project(table_name))
                 {
                     return (false, null, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2245,7 +2598,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists(table_name))
+                if (!await TableExists_Project(table_name))
                 {
                     return (false, null, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2312,464 +2665,64 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool result, Dictionary<long, double> dict)> GetElementTableIntersection(string table_name, HashSet<long> puCellNumbers)
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersection(string table_name, HashSet<long> cell_numbers)
         {
             try
             {
+                // Ensure that the National GDB exists
+                if (!(await GDBExists_Nat()).exists)
+                {
+                    return (false, null, "National geodatabase not found");
+                }
+
+                // Ensure that the table exists
+                if (!await TableExists_Nat(table_name))
+                {
+                    return (false, null, "Element table not found");
+                }
+
+                // Create the dictionary
                 Dictionary<long, double> dict = new Dictionary<long, double>();
 
-                // national db exists?
-                if (!(await GDBExists_National()).exists)
-                {
-                    ProMsgBox.Show($"Unable to retrieve National DB.");
-                    return (false, new Dictionary<long, double>());
-                }
-
-                // table exists?
-                if (!await NatTableExists(table_name))
-                {
-                    ProMsgBox.Show($"Table does not exist in national database: {table_name}");
-                    return (false, new Dictionary<long, double>());
-                }
-
-                if (!await QueuedTask.Run(async () =>
+                // Populate dictionary
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
                 {
                     try
                     {
-                        using (Table table = await GetNatTable(table_name))
+                        // try getting the e0000n table
+                        var gettable_outcome = await GetTable_Nat(table_name);
+
+                        if (!gettable_outcome.success)
+                        {
+                            return (false, "Unable to retrieve table");
+                        }
+
+                        // iterate
+                        using (Table table = gettable_outcome.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    var a = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
-                                    var b = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+                                    var cell_number = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                    var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
 
-                                    if (puCellNumbers.Contains(a))
+                                    // check for presence of cell_number in the hashset
+                                    if (cell_numbers.Contains(cell_number))
                                     {
-                                        dict.Add(a, b);
+                                        // save the KVP
+                                        dict.Add(cell_number, cell_value);
                                     }
                                 }
                             }
                         }
 
-                        return true;
+                        return (true, "success");
                     }
                     catch (Exception ex)
                     {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    return (false, new Dictionary<long, double>());
-                }
-                else
-                {
-                    return (true, dict);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return (false, new Dictionary<long, double>());
-            }
-        }
-
-
-
-
-
-
-        #endregion
-
-        #region LISTS AND HASHSETS
-
-        /// <summary>
-        /// Retrieves a Hashset of Planning Unit IDs from the existing Planning Unit dataset (either Feature or Raster).
-        /// Return value follows the success (bool), object (hashset), string (message) pattern.
-        /// success == false means the hashset was not retrieved, and the message string explains why.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, HashSet<int> puids, string message)> GetPUIDHashset()
-        {
-            try
-            {
-                // Check for GDB
-                if (!await GDBExists_Project())
-                {
-                    return (false, null, "Project GDB not found.");
-                }
-
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
-                {
-                    return (false, null, "Planning Unit dataset not found.");
-                }
-
-                // Create the hashset
-                HashSet<int> puids = new HashSet<int>();
-
-                // Populate the hashset
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
-                {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        if (!await FCExists_PU())
-                        {
-                            return (false, "PU feature class not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_FC_PU_ID
-                        };
-
-                        using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                    if (puid > 0)
-                                    {
-                                        puids.Add(puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!await RasterExists_PU())
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID
-                        };
-
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                    if (puid > 0)
-                                    {
-                                        puids.Add(puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
-                    }
-                });
-
-                if (outcome.success)
-                {
-                    return (true, puids, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Returns a sorted list of Planning Unit IDs from the existing Planning Unit dataset (raster or feature).
-        /// Return value follows the success (bool), object (list), string (message) pattern.
-        /// success == false means the list was not retrieved, and the message string explains why.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<int> puids, string message)> GetPUIDList()
-        {
-            try
-            {
-                var outcome = await GetPUIDHashset();
-
-                if (outcome.success)
-                {
-                    List<int> puids = outcome.puids.ToList();
-                    puids.Sort();
-
-                    return (true, puids, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieves a Hashset of National Grid Cell Numbers from the existing Planning Unit dataset (either Feature or Raster).
-        /// Return value follows the success (bool), object (hashset), string (message) pattern.
-        /// success == false means the hashset was not retrieved, and the message string explains why.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, HashSet<long> cell_numbers, string message)> GetCellNumberHashset()
-        {
-            try
-            {
-                // Check for GDB
-                if (!await GDBExists_Project())
-                {
-                    return (false, null, "Project GDB not found.");
-                }
-
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
-                {
-                    return (false, null, "Planning Unit dataset not found.");
-                }
-
-                // Create the hashset
-                HashSet<long> cellnums = new HashSet<long>();
-
-                // Populate the hashset
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
-                {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        if (!await FCExists_PU())
-                        {
-                            return (false, "PU feature class not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (cellnum > 0)
-                                    {
-                                        cellnums.Add(cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!await RasterExists_PU())
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (cellnum > 0)
-                                    {
-                                        cellnums.Add(cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
-                    }
-                });
-
-                if (outcome.success)
-                {
-                    return (true, cellnums, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Returns a sorted list of National Grid Cell Numbers from the existing Planning Unit dataset (raster or feature).
-        /// Return value follows the success (bool), object (list), string (message) pattern.
-        /// success == false means the list was not retrieved, and the message string explains why.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<long> cell_numbers, string message)> GetCellNumberList()
-        {
-            try
-            {
-                var outcome = await GetCellNumberHashset();
-
-                if (outcome.success)
-                {
-                    List<long> cellnums = outcome.cell_numbers.ToList();
-                    cellnums.Sort();
-
-                    return (true, cellnums, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-
-
-        #endregion
-
-        public static async Task<(bool success, Dictionary<long, int> dict, string message)> GetCellNumbersAndPUIDs()
-        {
-            try
-            {
-                // Check for GDB
-                if (!await GDBExists_Project())
-                {
-                    return (false, null, "Project GDB not found.");
-                }
-
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
-                {
-                    return (false, null, "Planning Unit dataset not found.");
-                }
-
-                // Create the dictionary
-                Dictionary<long, int> dict = new Dictionary<long, int>();
-
-                // Populate the dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
-                {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        if (!await FCExists_PU())
-                        {
-                            return (false, "PU feature class not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
-                        };
-
-                        using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
-                                    {
-                                        dict.Add(cellnum, puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!await RasterExists_PU())
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
-                        };
-
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
-
-                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
-                                    {
-                                        dict.Add(cellnum, puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
+                        return (false, ex.Message);
                     }
                 });
 
@@ -2788,116 +2741,11 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Dictionary<int, long> dict, string message)> GetPUIDsAndCellNumbers()
-        {
-            try
-            {
-                // Check for GDB
-                if (!await GDBExists_Project())
-                {
-                    return (false, null, "Project GDB not found.");
-                }
+        #endregion
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
-                {
-                    return (false, null, "Planning Unit dataset not found.");
-                }
+        #region PUID AND CELL NUMBERS
 
-                // Create the dictionary
-                Dictionary<int, long> dict = new Dictionary<int, long>();
-
-                // Populate the dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
-                {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        if (!await FCExists_PU())
-                        {
-                            return (false, "PU feature class not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        using (Table table = await GetFC_PU())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
-                                    {
-                                        dict.Add(puid, cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!await RasterExists_PU())
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
-                                    {
-                                        dict.Add(puid, cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
-                    }
-                });
-
-                if (outcome.success)
-                {
-                    return (true, dict, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
+        #region SINGLE VALUES
 
         public static async Task<(bool success, long cell_number, string message)> GetCellNumberFromPUID(int puid)
         {
@@ -3220,6 +3068,527 @@ namespace NCC.PRZTools
                 return (false, puid, ex.Message);
             }
         }
+
+        #endregion
+
+        #region LISTS AND HASHSETS
+
+        /// <summary>
+        /// Retrieves a Hashset of Planning Unit IDs from the existing Planning Unit dataset (either Feature or Raster).
+        /// Return value follows the success (bool), object (hashset), string (message) pattern.
+        /// success == false means the hashset was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, HashSet<int> puids, string message)> GetPUIDHashset()
+        {
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, null, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, null, "Planning Unit dataset not found.");
+                }
+
+                // Create the hashset
+                HashSet<int> puids = new HashSet<int>();
+
+                // Populate the hashset
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                    if (puid > 0)
+                                    {
+                                        puids.Add(puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                    if (puid > 0)
+                                    {
+                                        puids.Add(puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, puids, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Returns a sorted list of Planning Unit IDs from the existing Planning Unit dataset (raster or feature).
+        /// Return value follows the success (bool), object (list), string (message) pattern.
+        /// success == false means the list was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<int> puids, string message)> GetPUIDList()
+        {
+            try
+            {
+                var outcome = await GetPUIDHashset();
+
+                if (outcome.success)
+                {
+                    List<int> puids = outcome.puids.ToList();
+                    puids.Sort();
+
+                    return (true, puids, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieves a Hashset of National Grid Cell Numbers from the existing Planning Unit dataset (either Feature or Raster).
+        /// Return value follows the success (bool), object (hashset), string (message) pattern.
+        /// success == false means the hashset was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, HashSet<long> cell_numbers, string message)> GetCellNumberHashset()
+        {
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, null, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, null, "Planning Unit dataset not found.");
+                }
+
+                // Create the hashset
+                HashSet<long> cellnums = new HashSet<long>();
+
+                // Populate the hashset
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (cellnum > 0)
+                                    {
+                                        cellnums.Add(cellnum);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (cellnum > 0)
+                                    {
+                                        cellnums.Add(cellnum);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, cellnums, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Returns a sorted list of National Grid Cell Numbers from the existing Planning Unit dataset (raster or feature).
+        /// Return value follows the success (bool), object (list), string (message) pattern.
+        /// success == false means the list was not retrieved, and the message string explains why.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<long> cell_numbers, string message)> GetCellNumberList()
+        {
+            try
+            {
+                var outcome = await GetCellNumberHashset();
+
+                if (outcome.success)
+                {
+                    List<long> cellnums = outcome.cell_numbers.ToList();
+                    cellnums.Sort();
+
+                    return (true, cellnums, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region DICTIONARIES
+
+        public static async Task<(bool success, Dictionary<long, int> dict, string message)> GetCellNumbersAndPUIDs()
+        {
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, null, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, null, "Planning Unit dataset not found.");
+                }
+
+                // Create the dictionary
+                Dictionary<long, int> dict = new Dictionary<long, int>();
+
+                // Populate the dictionary
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+
+                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    {
+                                        dict.Add(cellnum, puid);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, dict, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static async Task<(bool success, Dictionary<int, long> dict, string message)> GetPUIDsAndCellNumbers()
+        {
+            try
+            {
+                // Check for GDB
+                if (!await GDBExists_Project())
+                {
+                    return (false, null, "Project GDB not found.");
+                }
+
+                // Check for PU
+                var pu_result = await PUExists();
+                if (!pu_result.exists)
+                {
+                    return (false, null, "Planning Unit dataset not found.");
+                }
+
+                // Create the dictionary
+                Dictionary<int, long> dict = new Dictionary<int, long>();
+
+                // Populate the dictionary
+                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                {
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        if (!await FCExists_PU())
+                        {
+                            return (false, "PU feature class not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (Table table = await GetFC_PU())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        if (!await RasterExists_PU())
+                        {
+                            return (false, "PU raster dataset not found");
+                        }
+
+                        QueryFilter queryFilter = new QueryFilter()
+                        {
+                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
+                        };
+
+                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
+
+                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    {
+                                        dict.Add(puid, cellnum);
+                                    }
+                                }
+                            }
+                        }
+
+                        return (true, "success");
+                    }
+                    else
+                    {
+                        return (false, "there was a resounding kaboom");
+                    }
+                });
+
+                if (outcome.success)
+                {
+                    return (true, dict, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #endregion
 
         #endregion
 

@@ -59,6 +59,12 @@
         Absent
     }
 
+    public enum NationalThemePresence
+    {
+        Present = 1,
+        Absent
+    }
+
     // SELECTION RULES
 
     public enum SelectionRuleLayerType
@@ -170,7 +176,6 @@
         public const string c_FILE_PRZ_FGDB = "PRZ.gdb";         // Technically this is a folder, but lets treat it as a file here
 
         // EXPORT WTW FILES
-        public const string c_FILE_WTW_EXPORT_SHP = "WTW_GEOMETRY.shp";
         public const string c_FILE_WTW_EXPORT_SPATIAL = "WTW_SPATIAL";
         public const string c_FILE_WTW_EXPORT_ATTR = "WTW_ATTRIBUTE.csv";
         public const string c_FILE_WTW_EXPORT_BND = "WTW_BOUNDARY.dat";
@@ -182,12 +187,15 @@
 
         // DOMAINS
         public const string c_DOMAIN_ELEMENT_PRESENCE = "ElementPresence";
+        public const string c_DOMAIN_THEME_PRESENCE = "ThemePresence";
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
         public const string c_RAS_TEMP_1 = "TempRas1";
         public const string c_RAS_TEMP_2 = "TempRas2";
         public const string c_RAS_TEMP_3 = "TempRas3";
+        public const string c_RAS_NATGRID_ZERO = "natgrid_zero";
+        public const string c_RAS_NATGRID_CELLNUMS = "natgrid_cellnums";
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
@@ -275,6 +283,7 @@
         public const string c_FLD_TAB_THEME_THEME_ID = "theme_id";          // long
         public const string c_FLD_TAB_THEME_NAME = "name";                  // text
         public const string c_FLD_TAB_THEME_CODE = "code";                  // text
+        public const string c_FLD_TAB_THEME_PRESENCE = "presence";          // short (domain)
 
         // NATIONAL DB - ELEMENT TABLE
         public const string c_FLD_TAB_ELEMENT_ELEMENT_ID = "element_id";    // long
