@@ -35,6 +35,19 @@ namespace NCC.PRZTools
             }
         }
 
+        internal Module_Main()
+        {
+            try
+            {
+                // disable state upon which Daml condition of unwanted UI buttons is based
+                FrameworkApplication.State.Deactivate("prz_disabled_state");
+            }
+            catch
+            {
+
+            }
+        }
+
         #region Overrides
         /// <summary>
         /// Called by Framework when ArcGIS Pro is closing

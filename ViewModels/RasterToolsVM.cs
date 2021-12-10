@@ -1,5 +1,6 @@
 ﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Catalog;
@@ -242,7 +243,7 @@ namespace NCC.PRZTools
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 GPExecuteToolFlags toolFlags_All = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
@@ -277,7 +278,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_RAS_NATGRID_ZERO} raster dataset (constant 1_BIT integer raster, value = 0)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_ZERO, 0, "INTEGER", 1000, env);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: SR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GP);
+                toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_NATGRID_ZERO} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -292,7 +293,7 @@ namespace NCC.PRZTools
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath);
-                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, toolFlags_GPRefresh);
+                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -336,7 +337,7 @@ namespace NCC.PRZTools
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 GPExecuteToolFlags toolFlags_All = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
@@ -367,6 +368,28 @@ namespace NCC.PRZTools
                 // Get the National Grid Extent envelope
                 Envelope env = NationalGrid.GetNatGridEnvelope();
 
+                // Eliminate existing raster (if present)
+                // Part 1: Build dummy raster
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS, 0, "INTEGER", 100000, env);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: SR, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building dummy raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error building dummy raster dataset.");
+                    return false;
+                }
+                // Part 2: Delete dummy raster
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS, "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting dummy raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error deleting dummy raster dataset.");
+                    return false;
+                }
+
                 // Build Constant Raster
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_RAS_TEMP_1} raster dataset (constant 1_BIT integer raster, value = 0)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_1, 0, "INTEGER", 1000, env);
@@ -388,7 +411,7 @@ namespace NCC.PRZTools
 
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_1, PRZC.c_RAS_TEMP_2, "", "", "1", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: SR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
+                toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying {PRZC.c_RAS_TEMP_1} to {PRZC.c_RAS_TEMP_2}.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -398,24 +421,6 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset copied successfully."), true, ++val);
-                }
-
-                // Delete the final raster if it is present
-                if (await PRZH.RasterExists_RTScratch(PRZC.c_RAS_NATGRID_CELLNUMS))
-                {
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS, "");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_RAS_NATGRID_CELLNUMS} raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting {PRZC.c_RAS_NATGRID_CELLNUMS} rasters");
-                        return false;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster deleted."), true, ++val);
-                    }
                 }
 
                 // Assign Cell Numbers
@@ -444,6 +449,7 @@ namespace NCC.PRZTools
                         }
 
                         // Update cell values from zeros to cell numbers
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Applying national grid cell numbers..."), true, ++val);
                         using (RasterDataset rasterDataset = getras_outcome.rasterDataset)
                         {
                             // Get the virtual Raster from Band 1 of the Raster Dataset
@@ -453,62 +459,57 @@ namespace NCC.PRZTools
                             int rowcount = raster.GetHeight();
                             int colcount = raster.GetWidth();
 
+                            // Raster cursor dimensions
                             int block_height = 1000;
                             int block_width = colcount;
                             int block_count = rowcount / block_height;
 
-                            int r = 0;
+                            int block_counter = 0;
+
+                            uint cell_number = 1;   // unsigned integer!
+
                             // Create a Raster Cursor to iterate over blocks of raster cells
                             using (RasterCursor rasterCursor = raster.CreateCursor(block_width, block_height))
                             {
                                 do
                                 {
+                                    // Cycle through each pixelblock
                                     using (PixelBlock pixelBlock = rasterCursor.Current)
                                     {
-                                        r++;
+                                        // Get Current Pixel Block dimensions
+                                        int pb_height = pixelBlock.GetHeight();
+                                        int pb_width = pixelBlock.GetWidth();
 
-                                        ProMsgBox.Show($"Iteration {r}: Height: {pixelBlock.GetHeight()}   Width: {pixelBlock.GetWidth()}");
+                                        // Get Current Pixel Block Offsets
+                                        int UL_X = rasterCursor.GetTopLeft().Item1;
+                                        int UL_Y = rasterCursor.GetTopLeft().Item2;
+
+                                        // Get array of pixel block values
+                                        var pixel_array = pixelBlock.GetPixelData(0, true);
+
+                                        // Row loop
+                                        for (int r = 0; r < pb_height; r++)
+                                        {
+                                            // Pixel loop
+                                            for (int c = 0; c < pb_width; c++)
+                                            {
+                                                // set the values in the array
+                                                pixel_array.SetValue(cell_number, c, r);
+                                                cell_number++;
+                                            }
+                                        }
+
+                                        // update the pixel block with the adjusted array
+                                        pixelBlock.SetPixelData(0, pixel_array);
+
+                                        // write pixel block to raster
+                                        raster.Write(UL_X, UL_Y, pixelBlock);
+
+                                        block_counter++;
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Pixel Block #{block_counter} written."), true, ++val);
                                     }
                                 } while (rasterCursor.MoveNext());
                             }
-
-                            ProMsgBox.Show($"Iterations: {r}");
-                            return false;
-
-                            #region THIS WORKS
-
-                            //// Get the row and column counts
-                            //int rowcount = raster.GetHeight();
-                            //int colcount = raster.GetWidth();
-
-                            //// Create a PixelBlock 1 row high, stretching across all columns
-                            //PixelBlock pixelBlock = raster.CreatePixelBlock(colcount, 1);
-
-                            //// Iterate row by row
-                            //for (int row = 1; row <= 1000; row++)
-                            //{
-                            //    // Initialize the pixel block
-                            //    raster.Read(0, row - 1, pixelBlock);
-
-                            //    // write the pixel block contents to an array
-                            //    int[,] array = (int[,])pixelBlock.GetPixelData(0, true);
-
-                            //    // Loop through each cell (left to right) within the parent row
-                            //    for (int col = 1; col <= colcount; col++)
-                            //    {
-                            //        array[col - 1, 0] = 30;
-                            //    }
-
-                            //    // write the array values back to the pixel block, even if unchanged
-                            //    pixelBlock.SetPixelData(0, array);
-
-                            //    // write the pixel block data back to the raster
-                            //    raster.Write(0, row - 1, pixelBlock);
-
-                            //    PRZH.UpdateProgress(PM, null, true, 1000, row - 1);
-                            //}
-
-                            #endregion
 
                             // Save the raster
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Saving updated raster to {PRZC.c_RAS_NATGRID_CELLNUMS}."), true, max, ++val);
@@ -535,22 +536,6 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Cell numbers assigned."), true, ++val);
                 }
 
-                // Build Pyramids
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS, -1, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
-                if (toolOutput == null)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error building pyramids.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
-                }
-
                 // Calculate Statistics
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS);
@@ -565,6 +550,22 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated successfully."), true, ++val);
+                }
+
+                // Build Pyramids
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_NATGRID_CELLNUMS, -1, "", "", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error building pyramids.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
                 }
 
                 // Delete the temp rasters

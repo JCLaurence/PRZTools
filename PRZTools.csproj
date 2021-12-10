@@ -152,6 +152,7 @@
   <ItemGroup>
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
+    <Compile Include="Models\Bort.cs" />
     <Compile Include="Models\FeatureElement.cs" />
     <Compile Include="Models\NatElement.cs" />
     <Compile Include="Models\NationalGrid.cs" />

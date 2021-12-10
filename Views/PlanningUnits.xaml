@@ -103,7 +103,8 @@
                                 VerticalAlignment="Center" 
                                 VerticalContentAlignment="Center" 
                                 GroupName="NatGridDimensions"
-                                IsChecked="{Binding PUSource_Rad_NatGrid_100M_IsChecked}" 
+                                IsChecked="{Binding PUSource_Rad_NatGrid_100M_IsChecked}"
+                                IsEnabled="False"
                                 Content="100 m" />
 
                             <RadioButton
@@ -122,6 +123,7 @@
                                 VerticalContentAlignment="Center" 
                                 GroupName="NatGridDimensions"
                                 IsChecked="{Binding PUSource_Rad_NatGrid_10Km_IsChecked}" 
+                                IsEnabled="False"
                                 Content="10 km" />
 
                             <RadioButton
@@ -131,6 +133,7 @@
                                 VerticalContentAlignment="Center" 
                                 GroupName="NatGridDimensions"
                                 IsChecked="{Binding PUSource_Rad_NatGrid_100Km_IsChecked}" 
+                                IsEnabled="False"
                                 Content="100 km" />
 
                         </DockPanel>
@@ -227,6 +230,7 @@
                             VerticalContentAlignment="Center" 
                             GroupName="PlanningUnitSource"
                             IsChecked="{Binding PUSource_Rad_Layer_IsChecked}"
+                            IsEnabled="False"
                             Content="Feature Layer" />
 
                         <DockPanel

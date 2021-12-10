@@ -10,7 +10,7 @@
     mc:Ignorable="d"
     Title="RASTER TOOLS"
     Height="400" Width="500" MinHeight="300" MinWidth="500"
-    Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
+    Icon="pack://application:,,,/PRZTools;component/ImagesWPF/RasterToolsC32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
     >
