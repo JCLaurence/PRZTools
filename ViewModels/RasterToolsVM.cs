@@ -728,16 +728,18 @@ namespace NCC.PRZTools
         {
             try
             {
-                int rowcount = 4500;
-                int colcount = 5500;
+                // Try to connect to national database (.sde)
 
-                // Create array of cell numbers for this row
-                var a = Array.CreateInstance(typeof(int), colcount, 1);
+                var a = await PRZH.GDBExists_Nat();
 
-                ProMsgBox.Show($"Lower Bound (dim 0): {a.GetLowerBound(0)}\nLower Bound (dim 1): {a.GetLowerBound(1)}");
-                ProMsgBox.Show($"Upper Bound (dim 0): {a.GetUpperBound(0)}\nUpper Bound (dim 1): {a.GetUpperBound(1)}");
-
-
+                if (!a.exists)
+                {
+                    ProMsgBox.Show($"Doesn't exist\n{a.message}");
+                }
+                else
+                {
+                    ProMsgBox.Show("Exists!");
+                }
 
 
                 ProMsgBox.Show("Bort");

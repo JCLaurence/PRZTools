@@ -1179,7 +1179,9 @@ namespace NCC.PRZTools
 
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.GDBExists_Project())
+                var try_gdbexists = await PRZH.GDBExists_Project();
+
+                if (!try_gdbexists.exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
@@ -1534,10 +1536,12 @@ namespace NCC.PRZTools
                 #region STRIP MAP AND GDB
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removing PRZ layers and standalone tables from map..."), true, ++val);
-                if (!await PRZH.RemovePRZItemsFromMap(_map))
+                var tryrem = await QueuedTask.Run(async () => { return await PRZH.RemovePRZItemsFromMap(_map); });
+
+                if (!tryrem.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Unable to remove PRZ layers and standalone tables from map");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}\n{tryrem.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to remove PRZ layers and standalone tables from map\n{tryrem.message}");
                     return false;
                 }
                 else
@@ -1547,10 +1551,12 @@ namespace NCC.PRZTools
 
                 // Delete all Items from Project GDB
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting all objects from the PRZ project geodatabase at {gdbpath}..."), true, ++val);
-                if (!await PRZH.DeleteProjectGDBContents())
+                var trydel = await QueuedTask.Run(async () => { return await PRZH.DeleteProjectGDBContents(); });
+
+                if (!trydel.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to delete all objects from {gdbpath}.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to delete all objects from {gdbpath}.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to delete all objects from {gdbpath}.\n{trydel.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to delete all objects from {gdbpath}.\n{trydel.message}");
                     return false;
                 }
                 else
@@ -2007,7 +2013,13 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
+                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                if (!tryget_gdb.success)
+                                {
+                                    return false;
+                                }
+
+                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
                                     if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
@@ -2300,7 +2312,13 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
+                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                if (!tryget_gdb.success)
+                                {
+                                    return false;
+                                }
+
+                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
                                     if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
@@ -3908,62 +3926,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                await QueuedTask.Run(async () =>
-                {
-                    using (Geodatabase geodatabase = await PRZH.GetGDB_Project())
-                    {
-                        SchemaBuilder schemaBuilder = new SchemaBuilder(geodatabase);
-
-                        using (var domain = geodatabase.GetDomains().FirstOrDefault(d => d.GetName() == "ElementPresence"))
-                        {
-                            if (domain != null && domain is CodedValueDomain cvd)
-                            {
-                                ProMsgBox.Show("Found it");
-                                CodedValueDomainDescription descr = new CodedValueDomainDescription(cvd);
-                                schemaBuilder.Delete(descr);
-                                if (!schemaBuilder.Build())
-                                {
-                                    string errormessages = string.Join(" -- ", schemaBuilder.ErrorMessages);
-                                    ProMsgBox.Show(errormessages);
-                                    return;
-                                }
-                                else
-                                {
-                                    ProMsgBox.Show("Deleted it!");
-                                }
-                            }
-                            else
-                            {
-                                ProMsgBox.Show("It ain't there");
-                            }
-                        }
-
-                        CodedValueDomainDescription cvDomainDescr = new CodedValueDomainDescription(
-                            "ElementPresence",
-                            FieldType.SmallInteger,
-                            new SortedList<object, string> { { 1, NationalElementPresence.Present.ToString() }, { 2, NationalElementPresence.Absent.ToString() } })
-                        {
-                            SplitPolicy = SplitPolicy.Duplicate,
-                            MergePolicy = MergePolicy.DefaultValue
-                        };
-
-                        schemaBuilder.Create(cvDomainDescr);
-                        ProMsgBox.Show("building...");
-
-                        if (!schemaBuilder.Build())
-                        {
-                            string errormessages = string.Join(" -- ", schemaBuilder.ErrorMessages);
-                            ProMsgBox.Show(errormessages);
-                            return;
-                        }
-                        else
-                        {
-                            ProMsgBox.Show("Built it!");
-                        }
-                    }
-
-                });
-
+                ProMsgBox.Show("Bort");
                 return true;
             }
             catch (Exception ex)

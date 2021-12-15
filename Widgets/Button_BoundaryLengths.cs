@@ -19,19 +19,18 @@ namespace NCC.PRZTools
             {
                 #region Project Workspace and Planning Unit Check
 
-                // Check that WS exists
-                bool wsexists = PRZH.FolderExists_Project();
-                if (!wsexists)
+                // Verify that the Project Folder exists
+                if (!PRZH.FolderExists_Project())
                 {
-                    ProMsgBox.Show("Project Workspace is either invalid or has not been set.  Please set a valid Project Workspace.");
+                    ProMsgBox.Show($"Unable to retrieve Project Folder at: {PRZH.GetPath_ProjectFolder()}");
                     return;
                 }
 
-                // Check that Workspace GDB exists
-                var gdbexists = await PRZH.GDBExists_Project();
-                if (!gdbexists)
+                // Verify that the Project Geodatabase exists
+                var try_exists = await PRZH.GDBExists_Project();
+                if (!try_exists.exists)
                 {
-                    ProMsgBox.Show("Project Workspace GDB does not exist.  Please Initialize or Reset your Project Workspace.");
+                    ProMsgBox.Show($"Unable to retrieve project geodatabase.\n{try_exists.message}");
                     return;
                 }
 

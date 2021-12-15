@@ -156,7 +156,9 @@ namespace NCC.PRZTools
 
                 // Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.GDBExists_Project())
+                var try_gdbexists = await PRZH.GDBExists_Project();
+
+                if (!try_gdbexists.exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Project Geodatabase not found at {gdbpath}.");

@@ -27,5 +27,6 @@ namespace NCC.PRZTools
             InitializeComponent();
             this.DataContext = vm;
         }
+
     }
 }

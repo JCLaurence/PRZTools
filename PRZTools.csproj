@@ -548,6 +548,15 @@
     <Resource Include="ImagesWPF\Raster16.png" />
     <Resource Include="ImagesWPF\Raster32.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\PRZTools32B.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\PRZTools32B.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\PRZTools32B.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:
@@ -556,10 +565,10 @@
   BuildNoPostProcess:  ArcGIS Pro install is NOT required to build the add-in.  An esriAddinX package is NOT created.
   -->
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
-    <PackageAction>BuildDefault</PackageAction>
+    <PackageAction>BuildZipPostProcess</PackageAction>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
-    <PackageAction>BuildDefault</PackageAction>
+    <PackageAction>BuildZipPostProcess</PackageAction>
   </PropertyGroup>
   <UsingTask AssemblyFile="C:\Program Files\ArcGIS\Pro\bin\proapp-sdk-MSBuild.dll" TaskName="proapp_sdk_MSBuild.PackageAddIn" />
   <UsingTask AssemblyFile="C:\Program Files\ArcGIS\Pro\bin\proapp-sdk-MSBuild.dll" TaskName="proapp_sdk_MSBuild.CleanAddIn" />

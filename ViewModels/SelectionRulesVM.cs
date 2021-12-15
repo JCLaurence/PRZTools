@@ -200,7 +200,9 @@ namespace NCC.PRZTools
 
                 // Validation: Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                if (!await PRZH.GDBExists_Project())
+                var try_gdbexists = await PRZH.GDBExists_Project();
+
+                if (!try_gdbexists.exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Project Geodatabase not found at this path:" +
@@ -1687,7 +1689,13 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase gdb = await PRZH.GetGDB_Project())
+                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                if (!tryget_gdb.success)
+                                {
+                                    return false;
+                                }
+
+                                using (Geodatabase gdb = tryget_gdb.geodatabase)
                                 using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
                                 {
                                     if (fc == null)
@@ -1883,7 +1891,13 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                using (Geodatabase gdb = await PRZH.GetGDB_Project())
+                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                if (!tryget_gdb.success)
+                                {
+                                    return false;
+                                }
+
+                                using (Geodatabase gdb = tryget_gdb.geodatabase)
                                 using (Table table = await PRZH.GetTable(gdb, tabname))
                                 using (RowCursor rowCursor = table.Search())
                                 {

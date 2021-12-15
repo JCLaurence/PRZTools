@@ -275,9 +275,60 @@ namespace NCC.PRZTools
                 {
                     string gdbpath = PRZH.GetPath_ProjectGDB();
 
-                    if (!await PRZH.GDBExists_Project())
+                    // ensure project gdb exists
+                    var try_exists = await PRZH.GDBExists_Project();
+                    
+                    if (!try_exists.exists)
                     {
                         contents.AppendLine($"Project Geodatabase does not exist at path: {gdbpath}");
+                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
+                        return;
+                    }
+
+                    // Create the lists of gdb object names
+                    List<string> FCNames = new List<string>();
+                    List<string> RasterNames = new List<string>();
+                    List<string> TableNames = new List<string>();
+
+                    if (!await QueuedTask.Run(async () =>
+                    {
+                        // Get the project geodatabase
+                        var try_gdb = await PRZH.GetGDB_Project();
+
+                        if (!try_gdb.success)
+                        {
+                            return false;
+                        }
+
+                        // Populate the geodatabase object name lists
+                        using (Geodatabase geodatabase = try_gdb.geodatabase)
+                        {
+                            IReadOnlyList<FeatureClassDefinition> fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>();
+
+                            foreach (var fcDef in fcDefs)
+                            {
+                                FCNames.Add(fcDef.GetName());
+                            }
+
+                            IReadOnlyList<RasterDatasetDefinition> rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+
+                            foreach (var rasDef in rasDefs)
+                            {
+                                RasterNames.Add(rasDef.GetName());
+                            }
+
+                            IReadOnlyList<TableDefinition> tabDefs = geodatabase.GetDefinitions<TableDefinition>();
+
+                            foreach (var tabDef in tabDefs)
+                            {
+                                TableNames.Add(tabDef.GetName());
+                            }
+                        }
+
+                        return true;
+                    }))
+                    {
+                        contents.AppendLine($"Unable to retrieve project geodatabase.");
                         this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
                         return;
                     }
@@ -287,46 +338,6 @@ namespace NCC.PRZTools
                     contents.AppendLine("*******************");
                     contents.AppendLine("PATH: " + gdbpath);
                     contents.AppendLine();
-
-                    List<string> FCNames = new List<string>();
-                    List<string> RasterNames = new List<string>();
-                    List<string> TableNames = new List<string>();
-
-                    try
-                    {
-                        await QueuedTask.Run(async () =>
-                        {
-                            using (Geodatabase gdb = await PRZH.GetGDB_Project())
-                            {
-                                IReadOnlyList<FeatureClassDefinition> fcDefs = gdb.GetDefinitions<FeatureClassDefinition>();
-
-                                foreach (var fcDef in fcDefs)
-                                {
-                                    FCNames.Add(fcDef.GetName());
-                                }
-
-                                IReadOnlyList<RasterDatasetDefinition> rasDefs = gdb.GetDefinitions<RasterDatasetDefinition>();
-
-                                foreach (var rasDef in rasDefs)
-                                {
-                                    RasterNames.Add(rasDef.GetName());
-                                }
-
-                                IReadOnlyList<TableDefinition> tabDefs = gdb.GetDefinitions<TableDefinition>();
-
-                                foreach (var tabDef in tabDefs)
-                                {
-                                    TableNames.Add(tabDef.GetName());
-                                }
-                            }
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        contents.AppendLine(ex.Message);
-                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-                        return;
-                    }
 
                     // List Feature Classes
                     contents.AppendLine("FEATURE CLASSES");
@@ -478,10 +489,10 @@ namespace NCC.PRZTools
                 #region GEODATABASE
 
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                bool gdbexists = await PRZH.GDBExists_Project();
+                var try_gdbexists = await PRZH.GDBExists_Project();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
-                if (!gdbexists)
+                if (!try_gdbexists.exists)
                 {
                     if (gdbfolderexists)
                     {
@@ -578,8 +589,8 @@ namespace NCC.PRZTools
                 #region GEODATABASE
 
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                bool gdbexists = await PRZH.GDBExists_Project();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
+                var try_gdbexists = await PRZH.GDBExists_Project();
 
                 // Create the Geodatabase
                 IReadOnlyList<string> toolParams;
@@ -587,7 +598,7 @@ namespace NCC.PRZTools
                 GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
-                if (gdbexists)  // geodatabase exists
+                if (try_gdbexists.exists)  // geodatabase exists
                 {
                     // delete the geodatabase
                     toolParams = Geoprocessing.MakeValueArray(gdbpath);
