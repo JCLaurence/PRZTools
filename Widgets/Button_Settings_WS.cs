@@ -26,13 +26,7 @@ namespace NCC.PRZTools
                 };
 
                 // Loaded Event Handler
-                dlg.Loaded += (sender, e) =>
-                {
-                    if (vm != null)
-                    {
-                        vm.OnProWinLoaded();
-                    }
-                };
+                dlg.Loaded += (sender, e) => { if (vm != null) { vm.OnProWinLoaded(); } };
 
                 var result = dlg.ShowDialog();
 

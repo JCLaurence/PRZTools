@@ -384,9 +384,15 @@ namespace NCC.PRZTools
 
                 // Populate the PUFC dictionary
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Planning Unit Feature Class..."), true, ++val);
-                await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    using (Table table = await PRZH.GetFC_PU())
+                    var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving feature class.");
+                    }
+
+                    using (Table table = tryget.featureclass)
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -506,9 +512,15 @@ namespace NCC.PRZTools
                 // Do the update
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating FC: Setting cost value for {DICT_Updator.Count} feature(s)."), true, ++val);
 
-                await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                    var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving feature class.");
+                    }
+
+                    using (FeatureClass featureClass = tryget.featureclass)
                     using (RowCursor rowCursor = featureClass.Search(null, false))
                     {
                         while (rowCursor.MoveNext())
@@ -584,8 +596,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_FC_PU();
-                if (!await PRZH.FCExists_PU())
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
@@ -635,9 +647,15 @@ namespace NCC.PRZTools
 
                     // Update PUFC cost column with the constant value
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating FC: Setting cost = " + constant_cost_double.ToString() + " for all features."), true, ++val);
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass featureClass = tryget.featureclass)
                         using (RowCursor rowCursor = featureClass.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -673,9 +691,15 @@ namespace NCC.PRZTools
 
                     // Update PUFC cost column with the area value of the feature's geometry
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Updating FC: Setting cost = area for all features."), true, ++val);
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass featureClass = tryget.featureclass)
                         using (RowCursor rowCursor = featureClass.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -740,9 +764,15 @@ namespace NCC.PRZTools
                     // Get the PUFC SR and Extent
                     SpatialReference PUFC_SR = null;
                     Envelope PUFC_Extent = null;
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (FeatureClass fc = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass fc = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = fc.GetDefinition())
                         {
                             PUFC_SR = fcDef.GetSpatialReference();
@@ -776,9 +806,9 @@ namespace NCC.PRZTools
                     });
 
                     // Delete the cost stats table if present
-                    string cost_stats_path = PRZH.GetPath_Table_PUCost();
+                    string cost_stats_path = PRZH.GetPath_Project(PRZC.c_TABLE_COSTSTATS);
 
-                    if (await PRZH.TableExists_PUCost())
+                    if (await PRZH.TableExists_Project(PRZC.c_TABLE_COSTSTATS))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Cost Stats table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(cost_stats_path);
@@ -853,9 +883,15 @@ namespace NCC.PRZTools
 
                     // Populate the PUFC dictionary
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Planning Unit Feature Class..."), true, ++val);
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (Table table = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -873,9 +909,15 @@ namespace NCC.PRZTools
 
                     // Populate the CostStats dictionary
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Retrieving Dictionary of PUID => Cost from Cost Stats table"), true, ++val);
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (Table table = await PRZH.GetTable_PUCost())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_COSTSTATS);
+                        if (!tryget.success)
+                        {
+                            return;
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -975,9 +1017,15 @@ namespace NCC.PRZTools
                     // Do the update
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating FC: Setting cost value for {DICT_Updator.Count} feature(s)."), true, ++val);
 
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass featureClass = tryget.featureclass)
                         using (RowCursor rowCursor = featureClass.Search(null, false))
                         {
                             while (rowCursor.MoveNext())

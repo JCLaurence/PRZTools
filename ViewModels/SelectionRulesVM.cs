@@ -163,8 +163,8 @@ namespace NCC.PRZTools
                 SelectedOverrideOption = SelectionRuleType.INCLUDE.ToString();
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                SelRuleTableExists = await PRZH.TableExists_SelRules();
-                PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
+                SelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
+                PUSelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES);
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
 
                 // Populate the grids
@@ -219,8 +219,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_FC_PU();
-                if (!await PRZH.FCExists_PU())
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Feature Class not present in the project geodatabase.  Have you built it yet?");
@@ -329,10 +329,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE SELECTION RULES TABLE
 
-                string srpath = PRZH.GetPath_Table_SelRules();
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
 
                 // Delete the existing SelRules table, if it exists
-                if (await PRZH.TableExists_SelRules())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_SELRULES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(srpath, "");
@@ -415,11 +415,17 @@ namespace NCC.PRZTools
                 #region POPULATE THE SELECTION RULES TABLE
 
                 // Populate Table from LIST
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_SelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_SELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (InsertCursor insertCursor = table.CreateInsertCursor())
                         using (RowBuffer rowBuffer = table.CreateRowBuffer())
                         {
@@ -468,10 +474,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PU + SELRULES TABLE - PART I
 
-                string pusrpath = PRZH.GetPath_Table_PUSelRules();
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
 
                 // Delete the existing PUSR table, if it exists
-                if (await PRZH.TableExists_PUSelRules())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_PUSELRULES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
@@ -508,11 +514,17 @@ namespace NCC.PRZTools
                 // Delete all fields but OID and PUID from PUSelRules table
                 List<string> LIST_DeleteFields = new List<string>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table tab = await PRZH.GetTable_PUSelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table");
+                        }
+
+                        using (Table tab = tryget.table)
                         {
                             if (tab == null)
                             {
@@ -696,11 +708,17 @@ namespace NCC.PRZTools
                 }
 
                 // Populate the new fields
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -768,11 +786,17 @@ namespace NCC.PRZTools
 
                 Dictionary<int, (string rule, int conflict)> DICT_PUID_and_rule_conflict = new Dictionary<int, (string rule, int conflict)>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table");
+                        }
+
+                        using (Table table = tryget.table)
                         using (TableDefinition tDef = table.GetDefinition())
                         {
                             // Get list of INCLUDE layer State fields
@@ -876,11 +900,17 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -931,11 +961,17 @@ namespace NCC.PRZTools
 
                 #region UPDATE SUMMARY FIELDS IN SELRULES TABLE
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_SelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_SELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -970,7 +1006,7 @@ namespace NCC.PRZTools
                                     QF.SubFields = AreaField;
                                     QF.WhereClause = StateField + @" = 1";
 
-                                    using (Table table2 = await PRZH.GetTable_PUSelRules())
+                                    using (Table table2 = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES).table)
                                     using (RowCursor rowCursor2 = table2.Search(QF))
                                     {
                                         while (rowCursor2.MoveNext())
@@ -1561,22 +1597,28 @@ namespace NCC.PRZTools
 
                 // some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string pufcpath = PRZH.GetPath_FC_PU();
-                string pusrpath = PRZH.GetPath_Table_PUSelRules();
-                string srpath = PRZH.GetPath_Table_SelRules();
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
 
                 // some planning unit elements
                 FeatureLayer PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
                 SpatialReference PUFC_SR = null;
                 Envelope PUFC_Extent = null;
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
                         PUFL.ClearSelection();
 
-                        using (FeatureClass PUFC = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass PUFC = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = PUFC.GetDefinition())
                         {
                             PUFC_SR = fcDef.GetSpatialReference();
@@ -1685,18 +1727,17 @@ namespace NCC.PRZTools
                         // Extract the dissolved area for each puid into a second dictionary
                         Dictionary<int, double> DICT_PUID_Area_Dissolved = new Dictionary<int, double>();
 
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
-                                if (!tryget_gdb.success)
+                                var tryget = PRZH.GetFC_Project(dissolve_fc_name);
+                                if (!tryget.success)
                                 {
-                                    return false;
+                                    throw new Exception("Error retrieving the feature class");
                                 }
 
-                                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                                using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
+                                using (FeatureClass fc = tryget.featureclass)
                                 {
                                     if (fc == null)
                                     {
@@ -1740,7 +1781,7 @@ namespace NCC.PRZTools
                         }
 
                         // Write this information to the PU SelRules table
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
@@ -1766,7 +1807,13 @@ namespace NCC.PRZTools
                                         WhereClause = PRZC.c_FLD_TAB_PUSELRULES_ID + " = " + PUID.ToString()
                                     };
 
-                                    using (Table table = await PRZH.GetTable_PUSelRules())
+                                    var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                                    if (!tryget.success)
+                                    {
+                                        throw new Exception("Error retrieving table");
+                                    }
+
+                                    using (Table table = tryget.table)
                                     using (RowCursor rowCursor = table.Search(QF, false))
                                     {
                                         while (rowCursor.MoveNext())
@@ -1887,18 +1934,17 @@ namespace NCC.PRZTools
 
                         Dictionary<int, Tuple<int, double>> DICT_PUID_and_count_area = new Dictionary<int, Tuple<int, double>>();
 
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
-                                if (!tryget_gdb.success)
+                                var tryget = PRZH.GetTable_Project(tabname);
+                                if (!tryget.success)
                                 {
-                                    return false;
+                                    throw new Exception("Error retrieving table.");
                                 }
 
-                                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                                using (Table table = await PRZH.GetTable(gdb, tabname))
+                                using (Table table = tryget.table)
                                 using (RowCursor rowCursor = table.Search())
                                 {
                                     while (rowCursor.MoveNext())
@@ -1974,11 +2020,17 @@ namespace NCC.PRZTools
                                 WhereClause = PRZC.c_FLD_TAB_PUSELRULES_ID + " = " + PUID.ToString()
                             };
 
-                            if (!await QueuedTask.Run(async () =>
+                            if (!await QueuedTask.Run(() =>
                             {
                                 try
                                 {
-                                    using (Table table = await PRZH.GetTable_PUSelRules())
+                                    var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                                    if (!tryget.success)
+                                    {
+                                        throw new Exception("Error retrieving table");
+                                    }
+
+                                    using (Table table = tryget.table)
                                     using (RowCursor rowCursor = table.Search(QF, false))
                                     {
                                         while (rowCursor.MoveNext())
@@ -2034,18 +2086,24 @@ namespace NCC.PRZTools
                 SelectionRules = new ObservableCollection<SelectionRule>(); // triggers the xaml refresh
 
                 // If Selection Rules table doesn't exist, exit
-                if (!await PRZH.TableExists_SelRules())
+                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
                 {
                     return true;
                 }
 
                 List<SelectionRule> rules = new List<SelectionRule>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_SelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_SELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -2129,7 +2187,7 @@ namespace NCC.PRZTools
                 SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(); // triggers the xaml refresh
 
                 // If either table doesn't exist, exit
-                if (!await PRZH.TableExists_SelRules() | !await PRZH.TableExists_PUSelRules())
+                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES) | !await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
                 {
                     return true;
                 }
@@ -2138,11 +2196,17 @@ namespace NCC.PRZTools
                 Dictionary<int, (string name, string statefield)> DICT_Includes = new Dictionary<int, (string name, string statefield)>();
                 Dictionary<int, (string name, string statefield)> DICT_Excludes = new Dictionary<int, (string name, string statefield)>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_SelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_SELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (TableDefinition tDef = table.GetDefinition())
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
@@ -2195,7 +2259,7 @@ namespace NCC.PRZTools
 
                 List<SelectionRuleConflict> conflicts = new List<SelectionRuleConflict>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
@@ -2213,7 +2277,13 @@ namespace NCC.PRZTools
 
                                 int rowcount = 0;
 
-                                using (Table table = await PRZH.GetTable_PUSelRules())
+                                var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                                if (!tryget.success)
+                                {
+                                    throw new Exception("Error retrieving table");
+                                }
+
+                                using (Table table = tryget.table)
                                 {
                                     rowcount = table.GetCount(QF);
                                 }
@@ -2284,8 +2354,8 @@ namespace NCC.PRZTools
 
                 // Some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string srpath = PRZH.GetPath_Table_SelRules();
-                string pusrpath = PRZH.GetPath_Table_PUSelRules();
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
 
                 // Initialize ProgressBar and Progress Log
                 int max = 20;
@@ -2310,7 +2380,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the SelRules table
-                if (await PRZH.TableExists_SelRules())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(srpath, "");
@@ -2329,7 +2399,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the PUSelRules table
-                if (await PRZH.TableExists_PUSelRules())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
@@ -2350,11 +2420,17 @@ namespace NCC.PRZTools
                 // Update PUFC, set effective rule and conflict fields to default
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Resetting {PRZC.c_FLD_FC_PU_EFFECTIVE_RULE} and {PRZC.c_FLD_FC_PU_CONFLICT} fields in {PRZC.c_FC_PLANNING_UNITS} Feature Class..."), true, ++val);
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -2389,8 +2465,8 @@ namespace NCC.PRZTools
 
 
                 // Determine the presence of 2 tables, and enable/disable the main button accordingly
-                SelRuleTableExists = await PRZH.TableExists_SelRules();
-                PUSelRuleTableExists = await PRZH.TableExists_PUSelRules();
+                SelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
+                PUSelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES);
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
 
                 // Repopulate the grids
@@ -2427,7 +2503,7 @@ namespace NCC.PRZTools
                 // Get the conflicted Planning Unit IDs
                 List<int> LIST_PUIDs = new List<int>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
@@ -2439,7 +2515,13 @@ namespace NCC.PRZTools
                             WhereClause = whereclause
                         };
 
-                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(QF, false))
                         {
                             while (rowCursor.MoveNext())
@@ -2555,7 +2637,7 @@ namespace NCC.PRZTools
                 // Query the PUSelRules table for associated planning unit records
                 List<int> LIST_PUIDs = new List<int>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
@@ -2567,7 +2649,13 @@ namespace NCC.PRZTools
                             WhereClause = whereclause
                         };
 
-                        using (Table table = await PRZH.GetTable_PUSelRules())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUSELRULES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(QF, false))
                         {
                             while (rowCursor.MoveNext())

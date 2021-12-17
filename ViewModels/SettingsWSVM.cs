@@ -130,7 +130,7 @@ namespace NCC.PRZTools
 
         #region METHODS
 
-        public async Task OnProWinLoaded()
+        public void OnProWinLoaded()
         {
             try
             {
@@ -290,10 +290,10 @@ namespace NCC.PRZTools
                     List<string> RasterNames = new List<string>();
                     List<string> TableNames = new List<string>();
 
-                    if (!await QueuedTask.Run(async () =>
+                    if (!await QueuedTask.Run(() =>
                     {
                         // Get the project geodatabase
-                        var try_gdb = await PRZH.GetGDB_Project();
+                        var try_gdb = PRZH.GetGDB_Project();
 
                         if (!try_gdb.success)
                         {

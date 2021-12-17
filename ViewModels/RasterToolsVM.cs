@@ -86,7 +86,7 @@ namespace NCC.PRZTools
 
         #region METHODS
 
-        public async Task OnProWinLoaded()
+        public void OnProWinLoaded()
         {
             try
             {
@@ -165,7 +165,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> RasterToTable()
+        private bool RasterToTable()
         {
             try
             {
@@ -439,7 +439,7 @@ namespace NCC.PRZTools
                         }
 
                         // try to get raster dataset
-                        var getras_outcome = await PRZH.GetRaster_RTScratch(PRZC.c_RAS_TEMP_2);
+                        var getras_outcome = PRZH.GetRaster_RTScratch(PRZC.c_RAS_TEMP_2);
 
                         if (!getras_outcome.success)
                         {

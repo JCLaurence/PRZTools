@@ -316,15 +316,20 @@ namespace NCC.PRZTools
 
         #region GEODATABASE OBJECT PATHS
 
-        // Planning Unit Raster Path
-        public static string GetPath_Raster_PU()
+        // Project GDB Object Paths
+        public static string GetPath_Project(string gdb_obj_name)
         {
             try
             {
+                // Get the GDB Path
                 string gdbpath = GetPath_ProjectGDB();
-                string puraspath = Path.Combine(gdbpath, PRZC.c_RAS_PLANNING_UNITS);
 
-                return puraspath;
+                if (gdbpath == null)
+                {
+                    return null;
+                }
+
+                return Path.Combine(gdbpath, gdb_obj_name);
             }
             catch (Exception ex)
             {
@@ -333,15 +338,20 @@ namespace NCC.PRZTools
             }
         }
 
-        // Planning Unit FC Path
-        public static string GetPath_FC_PU()
+        // National GDB Object Paths
+        public static string GetPath_Nat(string gdb_obj_name)
         {
             try
             {
-                string gdbpath = GetPath_ProjectGDB();
-                string pufcpath = Path.Combine(gdbpath, PRZC.c_FC_PLANNING_UNITS);
+                // Get the GDB Path
+                string gdbpath = GetPath_NatGDB();
 
-                return pufcpath;
+                if (gdbpath == null)
+                {
+                    return null;
+                }
+
+                return Path.Combine(gdbpath, gdb_obj_name);
             }
             catch (Exception ex)
             {
@@ -350,134 +360,20 @@ namespace NCC.PRZTools
             }
         }
 
-        // Study Area FC Path
-        public static string GetPath_FC_StudyArea()
+        // RT Scratch GDB Object Paths
+        public static string GetPath_RTScratch(string gdb_obj_name)
         {
             try
             {
-                string gdbpath = GetPath_ProjectGDB();
-                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN);
+                // Get the GDB Path
+                string gdbpath = GetPath_RTScratchGDB();
 
-                return fcpath;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
+                if (gdbpath == null)
+                {
+                    return null;
+                }
 
-        // Study Area Buffer FC Path
-        public static string GetPath_FC_StudyAreaBuffer()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string fcpath = Path.Combine(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
-
-                return fcpath;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // Sel Rules Table Path
-        public static string GetPath_Table_SelRules()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_SELRULES);
-
-                return path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // PU Sel Rules Table Path
-        public static string GetPath_Table_PUSelRules()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUSELRULES);
-
-                return path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // PU Cost Table Path
-        public static string GetPath_Table_PUCost()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_COSTSTATS);
-
-                return path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // Features Table Path
-        public static string GetPath_Table_Features()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_FEATURES);
-
-                return path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // PU Features Table Path
-        public static string GetPath_Table_PUFeatures()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUFEATURES);
-
-                return path;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        // PU Boundary Table Path
-        public static string GetPath_Table_Boundary()
-        {
-            try
-            {
-                string gdbpath = GetPath_ProjectGDB();
-                string path = Path.Combine(gdbpath, PRZC.c_TABLE_PUBOUNDARY);
-
-                return path;
+                return Path.Combine(gdbpath, gdb_obj_name);
             }
             catch (Exception ex)
             {
@@ -491,8 +387,6 @@ namespace NCC.PRZTools
         #endregion
 
         #region OBJECT EXISTENCE
-
-        #region GENERIC OBJECT EXISTENCE
 
         #region FOLDER EXISTENCE
 
@@ -528,38 +422,113 @@ namespace NCC.PRZTools
 
         #region GDB EXISTENCE
 
+        public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists(string gdbpath)
+        {
+            try
+            {
+                // Run this on the worker thread
+                return await QueuedTask.Run(() => 
+                {
+                    // Ensure a non-null and non-empty path
+                    if (string.IsNullOrEmpty(gdbpath))
+                    {
+                        return (false, GeodatabaseType.Unknown, "Geodatabase path is null or empty.");
+                    }
+
+                    // Ensure a rooted path
+                    if (!Path.IsPathRooted(gdbpath))
+                    {
+                        return (false, GeodatabaseType.Unknown, $"Path is not rooted: {gdbpath}");
+                    }
+
+                    // Create the Uri object
+                    Uri uri = null;
+
+                    try
+                    {
+                        uri = new Uri(gdbpath);
+                    }
+                    catch
+                    {
+                        return (false, GeodatabaseType.Unknown, $"Unable to create Uri from path: {gdbpath}");
+                    }
+
+                    // Determine if path is file geodatabase (.gdb) or database connection file (.sde)
+                    if (Directory.Exists(gdbpath) && gdbpath.EndsWith(".gdb"))  // File Geodatabase (possibly)
+                    {
+                        // Create the Connection Path object
+                        FileGeodatabaseConnectionPath conn = null;
+
+                        try
+                        {
+                            conn = new FileGeodatabaseConnectionPath(uri);
+                        }
+                        catch
+                        {
+                            return (false, GeodatabaseType.Unknown, $"Unable to create file geodatabase connection path from path: {gdbpath}");
+                        }
+
+                        // Try to open the connection
+                        try
+                        {
+                            using (Geodatabase gdb = new Geodatabase(conn)) { }
+                        }
+                        catch
+                        {
+                            return (false, GeodatabaseType.Unknown, $"File geodatabase could not be opened from path: {gdbpath}");
+                        }
+
+                        // If I get to this point, the file gdb exists and was successfully opened
+                        return (true, GeodatabaseType.FileGDB, "success");
+                    }
+                    else if (File.Exists(gdbpath) && gdbpath.EndsWith(".sde"))    // It's a connection file (.sde)
+                    {
+                        // Create the Connection File object
+                        DatabaseConnectionFile conn = null;
+
+                        try
+                        {
+                            conn = new DatabaseConnectionFile(uri);
+                        }
+                        catch
+                        {
+                            return (false, GeodatabaseType.Unknown, $"Unable to create database connection file from path: {gdbpath}");
+                        }
+
+                        // try to open the connection
+                        try
+                        {
+                            using (Geodatabase gdb = new Geodatabase(conn)) { }
+                        }
+                        catch
+                        {
+                            return (false, GeodatabaseType.Unknown, $"Enterprise geodatabase could not be opened from path: {gdbpath}");
+                        }
+
+                        // If I get to this point, the enterprise geodatabase exists and was successfully opened
+                        return (true, GeodatabaseType.EnterpriseGDB, "success");
+                    }
+                    else
+                    {
+                        // something else, weird!
+                        return (false, GeodatabaseType.Unknown, $"unable to process database path: {gdbpath}");
+                    }
+                });
+
+            }
+            catch (Exception ex)
+            {
+                return (false, GeodatabaseType.Unknown, ex.Message);
+            }
+        }
+
         public static async Task<(bool exists, string message)> GDBExists_Project()
         {
             try
             {
-                var outcome = await QueuedTask.Run(() =>
-                {
-                    // get path
-                    string gdbpath = GetPath_ProjectGDB();
+                var tryexists = await GDBExists(GetPath_ProjectGDB());
 
-                    if (gdbpath == null)
-                    {
-                        return (false, "Unable to retrieve path to Project Geodatabase");
-                    }
-
-                    // Construct Uri and connection object
-                    Uri u = new Uri(gdbpath);
-                    FileGeodatabaseConnectionPath fgcpath = new FileGeodatabaseConnectionPath(u);
-
-                    try
-                    {
-                        using (Geodatabase gdb = new Geodatabase(fgcpath)) { }
-                    }
-                    catch (GeodatabaseNotFoundOrOpenedException e)
-                    {
-                        return (false, e.Message);
-                    }
-
-                    // If I get to this point, the file gdb exists and was successfully opened
-                    return (true, "success");
-                });
-
-                return outcome;
+                return (tryexists.exists, tryexists.message);
             }
             catch (Exception ex)
             {
@@ -571,38 +540,9 @@ namespace NCC.PRZTools
         {
             try
             {
+                var tryexists = await GDBExists(GetPath_RTScratchGDB());
 
-
-
-
-                var outcome = await QueuedTask.Run(() =>
-                {
-                    // get path
-                    string gdbpath = GetPath_RTScratchGDB();
-
-                    if (gdbpath == null)
-                    {
-                        return (false, "Unable to retrieve path to RT Scratch Geodatabase");
-                    }
-
-                    // Construct Uri and connection object
-                    Uri u = new Uri(gdbpath);
-                    FileGeodatabaseConnectionPath fgcpath = new FileGeodatabaseConnectionPath(u);
-
-                    try
-                    {
-                        using (Geodatabase gdb = new Geodatabase(fgcpath)) { }
-                    }
-                    catch (GeodatabaseNotFoundOrOpenedException e)
-                    {
-                        return (false, e.Message);
-                    }
-
-                    // If I get to this point, the file gdb exists and was successfully opened
-                    return (true, "success");
-                });
-
-                return outcome;
+                return (tryexists.exists, tryexists.message);
             }
             catch (Exception ex)
             {
@@ -610,69 +550,15 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool exists, NationalDbType dbType, string message)> GDBExists_Nat()
+        public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists_Nat()
         {
             try
             {
-                return await QueuedTask.Run(() =>
-                {
-                    string dbpath = GetPath_NatGDB();
-
-                    if (dbpath == null)
-                    {
-                        return (false, NationalDbType.Unknown, "Path to National Database is null");
-                    }
-
-                    // Create a Uri
-                    Uri u = new Uri(dbpath);
-
-                    if (u == null)
-                    {
-                        return (false, NationalDbType.Unknown, "Uri to National Database is null");
-                    }
-
-                    if (Directory.Exists(dbpath) && Path.IsPathRooted(dbpath) && dbpath.EndsWith(".gdb"))  // It's a folder (file gdb)
-                    {
-                        FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
-
-                        try
-                        {
-                            using (Geodatabase gdb = new Geodatabase(conn)) { }
-                        }
-                        catch (GeodatabaseNotFoundOrOpenedException)
-                        {
-                            return (false, NationalDbType.Unknown, "Geodatabase not found or opened");
-                        }
-
-                        // If I get to this point, the file gdb exists and was successfully opened
-                        return (true, NationalDbType.FileGDB, "success");
-                    }
-                    else if (File.Exists(dbpath) && Path.IsPathRooted(dbpath) && dbpath.EndsWith(".sde"))    // It's a connection file (.sde)
-                    {
-                        DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
-
-                        try
-                        {
-                            using (Geodatabase gdb = new Geodatabase(conn)) { }
-                        }
-                        catch (GeodatabaseNotFoundOrOpenedException)
-                        {
-                            return (false, NationalDbType.Unknown, "Geodatabase not found or opened");
-                        }
-
-                        // If I get to this point, the enterprise database exists and was successfully opened
-                        return (true, NationalDbType.EnterpriseGDB, "success");
-                    }
-                    else
-                    {
-                        // something else, weird!
-                        return (false, NationalDbType.Unknown, "unable to process national database path");
-                    }
-                });
+                return await GDBExists(GetPath_NatGDB());
             }
             catch (Exception ex)
             {
-                return (false, NationalDbType.Unknown, ex.Message);
+                return (false, GeodatabaseType.Unknown, ex.Message);
             }
         }
 
@@ -760,28 +646,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_Project();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return FCExists(geodatabase, fc_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return FCExists(geodatabase, fc_name);
+                    }
+                });
             }
             catch
             {
@@ -793,28 +678,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_Project();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return TableExists(geodatabase, table_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return TableExists(geodatabase, table_name);
+                    }
+                });
             }
             catch
             {
@@ -826,28 +710,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_Project();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return RasterExists(geodatabase, raster_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return RasterExists(geodatabase, raster_name);
+                    }
+                });
             }
             catch
             {
@@ -863,28 +746,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_RTScratch();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_RTScratch();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return FCExists(geodatabase, fc_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return FCExists(geodatabase, fc_name);
+                    }
+                });
             }
             catch
             {
@@ -896,28 +778,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_RTScratch();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_RTScratch();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return TableExists(geodatabase, table_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return TableExists(geodatabase, table_name);
+                    }
+                });
             }
             catch
             {
@@ -929,28 +810,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_RTScratch();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_RTScratch();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return RasterExists(geodatabase, raster_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return RasterExists(geodatabase, raster_name);
+                    }
+                });
             }
             catch
             {
@@ -966,28 +846,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_Nat();
 
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Nat();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
+                    if (!tryget_gdb.success)
                     {
                         return false;
                     }
 
-                    return TableExists(geodatabase, table_name);
-                }
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return false;
+                        }
+
+                        return TableExists(geodatabase, table_name);
+                    }
+                });
             }
             catch
             {
@@ -1007,7 +886,7 @@ namespace NCC.PRZTools
                 return await QueuedTask.Run(async () =>
                 {
                     // Try to retrieve the project geodatabase
-                    var tryget_gdb = await GetGDB_Project();
+                    var tryget_gdb = GetGDB_Project();
 
                     if (!tryget_gdb.success)
                     {
@@ -1065,435 +944,273 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region SPECIFIC OBJECT EXISTENCE
-
-        public static async Task<bool> RasterExists_PU()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
-                    {
-                        return false;
-                    }
-
-                    return RasterExists(geodatabase, PRZC.c_RAS_PLANNING_UNITS);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> FCExists_PU()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await FCExists(gdb, PRZC.c_FC_PLANNING_UNITS);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> FCExists_StudyArea()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await FCExists(gdb, PRZC.c_FC_STUDY_AREA_MAIN);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> FCExists_StudyAreaBuffer()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await FCExists(gdb, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_PUSelRules()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_PUSELRULES);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_PUCost()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_COSTSTATS);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_Features()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_FEATURES);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_SelRules()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_SELRULES);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_PUFeatures()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_PUFEATURES);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        public static async Task<bool> TableExists_Boundary()
-        {
-            try
-            {
-                // Ensure this is called on worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return false;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null)
-                    {
-                        return false;
-                    }
-
-                    return await TableExists(gdb, PRZC.c_TABLE_PUBOUNDARY);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
-            }
-        }
-
-        #endregion
-
-        #endregion
-
         #region GEODATABASE OBJECT RETRIEVAL
 
-        #region GENERIC OBJECTS
+        #region GEODATABASES
 
-        public static async Task<Geodatabase> GetFileGDB(string path)
+        public static (bool success, Geodatabase geodatabase, string message) GetFileGDB(string gdbpath)
         {
             try
             {
-                // Ensure the path is an existing directory
-                if (!Directory.Exists(path))
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
                 {
-                    return null;
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure the Uri is a valid Uri
+                // Ensure a non-null and non-empty path
+                if (string.IsNullOrEmpty(gdbpath))
+                {
+                    return (false, null, $"Path is null or empty.");
+                }
 
-                Uri uri = new Uri(path);
-                FileGeodatabaseConnectionPath pathConn = new FileGeodatabaseConnectionPath(uri);
-                Geodatabase gdb = null;
+                // Ensure a rooted path
+                if (!Path.IsPathRooted(gdbpath))
+                {
+                    return (false, null, $"Path is not rooted: {gdbpath}");
+                }
+
+                // Ensure the path is an existing directory
+                if (!Directory.Exists(gdbpath))
+                {
+                    return (false, null, $"Path is not a valid folder path.\n{gdbpath}");
+                }
+
+                // Create the Uri object
+                Uri uri = null;
 
                 try
                 {
-                    await QueuedTask.Run(() =>
-                    {
-                        gdb = new Geodatabase(pathConn);
-                    });
-
+                    uri = new Uri(gdbpath);
                 }
-                catch (GeodatabaseNotFoundOrOpenedException)
+                catch
                 {
-                    return null;
+                    return (false, null, $"Unable to create Uri from path: {gdbpath}");
                 }
 
-                // If I get to this point, the file gdb exists and was successfully opened
-                return gdb;
+                // Create the Connection Path object
+                FileGeodatabaseConnectionPath connpath = null;
+
+                try
+                {
+                    connpath = new FileGeodatabaseConnectionPath(uri);
+                }
+                catch
+                {
+                    return (false, null, $"Unable to create file geodatabase connection path from path: {gdbpath}");
+                }
+
+                // Create the Geodatabase object
+                Geodatabase geodatabase = null;
+
+                // Try to open the geodatabase from the connection path
+                try
+                {
+                    geodatabase = new Geodatabase(connpath);
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, $"Error opening the geodatabase from the connection path.\n{ex.Message}");
+                }
+
+                // If we get to here, the geodatabase has been opened successfully!  Return it!
+                return (true, geodatabase, "success");
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
+                return (false, null, ex.Message);
             }
         }
 
-        public static async Task<Geodatabase> GetEnterpriseGDB(string path)
+        public static (bool success, Geodatabase geodatabase, string message) GetEnterpriseGDB(string sdepath)
         {
             try
             {
-                // Ensure the path is an existing .sde connection file
-                if (!File.Exists(path) || !Path.IsPathRooted(path) || !path.EndsWith(".sde"))
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
                 {
-                    return null;
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure the Uri is a valid Uri
-                Uri uri = new Uri(path);
-                if (uri == null)
+                // Ensure a non-null and non-empty path
+                if (string.IsNullOrEmpty(sdepath))
                 {
-                    return null;
+                    return (false, null, "Geodatabase path is null or empty.");
                 }
 
-                DatabaseConnectionFile connPath = new DatabaseConnectionFile(uri);
-                Geodatabase gdb = null;
+                // Ensure a rooted path
+                if (!Path.IsPathRooted(sdepath))
+                {
+                    return (false, null, $"Path is not rooted: {sdepath}");
+                }
+
+                // Ensure path is a valid file
+                if (!File.Exists(sdepath))
+                {
+                    return (false, null, $"Path is not a valid file: {sdepath}");
+                }
+
+                // Create the Uri object
+                Uri uri = null;
 
                 try
                 {
-                    await QueuedTask.Run(() =>
-                    {
-                        gdb = new Geodatabase(connPath);
-                    });
-
+                    uri = new Uri(sdepath);
                 }
-                catch (GeodatabaseNotFoundOrOpenedException)
+                catch
                 {
-                    return null;
+                    return (false, null, $"Unable to create Uri from path: {sdepath}");
                 }
 
-                // If I get to this point, the file gdb exists and was successfully opened
-                return gdb;
+                // Ensure the path is an existing sde connection file
+                if (sdepath.EndsWith(".sde"))
+                {
+                    // Create the Connection File object
+                    DatabaseConnectionFile conn = null;
+
+                    try
+                    {
+                        conn = new DatabaseConnectionFile(uri);
+                    }
+                    catch
+                    {
+                        return (false, null, $"Unable to create database connection file from path: {sdepath}");
+                    }
+
+                    // try to open the connection
+                    Geodatabase geodatabase = null;
+
+                    try
+                    {
+                        geodatabase = new Geodatabase(conn);
+                    }
+                    catch
+                    {
+                        return (false, null, $"Enterprise geodatabase could not be opened from path: {sdepath}");
+                    }
+
+                    // If I get to this point, the enterprise geodatabase exists and was successfully opened
+                    return (true, geodatabase, "success");
+                }
+                else
+                {
+                    return (false, null, "Unable to process database connection file.");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB(string path)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure a non-null and non-empty path
+                if (string.IsNullOrEmpty(path))
+                {
+                    return (false, null, GeodatabaseType.Unknown, "Geodatabase path is null or empty.");
+                }
+
+                // Ensure a rooted path
+                if (!Path.IsPathRooted(path))
+                {
+                    return (false, null, GeodatabaseType.Unknown, $"Path is not rooted: {path}");
+                }
+
+                if (path.EndsWith(".gdb"))
+                {
+                    var tryget = GetFileGDB(path);
+                    return (tryget.success, tryget.geodatabase, GeodatabaseType.FileGDB, tryget.message);
+                }
+                else if (path.EndsWith(".sde"))
+                {
+                    var tryget = GetEnterpriseGDB(path);
+                    return (tryget.success, tryget.geodatabase, GeodatabaseType.EnterpriseGDB, tryget.message);
+                }
+                else
+                {
+                    return (false, null, GeodatabaseType.Unknown, "Invalid geodatabase path (not *.gdb or *.sde)");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, GeodatabaseType.Unknown, ex.Message);
+            }
+        }
+
+        public static (bool success, Geodatabase geodatabase, string message) GetGDB_Project()
+        {
+            try
+            {
+                // Ensure this is called on the worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Get the Project GDB Path
+                string gdbpath = GetPath_ProjectGDB();
+
+                // Retrieve the File Geodatabase
+                return GetFileGDB(gdbpath);
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static (bool success, Geodatabase geodatabase, string message) GetGDB_RTScratch()
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Get the RT Scratch Geodatabase Path
+                string gdbpath = GetPath_RTScratchGDB();
+
+                // Retrieve the File Geodatabase
+                return GetFileGDB(gdbpath);
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB_Nat()
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Get the Nat Geodatabase Path
+                string gdbpath = GetPath_NatGDB();
+
+                // Get the Geodatabase
+                var tryget = GetGDB(gdbpath);
+
+                return tryget;
+            }
+            catch (Exception ex)
+            {
+                return (false, null, GeodatabaseType.Unknown, ex.Message);
             }
         }
 
@@ -1501,9 +1218,9 @@ namespace NCC.PRZTools
 
         #region SPECIFIC OBJECTS
 
-        #region GEODATABASES
+        #region GENERIC GDB OBJECTS
 
-        public static async Task<(bool success, Geodatabase geodatabase, string message)> GetGDB_Project()
+        public static (bool success, FeatureClass featureclass, string message) GetFC(Geodatabase geodatabase, string fc_name)
         {
             try
             {
@@ -1513,35 +1230,31 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Project Geodatabase Path
-                string gdbpath = GetPath_ProjectGDB();
-
-                // Determine if the database actually exists
-                var outcome = await GDBExists_Project();
-
-                if (!outcome.exists)
+                // Ensure geodatabase is not null
+                if (geodatabase == null)
                 {
-                    return (false, null, outcome.message);
+                    return (false, null, "Null or invalid geodatabase.");
                 }
 
-                // Create a Uri
-                Uri uri = new Uri(gdbpath);
-                FileGeodatabaseConnectionPath connpath = new FileGeodatabaseConnectionPath(uri);
+                // Ensure feature class exists
+                if (!FCExists(geodatabase, fc_name))
+                {
+                    return (false, null, "Feature class not found in geodatabase");
+                }
 
-                // Try to create a geodatabase object from the connection path object
-                Geodatabase geodatabase = null;
+                // retrieve feature class
+                FeatureClass featureClass = null;
 
                 try
                 {
-                    geodatabase = new Geodatabase(connpath);
+                    featureClass = geodatabase.OpenDataset<FeatureClass>(fc_name);
+
+                    return (true, featureClass, "success");
                 }
                 catch (Exception ex)
                 {
-                    return (false, null, ex.Message);
+                    return (false, null, $"Error opening {fc_name} feature class.\n{ex.Message}");
                 }
-
-                // If I make it to here, the geodatabase has been created
-                return (true, geodatabase, "success");
             }
             catch (Exception ex)
             {
@@ -1549,7 +1262,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Geodatabase geodatabase, string message)> GetGDB_Nat()
+        public static (bool success, Table table, string message) GetTable(Geodatabase geodatabase, string table_name)
         {
             try
             {
@@ -1559,51 +1272,31 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Nat Geodatabase Path
-                string gdbpath = GetPath_NatGDB();
-
-                // Determine if the database actually exists
-                var outcome = await GDBExists_Nat();
-
-                if (!outcome.exists)
+                // Ensure geodatabase is not null
+                if (geodatabase == null)
                 {
-                    return (false, null, outcome.message);
+                    return (false, null, "Null or invalid geodatabase.");
                 }
 
-                // Create a Uri
-                Uri u = new Uri(gdbpath);
-
-                // Create a geodatabase object
-                Geodatabase geodatabase = null;
-
-                if (outcome.dbType == NationalDbType.FileGDB)
+                // Ensure feature class exists
+                if (!TableExists(geodatabase, table_name))
                 {
-                    FileGeodatabaseConnectionPath conn = new FileGeodatabaseConnectionPath(u);
-
-                    try
-                    {
-                        geodatabase = new Geodatabase(conn);
-                    }
-                    catch (Exception ex)
-                    {
-                        return (false, null, ex.Message);
-                    }
-                }
-                else if (outcome.dbType == NationalDbType.EnterpriseGDB)
-                {
-                    DatabaseConnectionFile conn = new DatabaseConnectionFile(u);
-
-                    try
-                    {
-                        geodatabase = new Geodatabase(conn);
-                    }
-                    catch (Exception ex)
-                    {
-                        return (false, null, ex.Message);
-                    }
+                    return (false, null, "Table not found in geodatabase");
                 }
 
-                return (true, geodatabase, "success");
+                // Retrieve table
+                Table table = null;
+
+                try
+                {
+                    table = geodatabase.OpenDataset<Table>(table_name);
+
+                    return (true, table, "success");
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, $"Error opening {table_name} feature class.\n{ex.Message}");
+                }
             }
             catch (Exception ex)
             {
@@ -1611,7 +1304,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Geodatabase geodatabase, string message)> GetGDB_RTScratch()
+        public static (bool success, RasterDataset rasterDataset, string message) GetRaster(Geodatabase geodatabase, string raster_name)
         {
             try
             {
@@ -1621,35 +1314,31 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // RT Scratch Geodatabase Path
-                string gdbpath = GetPath_RTScratchGDB();
-
-                // Determine if the database actually exists
-                var outcome = await GDBExists_RTScratch();
-
-                if (!outcome.exists)
+                // Ensure geodatabase is not null
+                if (geodatabase == null)
                 {
-                    return (false, null, outcome.message);
+                    return (false, null, "Null or invalid geodatabase.");
                 }
 
-                // Create a Uri
-                Uri uri = new Uri(gdbpath);
-                FileGeodatabaseConnectionPath connpath = new FileGeodatabaseConnectionPath(uri);
+                // Ensure feature class exists
+                if (!RasterExists(geodatabase, raster_name))
+                {
+                    return (false, null, "Raster dataset not found in geodatabase");
+                }
 
-                // Try to create a geodatabase object from the connection path object
-                Geodatabase gdb = null;
+                // Retrieve raster dataset
+                RasterDataset rasterDataset = null;
 
                 try
                 {
-                    gdb = new Geodatabase(connpath);
+                    rasterDataset = geodatabase.OpenDataset<RasterDataset>(raster_name);
+
+                    return (true, rasterDataset, "success");
                 }
                 catch (Exception ex)
                 {
-                    return (false, null, ex.Message);
+                    return (false, null, $"Error opening {raster_name} raster dataset.\n{ex.Message}");
                 }
-
-                // If I make it to here, the geodatabase has been created
-                return (true, gdb, "success");
             }
             catch (Exception ex)
             {
@@ -1659,9 +1348,9 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region RTSCRATCH GDB OBJECTS
+        #region PROJECT GDB OBJECTS
 
-        public static async Task<(bool success, FeatureClass featureclass, string message)> GetFeatureClass_RTScratch(string fc_name)
+        public static (bool success, FeatureClass featureclass, string message) GetFC_Project(string fc_name)
         {
             try
             {
@@ -1671,24 +1360,17 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure geodatabase exists
-                var gdbexists_outcome = await GDBExists_RTScratch();
-                if (!gdbexists_outcome.exists)
-                {
-                    return (false, null, gdbexists_outcome.message);
-                }
-
                 // Retrieve geodatabase
-                var getgdb_outcome = await GetGDB_RTScratch();
-                if (!getgdb_outcome.success)
+                var tryget = GetGDB_Project();
+                if (!tryget.success)
                 {
-                    return (false, null, getgdb_outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure feature class exists
-                    if (!await FCExists(geodatabase, fc_name))
+                    if (!FCExists(geodatabase, fc_name))
                     {
                         return (false, null, "Feature class not found in geodatabase");
                     }
@@ -1705,7 +1387,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Table table, string message)> GetTable_RTScratch(string table_name)
+        public static (bool success, Table table, string message) GetTable_Project(string table_name)
         {
             try
             {
@@ -1715,24 +1397,17 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure geodatabase exists
-                var gdbexists_outcome = await GDBExists_RTScratch();
-                if (!gdbexists_outcome.exists)
-                {
-                    return (false, null, gdbexists_outcome.message);
-                }
-
                 // Retrieve geodatabase
-                var getgdb_outcome = await GetGDB_RTScratch();
-                if (!getgdb_outcome.success)
+                var tryget = GetGDB_Project();
+                if (!tryget.success)
                 {
-                    return (false, null, getgdb_outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure table exists
-                    if (!await TableExists(geodatabase, table_name))
+                    if (!TableExists(geodatabase, table_name))
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
@@ -1749,7 +1424,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, RasterDataset rasterDataset, string message)> GetRaster_RTScratch(string raster_name)
+        public static (bool success, RasterDataset rasterDataset, string message) GetRaster_Project(string raster_name)
         {
             try
             {
@@ -1759,29 +1434,137 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure geodatabase exists
-                var gdbexists_outcome = await GDBExists_RTScratch();
-                if (!gdbexists_outcome.exists)
+                // Retrieve geodatabase
+                var tryget = GetGDB_Project();
+                if (!tryget.success)
                 {
-                    return (false, null, gdbexists_outcome.message);
+                    return (false, null, tryget.message);
+                }
+
+                using (Geodatabase geodatabase = tryget.geodatabase)
+                {
+                    // ensure raster dataset exists
+                    if (!RasterExists(geodatabase, raster_name))
+                    {
+                        return (false, null, "Raster dataset not found in geodatabase");
+                    }
+
+                    // get the raster dataset
+                    RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(raster_name);
+
+                    return (true, rasterDataset, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region RT SCRATCH GDB OBJECTS
+
+        public static (bool success, FeatureClass featureclass, string message) GetFC_RTScratch(string fc_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
                 // Retrieve geodatabase
-                var getgdb_outcome = await GetGDB_RTScratch();
-                if (!getgdb_outcome.success)
+                var tryget = GetGDB_RTScratch();
+                if (!tryget.success)
                 {
-                    return (false, null, getgdb_outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                using (Geodatabase geodatabase = tryget.geodatabase)
                 {
-                    // ensure raster exists
-                    if (!await RasterExists(geodatabase, raster_name))
+                    // ensure feature class exists
+                    if (!FCExists(geodatabase, fc_name))
                     {
-                        return (false, null, "Raster not found in geodatabase");
+                        return (false, null, "Feature class not found in geodatabase");
                     }
 
-                    // get the raster
+                    // get the feature class
+                    FeatureClass featureClass = geodatabase.OpenDataset<FeatureClass>(fc_name);
+
+                    return (true, featureClass, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static (bool success, Table table, string message) GetTable_RTScratch(string table_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Retrieve geodatabase
+                var tryget = GetGDB_RTScratch();
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                using (Geodatabase geodatabase = tryget.geodatabase)
+                {
+                    // ensure table exists
+                    if (!TableExists(geodatabase, table_name))
+                    {
+                        return (false, null, "Table not found in geodatabase");
+                    }
+
+                    // get the table
+                    Table table = geodatabase.OpenDataset<Table>(table_name);
+
+                    return (true, table, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        public static (bool success, RasterDataset rasterDataset, string message) GetRaster_RTScratch(string raster_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Retrieve geodatabase
+                var tryget = GetGDB_RTScratch();
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                using (Geodatabase geodatabase = tryget.geodatabase)
+                {
+                    // ensure raster dataset exists
+                    if (!RasterExists(geodatabase, raster_name))
+                    {
+                        return (false, null, "Raster dataset not found in geodatabase");
+                    }
+
+                    // get the raster dataset
                     RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(raster_name);
 
                     return (true, rasterDataset, "success");
@@ -1797,7 +1580,7 @@ namespace NCC.PRZTools
 
         #region NAT GDB OBJECTS
 
-        public static async Task<(bool success, Table table, string message)> GetTable_Nat(string table_name)
+        public static (bool success, Table table, string message) GetTable_Nat(string table_name)
         {
             try
             {
@@ -1807,24 +1590,17 @@ namespace NCC.PRZTools
                     throw new ArcGIS.Core.CalledOnWrongThreadException();
                 }
 
-                // Ensure geodatabase exists
-                var gdbexists_outcome = await GDBExists_Nat();
-                if (!gdbexists_outcome.exists)
-                {
-                    return (false, null, gdbexists_outcome.message);
-                }
-
                 // Retrieve geodatabase
-                var getgdb_outcome = await GetGDB_Nat();
-                if (!getgdb_outcome.success)
+                var tryget = GetGDB_Nat();
+                if (!tryget.success)
                 {
-                    return (false, null, getgdb_outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                using (Geodatabase geodatabase = getgdb_outcome.geodatabase)
+                using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure table exists
-                    if (!await TableExists(geodatabase, table_name))
+                    if (!TableExists(geodatabase, table_name))
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
@@ -1842,518 +1618,6 @@ namespace NCC.PRZTools
         }
 
         #endregion
-
-        public static async Task<RasterDataset> GetRaster_PU()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        RasterDataset ras = gdb.OpenDataset<RasterDataset>(PRZC.c_RAS_PLANNING_UNITS);
-                        return ras;
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<FeatureClass> GetFC_PU()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_PLANNING_UNITS);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<FeatureClass> GetFC_StudyArea()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get geodatabase
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<FeatureClass> GetFC_StudyAreaBuffer()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_PUSelRules()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUSELRULES);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_PUCost()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_COSTSTATS);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_Features()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_FEATURES);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_PUFeatures()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUFEATURES);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_SelRules()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_SELRULES);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable_Boundary()
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                {
-                    if (gdb == null) return null;
-
-                    try
-                    {
-                        return gdb.OpenDataset<Table>(PRZC.c_TABLE_PUBOUNDARY);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable(string table_name)
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null) return null;
-
-                    try
-                    {
-                        return geodatabase.OpenDataset<Table>(table_name);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<Table> GetTable(Geodatabase gdb, string table_name)
-        {
-            try
-            {
-                if (gdb == null) return null;
-
-                try
-                {
-                    Table tab = await QueuedTask.Run(() =>
-                    {
-                        return gdb.OpenDataset<Table>(table_name);
-                    });
-
-                    return tab;
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<FeatureClass> GetFeatureClass(string fc_name)
-        {
-            try
-            {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
-                // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
-                if (!tryget_gdb.success)
-                {
-                    return null;
-                }
-
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null) return null;
-
-                    try
-                    {
-                        return geodatabase.OpenDataset<FeatureClass>(fc_name);
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static async Task<FeatureClass> GetFeatureClass(Geodatabase gdb, string fc_name)
-        {
-            try
-            {
-                if (gdb == null) return null;
-
-                try
-                {
-                    FeatureClass fc = await QueuedTask.Run(() =>
-                    {
-                        return gdb.OpenDataset<FeatureClass>(fc_name);
-                    });
-
-                    return fc;
-                }
-                catch (Exception ex)
-                {
-                    ProMsgBox.Show(ex.Message);
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
 
         #endregion
 
@@ -2411,7 +1675,13 @@ namespace NCC.PRZTools
                 // Populate the list
                 (bool success, string message) outcome = await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await GetTable(PRZC.c_TABLE_NAT_THEMES))
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
                     using (RowCursor rowCursor = table.Search())
                     {
                         while (rowCursor.MoveNext())
@@ -2513,7 +1783,13 @@ namespace NCC.PRZTools
                 // Populate the list
                 (bool success, string message) elem_outcome = await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
                     using (RowCursor rowCursor = table.Search())
                     {
                         while (rowCursor.MoveNext())
@@ -2674,14 +1950,20 @@ namespace NCC.PRZTools
                 }
 
                 // retrieve the value for the cell number in the element table
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
                     QueryFilter queryFilter = new QueryFilter
                     {
                         WhereClause = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " = " + cell_number
                     };
 
-                    using (Table table = await GetTable(table_name))
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
                     {
                         // Row Count
                         int rows = table.GetCount(queryFilter);
@@ -2776,14 +2058,20 @@ namespace NCC.PRZTools
                 long cell_number = result.cell_number;
 
                 // retrieve the value for the cell number in the element table
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
                     QueryFilter queryFilter = new QueryFilter
                     {
                         WhereClause = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " = " + cell_number
                     };
 
-                    using (Table table = await GetTable(table_name))
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving the table.");
+                    }
+
+                    using (Table table = tryget.table)
                     {
                         // Row Count
                         int rows = table.GetCount(queryFilter);
@@ -2870,9 +2158,15 @@ namespace NCC.PRZTools
                 Dictionary<long, double> dict = new Dictionary<long, double>();
 
                 // Populate the dictionary
-                await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    using (Table table = await GetTable(table_name))
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
                     using (RowCursor rowCursor = table.Search())
                     {
                         while (rowCursor.MoveNext())
@@ -2943,7 +2237,13 @@ namespace NCC.PRZTools
                 // Populate the dictionary
                 (bool success, string message) result = await QueuedTask.Run(async () =>
                 {
-                    using (Table table = await GetTable(table_name))
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
                     using (RowCursor rowCursor = table.Search())
                     {
                         while (rowCursor.MoveNext())
@@ -3011,12 +2311,12 @@ namespace NCC.PRZTools
                 Dictionary<long, double> dict = new Dictionary<long, double>();
 
                 // Populate dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
                     try
                     {
                         // try getting the e0000n table
-                        var gettable_outcome = await GetTable_Nat(table_name);
+                        var gettable_outcome = GetTable_Nat(table_name);
 
                         if (!gettable_outcome.success)
                         {
@@ -3079,8 +2379,6 @@ namespace NCC.PRZTools
 
             try
             {
-                // I'm here!!!
-
                 // Check for Project GDB
                 var try_gdbexists = await GDBExists_Project();
                 if (!try_gdbexists.exists)
@@ -3100,7 +2398,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3111,7 +2409,13 @@ namespace NCC.PRZTools
                             WhereClause = $"{PRZC.c_FLD_FC_PU_ID} = {puid}"
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         {
                             // Row Count
                             int rows = table.GetCount(queryFilter);
@@ -3158,7 +2462,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3169,7 +2473,13 @@ namespace NCC.PRZTools
                             WhereClause = $"{PRZC.c_FLD_RAS_PU_ID} = {puid}"
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving raster planning units");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         {
@@ -3262,7 +2572,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3273,7 +2583,13 @@ namespace NCC.PRZTools
                             WhereClause = $"{PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER} = {cell_number}"
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         {
                             // Row Count
                             int rows = table.GetCount(queryFilter);
@@ -3320,7 +2636,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3331,7 +2647,13 @@ namespace NCC.PRZTools
                             WhereClause = $"{PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER} = {cell_number}"
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving raster planning units");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         {
@@ -3435,7 +2757,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3445,7 +2767,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_FC_PU_ID
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
                             while (rowCursor.MoveNext())
@@ -3466,7 +2794,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3476,7 +2804,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_RAS_PU_ID
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving raster planning units");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         using (RowCursor rowCursor = table.Search(queryFilter))
@@ -3580,7 +2914,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3590,7 +2924,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
                             while (rowCursor.MoveNext())
@@ -3611,7 +2951,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3621,7 +2961,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving planning unit raster");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         using (RowCursor rowCursor = table.Search(queryFilter))
@@ -3723,7 +3069,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3733,7 +3079,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
                             while (rowCursor.MoveNext())
@@ -3755,7 +3107,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3765,7 +3117,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving planning unit raster");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         using (RowCursor rowCursor = table.Search(queryFilter))
@@ -3834,7 +3192,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_PU())
+                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3844,7 +3202,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
                         };
 
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
                             while (rowCursor.MoveNext())
@@ -3866,7 +3230,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_PU())
+                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3876,7 +3240,13 @@ namespace NCC.PRZTools
                             SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
                         };
 
-                        using (RasterDataset rasterDataset = await GetRaster_PU())
+                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            return (false, "Error retrieving raster planning units");
+                        }
+
+                        using (RasterDataset rasterDataset = tryget.rasterDataset)
                         using (Raster raster = rasterDataset.CreateFullRaster())
                         using (Table table = raster.GetAttributeTable())
                         using (RowCursor rowCursor = table.Search(queryFilter))
@@ -4902,7 +4272,7 @@ namespace NCC.PRZTools
                 string gdbpath = GetPath_ProjectGDB();
 
                 // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
+                var tryget_gdb = GetGDB_Project();
                 if (!tryget_gdb.success)
                 {
                     return (false, "Unable to retrieve the project geodatabase.");
@@ -5088,7 +4458,7 @@ namespace NCC.PRZTools
                 string gdbpath = GetPath_ProjectGDB();
 
                 // Get the project gdb
-                var tryget_gdb = await GetGDB_Project();
+                var tryget_gdb = GetGDB_Project();
                 if (!tryget_gdb.success)
                 {
                     return (false, "Unable to retrieve the project geodatabase.");
@@ -5355,17 +4725,17 @@ namespace NCC.PRZTools
                         int w = 0;
 
                         // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
-                        if (await FCExists_PU())
+                        if (await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                         {
-                            string fc_path = GetPath_FC_PU();
+                            string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
                             await ApplyLegend_PU_Basic(featureLayer);
                             featureLayer.SetVisibility(true);
                         }
-                        else if (await RasterExists_PU())
+                        else if (await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
-                            string ras_path = GetPath_Raster_PU();
+                            string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
                             Uri uri = new Uri(ras_path);
                             RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
                             // TODO: Renderer for this raster layer
@@ -5373,9 +4743,9 @@ namespace NCC.PRZTools
                         }
 
                         // Add the Study Area Layer (MIGHT NOT EXIST YET)
-                        if (await FCExists_StudyArea())
+                        if (await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN))
                         {
-                            string fc_path = GetPath_FC_StudyArea();
+                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN);
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
                             ApplyLegend_SA_Simple(featureLayer);
@@ -5383,9 +4753,9 @@ namespace NCC.PRZTools
                         }
 
                         // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
-                        if (await FCExists_StudyAreaBuffer())
+                        if (await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED))
                         {
-                            string fc_path = GetPath_FC_StudyAreaBuffer();
+                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
                             ApplyLegend_SAB_Simple(featureLayer);
@@ -5586,11 +4956,17 @@ namespace NCC.PRZTools
             {
                 Dictionary<int, double> dict = new Dictionary<int, double>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await GetFC_PU())
+                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())

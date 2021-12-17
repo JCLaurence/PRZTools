@@ -202,7 +202,7 @@ namespace NCC.PRZTools
                 {
                     Txt_PlanningUnitLabel = "Planning Unit Feature Class";
                     // Ensure data present
-                    if (!await PRZH.FCExists_PU())
+                    if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                     {
                         // PU FC NOT FOUND
                     }
@@ -215,7 +215,7 @@ namespace NCC.PRZTools
                 {
                     Txt_PlanningUnitLabel = "Planning Unit Raster Dataset";
                     // Ensure data present
-                    if (!await PRZH.RasterExists_PU())
+                    if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                     {
                         // RASTER NOT FOUND
                     }
@@ -231,10 +231,10 @@ namespace NCC.PRZTools
 
                 // Initialize the indicator images
                 bool PlanningUnits_OK = pu_result.exists;
-                bool SelRules_OK = await PRZH.TableExists_SelRules();
+                bool SelRules_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
                 bool Weights_OK = false;    // TODO: ADD THIS LATER
-                bool Features_OK = await PRZH.TableExists_Features();
-                bool Bounds_OK = await PRZH.TableExists_Boundary();
+                bool Features_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
+                bool Bounds_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY);
 
                 // Set the Component Status Images
                 if (PlanningUnits_OK)
@@ -397,7 +397,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
                     // Ensure data present
-                    if (!await PRZH.FCExists_PU())
+                    if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit feature class not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit feature class not found.  Have you built it yet?");
@@ -409,12 +409,18 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_FC_PU();
+                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
 
                     // Get Spatial Reference
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (FeatureClass FC = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass FC = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = FC.GetDefinition())
                         {
                             PU_SR = fcDef.GetSpatialReference();
@@ -424,7 +430,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                 {
                     // Ensure data present
-                    if (!await PRZH.RasterExists_PU())
+                    if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit raster dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit raster dataset not found.  Have you built it yet?");
@@ -436,12 +442,18 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_Raster_PU();
+                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
 
                     // Get Spatial Reference and cell size
-                    await QueuedTask.Run(async () =>
+                    await QueuedTask.Run(() =>
                     {
-                        using (RasterDataset RD = await PRZH.GetRaster_PU())
+                        var tryget = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Unable to retrieve planning unit raster dataset.");
+                        }
+
+                        using (RasterDataset RD = tryget.rasterDataset)
                         using (Raster raster = RD.CreateFullRaster())
                         {
                             PU_SR = raster.GetSpatialReference();
@@ -1026,11 +1038,17 @@ namespace NCC.PRZTools
                     csv.NextRecord();
 
                     // *** ROWS 2 TO N => Boundary Records
-                    if (!await QueuedTask.Run(async () =>
+                    if (!await QueuedTask.Run(() =>
                     {
                         try
                         {
-                            using (Table table = await PRZH.GetTable_Boundary())
+                            var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUBOUNDARY);
+                            if (!tryget.success)
+                            {
+                                throw new Exception("Unable to retrieve table.");
+                            }
+
+                            using (Table table = tryget.table)
                             using (RowCursor rowCursor = table.Search())
                             {
                                 while (rowCursor.MoveNext())
@@ -1337,7 +1355,7 @@ namespace NCC.PRZTools
                 string export_shp_path = Path.Combine(export_folder_path, export_shp_name);
 
                 // Confirm that source raster is present
-                if (!await PRZH.RasterExists_PU())
+                if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster dataset not found.", LogMessageType.ERROR), true, ++val);
                     return (false, $"{PRZC.c_RAS_PLANNING_UNITS} raster dataset not found");
@@ -1536,7 +1554,7 @@ namespace NCC.PRZTools
                 string export_shp_path = Path.Combine(export_folder_path, export_shp_name);
 
                 // Confirm that source feature class is present
-                if (!await PRZH.FCExists_PU())
+                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class not found.", LogMessageType.ERROR), true, ++val);
                     return (false, $"{PRZC.c_FC_PLANNING_UNITS} feature class not found");
@@ -1664,7 +1682,7 @@ namespace NCC.PRZTools
 
 
 
-        private async Task<bool> Test()
+        private bool Test()
         {
             try
             {

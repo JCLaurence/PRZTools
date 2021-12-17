@@ -39,6 +39,13 @@
         Unknown
     }
 
+    public enum GeodatabaseType
+    {
+        FileGDB,
+        EnterpriseGDB,
+        Unknown
+    }
+
     public enum NationalElementType
     {
         Goal = 1,

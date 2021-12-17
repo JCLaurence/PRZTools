@@ -145,7 +145,7 @@ namespace NCC.PRZTools
 
         #region METHODS
 
-        public async Task OnProWinLoaded()
+        public void OnProWinLoaded()
         {
             try
             {
@@ -592,42 +592,57 @@ namespace NCC.PRZTools
                         loader.SelectNewFeatures = false;
                         loader.SelectModifiedFeatures = false;
 
-                        using (Geodatabase gdb = await PRZH.GetFileGDB(FgdbPath))
-                        using (Table tab = await PRZH.GetTable(gdb, TableName))
+                        var tryget = PRZH.GetFileGDB(FgdbPath);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
-                            {
-                                using (Geodatabase fgdb = await PRZH.GetFileGDB(FgdbPath))
-                                using (Table table = await PRZH.GetTable(fgdb, TableName))
-                                using (InsertCursor insertCursor = table.CreateInsertCursor())
-                                using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                                {
-                                    long flusher = 0;
-
-                                    var cellNumbers = DICT_Pixels.Keys.ToList();
-                                    cellNumbers.Sort();
-
-                                    foreach (var num in cellNumbers)
-                                    {
-                                        var val = DICT_Pixels[num];
-
-                                        rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = num;
-                                        rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = val;
-                                        insertCursor.Insert(rowBuffer);
-
-                                        flusher++;
-
-                                        if (flusher == 10000)
-                                        {
-                                            insertCursor.Flush();
-                                            flusher = 0;
-                                        }
-                                    }
-
-                                    insertCursor.Flush();
-                                }
-                            }, tab);
+                            throw new Exception("Error retrieving geodatabase.");
                         }
+
+                        using (Geodatabase gdb = tryget.geodatabase)
+                        {
+                            var tryget2 = PRZH.GetTable(gdb, TableName);
+                            if (!tryget2.success)
+                            {
+                                throw new Exception("Error retrieving table.");
+                            }
+
+                            using (Table tab = tryget2.table)
+                            {
+                                loader.Callback((context) =>
+                                {
+                                    using (Geodatabase fgdb = PRZH.GetFileGDB(FgdbPath).geodatabase)
+                                    using (Table table = PRZH.GetTable(fgdb, TableName).table)
+                                    using (InsertCursor insertCursor = table.CreateInsertCursor())
+                                    using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                                    {
+                                        long flusher = 0;
+
+                                        var cellNumbers = DICT_Pixels.Keys.ToList();
+                                        cellNumbers.Sort();
+
+                                        foreach (var num in cellNumbers)
+                                        {
+                                            var val = DICT_Pixels[num];
+
+                                            rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = num;
+                                            rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = val;
+                                            insertCursor.Insert(rowBuffer);
+
+                                            flusher++;
+
+                                            if (flusher == 10000)
+                                            {
+                                                insertCursor.Flush();
+                                                flusher = 0;
+                                            }
+                                        }
+
+                                        insertCursor.Flush();
+                                    }
+                                }, tab);
+                            }
+                        }
+
 
                         // Execute all the queued "creates"
                         success = loader.Execute();

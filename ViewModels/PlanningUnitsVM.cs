@@ -685,7 +685,7 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () => await Test(), () => true));
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
         #endregion
 
         #region METHODS
@@ -1774,7 +1774,7 @@ namespace NCC.PRZTools
 
                 #region CREATE STUDY AREA FEATURE CLASSES
 
-                string safcpath = PRZH.GetPath_FC_StudyArea();
+                string safcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN);
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating study area feature class..."), true, ++val);
@@ -1816,11 +1816,17 @@ namespace NCC.PRZTools
                 }
 
                 // Add the geometry
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (FeatureClass fc = await PRZH.GetFC_StudyArea())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_STUDY_AREA_MAIN);
+                        if (!tryget.success)
+                        {
+                            return false;
+                        }
+
+                        using (FeatureClass fc = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = fc.GetDefinition())
                         using (InsertCursor insertCursor = fc.CreateInsertCursor())
                         using (RowBuffer rowBuffer = fc.CreateRowBuffer())
@@ -1855,7 +1861,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study area feature created successfully."), true, ++val);
                 }
 
-                string sabufffcpath = PRZH.GetPath_FC_StudyAreaBuffer();
+                string sabufffcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating buffered study area feature class..."), true, ++val);
@@ -1897,11 +1903,17 @@ namespace NCC.PRZTools
                 }
 
                 // Add geometry
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (FeatureClass fc = await PRZH.GetFC_StudyAreaBuffer())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                        if (!tryget.success)
+                        {
+                            return false;
+                        }
+
+                        using (FeatureClass fc = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = fc.GetDefinition())
                         using (InsertCursor insertCursor = fc.CreateInsertCursor())
                         using (RowBuffer rowBuffer = fc.CreateRowBuffer())
@@ -2013,7 +2025,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                var tryget_gdb = PRZH.GetGDB_Project();
                                 if (!tryget_gdb.success)
                                 {
                                     return false;
@@ -2021,7 +2033,7 @@ namespace NCC.PRZTools
 
                                 using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
-                                    if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
+                                    if (!PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
                                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
                                         ProMsgBox.Show($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset.");
@@ -2176,8 +2188,8 @@ namespace NCC.PRZTools
                         }
 
                         // Ensure I've got my new raster...
-                        string puraspath = PRZH.GetPath_Raster_PU();
-                        if (!await PRZH.RasterExists_PU())
+                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
@@ -2312,7 +2324,7 @@ namespace NCC.PRZTools
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
+                                var tryget_gdb = PRZH.GetGDB_Project();
                                 if (!tryget_gdb.success)
                                 {
                                     return false;
@@ -2320,7 +2332,7 @@ namespace NCC.PRZTools
 
                                 using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
-                                    if (!await PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
+                                    if (!PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
                                     {
                                         return false;
                                     }
@@ -2467,8 +2479,8 @@ namespace NCC.PRZTools
                         }
 
                         // Ensure I've got my new raster...
-                        string puraspath = PRZH.GetPath_Raster_PU();
-                        if (!await PRZH.RasterExists_PU())
+                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
@@ -2549,7 +2561,7 @@ namespace NCC.PRZTools
                 {
                     puLayerType = PlanningUnitLayerType.FEATURE;
 
-                    string pufcpath = PRZH.GetPath_FC_PU();
+                    string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
 
                     // Build the new empty Planning Unit FC
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
@@ -2809,11 +2821,17 @@ namespace NCC.PRZTools
                         int puid = 1;   // planning unit id 
                         int flusher = 0;
 
-                        using (FeatureClass fc = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass fc = tryget.featureclass)
+                        {
+                            loader.Callback((context) =>
                             {
-                                using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                                using (FeatureClass featureClass = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS).featureclass)
                                 using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
                                 using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
                                 using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
@@ -2996,11 +3014,17 @@ namespace NCC.PRZTools
                         int puid = 1;   // planning unit id
                         int flusher = 0;
 
-                        using (FeatureClass fc = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
+                            throw new Exception("Error retrieving feature class");
+                        }
+
+                        using (FeatureClass fc = tryget.featureclass)
+                        {
+                            loader.Callback((context) =>
                             {
-                                using (FeatureClass featureClass = await PRZH.GetFC_PU())
+                                using (FeatureClass featureClass = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS).featureclass)
                                 using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
                                 using (InsertCursor insertCursor = featureClass.CreateInsertCursor())
                                 using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
@@ -3273,11 +3297,17 @@ namespace NCC.PRZTools
                         loader.SelectNewFeatures = false;
                         loader.SelectModifiedFeatures = false;
 
-                        using (Table tab = (await PRZH.GetRaster_PU()).CreateFullRaster().GetAttributeTable())
+                        var tryget = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
+                            throw new Exception("Error retrieving the planning unit raster dataset");
+                        }
+
+                        using (Table tab = tryget.rasterDataset.CreateFullRaster().GetAttributeTable())
+                        {
+                            loader.Callback((context) =>
                             {
-                                using (RasterDataset rasterDataset = await PRZH.GetRaster_PU())
+                                using (RasterDataset rasterDataset = tryget.rasterDataset)
                                 using (Raster raster = rasterDataset.CreateFullRaster())
                                 using (Table table = raster.GetAttributeTable())
                                 using (RowCursor rowCursor = table.Search(null, false))
@@ -3631,11 +3661,17 @@ namespace NCC.PRZTools
 
                             int flusher = 0;
 
-                            using (Table tab = await PRZH.GetTable(element.ElementTable))
+                            var tryget = PRZH.GetTable_Project(element.ElementTable);
+                            if (!tryget.success)
                             {
-                                loader.Callback(async (context) =>
+                                throw new Exception("Error retrieving table.");
+                            }
+
+                            using (Table tab = tryget.table)
+                            {
+                                loader.Callback((context) =>
                                 {
-                                    using (Table table = await PRZH.GetTable(element.ElementTable))
+                                    using (Table table = PRZH.GetTable_Project(element.ElementTable).table)
                                     using (InsertCursor insertCursor = table.CreateInsertCursor())
                                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                                     {
@@ -3737,11 +3773,17 @@ namespace NCC.PRZTools
                         loader.SelectNewFeatures = false;
                         loader.SelectModifiedFeatures = false;
 
-                        using (Table tab = await PRZH.GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table tab = tryget.table)
+                        {
+                            loader.Callback((context) =>
                             {
-                                using (Table table = await PRZH.GetTable(PRZC.c_TABLE_NAT_ELEMENTS))
+                                using (Table table = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS).table)
                                 using (RowCursor rowCursor = table.Search(null, false))
                                 {
                                     while (rowCursor.MoveNext())
@@ -3828,11 +3870,17 @@ namespace NCC.PRZTools
                         loader.SelectNewFeatures = false;
                         loader.SelectModifiedFeatures = false;
 
-                        using (Table tab = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
+                        if (!tryget.success)
                         {
-                            loader.Callback(async (context) =>
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table tab = tryget.table)
+                        {
+                            loader.Callback((context) =>
                             {
-                                using (Table table = await PRZH.GetTable(PRZC.c_TABLE_NAT_THEMES))
+                                using (Table table = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_THEMES).table)
                                 using (RowCursor rowCursor = table.Search(null, false))
                                 {
                                     while (rowCursor.MoveNext())
@@ -3922,7 +3970,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> Test()
+        private bool Test()
         {
             try
             {

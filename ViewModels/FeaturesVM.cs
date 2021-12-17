@@ -141,8 +141,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                FeaturesTableExists = await PRZH.TableExists_Features();
-                PUFeaturesTableExists = await PRZH.TableExists_PUFeatures();
+                FeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
+                PUFeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES);
                 FeaturesExist = FeaturesTableExists || PUFeaturesTableExists;
 
                 // Populate the grid
@@ -193,8 +193,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_FC_PU();
-                if (!await PRZH.FCExists_PU())
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Feature Class not present in the project geodatabase.  Have you built it yet?");
@@ -322,10 +322,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE FEATURES TABLE
 
-                string cfpath = PRZH.GetPath_Table_Features();
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
 
                 // Delete the existing Features table, if it exists
-                if (await PRZH.TableExists_Features())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_FEATURES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(cfpath, "");
@@ -415,11 +415,17 @@ namespace NCC.PRZTools
                 #region POPULATE THE FEATURES TABLE
 
                 // Populate Table from LIST
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_Features())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_FEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (InsertCursor insertCursor = table.CreateInsertCursor())
                         using (RowBuffer rowBuffer = table.CreateRowBuffer())
                         {
@@ -471,10 +477,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PUFEATURES TABLE - PART I
 
-                string pucfpath = PRZH.GetPath_Table_PUFeatures();
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
 
                 // Delete the existing PUFeatures table, if it exists
-                if (await PRZH.TableExists_PUFeatures())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUFEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pucfpath, "");
@@ -511,11 +517,17 @@ namespace NCC.PRZTools
                 // Delete all fields but OID and PUID from PUVCF table
                 List<string> LIST_DeleteFields = new List<string>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table tab = await PRZH.GetTable_PUFeatures())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table tab = tryget.table)
                         {
                             if (tab == null)
                             {
@@ -702,11 +714,17 @@ namespace NCC.PRZTools
                 }
 
                 // Populate the new fields
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -789,11 +807,17 @@ namespace NCC.PRZTools
                 Dictionary<int, int> DICT_PUID_and_featurecount = new Dictionary<int, int>();
                 List<string> LIST_AreaFieldNames = new List<string>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (TableDefinition tDef = table.GetDefinition())
                         {
                             // Get list of State fields
@@ -860,11 +884,17 @@ namespace NCC.PRZTools
 
                 #region UPDATE SUMMARY FIELDS IN CF TABLE
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_Features())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_FEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -885,7 +915,13 @@ namespace NCC.PRZTools
                                         WhereClause = StateField + @" = 1"
                                     };
 
-                                    using (Table table2 = await PRZH.GetTable_PUFeatures())
+                                    var tryget2 = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                                    if (!tryget2.success)
+                                    {
+                                        throw new Exception("Error retrieving table.");
+                                    }
+
+                                    using (Table table2 = tryget2.table)
                                     using (RowCursor rowCursor2 = table2.Search(QF, false))
                                     {
                                         while (rowCursor2.MoveNext())
@@ -940,11 +976,17 @@ namespace NCC.PRZTools
 
                 #region UPDATE FEATURECOUNT FIELD IN PU FEATURE CLASS
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -1727,22 +1769,28 @@ namespace NCC.PRZTools
 
                 // some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string pufcpath = PRZH.GetPath_FC_PU();
-                string pucfpath = PRZH.GetPath_Table_PUFeatures();
-                string cfpath = PRZH.GetPath_Table_Features();
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
 
                 // some planning unit elements
                 FeatureLayer PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
                 SpatialReference PUFC_SR = null;
                 Envelope PUFC_Extent = null;
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
                         PUFL.ClearSelection();
 
-                        using (FeatureClass PUFC = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass PUFC = tryget.featureclass)
                         using (FeatureClassDefinition fcDef = PUFC.GetDefinition())
                         {
                             PUFC_SR = fcDef.GetSpatialReference();
@@ -1845,18 +1893,17 @@ namespace NCC.PRZTools
                         // Extract the dissolved area for each puid into a second dictionary
                         Dictionary<int, double> DICT_PUID_Area_Dissolved = new Dictionary<int, double>();
 
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
-                                if (!tryget_gdb.success)
+                                var tryget = PRZH.GetFC_Project(dissolve_fc_name);
+                                if (!tryget.success)
                                 {
-                                    return false;
+                                    throw new Exception("Error retrieving feature class.");
                                 }
 
-                                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                                using (FeatureClass fc = await PRZH.GetFeatureClass(gdb, dissolve_fc_name))
+                                using (FeatureClass fc = tryget.featureclass)
                                 {
                                     if (fc == null)
                                     {
@@ -1900,7 +1947,7 @@ namespace NCC.PRZTools
                         }
 
                         // Write this information to the PU Features table
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
@@ -1926,7 +1973,13 @@ namespace NCC.PRZTools
                                         WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {PUID}"
                                     };
 
-                                    using (Table table = await PRZH.GetTable_PUFeatures())
+                                    var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                                    if (!tryget.success)
+                                    {
+                                        throw new Exception("Error retrieving table.");
+                                    }
+
+                                    using (Table table = tryget.table)
                                     using (RowCursor rowCursor = table.Search(QF))
                                     {
                                         while (rowCursor.MoveNext())
@@ -2047,18 +2100,17 @@ namespace NCC.PRZTools
 
                         Dictionary<int, Tuple<int, double>> DICT_PUID_and_count_area = new Dictionary<int, Tuple<int, double>>();
 
-                        if (!await QueuedTask.Run(async () =>
+                        if (!await QueuedTask.Run(() =>
                         {
                             try
                             {
-                                var tryget_gdb = await PRZH.GetGDB_Project();
-                                if (!tryget_gdb.success)
+                                var tryget = PRZH.GetTable_Project(tabname);
+                                if (!tryget.success)
                                 {
-                                    return false;
+                                    throw new Exception("Error retrieving table.");
                                 }
 
-                                using (Geodatabase gdb = tryget_gdb.geodatabase)
-                                using (Table table = await PRZH.GetTable(gdb, tabname))
+                                using (Table table = tryget.table)
                                 using (RowCursor rowCursor = table.Search())
                                 {
                                     while (rowCursor.MoveNext())
@@ -2134,11 +2186,17 @@ namespace NCC.PRZTools
                                 WhereClause = PRZC.c_FLD_TAB_PUCF_ID + " = " + PUID.ToString()
                             };
 
-                            if (!await QueuedTask.Run(async () =>
+                            if (!await QueuedTask.Run(() =>
                             {
                                 try
                                 {
-                                    using (Table table = await PRZH.GetTable_PUFeatures())
+                                    var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                                    if (!tryget.success)
+                                    {
+                                        throw new Exception("Error retrieving table.");
+                                    }
+
+                                    using (Table table = tryget.table)
                                     using (RowCursor rowCursor = table.Search(QF))
                                     {
                                         while (rowCursor.MoveNext())
@@ -2194,18 +2252,24 @@ namespace NCC.PRZTools
                 Features = new ObservableCollection<FeatureElement>(); // triggers the xaml refresh
 
                 // If Features table doesn't exist, exit
-                if (!await PRZH.TableExists_Features())
+                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
                 {
                     return true;
                 }
 
                 List<FeatureElement> LIST_Features = new List<FeatureElement>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetTable_Features())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_FEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -2289,8 +2353,8 @@ namespace NCC.PRZTools
 
                 // Some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string cfpath = PRZH.GetPath_Table_Features();
-                string pucfpath = PRZH.GetPath_Table_PUFeatures();
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
 
                 // Initialize ProgressBar and Progress Log
                 int max = 20;
@@ -2314,7 +2378,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the Features table
-                if (await PRZH.TableExists_Features())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_FEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(cfpath, "");
@@ -2333,7 +2397,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the PUFeatures table
-                if (await PRZH.TableExists_PUFeatures())
+                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES))
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUFEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pucfpath, "");
@@ -2354,11 +2418,17 @@ namespace NCC.PRZTools
                 // Update PUFC, set cfcount field to 0
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Resetting {PRZC.c_FLD_FC_PU_FEATURECOUNT} field in {PRZC.c_FC_PLANNING_UNITS} Feature Class..."), true, ++val);
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
-                        using (Table table = await PRZH.GetFC_PU())
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (Table table = tryget.featureclass)
                         using (RowCursor rowCursor = table.Search(null, false))
                         {
                             while (rowCursor.MoveNext())
@@ -2391,8 +2461,8 @@ namespace NCC.PRZTools
                 }
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                FeaturesTableExists = await PRZH.TableExists_Features();
-                PUFeaturesTableExists = await PRZH.TableExists_PUFeatures();
+                FeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
+                PUFeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES);
                 FeaturesExist = FeaturesTableExists || PUFeaturesTableExists;
 
                 // Populate the grid
@@ -2437,7 +2507,7 @@ namespace NCC.PRZTools
                 // Query the PUFeatures table for associated planning unit records
                 List<int> LIST_PUIDs = new List<int>();
 
-                if (!await QueuedTask.Run(async () =>
+                if (!await QueuedTask.Run(() =>
                 {
                     try
                     {
@@ -2449,7 +2519,13 @@ namespace NCC.PRZTools
                             WhereClause = whereclause
                         };
 
-                        using (Table table = await PRZH.GetTable_PUFeatures())
+                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving table.");
+                        }
+
+                        using (Table table = tryget.table)
                         using (RowCursor rowCursor = table.Search(QF))
                         {
                             while (rowCursor.MoveNext())

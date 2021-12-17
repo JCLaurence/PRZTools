@@ -83,13 +83,7 @@ namespace NCC.PRZTools
                 };
 
                 // Loaded Event Handler
-                dlg.Loaded += (sender, e) =>
-                {
-                    if (vm != null)
-                    {
-                        vm.OnProWinLoaded();
-                    }
-                };
+                dlg.Loaded += async (sender, e) => { if (vm != null) { await vm.OnProWinLoaded(); } };
 
                 var result = dlg.ShowDialog();
                 // Take whatever action required here once the dialog is closed (true or false)

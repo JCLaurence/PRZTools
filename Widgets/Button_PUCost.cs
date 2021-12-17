@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZH = NCC.PRZTools.PRZHelper;
+using PRZC = NCC.PRZTools.PRZConstants;
 
 namespace NCC.PRZTools
 {
@@ -80,7 +81,7 @@ namespace NCC.PRZTools
                 //}
 
                 // Ensure the Planning Unit Layer is present
-                if (!await PRZH.FCExists_PU())
+                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
                 {
                     ProMsgBox.Show("You must first construct a Planning Unit Feature Class.");
                     return;

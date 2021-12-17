@@ -59,11 +59,11 @@ namespace NCC.PRZTools
                 };
 
                 // Loaded Event Handler
-                dlg.Loaded += (sender, e) =>
+                dlg.Loaded += async (sender, e) =>
                 {
                     if (vm != null)
                     {
-                        vm.OnProWinLoaded();
+                        await vm.OnProWinLoaded();
                     }
                 };
 
