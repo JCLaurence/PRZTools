@@ -22,7 +22,7 @@ namespace NCC.PRZTools
                 #region VALIDATE PROJECT WORKSPACE AND CONTENTS
 
                 // Verify that the Project Folder exists
-                if (!PRZH.FolderExists_Project())
+                if (!PRZH.FolderExists_Project().exists)
                 {
                     ProMsgBox.Show($"Unable to retrieve Project Folder at: {PRZH.GetPath_ProjectFolder()}");
                     return;

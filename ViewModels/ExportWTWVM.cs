@@ -365,7 +365,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure the ExportWTW folder exists
-                if (!PRZH.FolderExists_ExportWTW())
+                if (!PRZH.FolderExists_ExportWTW().exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_DIR_EXPORT_WTW} folder not found in project workspace.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"{PRZC.c_DIR_EXPORT_WTW} folder not found in project workspace.");

@@ -39,13 +39,13 @@ namespace NCC.PRZTools
             try
             {
                 // Make sure we have a valid log file
-                if (!FolderExists_Project())
+                if (!FolderExists_Project().exists)
                 {
                     return "";
                 }
 
                 string logpath = GetPath_ProjectLog();
-                if (!ProjectLogExists())
+                if (!ProjectLogExists().exists)
                 {
                     using (FileStream fs = File.Create(logpath)) { }
                 }
@@ -87,7 +87,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                if (!ProjectLogExists())
+                if (!ProjectLogExists().exists)
                 {
                     return "";
                 }
@@ -316,69 +316,78 @@ namespace NCC.PRZTools
 
         #region GEODATABASE OBJECT PATHS
 
-        // Project GDB Object Paths
-        public static string GetPath_Project(string gdb_obj_name)
+        /// <summary>
+        /// Retrieve the path to the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="gdb_obj_name"></param>
+        /// <returns></returns>
+        public static (bool success, string path, string message) GetPath_Project(string gdb_obj_name)
         {
             try
             {
                 // Get the GDB Path
                 string gdbpath = GetPath_ProjectGDB();
 
-                if (gdbpath == null)
+                if (string.IsNullOrEmpty(gdbpath))
                 {
-                    return null;
+                    return (false, "", "geodatabase path is null");
                 }
 
-                return Path.Combine(gdbpath, gdb_obj_name);
+                return (true, Path.Combine(gdbpath, gdb_obj_name), "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
+                return (false, "", ex.Message);
             }
         }
 
-        // National GDB Object Paths
-        public static string GetPath_Nat(string gdb_obj_name)
+        /// <summary>
+        /// Retrieve the path to the national geodatabase (file or enterprise).  Silent errors.
+        /// </summary>
+        /// <param name="gdb_obj_name"></param>
+        /// <returns></returns>
+        public static (bool success, string path, string message) GetPath_Nat(string gdb_obj_name)
         {
             try
             {
                 // Get the GDB Path
                 string gdbpath = GetPath_NatGDB();
 
-                if (gdbpath == null)
+                if (string.IsNullOrEmpty(gdbpath))
                 {
-                    return null;
+                    return (false, "", "geodatabase path is null");
                 }
 
-                return Path.Combine(gdbpath, gdb_obj_name);
+                return (true, Path.Combine(gdbpath, gdb_obj_name), "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
+                return (false, "", ex.Message);
             }
         }
 
-        // RT Scratch GDB Object Paths
-        public static string GetPath_RTScratch(string gdb_obj_name)
+        /// <summary>
+        /// Retrieve the path to the RT Scratch file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="gdb_obj_name"></param>
+        /// <returns></returns>
+        public static (bool success, string path, string message) GetPath_RTScratch(string gdb_obj_name)
         {
             try
             {
                 // Get the GDB Path
                 string gdbpath = GetPath_RTScratchGDB();
 
-                if (gdbpath == null)
+                if (string.IsNullOrEmpty(gdbpath))
                 {
-                    return null;
+                    return (false, "", "geodatabase path is null");
                 }
 
-                return Path.Combine(gdbpath, gdb_obj_name);
+                return (true, Path.Combine(gdbpath, gdb_obj_name), "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
+                return (false, "", ex.Message);
             }
         }
 
@@ -390,31 +399,41 @@ namespace NCC.PRZTools
 
         #region FOLDER EXISTENCE
 
-        public static bool FolderExists_Project()
+        /// <summary>
+        /// Establish the existence of the project folder.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static (bool exists, string message) FolderExists_Project()
         {
             try
             {
                 string path = GetPath_ProjectFolder();
-                return Directory.Exists(path);
+                bool exists = Directory.Exists(path);
+
+                return (exists, "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static bool FolderExists_ExportWTW()
+        /// <summary>
+        /// Establish the existence of the export where-to-work tool folder.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static (bool exists, string message) FolderExists_ExportWTW()
         {
             try
             {
                 string path = GetPath_ExportWTWFolder();
-                return Directory.Exists(path);
+                bool exists = Directory.Exists(path);
+
+                return (exists, "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -422,6 +441,11 @@ namespace NCC.PRZTools
 
         #region GDB EXISTENCE
 
+        /// <summary>
+        /// Establish the existence of a geodatabase (file or enterprise) from a path.  Silent errors.
+        /// </summary>
+        /// <param name="gdbpath"></param>
+        /// <returns></returns>
         public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists(string gdbpath)
         {
             try
@@ -522,6 +546,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Establish the existence of the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool exists, string message)> GDBExists_Project()
         {
             try
@@ -536,6 +564,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Establish the existence of the RT Scratch file geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool exists, string message)> GDBExists_RTScratch()
         {
             try
@@ -550,6 +582,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Establish the existence of the national geodatabase (file or enterprise).  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists_Nat()
         {
             try
@@ -566,7 +602,13 @@ namespace NCC.PRZTools
 
         #region FC/TABLE/RASTER ANY GDB
 
-        public static bool FCExists(Geodatabase geodatabase, string fc_name)
+        /// <summary>
+        /// Establish the existence of a feature class by name within a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
+        public static (bool exists, string message) FCExists(Geodatabase geodatabase, string fc_name)
         {
             try
             {
@@ -582,15 +624,21 @@ namespace NCC.PRZTools
                     // Error will be thrown by using statement above if FC of the supplied name doesn't exist in GDB
                 }
 
-                return true;
+                return (true, "success");
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static bool TableExists(Geodatabase geodatabase, string table_name)
+        /// <summary>
+        /// Establish the existence of a table by name within a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
+        public static (bool exists, string message) TableExists(Geodatabase geodatabase, string table_name)
         {
             try
             {
@@ -606,15 +654,21 @@ namespace NCC.PRZTools
                     // Error will be thrown by using statement above if table of the supplied name doesn't exist in GDB
                 }
 
-                return true;
+                return (true, "success");
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static bool RasterExists(Geodatabase geodatabase, string raster_name)
+        /// <summary>
+        /// Establish the existence of a raster dataset by name within a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
+        public static (bool exists, string message) RasterExists(Geodatabase geodatabase, string raster_name)
         {
             try
             {
@@ -630,11 +684,11 @@ namespace NCC.PRZTools
                     // Error will be thrown by using statement above if rasterdataset of the supplied name doesn't exist in GDB
                 }
 
-                return true;
+                return (true, "success");
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -642,7 +696,12 @@ namespace NCC.PRZTools
 
         #region FC/TABLE/RASTER IN PROJECT GDB
 
-        public static async Task<bool> FCExists_Project(string fc_name)
+        /// <summary>
+        /// Establish the existence of a feature class by name from the project file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> FCExists_Project(string fc_name)
         {
             try
             {
@@ -654,27 +713,32 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return FCExists(geodatabase, fc_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static async Task<bool> TableExists_Project(string table_name)
+        /// <summary>
+        /// Establish the existence of a table by name from the project file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> TableExists_Project(string table_name)
         {
             try
             {
@@ -686,27 +750,32 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return TableExists(geodatabase, table_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static async Task<bool> RasterExists_Project(string raster_name)
+        /// <summary>
+        /// Establish the existence of a raster dataset by name from the project file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> RasterExists_Project(string raster_name)
         {
             try
             {
@@ -718,23 +787,23 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return RasterExists(geodatabase, raster_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -742,7 +811,12 @@ namespace NCC.PRZTools
 
         #region FC/TABLE/RASTER IN RT SCRATCH GDB
 
-        public static async Task<bool> FCExists_RTScratch(string fc_name)
+        /// <summary>
+        /// Establish the existence of a feature class by name from the rt scratch file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> FCExists_RTScratch(string fc_name)
         {
             try
             {
@@ -754,27 +828,32 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return FCExists(geodatabase, fc_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static async Task<bool> TableExists_RTScratch(string table_name)
+        /// <summary>
+        /// Establish the existence of a table by name from the rt scratch file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> TableExists_RTScratch(string table_name)
         {
             try
             {
@@ -786,27 +865,32 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return TableExists(geodatabase, table_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
-        public static async Task<bool> RasterExists_RTScratch(string raster_name)
+        /// <summary>
+        /// Establish the existence of a raster dataset by name from the rt scratch file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> RasterExists_RTScratch(string raster_name)
         {
             try
             {
@@ -818,23 +902,23 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return RasterExists(geodatabase, raster_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -842,7 +926,12 @@ namespace NCC.PRZTools
 
         #region FC/TABLE/RASTER IN NATIONAL GDB
 
-        public static async Task<bool> TableExists_Nat(string table_name)
+        /// <summary>
+        /// Establish the existence of a table by name from the national geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> TableExists_Nat(string table_name)
         {
             try
             {
@@ -854,23 +943,23 @@ namespace NCC.PRZTools
 
                     if (!tryget_gdb.success)
                     {
-                        return false;
+                        return (false, tryget_gdb.message);
                     }
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
                         if (geodatabase == null)
                         {
-                            return false;
+                            return (false, "unable to access the geodatabase.");
                         }
 
                         return TableExists(geodatabase, table_name);
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -878,12 +967,17 @@ namespace NCC.PRZTools
 
         #region MISCELLANEOUS
 
+        /// <summary>
+        /// Establish the existence of the Planning Unit dataset (feature class or raster dataset)
+        /// in the project file geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool exists, PlanningUnitLayerType puLayerType, string message)> PUExists()
         {
             try
             {
                 // Run entire method on the worker thread
-                return await QueuedTask.Run(async () =>
+                return await QueuedTask.Run(() =>
                 {
                     // Try to retrieve the project geodatabase
                     var tryget_gdb = GetGDB_Project();
@@ -902,12 +996,12 @@ namespace NCC.PRZTools
                         }
 
                         // Look for a Planning Unit dataset
-                        if (FCExists(geodatabase, PRZC.c_FC_PLANNING_UNITS))
+                        if (FCExists(geodatabase, PRZC.c_FC_PLANNING_UNITS).exists)
                         {
                             // Found a FC!
                             return (true, PlanningUnitLayerType.FEATURE, "success");
                         }
-                        else if (RasterExists(geodatabase, PRZC.c_RAS_PLANNING_UNITS))
+                        else if (RasterExists(geodatabase, PRZC.c_RAS_PLANNING_UNITS).exists)
                         {
                             // Found a RD!
                             return (true, PlanningUnitLayerType.RASTER, "success");
@@ -915,7 +1009,7 @@ namespace NCC.PRZTools
                         else
                         {
                             // Found nothing.
-                            return (false, PlanningUnitLayerType.UNKNOWN, "No Planning Unit dataset exists in Project GDB");
+                            return (false, PlanningUnitLayerType.UNKNOWN, "No Planning Unit dataset found.");
                         }
                     }
                 });
@@ -926,17 +1020,23 @@ namespace NCC.PRZTools
             }
         }
 
-        public static bool ProjectLogExists()
+        /// <summary>
+        /// Establish the existence of a project log file.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static (bool exists, string message) ProjectLogExists()
         {
             try
             {
                 string path = GetPath_ProjectLog();
-                return File.Exists(path);
+
+                bool exists = File.Exists(path);
+
+                return (exists, "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -948,6 +1048,11 @@ namespace NCC.PRZTools
 
         #region GEODATABASES
 
+        /// <summary>
+        /// Retrieve a file geodatabase from a path.  Must be run on MCT. Silent errors.
+        /// </summary>
+        /// <param name="gdbpath"></param>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, string message) GetFileGDB(string gdbpath)
         {
             try
@@ -1022,6 +1127,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve an enterprise geodatabase from database connection file path.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="sdepath"></param>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, string message) GetEnterpriseGDB(string sdepath)
         {
             try
@@ -1103,6 +1213,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a file or enterprise geodatabase from a path.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB(string path)
         {
             try
@@ -1146,6 +1261,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve the project file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, string message) GetGDB_Project()
         {
             try
@@ -1168,6 +1287,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve the RT scratch file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, string message) GetGDB_RTScratch()
         {
             try
@@ -1190,6 +1313,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve the national geodatabase (file or enterprise).  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB_Nat()
         {
             try
@@ -1216,10 +1343,14 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region SPECIFIC OBJECTS
-
         #region GENERIC GDB OBJECTS
 
+        /// <summary>
+        /// Retrieve a feature class by name from a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
         public static (bool success, FeatureClass featureclass, string message) GetFC(Geodatabase geodatabase, string fc_name)
         {
             try
@@ -1237,7 +1368,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure feature class exists
-                if (!FCExists(geodatabase, fc_name))
+                if (!FCExists(geodatabase, fc_name).exists)
                 {
                     return (false, null, "Feature class not found in geodatabase");
                 }
@@ -1262,6 +1393,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a table by name from a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
         public static (bool success, Table table, string message) GetTable(Geodatabase geodatabase, string table_name)
         {
             try
@@ -1279,7 +1416,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure feature class exists
-                if (!TableExists(geodatabase, table_name))
+                if (!TableExists(geodatabase, table_name).exists)
                 {
                     return (false, null, "Table not found in geodatabase");
                 }
@@ -1304,6 +1441,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a raster dataset by name from a specified geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
         public static (bool success, RasterDataset rasterDataset, string message) GetRaster(Geodatabase geodatabase, string raster_name)
         {
             try
@@ -1321,7 +1464,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure feature class exists
-                if (!RasterExists(geodatabase, raster_name))
+                if (!RasterExists(geodatabase, raster_name).exists)
                 {
                     return (false, null, "Raster dataset not found in geodatabase");
                 }
@@ -1350,6 +1493,11 @@ namespace NCC.PRZTools
 
         #region PROJECT GDB OBJECTS
 
+        /// <summary>
+        /// Retrieve a feature class by name from the project file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
         public static (bool success, FeatureClass featureclass, string message) GetFC_Project(string fc_name)
         {
             try
@@ -1370,7 +1518,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure feature class exists
-                    if (!FCExists(geodatabase, fc_name))
+                    if (!FCExists(geodatabase, fc_name).exists)
                     {
                         return (false, null, "Feature class not found in geodatabase");
                     }
@@ -1387,6 +1535,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a table by name from the project file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
         public static (bool success, Table table, string message) GetTable_Project(string table_name)
         {
             try
@@ -1407,7 +1560,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure table exists
-                    if (!TableExists(geodatabase, table_name))
+                    if (!TableExists(geodatabase, table_name).exists)
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
@@ -1424,6 +1577,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a raster dataset by name from the project file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
         public static (bool success, RasterDataset rasterDataset, string message) GetRaster_Project(string raster_name)
         {
             try
@@ -1444,7 +1602,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure raster dataset exists
-                    if (!RasterExists(geodatabase, raster_name))
+                    if (!RasterExists(geodatabase, raster_name).exists)
                     {
                         return (false, null, "Raster dataset not found in geodatabase");
                     }
@@ -1465,6 +1623,11 @@ namespace NCC.PRZTools
 
         #region RT SCRATCH GDB OBJECTS
 
+        /// <summary>
+        /// Retrieve a feature class by name from the RT Scratch file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="fc_name"></param>
+        /// <returns></returns>
         public static (bool success, FeatureClass featureclass, string message) GetFC_RTScratch(string fc_name)
         {
             try
@@ -1485,7 +1648,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure feature class exists
-                    if (!FCExists(geodatabase, fc_name))
+                    if (!FCExists(geodatabase, fc_name).exists)
                     {
                         return (false, null, "Feature class not found in geodatabase");
                     }
@@ -1502,6 +1665,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a table by name from the RT Scratch file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
         public static (bool success, Table table, string message) GetTable_RTScratch(string table_name)
         {
             try
@@ -1522,7 +1690,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure table exists
-                    if (!TableExists(geodatabase, table_name))
+                    if (!TableExists(geodatabase, table_name).exists)
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
@@ -1539,6 +1707,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a raster dataset by name from the RT Scratch file geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="raster_name"></param>
+        /// <returns></returns>
         public static (bool success, RasterDataset rasterDataset, string message) GetRaster_RTScratch(string raster_name)
         {
             try
@@ -1559,7 +1732,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure raster dataset exists
-                    if (!RasterExists(geodatabase, raster_name))
+                    if (!RasterExists(geodatabase, raster_name).exists)
                     {
                         return (false, null, "Raster dataset not found in geodatabase");
                     }
@@ -1580,6 +1753,11 @@ namespace NCC.PRZTools
 
         #region NAT GDB OBJECTS
 
+        /// <summary>
+        /// Retrieve a table by name from the national geodatabase (file or enterprise).  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="table_name"></param>
+        /// <returns></returns>
         public static (bool success, Table table, string message) GetTable_Nat(string table_name)
         {
             try
@@ -1600,7 +1778,7 @@ namespace NCC.PRZTools
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
                     // ensure table exists
-                    if (!TableExists(geodatabase, table_name))
+                    if (!TableExists(geodatabase, table_name).exists)
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
@@ -1621,18 +1799,16 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #endregion
-
         #region PRZ LISTS AND DICTIONARIES
 
         #region NATIONAL TABLES
 
         /// <summary>
-        /// Returns the table name for a National Element given the supplied element_id parameter value.
+        /// Returns the national element table name for the supplied element id.  Silent errors.
         /// </summary>
         /// <param name="element_id"></param>
         /// <returns></returns>
-        public static string GetElementTableName(int element_id)
+        public static (bool success, string table_name, string message) GetElementTableName(int element_id)
         {
             try
             {
@@ -1642,16 +1818,19 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    return PRZC.c_TABLE_NAT_PREFIX_ELEMENT + element_id.ToString("D5");
+                    return (true, PRZC.c_TABLE_NAT_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
                 }
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message);
-                return "";
+                return (false, "", ex.Message);
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of NatTheme objects from the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool success, List<NatTheme> themes, string message)> GetNationalThemes()
         {
             try
@@ -1660,11 +1839,11 @@ namespace NCC.PRZTools
                 var try_gdbexists = await GDBExists_Project();
                 if (!try_gdbexists.exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    return (false, null, try_gdbexists.message);
                 }
 
                 // Check for existence of Theme table
-                if (!await TableExists_Project(PRZC.c_TABLE_NAT_THEMES))
+                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
                 {
                     return (false, null, $"{PRZC.c_TABLE_NAT_THEMES} table not found in project geodatabase");
                 }
@@ -1673,7 +1852,7 @@ namespace NCC.PRZTools
                 List<NatTheme> themes = new List<NatTheme>();
 
                 // Populate the list
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
                     var tryget = GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
                     if (!tryget.success)
@@ -1730,19 +1909,25 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of NatTheme objects from the project geodatabase, optionally filtered
+        /// by the presence indicator.  Silent errors.
+        /// </summary>
+        /// <param name="presence"></param>
+        /// <returns></returns>
         public static async Task<(bool success, List<NatTheme> themes, string message)> GetNationalThemes(NationalThemePresence? presence)
         {
             try
             {
                 // Get the full Theme list
-                var outcome = await GetNationalThemes();
+                var tryget = await GetNationalThemes();
 
-                if (!outcome.success)
+                if (!tryget.success)
                 {
-                    return (false, null, outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                List<NatTheme> themes = outcome.themes;
+                List<NatTheme> themes = tryget.themes;
 
                 // Filter the list based on filter criteria:
 
@@ -1760,6 +1945,10 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of NatElement objects from the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool success, List<NatElement> elements, string message)> GetNationalElements()
         {
             try
@@ -1768,11 +1957,11 @@ namespace NCC.PRZTools
                 var try_gdbexists = await GDBExists_Project();
                 if (!try_gdbexists.exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    return (false, null, try_gdbexists.message);
                 }
 
                 // Check for existence of Element table
-                if (!await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS))
+                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
                 {
                     return (false, null, $"{PRZC.c_TABLE_NAT_ELEMENTS} table not found in project geodatabase");
                 }
@@ -1781,7 +1970,7 @@ namespace NCC.PRZTools
                 List<NatElement> elements = new List<NatElement>();
 
                 // Populate the list
-                (bool success, string message) elem_outcome = await QueuedTask.Run(async () =>
+                (bool success, string message) element_outcome = await QueuedTask.Run(() =>
                 {
                     var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
                     if (!tryget.success)
@@ -1826,9 +2015,9 @@ namespace NCC.PRZTools
                     return (true, "success");
                 });
 
-                if (!elem_outcome.success)
+                if (!element_outcome.success)
                 {
-                    return (false, null, elem_outcome.message);
+                    return (false, null, element_outcome.message);
                 }
 
                 // Populate the Theme Information
@@ -1877,19 +2066,27 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of NatElement objects from the project geodatabase, optionally filtered
+        /// by type, status, or presence indicators.  Silent errors.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="status"></param>
+        /// <param name="presence"></param>
+        /// <returns></returns>
         public static async Task<(bool success, List<NatElement> elements, string message)> GetNationalElements(NationalElementType? type, NationalElementStatus? status, NationalElementPresence? presence)
         {
             try
             {
                 // Get the full Elements list
-                var outcome = await GetNationalElements();
+                var tryget = await GetNationalElements();
 
-                if (!outcome.success)
+                if (!tryget.success)
                 {
-                    return (false, null, outcome.message);
+                    return (false, null, tryget.message);
                 }
 
-                List<NatElement> elements = outcome.elements;
+                List<NatElement> elements = tryget.elements;
 
                 // Filter the list based on filter criteria:
 
@@ -1917,6 +2114,12 @@ namespace NCC.PRZTools
 
         #region ELEMENT VALUES
 
+        /// <summary>
+        /// Retrieve a national grid value for a specified element and cell number.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <param name="cell_number"></param>
+        /// <returns></returns>
         public static async Task<(bool success, double value, string message)> GetValueFromElementTable_CellNum(int element_id, long cell_number)
         {
             double value = -9999;
@@ -1930,21 +2133,22 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                string table_name = GetElementTableName(element_id);
-                if (table_name == "")
+                var trygettab = GetElementTableName(element_id);
+                if (!trygettab.success)
                 {
                     return (false, value, "Unable to retrieve element table name");
                 }
 
+                string table_name = trygettab.table_name;
+
                 // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                if (!(await GDBExists_Project()).exists)
                 {
                     return (false, value, "Project GDB not found.");
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists_Project(table_name))
+                if (!(await TableExists_Project(table_name)).exists)
                 {
                     return (false, value, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2016,6 +2220,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a national grid value for a specified element and planning unit id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <param name="puid"></param>
+        /// <returns></returns>
         public static async Task<(bool success, double value, string message)> GetValueFromElementTable_PUID(int element_id, int puid)
         {
             double value = -9999;
@@ -2029,11 +2239,14 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                string table_name = GetElementTableName(element_id);
-                if (table_name == "")
+                var trygetname = GetElementTableName(element_id);
+
+                if (!trygetname.success)
                 {
                     return (false, value, "Unable to retrieve element table name");
                 }
+
+                string table_name = trygetname.table_name;
 
                 // Check for Project GDB
                 var try_gdbexists = await GDBExists_Project();
@@ -2043,7 +2256,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists_Project(table_name))
+                if (!(await TableExists_Project(table_name)).exists)
                 {
                     return (false, value, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2124,6 +2337,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated element values from the
+        /// project geodatabase, for the specified element.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
         public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable_CellNum(int element_id)
         {
             try
@@ -2135,11 +2354,14 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                string table_name = GetElementTableName(element_id);
-                if (table_name == "")
+                var trygetname = GetElementTableName(element_id);
+
+                if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
                 }
+
+                string table_name = trygetname.table_name;
 
                 // Check for Project GDB
                 var try_gdbexists = await GDBExists_Project();
@@ -2149,7 +2371,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists_Project(table_name))
+                if (!(await TableExists_Project(table_name)).exists)
                 {
                     return (false, null, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2193,6 +2415,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a dictionary of planning unit ids and associated element values from the 
+        /// project geodatabase, for the specified element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
         public static async Task<(bool success, Dictionary<int, double> dict, string message)> GetValuesFromElementTable_PUID(int element_id)
         {
             try
@@ -2204,11 +2432,14 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                string table_name = GetElementTableName(element_id);
-                if (table_name == "")
+                var trygetname = GetElementTableName(element_id);
+
+                if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
                 }
+
+                string table_name = trygetname.table_name;
 
                 // Check for Project GDB
                 var try_gdbexists = await GDBExists_Project();
@@ -2218,7 +2449,7 @@ namespace NCC.PRZTools
                 }
 
                 // Verify that table exists in project GDB
-                if (!await TableExists_Project(table_name))
+                if (!(await TableExists_Project(table_name)).exists)
                 {
                     return (false, null, $"Element table {table_name} not found in project geodatabase");
                 }
@@ -2235,7 +2466,7 @@ namespace NCC.PRZTools
                 Dictionary<int, double> dict = new Dictionary<int, double>();
 
                 // Populate the dictionary
-                (bool success, string message) result = await QueuedTask.Run(async () =>
+                (bool success, string message) result = await QueuedTask.Run(() =>
                 {
                     var tryget = GetTable_Project(table_name);
                     if (!tryget.success)
@@ -2291,10 +2522,33 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersection(string table_name, HashSet<long> cell_numbers)
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated element values from the
+        /// national database, for the specified element and list of cell numbers.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <param name="cell_numbers"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersection(int element_id, HashSet<long> cell_numbers)
         {
             try
             {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, null, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                var trygetname = GetElementTableName(element_id);
+
+                if (!trygetname.success)
+                {
+                    return (false, null, "Unable to retrieve element table name");
+                }
+
+                string table_name = trygetname.table_name;
+
                 // Ensure that the National GDB exists
                 if (!(await GDBExists_Nat()).exists)
                 {
@@ -2302,7 +2556,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure that the table exists
-                if (!await TableExists_Nat(table_name))
+                if (!(await TableExists_Nat(table_name)).exists)
                 {
                     return (false, null, "Element table not found");
                 }
@@ -2316,15 +2570,15 @@ namespace NCC.PRZTools
                     try
                     {
                         // try getting the e0000n table
-                        var gettable_outcome = GetTable_Nat(table_name);
+                        var trygettab = GetTable_Nat(table_name);
 
-                        if (!gettable_outcome.success)
+                        if (!trygettab.success)
                         {
                             return (false, "Unable to retrieve table");
                         }
 
                         // iterate
-                        using (Table table = gettable_outcome.table)
+                        using (Table table = trygettab.table)
                         using (RowCursor rowCursor = table.Search())
                         {
                             while (rowCursor.MoveNext())
@@ -2367,12 +2621,18 @@ namespace NCC.PRZTools
             }
         }
 
+
         #endregion
 
         #region PUID AND CELL NUMBERS
 
         #region SINGLE VALUES
 
+        /// <summary>
+        /// Retrieve the national grid cell number associated with the specified planning unit id.  Silent errors.
+        /// </summary>
+        /// <param name="puid"></param>
+        /// <returns></returns>
         public static async Task<(bool success, long cell_number, string message)> GetCellNumberFromPUID(int puid)
         {
             long cell_number = -9999;
@@ -2398,7 +2658,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -2462,7 +2722,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -2547,7 +2807,12 @@ namespace NCC.PRZTools
             }
         }
 
-        public static async Task<(bool success, long cell_number, string message)> GetPUIDFromCellNumber(long cell_number)
+        /// <summary>
+        /// Retrieve the planning unit id associated with the specified national grid cell number.  Silent errors.
+        /// </summary>
+        /// <param name="cell_number"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, int puid, string message)> GetPUIDFromCellNumber(long cell_number)
         {
             int puid = -9999;
 
@@ -2557,14 +2822,14 @@ namespace NCC.PRZTools
                 var try_gdbexists = await GDBExists_Project();
                 if (!try_gdbexists.exists)
                 {
-                    return (false, cell_number, "Project GDB not found.");
+                    return (false, puid, try_gdbexists.message);
                 }
 
                 // Check for PU
                 var pu_result = await PUExists();
                 if (!pu_result.exists)
                 {
-                    return (false, cell_number, "Planning Unit dataset not found.");
+                    return (false, puid, "Planning Unit dataset not found.");
                 }
 
                 // Get the PUID
@@ -2572,7 +2837,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -2636,7 +2901,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -2757,7 +3022,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -2794,7 +3059,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -2914,7 +3179,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -2951,7 +3216,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3043,6 +3308,11 @@ namespace NCC.PRZTools
 
         #region DICTIONARIES
 
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated planning unit ids from the
+        /// project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool success, Dictionary<long, int> dict, string message)> GetCellNumbersAndPUIDs()
         {
             try
@@ -3069,7 +3339,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3107,7 +3377,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -3166,6 +3436,11 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a dictionary of planning unit ids and associated cell numbers from the
+        /// Project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool success, Dictionary<int, long> dict, string message)> GetPUIDsAndCellNumbers()
         {
             try
@@ -3192,7 +3467,7 @@ namespace NCC.PRZTools
                 {
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
-                        if (!await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU feature class not found");
                         }
@@ -3230,7 +3505,7 @@ namespace NCC.PRZTools
                     }
                     else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                     {
-                        if (!await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             return (false, "PU raster dataset not found");
                         }
@@ -4252,6 +4527,11 @@ namespace NCC.PRZTools
 
         #region GENERIC DATA METHODS
 
+        /// <summary>
+        /// Delete all contents of the project file geodatabase.  
+        /// Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
         public static async Task<(bool success, string message)> DeleteProjectGDBContents()
         {
             try
@@ -4436,6 +4716,12 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Remove all core layers from the active mapview's Prioritization group layer.
+        /// Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <returns></returns>
         public static async Task<(bool success, string message)> RemovePRZItemsFromMap(Map map)
         {
             try
@@ -4602,7 +4888,12 @@ namespace NCC.PRZTools
             }
         }
 
-        internal static async Task<bool> RedrawPRZLayers(Map map)
+        /// <summary>
+        /// Rebuild the active mapview's Prioritization group layer.  Silent errors.
+        /// </summary>
+        /// <param name="map"></param>
+        /// <returns></returns>
+        internal static async Task<(bool success, string message)> RedrawPRZLayers(Map map)
         {
             try
             {
@@ -4611,34 +4902,30 @@ namespace NCC.PRZTools
 
                 // Ensure that Project Workspace exists
                 string project_path = GetPath_ProjectFolder();
-                if (!FolderExists_Project())
+                var trydirexists = FolderExists_Project();
+                if (!trydirexists.exists)
                 {
-                    ProMsgBox.Show($"Project Workspace does not exist at path {project_path}.");
-                    return false;
+                    return (false, trydirexists.message);
                 }
 
                 // Check for Project GDB
                 string gdb_path = GetPath_ProjectGDB();
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                var trygdbexists = await GDBExists_Project();
+                if (!trygdbexists.exists)
                 {
-                    ProMsgBox.Show($"Project File Geodatabase does not exist at path {gdb_path}.");
-                    return false;
+                    return (false, trygdbexists.message);
                 }
 
                 // Remove any PRZ items from the map
                 var try_rem = await QueuedTask.Run(async () => { return await RemovePRZItemsFromMap(map); });
                 if (!try_rem.success)
                 {
-                    ProMsgBox.Show($"Error removing PRZ items from the current map.");
-                    return false;
+                    return (false, try_rem.message);
                 }
 
                 #endregion
 
-                #region PROCESS LAYERS
-
-                if (!await QueuedTask.Run(async () =>
+                (bool success, string message) tryprocess = await QueuedTask.Run(async () =>
                 {
                     try
                     {
@@ -4725,17 +5012,17 @@ namespace NCC.PRZTools
                         int w = 0;
 
                         // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
-                        if (await FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                        if ((await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                         {
-                            string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                            string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
                             await ApplyLegend_PU_Basic(featureLayer);
                             featureLayer.SetVisibility(true);
                         }
-                        else if (await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        else if ((await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
-                            string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
+                            string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
                             Uri uri = new Uri(ras_path);
                             RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
                             // TODO: Renderer for this raster layer
@@ -4743,9 +5030,9 @@ namespace NCC.PRZTools
                         }
 
                         // Add the Study Area Layer (MIGHT NOT EXIST YET)
-                        if (await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN))
+                        if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
                         {
-                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN);
+                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
                             ApplyLegend_SA_Simple(featureLayer);
@@ -4753,9 +5040,9 @@ namespace NCC.PRZTools
                         }
 
                         // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
-                        if (await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED))
+                        if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
                         {
-                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
                             Uri uri = new Uri(fc_path);
                             FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
                             ApplyLegend_SAB_Simple(featureLayer);
@@ -4897,27 +5184,26 @@ namespace NCC.PRZTools
 
                         #endregion
 
-                        return true;
+                        return (true, "success");
                     }
                     catch (Exception ex)
                     {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
+                        return (false, ex.Message);
                     }
-                }))
+                });
+
+                if (tryprocess.success)
                 {
-                    // Message might go here?
-                    return false;
+                    return (true, "success");
                 }
-
-                #endregion
-
-                return true;
+                else
+                {
+                    return (false, tryprocess.message);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return (false, ex.Message);
             }
         }
 
@@ -4925,6 +5211,11 @@ namespace NCC.PRZTools
 
         #region EDIT OPERATIONS
 
+        /// <summary>
+        /// Retrieve a generic EditOperation object for editing tasks.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public static EditOperation GetEditOperation(string name)
         {
             try
@@ -4947,6 +5238,74 @@ namespace NCC.PRZTools
         }
 
         #endregion
+
+        #region SPATIAL REFERENCES
+
+        /// <summary>
+        /// Retrieve the custom prioritization Canada Albers projection.
+        /// </summary>
+        /// <returns></returns>
+        public static SpatialReference GetSR_PRZCanadaAlbers()
+        {
+            try
+            {
+                string wkt = PRZC.c_SR_WKT_WGS84_CanadaAlbers;  // Special PRZ WGS84 Canada Albers projection
+                SpatialReference sr = SpatialReferenceBuilder.CreateSpatialReference(wkt);
+
+                return sr;  // this might be null if WKT is no good.  Or, the CreateSpatialReference method might throw an error.
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Establishes whether a specified spatial reference is equivalent to the custom
+        /// prioritization Canada Albers projection.  The comparison ignores the PCS and GCS
+        /// names since they are user-defined and might differ.  Silent errors.
+        /// </summary>
+        /// <param name="TestSR"></param>
+        /// <returns></returns>
+        public static (bool match, string message) SpatialReferenceIsPRZCanadaAlbers(SpatialReference TestSR)
+        {
+            try
+            {
+                if (TestSR == null)
+                {
+                    return (false, "Spatial Reference is null");
+                }
+                else if (TestSR.IsUnknown)
+                {
+                    return (false, "Spatial Reference is null");
+                }
+
+                SpatialReference AlbersSR = GetSR_PRZCanadaAlbers();
+
+                if (AlbersSR == null)
+                {
+                    return (false, "Unable to retrieve PRZ Albers projection");
+                }
+
+                // Get the WKT, eliminate the names + GCS names to eliminate name differences where otherwise equal
+                string TestSR_WKT = TestSR.Wkt.Replace(TestSR.Name, "").Replace(TestSR.Gcs.Name, "");
+                string AlbersSR_WKT = AlbersSR.Wkt.Replace(AlbersSR.Name, "").Replace(AlbersSR.Gcs.Name, "");
+
+                bool result = string.Equals(AlbersSR_WKT, TestSR_WKT, StringComparison.OrdinalIgnoreCase);
+
+                return result ? (true, "Spatial References are equivalent") : (false, "Spatial References are not equivalent");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        #endregion
+
+
+
 
         #region *** MAY NOT BE NECESSARY ANY MORE!!! ***
 
@@ -5813,62 +6172,6 @@ namespace NCC.PRZTools
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 return "hi";
-            }
-        }
-
-        #endregion
-
-        #region SPATIAL REFERENCES
-
-        public static SpatialReference GetSR_PRZCanadaAlbers()
-        {
-            try
-            {
-                string wkt = PRZC.c_SR_WKT_WGS84_CanadaAlbers;  // Special PRZ WGS84 Canada Albers projection
-                SpatialReference sr = SpatialReferenceBuilder.CreateSpatialReference(wkt);
-
-                return sr;  // this might be null if WKT is no good.  Or, the CreateSpatialReference method might throw an error.
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return null;
-            }
-        }
-
-        public static (bool match, string message) SpatialReferenceIsPRZCanadaAlbers(SpatialReference TestSR)
-        {
-            try
-            {
-                if (TestSR == null)
-                {
-                    return (false, "Spatial Reference is null");
-                }
-                else if (TestSR.IsUnknown)
-                {
-                    return (false, "Spatial Reference is null");
-                }
-
-                SpatialReference AlbersSR = GetSR_PRZCanadaAlbers();
-
-                if (AlbersSR == null)
-                {
-                    return (false, "Unable to retrieve PRZ Albers projection");
-                }
-
-                // Get the WKT, eliminate the names + GCS names to eliminate name differences where otherwise equal
-                string TestSR_WKT = TestSR.Wkt.Replace(TestSR.Name, "").Replace(TestSR.Gcs.Name, "");
-                string AlbersSR_WKT = AlbersSR.Wkt.Replace(AlbersSR.Name, "").Replace(AlbersSR.Gcs.Name, "");
-
-                bool result = string.Equals(AlbersSR_WKT, TestSR_WKT, StringComparison.OrdinalIgnoreCase);
-
-                return result ? (true, "Spatial References are equivalent") : (false, "Spatial References are not equivalent");
-
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return (false, ex.Message);
             }
         }
 
