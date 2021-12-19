@@ -112,6 +112,13 @@
                             </StackPanel>
                         </Button>
 
+                        <Button
+                            DockPanel.Dock="Left"
+                            Margin="5,0,0,5"
+                            Padding="5, 0, 5, 0"
+                            Command="{Binding CmdValidateNationalDb}"
+                            Content="Validate!" />
+
                         <TextBlock
                             Margin="5"
                             VerticalAlignment="Center"

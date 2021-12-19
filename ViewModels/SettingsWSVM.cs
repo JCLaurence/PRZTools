@@ -34,6 +34,7 @@ namespace NCC.PRZTools
         // Commands
         private ICommand _cmdSelectFolder;
         private ICommand _cmdSelectNationalDb;
+        private ICommand _cmdValidateNationalDb;
         private ICommand _cmdInitializeWorkspace;
         private ICommand _cmdResetWorkspace;
         private ICommand _cmdExploreWorkspace;
@@ -119,6 +120,8 @@ namespace NCC.PRZTools
         public ICommand CmdSelectFolder => _cmdSelectFolder ?? (_cmdSelectFolder = new RelayCommand(() => SelectFolder(), () => true));
 
         public ICommand CmdSelectNationalDb => _cmdSelectNationalDb ?? (_cmdSelectNationalDb = new RelayCommand(() => SelectNationalDb(), () => true));
+
+        public ICommand CmdValidateNationalDb => _cmdValidateNationalDb ?? (_cmdValidateNationalDb = new RelayCommand(() => ValidateNationalDb(), () => true));
 
         public ICommand CmdInitializeWorkspace => _cmdInitializeWorkspace ?? (_cmdInitializeWorkspace = new RelayCommand(async () => await InitializeWorkspace(), () => true));
 
@@ -817,6 +820,75 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<bool> ValidateNationalDb()
+        {
+            try
+            {
+                // Get path
+                string gdb_path = PRZH.GetPath_NatGDB();
+
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = PRZH.GetGDB_Nat();
+
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Unable to connect to national geodatabase");
+                    }
+
+                    using (Geodatabase geodatabase = tryget.geodatabase)
+                    {
+                        ArcGIS.Core.Data.GeodatabaseType the_type = geodatabase.GetGeodatabaseType();
+
+                        // Geodatabase Type
+                        ProMsgBox.Show($"Geodatabase Type: {the_type}");
+                        List<string> l = new List<string>();
+
+                        // Geodatabase connection string
+                        string conn_string = geodatabase.GetConnectionString();
+                        ProMsgBox.Show(conn_string);
+
+                        // Get tables
+                        var tblDefs = geodatabase.GetDefinitions<TableDefinition>().Select(t => t.GetName()).ToList();
+                        tblDefs.Sort();
+                        ProMsgBox.Show($"Table Count: {tblDefs.Count}");
+
+                        SQLSyntax sqlSyntax = geodatabase.GetSQLSyntax();
+
+                        HashSet<string> db_names = new HashSet<string>();
+                        HashSet<string> schema_names = new HashSet<string>();
+                        HashSet<string> table_names = new HashSet<string>();
+
+                        foreach (string tblDef in tblDefs)
+                        {
+                            var parsed = sqlSyntax.ParseTableName(tblDef);
+
+                            db_names.Add(parsed.Item1);
+                            schema_names.Add(parsed.Item2);
+                            table_names.Add(parsed.Item3);
+                        }
+
+                        ProMsgBox.Show(string.Join("\n", db_names));
+                        ProMsgBox.Show(string.Join("\n", schema_names));
+                        ProMsgBox.Show(string.Join("\n", table_names));
+
+                    }
+
+                    // I'm here!!!
+
+
+                });
+
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         #endregion
 

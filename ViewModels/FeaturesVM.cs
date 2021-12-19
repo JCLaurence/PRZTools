@@ -141,8 +141,8 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                FeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
-                PUFeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES);
+                FeaturesTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists;
+                PUFeaturesTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES)).exists;
                 FeaturesExist = FeaturesTableExists || PUFeaturesTableExists;
 
                 // Populate the grid
@@ -193,8 +193,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
-                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Feature Class not present in the project geodatabase.  Have you built it yet?");
@@ -322,10 +322,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE FEATURES TABLE
 
-                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES).path;
 
                 // Delete the existing Features table, if it exists
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_FEATURES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(cfpath, "");
@@ -477,10 +477,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PUFEATURES TABLE - PART I
 
-                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES).path;
 
                 // Delete the existing PUFeatures table, if it exists
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUFEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pucfpath, "");
@@ -1769,9 +1769,9 @@ namespace NCC.PRZTools
 
                 // some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
-                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
-                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES).path;
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES).path;
 
                 // some planning unit elements
                 FeatureLayer PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
@@ -2252,7 +2252,7 @@ namespace NCC.PRZTools
                 Features = new ObservableCollection<FeatureElement>(); // triggers the xaml refresh
 
                 // If Features table doesn't exist, exit
-                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
+                if (!(await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists)
                 {
                     return true;
                 }
@@ -2353,8 +2353,8 @@ namespace NCC.PRZTools
 
                 // Some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES);
-                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES);
+                string cfpath = PRZH.GetPath_Project(PRZC.c_TABLE_FEATURES).path;
+                string pucfpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUFEATURES).path;
 
                 // Initialize ProgressBar and Progress Log
                 int max = 20;
@@ -2378,7 +2378,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the Features table
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_FEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(cfpath, "");
@@ -2397,7 +2397,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the PUFeatures table
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUFEATURES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pucfpath, "");
@@ -2461,8 +2461,8 @@ namespace NCC.PRZTools
                 }
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                FeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
-                PUFeaturesTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES);
+                FeaturesTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists;
+                PUFeaturesTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUFEATURES)).exists;
                 FeaturesExist = FeaturesTableExists || PUFeaturesTableExists;
 
                 // Populate the grid

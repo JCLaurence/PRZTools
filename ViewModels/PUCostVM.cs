@@ -596,8 +596,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
-                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     return false;
@@ -806,9 +806,9 @@ namespace NCC.PRZTools
                     });
 
                     // Delete the cost stats table if present
-                    string cost_stats_path = PRZH.GetPath_Project(PRZC.c_TABLE_COSTSTATS);
+                    string cost_stats_path = PRZH.GetPath_Project(PRZC.c_TABLE_COSTSTATS).path;
 
-                    if (await PRZH.TableExists_Project(PRZC.c_TABLE_COSTSTATS))
+                    if ((await PRZH.TableExists_Project(PRZC.c_TABLE_COSTSTATS)).exists)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting Cost Stats table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(cost_stats_path);

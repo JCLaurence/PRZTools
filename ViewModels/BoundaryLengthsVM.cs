@@ -86,7 +86,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
                 // Table presence
-                BoundaryTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY);
+                BoundaryTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
             }
             catch (Exception ex)
@@ -190,7 +190,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
                     // Ensure data present
-                    if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit feature class not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit feature class not found.  Have you built it yet?");
@@ -202,7 +202,7 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                    pu_path = (PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS)).path;
 
                     // Get Spatial Reference
                     await QueuedTask.Run(() =>
@@ -223,7 +223,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                 {
                     // Ensure data present
-                    if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit raster dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit raster dataset not found.  Have you built it yet?");
@@ -235,7 +235,7 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
+                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
 
                     // Get Spatial Reference & other stuff
                     await QueuedTask.Run(() =>
@@ -276,7 +276,7 @@ namespace NCC.PRZTools
                 #region DELETE OBJECTS
 
                 // Delete the Boundary table if present
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUBOUNDARY} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_PUBOUNDARY);
@@ -295,7 +295,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the temp table if present
-                if (await PRZH.TableExists_Project(temp_table))
+                if ((await PRZH.TableExists_Project(temp_table)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {temp_table} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(temp_table);
@@ -314,7 +314,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the temp fc if present
-                if (await PRZH.FCExists_Project(temp_fc))
+                if ((await PRZH.FCExists_Project(temp_fc)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {temp_fc} feature class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(temp_fc);

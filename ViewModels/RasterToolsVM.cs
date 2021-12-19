@@ -431,7 +431,7 @@ namespace NCC.PRZTools
                     try
                     {
                         // Ensure the raster is present
-                        if (!await PRZH.RasterExists_RTScratch(PRZC.c_RAS_TEMP_2))
+                        if (!(await PRZH.RasterExists_RTScratch(PRZC.c_RAS_TEMP_2)).exists)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
                             ProMsgBox.Show($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset.");

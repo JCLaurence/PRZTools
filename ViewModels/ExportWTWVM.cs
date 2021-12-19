@@ -202,7 +202,7 @@ namespace NCC.PRZTools
                 {
                     Txt_PlanningUnitLabel = "Planning Unit Feature Class";
                     // Ensure data present
-                    if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                     {
                         // PU FC NOT FOUND
                     }
@@ -215,7 +215,7 @@ namespace NCC.PRZTools
                 {
                     Txt_PlanningUnitLabel = "Planning Unit Raster Dataset";
                     // Ensure data present
-                    if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                     {
                         // RASTER NOT FOUND
                     }
@@ -231,10 +231,10 @@ namespace NCC.PRZTools
 
                 // Initialize the indicator images
                 bool PlanningUnits_OK = pu_result.exists;
-                bool SelRules_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
+                bool SelRules_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists;
                 bool Weights_OK = false;    // TODO: ADD THIS LATER
-                bool Features_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES);
-                bool Bounds_OK = await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY);
+                bool Features_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists;
+                bool Bounds_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
                 // Set the Component Status Images
                 if (PlanningUnits_OK)
@@ -397,7 +397,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
                     // Ensure data present
-                    if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit feature class not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit feature class not found.  Have you built it yet?");
@@ -409,7 +409,7 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
 
                     // Get Spatial Reference
                     await QueuedTask.Run(() =>
@@ -430,7 +430,7 @@ namespace NCC.PRZTools
                 else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                 {
                     // Ensure data present
-                    if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit raster dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit raster dataset not found.  Have you built it yet?");
@@ -442,7 +442,7 @@ namespace NCC.PRZTools
                     }
 
                     // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
+                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
 
                     // Get Spatial Reference and cell size
                     await QueuedTask.Run(() =>
@@ -1355,7 +1355,7 @@ namespace NCC.PRZTools
                 string export_shp_path = Path.Combine(export_folder_path, export_shp_name);
 
                 // Confirm that source raster is present
-                if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster dataset not found.", LogMessageType.ERROR), true, ++val);
                     return (false, $"{PRZC.c_RAS_PLANNING_UNITS} raster dataset not found");
@@ -1491,7 +1491,7 @@ namespace NCC.PRZTools
                 // Delete temp feature classes
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC1} and {PRZC.c_FC_TEMP_WTW_FC2} feature classes..."), true, ++val);
 
-                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC1))
+                if ((await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC1)).exists)
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC1);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
@@ -1507,7 +1507,7 @@ namespace NCC.PRZTools
                     }
                 }
 
-                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2))
+                if ((await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2)).exists)
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
@@ -1554,7 +1554,7 @@ namespace NCC.PRZTools
                 string export_shp_path = Path.Combine(export_folder_path, export_shp_name);
 
                 // Confirm that source feature class is present
-                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class not found.", LogMessageType.ERROR), true, ++val);
                     return (false, $"{PRZC.c_FC_PLANNING_UNITS} feature class not found");
@@ -1656,7 +1656,7 @@ namespace NCC.PRZTools
 
                 // Delete temp feature class
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC2} feature class..."), true, ++val);
-                if (await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2))
+                if ((await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2)).exists)
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);

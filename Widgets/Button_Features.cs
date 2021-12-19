@@ -81,7 +81,7 @@ namespace NCC.PRZTools
                 //}
 
                 // Ensure the Planning Unit Layer is present
-                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                 {
                     ProMsgBox.Show("You must first construct a Planning Unit Feature Class.");
                     return;

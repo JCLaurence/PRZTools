@@ -1774,7 +1774,7 @@ namespace NCC.PRZTools
 
                 #region CREATE STUDY AREA FEATURE CLASSES
 
-                string safcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN);
+                string safcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating study area feature class..."), true, ++val);
@@ -1861,7 +1861,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study area feature created successfully."), true, ++val);
                 }
 
-                string sabufffcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
+                string sabufffcpath = PRZH.GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
 
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating buffered study area feature class..."), true, ++val);
@@ -2033,7 +2033,7 @@ namespace NCC.PRZTools
 
                                 using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
-                                    if (!PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
+                                    if (!(PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2)).exists)
                                     {
                                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
                                         ProMsgBox.Show($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset.");
@@ -2188,8 +2188,8 @@ namespace NCC.PRZTools
                         }
 
                         // Ensure I've got my new raster...
-                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
+                        if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
@@ -2332,7 +2332,7 @@ namespace NCC.PRZTools
 
                                 using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                                 {
-                                    if (!PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2))
+                                    if (!(PRZH.RasterExists(geodatabase, PRZC.c_RAS_TEMP_2)).exists)
                                     {
                                         return false;
                                     }
@@ -2479,8 +2479,8 @@ namespace NCC.PRZTools
                         }
 
                         // Ensure I've got my new raster...
-                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS))
+                        string puraspath = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
+                        if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Unable to retrieve the {PRZC.c_RAS_PLANNING_UNITS} raster.");
@@ -2561,7 +2561,7 @@ namespace NCC.PRZTools
                 {
                     puLayerType = PlanningUnitLayerType.FEATURE;
 
-                    string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
+                    string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
 
                     // Build the new empty Planning Unit FC
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
@@ -2733,10 +2733,10 @@ namespace NCC.PRZTools
                 }
 
                 // Refresh the Map & TOC
-                if (!await PRZH.RedrawPRZLayers(_map))
+                if (!(await PRZH.RedrawPRZLayers(_map)).success)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error redrawing the PRZ layers.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("Error redrawing the PRZ layers.");
+                    ProMsgBox.Show($"Error redrawing the PRZ layers.");
                     return false;
                 }
 
@@ -3970,10 +3970,44 @@ namespace NCC.PRZTools
             }
         }
 
-        private bool Test()
+        private async Task<bool> Test()
         {
             try
             {
+                var tryexists = await PRZH.GDBExists_Nat();
+
+                if (!tryexists.exists)
+                {
+                    ProMsgBox.Show($"Doesn't Exist: {tryexists.message}");
+                    return false;
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = PRZH.GetGDB_Nat();
+
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving national geodatabase");
+                    }
+
+                    using (Geodatabase geodatabase = tryget.geodatabase)
+                    {
+                        var tableDefs = geodatabase.GetDefinitions<TableDefinition>();
+                        List<string> names = new List<string>();
+
+                        foreach (var tableDef in tableDefs)
+                        {
+                            names.Add(tableDef.GetName());
+                        }
+
+                        names.Sort();
+
+                        ProMsgBox.Show(string.Join("\n", names));
+                    }
+
+                });
+
                 ProMsgBox.Show("Bort");
                 return true;
             }

@@ -87,9 +87,7 @@
                             Margin="5,0,0,5"
                             Padding="5,0"
                             Command="{Binding CmdValidateRaster}"
-                            Content="Validate!">
-
-                        </Button>
+                            Content="Validate!" />
 
                         <TextBlock
                             Margin="5"

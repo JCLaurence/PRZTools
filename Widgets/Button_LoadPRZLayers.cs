@@ -30,7 +30,7 @@ namespace NCC.PRZTools
             {
                 Map map = MapView.Active.Map;
 
-                if (!await PRZH.RedrawPRZLayers(map))
+                if (!(await PRZH.RedrawPRZLayers(map)).success)
                 {
                     MessageBox.Show("Unable to redraw the PRZ layers");
                     return;

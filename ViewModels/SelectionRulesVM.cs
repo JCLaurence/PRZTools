@@ -163,8 +163,8 @@ namespace NCC.PRZTools
                 SelectedOverrideOption = SelectionRuleType.INCLUDE.ToString();
 
                 // Determine the presence of 2 tables, and enable/disable the clear button accordingly
-                SelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
-                PUSelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES);
+                SelRuleTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists;
+                PUSelRuleTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES)).exists;
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
 
                 // Populate the grids
@@ -219,8 +219,8 @@ namespace NCC.PRZTools
                 }
 
                 // Validation: Ensure that the Planning Unit FC exists
-                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
-                if (!await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS))
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Validation >> Planning Unit Feature Class not found in the Project Geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show("Planning Unit Feature Class not present in the project geodatabase.  Have you built it yet?");
@@ -329,10 +329,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE SELECTION RULES TABLE
 
-                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES).path;
 
                 // Delete the existing SelRules table, if it exists
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_SELRULES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(srpath, "");
@@ -474,10 +474,10 @@ namespace NCC.PRZTools
 
                 #region BUILD THE PU + SELRULES TABLE - PART I
 
-                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES).path;
 
                 // Delete the existing PUSR table, if it exists
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_TABLE_PUSELRULES} Table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
@@ -1597,9 +1597,9 @@ namespace NCC.PRZTools
 
                 // some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS);
-                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
-                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
+                string pufcpath = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES).path;
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES).path;
 
                 // some planning unit elements
                 FeatureLayer PUFL = (FeatureLayer)PRZH.GetPRZLayer(map, PRZLayerNames.PU);
@@ -2086,7 +2086,7 @@ namespace NCC.PRZTools
                 SelectionRules = new ObservableCollection<SelectionRule>(); // triggers the xaml refresh
 
                 // If Selection Rules table doesn't exist, exit
-                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
+                if (!(await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists)
                 {
                     return true;
                 }
@@ -2187,7 +2187,7 @@ namespace NCC.PRZTools
                 SelectionRuleConflicts = new ObservableCollection<SelectionRuleConflict>(); // triggers the xaml refresh
 
                 // If either table doesn't exist, exit
-                if (!await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES) | !await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
+                if (!(await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists | !(await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES)).exists)
                 {
                     return true;
                 }
@@ -2354,8 +2354,8 @@ namespace NCC.PRZTools
 
                 // Some paths
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES);
-                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES);
+                string srpath = PRZH.GetPath_Project(PRZC.c_TABLE_SELRULES).path;
+                string pusrpath = PRZH.GetPath_Project(PRZC.c_TABLE_PUSELRULES).path;
 
                 // Initialize ProgressBar and Progress Log
                 int max = 20;
@@ -2380,7 +2380,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the SelRules table
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(srpath, "");
@@ -2399,7 +2399,7 @@ namespace NCC.PRZTools
                 }
 
                 // Delete the PUSelRules table
-                if (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES))
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES)).exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUSELRULES} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pusrpath, "");
@@ -2465,8 +2465,8 @@ namespace NCC.PRZTools
 
 
                 // Determine the presence of 2 tables, and enable/disable the main button accordingly
-                SelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES);
-                PUSelRuleTableExists = await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES);
+                SelRuleTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists;
+                PUSelRuleTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUSELRULES)).exists;
                 SelRulesExist = SelRuleTableExists || PUSelRuleTableExists;
 
                 // Repopulate the grids
