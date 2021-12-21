@@ -32,18 +32,11 @@
 
     #endregion
 
-    public enum NationalDbType
+    public enum GeoDBType
     {
+        Unknown,
         FileGDB,
-        EnterpriseGDB,
-        Unknown
-    }
-
-    public enum GeodatabaseType
-    {
-        FileGDB,
-        EnterpriseGDB,
-        Unknown
+        EnterpriseGDB
     }
 
     public enum NationalElementType

@@ -62,7 +62,7 @@
     <Setting Name="DEFAULT_TILE_SIDE_UNITS" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="NATDB_PATH" Type="System.String" Scope="User">
+    <Setting Name="NATDB_DBPATH" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="RT_SCRATCH_FGDB" Type="System.String" Scope="User">
@@ -76,6 +76,15 @@
     </Setting>
     <Setting Name="WTW_SPATIAL_FORMAT" Type="System.String" Scope="User">
       <Value Profile="(Default)">RASTER</Value>
+    </Setting>
+    <Setting Name="NATDB_DBNAME" Type="System.String" Scope="User">
+      <Value Profile="(Default)">prz</Value>
+    </Setting>
+    <Setting Name="NATDB_SCHEMANAME" Type="System.String" Scope="User">
+      <Value Profile="(Default)">prz_creator</Value>
+    </Setting>
+    <Setting Name="NATDB_DBTYPE" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1</Value>
     </Setting>
   </Settings>
 </SettingsFile>

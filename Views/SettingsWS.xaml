@@ -112,12 +112,11 @@
                             </StackPanel>
                         </Button>
 
-                        <Button
+                        <Image
                             DockPanel.Dock="Left"
-                            Margin="5,0,0,5"
-                            Padding="5, 0, 5, 0"
-                            Command="{Binding CmdValidateNationalDb}"
-                            Content="Validate!" />
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding NatDBInfo_Img_Status}"/>
 
                         <TextBlock
                             Margin="5"
@@ -125,6 +124,42 @@
                             Style="{DynamicResource Esri_TextBlockRegular}"
                             Foreground="{DynamicResource Esri_TextSelectionHighlightBrush}"
                             Text="{Binding PrjSettings_Txt_NationalDbPath}" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="False"
+                        Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}"
+                        Visibility="{Binding NatDbInfo_Vis_DockPanel}">
+
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="20, 5, 5, 5" 
+                            VerticalAlignment="Center" 
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Database:" />
+
+                        <TextBox
+                            DockPanel.Dock="Left"
+                            Margin="5, 1, 5, 1"
+                            Width="40"
+                            IsReadOnly="True"
+                            BorderThickness="0"
+                            Text="{Binding NatDbInfo_Txt_DbName}" />
+
+                        <TextBlock 
+                            DockPanel.Dock="Left"
+                            Margin="20, 5, 5, 5" 
+                            VerticalAlignment="Center" 
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Schema:" />
+
+                        <ComboBox 
+                            Margin="1, 1, 5, 1"
+                            MinWidth="100"
+                            ItemsSource="{Binding NatDbInfo_Cmb_SchemaNames}"
+                            SelectedItem="{Binding NatDbInfo_Cmb_SelectedSchemaName}"/>
 
                     </DockPanel>
 

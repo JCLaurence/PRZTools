@@ -16,6 +16,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
@@ -48,9 +49,59 @@ namespace NCC.PRZTools
         private bool _prjSettings_Rad_WSViewer_Gdb_IsChecked;
         private string _prjSettings_Txt_WorkspaceContents;
 
+        private Visibility _natDbInfo_Vis_DockPanel = Visibility.Collapsed;
+        private string _natDbInfo_Txt_DbName;
+        private List<string> _natDbInfo_Cmb_SchemaNames;
+        private string _natDbInfo_Cmb_SelectedSchemaName;
+
+        private string _natDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+
+
         #endregion
 
         #region PROPERTIES
+
+        public string NatDBInfo_Img_Status
+        {
+            get => _natDBInfo_Img_Status;
+            set => SetProperty(ref _natDBInfo_Img_Status, value, () => NatDBInfo_Img_Status);
+        }
+
+        public string NatDbInfo_Txt_DbName
+        {
+            get => _natDbInfo_Txt_DbName;
+            set
+            {
+                SetProperty(ref _natDbInfo_Txt_DbName, value, () => NatDbInfo_Txt_DbName);
+                Properties.Settings.Default.NATDB_DBNAME = string.IsNullOrEmpty(value) ? "" : value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        public Visibility NatDbInfo_Vis_DockPanel
+        {
+            get => _natDbInfo_Vis_DockPanel;
+            set => SetProperty(ref _natDbInfo_Vis_DockPanel, value, () => NatDbInfo_Vis_DockPanel);
+        }
+
+        public List<string> NatDbInfo_Cmb_SchemaNames
+        {
+            get => _natDbInfo_Cmb_SchemaNames;
+            set => SetProperty(ref _natDbInfo_Cmb_SchemaNames, value, () => NatDbInfo_Cmb_SchemaNames);
+        }
+
+        public string NatDbInfo_Cmb_SelectedSchemaName
+        {
+            get => _natDbInfo_Cmb_SelectedSchemaName;
+            set
+            {
+                SetProperty(ref _natDbInfo_Cmb_SelectedSchemaName, value, () => NatDbInfo_Cmb_SelectedSchemaName);
+                Properties.Settings.Default.NATDB_SCHEMANAME = string.IsNullOrEmpty(value) ? "" : value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+
         public string PrjSettings_Txt_ProjectFolderPath
         {
             get => _prjSettings_Txt_ProjectFolderPath;
@@ -68,7 +119,7 @@ namespace NCC.PRZTools
             set
             {
                 SetProperty(ref _prjSettings_Txt_NationalDbPath, value, () => PrjSettings_Txt_NationalDbPath);
-                Properties.Settings.Default.NATDB_PATH = value;
+                Properties.Settings.Default.NATDB_DBPATH = value;
                 Properties.Settings.Default.Save();
             }
         }
@@ -133,7 +184,7 @@ namespace NCC.PRZTools
 
         #region METHODS
 
-        public void OnProWinLoaded()
+        public async Task OnProWinLoaded()
         {
             try
             {
@@ -149,7 +200,7 @@ namespace NCC.PRZTools
                 }
 
                 // National DB
-                string natpath = Properties.Settings.Default.NATDB_PATH;
+                string natpath = Properties.Settings.Default.NATDB_DBPATH;
                 if (string.IsNullOrEmpty(natpath) || string.IsNullOrWhiteSpace(natpath))
                 {
                     PrjSettings_Txt_NationalDbPath = "";
@@ -157,6 +208,18 @@ namespace NCC.PRZTools
                 else
                 {
                     PrjSettings_Txt_NationalDbPath = natpath;
+                }
+
+                // Validate National Db
+                var tryvalidate = await ValidateNationalDb();
+
+                if (tryvalidate.success && tryvalidate.valid)
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
                 // Workspace Viewer
@@ -173,6 +236,7 @@ namespace NCC.PRZTools
                 {
                     PrjSettings_Rad_WSViewer_Dir_IsChecked = true;
                 }
+
 
 
             }
@@ -755,7 +819,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private void SelectNationalDb()
+        private async Task SelectNationalDb()
         {
             try
             {
@@ -811,8 +875,18 @@ namespace NCC.PRZTools
                 }
 
                 string thePath = item.Path;
-
                 PrjSettings_Txt_NationalDbPath = thePath;
+
+                // Finally, validate the database.
+                var tryvalidate = await ValidateNationalDb();
+                if (tryvalidate.success && tryvalidate.valid)
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                }
             }
             catch (Exception ex)
             {
@@ -820,73 +894,185 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ValidateNationalDb()
+        private async Task<(bool success, bool valid, string message)> ValidateNationalDb()
         {
             try
             {
-                // Get path
-                string gdb_path = PRZH.GetPath_NatGDB();
+                // Ensure national database exists
+                var tryexists = await PRZH.GDBExists_Nat();
+                if (!tryexists.exists)
+                {
+                    NatDbInfo_Txt_DbName = "";
+                    NatDbInfo_Cmb_SchemaNames = new List<string>();
+                    NatDbInfo_Cmb_SelectedSchemaName = "";
 
-                await QueuedTask.Run(() =>
+                    return (false, false, tryexists.message);
+                }
+                else if (tryexists.gdbType == GeoDBType.EnterpriseGDB)
+                {
+                    // do nothing here yet...
+                }
+                else if (tryexists.gdbType == GeoDBType.FileGDB)
+                {
+                    NatDbInfo_Txt_DbName = "";
+                    NatDbInfo_Cmb_SchemaNames = new List<string>();
+                    NatDbInfo_Cmb_SelectedSchemaName = "";
+                }
+                else
+                {
+                    return (false, false, tryexists.message);
+                }
+
+                HashSet<string> full_names = new HashSet<string>();
+                HashSet<string> parsed_names = new HashSet<string>();
+                HashSet<string> schemas = new HashSet<string>();
+
+                // Retrieve and validate the table list
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
                     var tryget = PRZH.GetGDB_Nat();
-
+                    
+                    // If I'm unable to retrieve the geodatabase, exit.
                     if (!tryget.success)
                     {
-                        throw new Exception("Unable to connect to national geodatabase");
+                        return (false, tryget.message);
                     }
 
                     using (Geodatabase geodatabase = tryget.geodatabase)
                     {
-                        ArcGIS.Core.Data.GeodatabaseType the_type = geodatabase.GetGeodatabaseType();
-
-                        // Geodatabase Type
-                        ProMsgBox.Show($"Geodatabase Type: {the_type}");
-                        List<string> l = new List<string>();
-
-                        // Geodatabase connection string
-                        string conn_string = geodatabase.GetConnectionString();
-                        ProMsgBox.Show(conn_string);
-
-                        // Get tables
-                        var tblDefs = geodatabase.GetDefinitions<TableDefinition>().Select(t => t.GetName()).ToList();
-                        tblDefs.Sort();
-                        ProMsgBox.Show($"Table Count: {tblDefs.Count}");
-
-                        SQLSyntax sqlSyntax = geodatabase.GetSQLSyntax();
-
-                        HashSet<string> db_names = new HashSet<string>();
-                        HashSet<string> schema_names = new HashSet<string>();
-                        HashSet<string> table_names = new HashSet<string>();
-
-                        foreach (string tblDef in tblDefs)
+                        // Get the database name (if applicable)
+                        if (tryget.gdbType == GeoDBType.EnterpriseGDB)
                         {
-                            var parsed = sqlSyntax.ParseTableName(tblDef);
-
-                            db_names.Add(parsed.Item1);
-                            schema_names.Add(parsed.Item2);
-                            table_names.Add(parsed.Item3);
+                            var conn = (DatabaseConnectionProperties)geodatabase.GetConnector();
+                            NatDbInfo_Txt_DbName = ((DatabaseConnectionProperties)geodatabase.GetConnector()).Database;
+                        }
+                        else
+                        {
+                            NatDbInfo_Txt_DbName = "";
                         }
 
-                        ProMsgBox.Show(string.Join("\n", db_names));
-                        ProMsgBox.Show(string.Join("\n", schema_names));
-                        ProMsgBox.Show(string.Join("\n", table_names));
+                        // Get the table names
+                        var table_names = geodatabase.GetDefinitions<TableDefinition>().Select(d => d.GetName());
+                        SQLSyntax syntax = geodatabase.GetSQLSyntax();
 
+                        // process names
+                        foreach (var name in table_names)
+                        {
+                            // store full name
+                            full_names.Add(name);
+
+                            // parse full name
+                            var parsed = syntax.ParseTableName(name);
+
+                            // get schema
+                            if (!string.IsNullOrEmpty(parsed.Item2))
+                            {
+                                schemas.Add(parsed.Item2);
+                            }
+
+                            // get name
+                            if (!string.IsNullOrEmpty(parsed.Item3))
+                            {
+                                parsed_names.Add(parsed.Item3);
+                            }
+                        }
+
+                        HashSet<string> all_schemas = new HashSet<string>();
+                        // I am now looking for presence of Element and Theme tables
+                        foreach (var name in table_names)
+                        {
+                            // get all schemas
+                            var p = syntax.ParseTableName(name);
+                            all_schemas.Add(p.Item2);
+                        }
+
+                        List<string> valid_schemas = new List<string>();
+
+                        foreach (string schema in all_schemas)
+                        {
+                            bool element_found = false;
+                            bool theme_found = false;
+
+                            foreach (var name in table_names)
+                            {
+                                var p2 = syntax.ParseTableName(name);
+
+                                if (p2.Item2 == schema)
+                                {
+                                    if (p2.Item3 == PRZC.c_TABLE_NAT_ELEMENTS)
+                                    {
+                                        element_found = true;
+                                    }
+
+                                    if (p2.Item3 == PRZC.c_TABLE_NAT_THEMES)
+                                    {
+                                        theme_found = true;
+                                    }
+                                }
+                            }
+
+                            if (element_found && theme_found)
+                            {
+                                valid_schemas.Add(schema);
+                            }
+                        }
                     }
-
                     // I'm here!!!
 
-
+                    return (true, "success");
                 });
 
+                if (!outcome.success)
+                {
+                    return (false, false, outcome.message);
+                }
+
+                // Populate the list of schemas
+                if (schemas.Count > 0)
+                {
+                    List<string> l = schemas.ToList();
+                    l.Sort();
+                    NatDbInfo_Cmb_SchemaNames = l;
+
+                    string saved_schema = Properties.Settings.Default.NATDB_SCHEMANAME;
+                    if (!string.IsNullOrEmpty(saved_schema) && l.Contains(saved_schema))
+                    {
+                        NatDbInfo_Cmb_SelectedSchemaName = saved_schema;
+                    }
+                    else
+                    {
+                        NatDbInfo_Cmb_SelectedSchemaName = l[0];    // first element in the list.
+                    }
+                }
+                else
+                {
+                    NatDbInfo_Cmb_SchemaNames = new List<string>();
+                    NatDbInfo_Cmb_SelectedSchemaName = "";
+                }
+
+                // I need to confirm the presence of an Element and a Theme table within the same schema (if schemas are applicable
 
 
-                return true;
+                // Finally, trigger visibility of schema combo control
+                if (tryexists.gdbType == GeoDBType.EnterpriseGDB)
+                {
+                    NatDbInfo_Vis_DockPanel = Visibility.Visible;
+                }
+                else
+                {
+                    NatDbInfo_Vis_DockPanel = Visibility.Collapsed;
+                }
+
+                return (true, true, "success");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                NatDbInfo_Vis_DockPanel = Visibility.Collapsed;
+                NatDbInfo_Txt_DbName = "";
+                NatDbInfo_Cmb_SchemaNames = new List<string>();
+                NatDbInfo_Cmb_SelectedSchemaName = "";
+
+                return (false, false, ex.Message);
             }
         }
 

@@ -254,7 +254,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                return Properties.Settings.Default.NATDB_PATH;
+                return Properties.Settings.Default.NATDB_DBPATH;
             }
             catch (Exception ex)
             {
@@ -446,7 +446,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="gdbpath"></param>
         /// <returns></returns>
-        public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists(string gdbpath)
+        public static async Task<(bool exists, GeoDBType gdbType, string message)> GDBExists(string gdbpath)
         {
             try
             {
@@ -456,13 +456,13 @@ namespace NCC.PRZTools
                     // Ensure a non-null and non-empty path
                     if (string.IsNullOrEmpty(gdbpath))
                     {
-                        return (false, GeodatabaseType.Unknown, "Geodatabase path is null or empty.");
+                        return (false, GeoDBType.Unknown, "Geodatabase path is null or empty.");
                     }
 
                     // Ensure a rooted path
                     if (!Path.IsPathRooted(gdbpath))
                     {
-                        return (false, GeodatabaseType.Unknown, $"Path is not rooted: {gdbpath}");
+                        return (false, GeoDBType.Unknown, $"Path is not rooted: {gdbpath}");
                     }
 
                     // Create the Uri object
@@ -474,7 +474,7 @@ namespace NCC.PRZTools
                     }
                     catch
                     {
-                        return (false, GeodatabaseType.Unknown, $"Unable to create Uri from path: {gdbpath}");
+                        return (false, GeoDBType.Unknown, $"Unable to create Uri from path: {gdbpath}");
                     }
 
                     // Determine if path is file geodatabase (.gdb) or database connection file (.sde)
@@ -489,7 +489,7 @@ namespace NCC.PRZTools
                         }
                         catch
                         {
-                            return (false, GeodatabaseType.Unknown, $"Unable to create file geodatabase connection path from path: {gdbpath}");
+                            return (false, GeoDBType.Unknown, $"Unable to create file geodatabase connection path from path: {gdbpath}");
                         }
 
                         // Try to open the connection
@@ -499,11 +499,11 @@ namespace NCC.PRZTools
                         }
                         catch
                         {
-                            return (false, GeodatabaseType.Unknown, $"File geodatabase could not be opened from path: {gdbpath}");
+                            return (false, GeoDBType.Unknown, $"File geodatabase could not be opened from path: {gdbpath}");
                         }
 
                         // If I get to this point, the file gdb exists and was successfully opened
-                        return (true, GeodatabaseType.FileGDB, "success");
+                        return (true, GeoDBType.FileGDB, "success");
                     }
                     else if (File.Exists(gdbpath) && gdbpath.EndsWith(".sde"))    // It's a connection file (.sde)
                     {
@@ -516,7 +516,7 @@ namespace NCC.PRZTools
                         }
                         catch
                         {
-                            return (false, GeodatabaseType.Unknown, $"Unable to create database connection file from path: {gdbpath}");
+                            return (false, GeoDBType.Unknown, $"Unable to create database connection file from path: {gdbpath}");
                         }
 
                         // try to open the connection
@@ -526,23 +526,23 @@ namespace NCC.PRZTools
                         }
                         catch
                         {
-                            return (false, GeodatabaseType.Unknown, $"Enterprise geodatabase could not be opened from path: {gdbpath}");
+                            return (false, GeoDBType.Unknown, $"Enterprise geodatabase could not be opened from path: {gdbpath}");
                         }
 
                         // If I get to this point, the enterprise geodatabase exists and was successfully opened
-                        return (true, GeodatabaseType.EnterpriseGDB, "success");
+                        return (true, GeoDBType.EnterpriseGDB, "success");
                     }
                     else
                     {
                         // something else, weird!
-                        return (false, GeodatabaseType.Unknown, $"unable to process database path: {gdbpath}");
+                        return (false, GeoDBType.Unknown, $"unable to process database path: {gdbpath}");
                     }
                 });
 
             }
             catch (Exception ex)
             {
-                return (false, GeodatabaseType.Unknown, ex.Message);
+                return (false, GeoDBType.Unknown, ex.Message);
             }
         }
 
@@ -586,7 +586,7 @@ namespace NCC.PRZTools
         /// Establish the existence of the national geodatabase (file or enterprise).  Silent errors.
         /// </summary>
         /// <returns></returns>
-        public static async Task<(bool exists, GeodatabaseType gdbType, string message)> GDBExists_Nat()
+        public static async Task<(bool exists, GeoDBType gdbType, string message)> GDBExists_Nat()
         {
             try
             {
@@ -594,7 +594,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                return (false, GeodatabaseType.Unknown, ex.Message);
+                return (false, GeoDBType.Unknown, ex.Message);
             }
         }
 
@@ -1218,7 +1218,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB(string path)
+        public static (bool success, Geodatabase geodatabase, GeoDBType gdbType, string message) GetGDB(string path)
         {
             try
             {
@@ -1231,33 +1231,33 @@ namespace NCC.PRZTools
                 // Ensure a non-null and non-empty path
                 if (string.IsNullOrEmpty(path))
                 {
-                    return (false, null, GeodatabaseType.Unknown, "Geodatabase path is null or empty.");
+                    return (false, null, GeoDBType.Unknown, "Geodatabase path is null or empty.");
                 }
 
                 // Ensure a rooted path
                 if (!Path.IsPathRooted(path))
                 {
-                    return (false, null, GeodatabaseType.Unknown, $"Path is not rooted: {path}");
+                    return (false, null, GeoDBType.Unknown, $"Path is not rooted: {path}");
                 }
 
                 if (path.EndsWith(".gdb"))
                 {
                     var tryget = GetFileGDB(path);
-                    return (tryget.success, tryget.geodatabase, GeodatabaseType.FileGDB, tryget.message);
+                    return (tryget.success, tryget.geodatabase, GeoDBType.FileGDB, tryget.message);
                 }
                 else if (path.EndsWith(".sde"))
                 {
                     var tryget = GetEnterpriseGDB(path);
-                    return (tryget.success, tryget.geodatabase, GeodatabaseType.EnterpriseGDB, tryget.message);
+                    return (tryget.success, tryget.geodatabase, GeoDBType.EnterpriseGDB, tryget.message);
                 }
                 else
                 {
-                    return (false, null, GeodatabaseType.Unknown, "Invalid geodatabase path (not *.gdb or *.sde)");
+                    return (false, null, GeoDBType.Unknown, "Invalid geodatabase path (not *.gdb or *.sde)");
                 }
             }
             catch (Exception ex)
             {
-                return (false, null, GeodatabaseType.Unknown, ex.Message);
+                return (false, null, GeoDBType.Unknown, ex.Message);
             }
         }
 
@@ -1317,7 +1317,7 @@ namespace NCC.PRZTools
         /// Retrieve the national geodatabase (file or enterprise).  Must be run on MCT.  Silent errors.
         /// </summary>
         /// <returns></returns>
-        public static (bool success, Geodatabase geodatabase, GeodatabaseType gdbType, string message) GetGDB_Nat()
+        public static (bool success, Geodatabase geodatabase, GeoDBType gdbType, string message) GetGDB_Nat()
         {
             try
             {
@@ -1337,7 +1337,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                return (false, null, GeodatabaseType.Unknown, ex.Message);
+                return (false, null, GeoDBType.Unknown, ex.Message);
             }
         }
 

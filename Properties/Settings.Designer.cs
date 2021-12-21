@@ -266,12 +266,12 @@ namespace NCC.PRZTools.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string NATDB_PATH {
+        public string NATDB_DBPATH {
             get {
-                return ((string)(this["NATDB_PATH"]));
+                return ((string)(this["NATDB_DBPATH"]));
             }
             set {
-                this["NATDB_PATH"] = value;
+                this["NATDB_DBPATH"] = value;
             }
         }
         
@@ -320,6 +320,42 @@ namespace NCC.PRZTools.Properties {
             }
             set {
                 this["WTW_SPATIAL_FORMAT"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("prz")]
+        public string NATDB_DBNAME {
+            get {
+                return ((string)(this["NATDB_DBNAME"]));
+            }
+            set {
+                this["NATDB_DBNAME"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("prz_creator")]
+        public string NATDB_SCHEMANAME {
+            get {
+                return ((string)(this["NATDB_SCHEMANAME"]));
+            }
+            set {
+                this["NATDB_SCHEMANAME"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int NATDB_DBTYPE {
+            get {
+                return ((int)(this["NATDB_DBTYPE"]));
+            }
+            set {
+                this["NATDB_DBTYPE"] = value;
             }
         }
     }
