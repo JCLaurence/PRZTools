@@ -1203,8 +1203,8 @@ namespace NCC.PRZTools
                 {
                     if (!result.exists)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> National Geodatabase not found: {natpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("National Database not found at this path:" +
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Validation >> Valid National Geodatabase not found: {natpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("Valid National Database not found at this path:" +
                                        Environment.NewLine +
                                        natpath +
                                        Environment.NewLine + Environment.NewLine +
@@ -3454,7 +3454,8 @@ namespace NCC.PRZTools
                 string natdbpath = PRZH.GetPath_NatGDB();
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_ELEMENTS} Table..."), true, ++val);
-                string inputelempath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_ELEMENTS);
+                var q_elem = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NAT_ELEMENTS);
+                string inputelempath = Path.Combine(natdbpath, q_elem.qualified_name);
                 toolParams = Geoprocessing.MakeValueArray(inputelempath, PRZC.c_TABLE_NAT_ELEMENTS, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags);
@@ -3490,7 +3491,8 @@ namespace NCC.PRZTools
 
                 // COPY THE THEMES TABLE
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_TABLE_NAT_THEMES} Table..."), true, ++val);
-                string inputthemepath = Path.Combine(natdbpath, PRZC.c_TABLE_NAT_THEMES);
+                var q_theme = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NAT_THEMES);
+                string inputthemepath = Path.Combine(natdbpath, q_theme.qualified_name);
                 toolParams = Geoprocessing.MakeValueArray(inputthemepath, PRZC.c_TABLE_NAT_THEMES, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags);
@@ -3559,7 +3561,6 @@ namespace NCC.PRZTools
                 #region RETRIEVE INTERSECTING ELEMENTS
 
                 // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
-
                 var gethash_outcome = await PRZH.GetCellNumberHashset();
                 if (!gethash_outcome.success)
                 {
@@ -3592,7 +3593,7 @@ namespace NCC.PRZTools
                     else if (getint_outcome.dict.Count == 0)
                     {
                         // No intersection, continue
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: no intersection with planning units."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: no intersection."), true, ++val);
                         continue;
                     }
                     else

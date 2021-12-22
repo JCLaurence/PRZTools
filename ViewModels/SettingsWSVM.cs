@@ -898,8 +898,14 @@ namespace NCC.PRZTools
         {
             try
             {
+                // Start at invalid
+                Properties.Settings.Default.NATDB_DBVALID = false;
+                Properties.Settings.Default.Save();
+
                 // Ensure national database exists
-                var tryexists = await PRZH.GDBExists_Nat();
+                string path = PRZH.GetPath_NatGDB();
+
+                var tryexists = await PRZH.GDBExists(path);
                 if (!tryexists.exists)
                 {
                     NatDbInfo_Txt_DbName = "";
@@ -923,14 +929,13 @@ namespace NCC.PRZTools
                     return (false, false, tryexists.message);
                 }
 
-                HashSet<string> full_names = new HashSet<string>();
-                HashSet<string> parsed_names = new HashSet<string>();
-                HashSet<string> schemas = new HashSet<string>();
+                Dictionary<string, int> DICT_Schemas = new Dictionary<string, int>();
 
                 // Retrieve and validate the table list
                 (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
-                    var tryget = PRZH.GetGDB_Nat();
+                    //var tryget = PRZH.GetGDB_Nat();
+                    var tryget = PRZH.GetGDB(path);
                     
                     // If I'm unable to retrieve the geodatabase, exit.
                     if (!tryget.success)
@@ -958,66 +963,32 @@ namespace NCC.PRZTools
                         // process names
                         foreach (var name in table_names)
                         {
-                            // store full name
-                            full_names.Add(name);
-
                             // parse full name
                             var parsed = syntax.ParseTableName(name);
 
-                            // get schema
-                            if (!string.IsNullOrEmpty(parsed.Item2))
+                            string db = parsed.Item1;
+                            string schema = parsed.Item2;
+                            string table = parsed.Item3;
+
+                            // add dictionary entry
+                            if (!DICT_Schemas.ContainsKey(schema))
                             {
-                                schemas.Add(parsed.Item2);
+                                DICT_Schemas.Add(schema, 0);
                             }
 
-                            // get name
-                            if (!string.IsNullOrEmpty(parsed.Item3))
+                            // now test for Element table
+                            if (string.Equals(table, PRZC.c_TABLE_NAT_ELEMENTS, StringComparison.OrdinalIgnoreCase))
                             {
-                                parsed_names.Add(parsed.Item3);
-                            }
-                        }
-
-                        HashSet<string> all_schemas = new HashSet<string>();
-                        // I am now looking for presence of Element and Theme tables
-                        foreach (var name in table_names)
-                        {
-                            // get all schemas
-                            var p = syntax.ParseTableName(name);
-                            all_schemas.Add(p.Item2);
-                        }
-
-                        List<string> valid_schemas = new List<string>();
-
-                        foreach (string schema in all_schemas)
-                        {
-                            bool element_found = false;
-                            bool theme_found = false;
-
-                            foreach (var name in table_names)
-                            {
-                                var p2 = syntax.ParseTableName(name);
-
-                                if (p2.Item2 == schema)
-                                {
-                                    if (p2.Item3 == PRZC.c_TABLE_NAT_ELEMENTS)
-                                    {
-                                        element_found = true;
-                                    }
-
-                                    if (p2.Item3 == PRZC.c_TABLE_NAT_THEMES)
-                                    {
-                                        theme_found = true;
-                                    }
-                                }
+                                DICT_Schemas[schema]++;
                             }
 
-                            if (element_found && theme_found)
+                            // now test for Theme table
+                            if (string.Equals(table, PRZC.c_TABLE_NAT_THEMES, StringComparison.OrdinalIgnoreCase))
                             {
-                                valid_schemas.Add(schema);
+                                DICT_Schemas[schema]++;
                             }
                         }
                     }
-                    // I'm here!!!
 
                     return (true, "success");
                 });
@@ -1027,33 +998,7 @@ namespace NCC.PRZTools
                     return (false, false, outcome.message);
                 }
 
-                // Populate the list of schemas
-                if (schemas.Count > 0)
-                {
-                    List<string> l = schemas.ToList();
-                    l.Sort();
-                    NatDbInfo_Cmb_SchemaNames = l;
-
-                    string saved_schema = Properties.Settings.Default.NATDB_SCHEMANAME;
-                    if (!string.IsNullOrEmpty(saved_schema) && l.Contains(saved_schema))
-                    {
-                        NatDbInfo_Cmb_SelectedSchemaName = saved_schema;
-                    }
-                    else
-                    {
-                        NatDbInfo_Cmb_SelectedSchemaName = l[0];    // first element in the list.
-                    }
-                }
-                else
-                {
-                    NatDbInfo_Cmb_SchemaNames = new List<string>();
-                    NatDbInfo_Cmb_SelectedSchemaName = "";
-                }
-
-                // I need to confirm the presence of an Element and a Theme table within the same schema (if schemas are applicable
-
-
-                // Finally, trigger visibility of schema combo control
+                // trigger visibility of schema combo control
                 if (tryexists.gdbType == GeoDBType.EnterpriseGDB)
                 {
                     NatDbInfo_Vis_DockPanel = Visibility.Visible;
@@ -1063,7 +1008,50 @@ namespace NCC.PRZTools
                     NatDbInfo_Vis_DockPanel = Visibility.Collapsed;
                 }
 
-                return (true, true, "success");
+                // Review the schema dictionary. KVP having V = 2 are valid (they have an element and a theme table).  KVP less than 2 are invalid
+                List<string> schemas = new List<string>();
+
+                foreach(var KVP in DICT_Schemas)
+                {
+                    if (KVP.Value == 2)
+                    {
+                        schemas.Add(KVP.Key);
+                    }
+                }
+
+                schemas.Sort();
+
+                // Populate the list of schemas
+                if (schemas.Count > 0)
+                {
+                    // There are at least 1 valid schemas (schema containing an element and theme table)
+                    NatDbInfo_Cmb_SchemaNames = schemas;
+
+                    string saved_schema = Properties.Settings.Default.NATDB_SCHEMANAME;
+                    if (!string.IsNullOrEmpty(saved_schema) && schemas.Contains(saved_schema))
+                    {
+                        NatDbInfo_Cmb_SelectedSchemaName = saved_schema;
+                    }
+                    else
+                    {
+                        NatDbInfo_Cmb_SelectedSchemaName = schemas[0];    // first element in the list.
+                    }
+
+                    // save valid status
+                    Properties.Settings.Default.NATDB_DBVALID = true;
+                    Properties.Settings.Default.Save();
+
+                    return (true, true, "success");
+                }
+                else
+                {
+                    // There are no valid schemas - this national database is not a valid one.
+                    NatDbInfo_Cmb_SchemaNames = new List<string>();
+                    NatDbInfo_Cmb_SelectedSchemaName = "";
+
+                    return (true, false, "No valid schemas in this geodatabase.");
+                }
+
             }
             catch (Exception ex)
             {
@@ -1071,6 +1059,8 @@ namespace NCC.PRZTools
                 NatDbInfo_Txt_DbName = "";
                 NatDbInfo_Cmb_SchemaNames = new List<string>();
                 NatDbInfo_Cmb_SelectedSchemaName = "";
+                Properties.Settings.Default.NATDB_DBVALID = false;
+                Properties.Settings.Default.Save();
 
                 return (false, false, ex.Message);
             }

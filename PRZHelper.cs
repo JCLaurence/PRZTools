@@ -583,14 +583,30 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Establish the existence of the national geodatabase (file or enterprise).  Silent errors.
+        /// Establish the existence of the national geodatabase (file or enterprise).
+        /// Geodatabase must exist and be valid (have the required tables).  Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool exists, GeoDBType gdbType, string message)> GDBExists_Nat()
         {
             try
             {
-                return await GDBExists(GetPath_NatGDB());
+                var tryex = await GDBExists(GetPath_NatGDB());
+
+                if (!tryex.exists)
+                {
+                    return tryex;
+                }
+
+                // Ensure that national geodatabase is valid
+                if (!Properties.Settings.Default.NATDB_DBVALID)
+                {
+                    return (false, GeoDBType.Unknown, "National geodatabase exists but is invalid.");
+                }
+                else
+                {
+                    return tryex;
+                }
             }
             catch (Exception ex)
             {
@@ -953,7 +969,15 @@ namespace NCC.PRZTools
                             return (false, "unable to access the geodatabase.");
                         }
 
-                        return TableExists(geodatabase, table_name);
+                        // fully qualified table name as required
+                        SQLSyntax syntax = geodatabase.GetSQLSyntax();
+
+                        string db = Properties.Settings.Default.NATDB_DBNAME;
+                        string schema = Properties.Settings.Default.NATDB_SCHEMANAME;
+
+                        string qualified_table_name = syntax.QualifyTableName(db, schema, table_name);
+
+                        return TableExists(geodatabase, qualified_table_name);
                     }
                 });
             }
@@ -1314,7 +1338,8 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Retrieve the national geodatabase (file or enterprise).  Must be run on MCT.  Silent errors.
+        /// Retrieve the national geodatabase (file or enterprise).  Geodatabase must be
+        /// valid (e.g. have the required tables).  Must be run on MCT.  Silent errors.
         /// </summary>
         /// <returns></returns>
         public static (bool success, Geodatabase geodatabase, GeoDBType gdbType, string message) GetGDB_Nat()
@@ -1333,7 +1358,20 @@ namespace NCC.PRZTools
                 // Get the Geodatabase
                 var tryget = GetGDB(gdbpath);
 
-                return tryget;
+                if (!tryget.success)
+                {
+                    return tryget;
+                }
+
+                // Ensure geodatabase is valid
+                if (!Properties.Settings.Default.NATDB_DBVALID)
+                {
+                    return (false, null, GeoDBType.Unknown, "Geodatabase exists but is invalid.");
+                }
+                else
+                {
+                    return tryget;
+                }
             }
             catch (Exception ex)
             {
@@ -1777,14 +1815,22 @@ namespace NCC.PRZTools
 
                 using (Geodatabase geodatabase = tryget.geodatabase)
                 {
+                    // fully qualified table name as required
+                    SQLSyntax syntax = geodatabase.GetSQLSyntax();
+
+                    string db = Properties.Settings.Default.NATDB_DBNAME;
+                    string schema = Properties.Settings.Default.NATDB_SCHEMANAME;
+
+                    string qualified_table_name = syntax.QualifyTableName(db, schema, table_name);
+
                     // ensure table exists
-                    if (!TableExists(geodatabase, table_name).exists)
+                    if (!TableExists(geodatabase, qualified_table_name).exists)
                     {
                         return (false, null, "Table not found in geodatabase");
                     }
 
                     // get the table
-                    Table table = geodatabase.OpenDataset<Table>(table_name);
+                    Table table = geodatabase.OpenDataset<Table>(qualified_table_name);
 
                     return (true, table, "success");
                 }
@@ -1792,6 +1838,52 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region MISCELLANEOUS
+
+        public static async Task<(bool success, string qualified_name, string message)> GetNatDBQualifiedName(string name)
+        {
+            try
+            {
+                // Ensure the national database is valid
+                bool valid = Properties.Settings.Default.NATDB_DBVALID;
+
+                if (!valid)
+                {
+                    return (false, "", "invalid national database");
+                }
+
+                // Construct the qualified name
+                string db = Properties.Settings.Default.NATDB_DBNAME;
+                string schema = Properties.Settings.Default.NATDB_SCHEMANAME;
+
+                string qualified_name = "";
+
+                await QueuedTask.Run(() =>
+                {
+                    // Get the nat gdb
+                    var tryget = GetGDB_Nat();
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving valid national geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget.geodatabase)
+                    {
+                        SQLSyntax syntax = geodatabase.GetSQLSyntax();
+                        qualified_name = syntax.QualifyTableName(db, schema, name);
+                    }
+                });
+
+                return (true, qualified_name, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, "", ex.Message);
             }
         }
 
@@ -2529,6 +2621,154 @@ namespace NCC.PRZTools
         /// <param name="element_id"></param>
         /// <param name="cell_numbers"></param>
         /// <returns></returns>
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersectionOld(int element_id, HashSet<long> cell_numbers)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, null, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                var trygetname = GetElementTableName(element_id);
+                if (!trygetname.success)
+                {
+                    return (false, null, "Unable to retrieve element table name");
+                }
+                string table_name = trygetname.table_name;  // unqualified table name
+
+                // Create the dictionary
+                Dictionary<long, double> dict = new Dictionary<long, double>();
+
+                // Populate dictionary
+                await QueuedTask.Run(() =>
+                {
+                    // try getting the e0000n table
+                    var trygettab = GetTable_Nat(table_name);
+
+                    if (!trygettab.success)
+                    {
+                        throw new Exception("Unable to retrieve table.");
+                    }
+
+                    // I'm here - can I do this more efficiently?
+
+                    // iterate
+                    using (Table table = trygettab.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                var cell_number = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+
+                                // check for presence of cell_number in the hashset
+                                if (cell_numbers.Contains(cell_number))
+                                {
+                                    // save the KVP
+                                    dict.Add(cell_number, cell_value);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated element values from the
+        /// national database, for the specified element and list of cell numbers.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <param name="cell_numbers"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersectionOld2(int element_id, HashSet<long> cell_numbers)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    return (false, null, "Element ID out of range (1 - 99999)");
+                }
+
+                // Get element table name
+                var trygetname = GetElementTableName(element_id);
+                if (!trygetname.success)
+                {
+                    return (false, null, "Unable to retrieve element table name");
+                }
+                string table_name = trygetname.table_name;  // unqualified table name
+
+                // Create the dictionary
+                Dictionary<long, double> dict = new Dictionary<long, double>();
+
+                // Get the min and max cell numbers.  I can ignore all cell numbers outside this range
+                long min_cell_number = cell_numbers.Min();
+                long max_cell_number = cell_numbers.Max();
+
+                // Populate dictionary
+                await QueuedTask.Run(() =>
+                {
+                    // try getting the e0000n table
+                    var trygettab = GetTable_Nat(table_name);
+
+                    if (!trygettab.success)
+                    {
+                        throw new Exception("Unable to retrieve table.");
+                    }
+
+                    // iterate
+                    using (Table table = trygettab.table)
+                    {
+                        foreach(long cell_num in cell_numbers)
+                        {
+                            QueryFilter queryFilter = new QueryFilter();
+
+                            queryFilter.SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE;
+                            //                            queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} = {cell_num} And {} >= {} And {} <= {}"; 
+                            queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} = {cell_num}"; 
+
+                            using (RowCursor rowCursor = table.Search(queryFilter))
+                            {
+                                if (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+                                        dict.Add(cell_num, cell_value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated element values from the
+        /// national database, for the specified element and list of cell numbers.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <param name="cell_numbers"></param>
+        /// <returns></returns>
         public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersection(int element_id, HashSet<long> cell_numbers)
         {
             try
@@ -2541,86 +2781,64 @@ namespace NCC.PRZTools
 
                 // Get element table name
                 var trygetname = GetElementTableName(element_id);
-
                 if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
                 }
-
-                string table_name = trygetname.table_name;
-
-                // Ensure that the National GDB exists
-                if (!(await GDBExists_Nat()).exists)
-                {
-                    return (false, null, "National geodatabase not found");
-                }
-
-                // Ensure that the table exists
-                if (!(await TableExists_Nat(table_name)).exists)
-                {
-                    return (false, null, "Element table not found");
-                }
+                string table_name = trygetname.table_name;  // unqualified table name
 
                 // Create the dictionary
                 Dictionary<long, double> dict = new Dictionary<long, double>();
+                Dictionary<long, double> dict_test = new Dictionary<long, double>();
+
+                // Get the min and max cell numbers.  I can ignore all cell numbers outside this range
+                long min_cell_number = cell_numbers.Min();
+                long max_cell_number = cell_numbers.Max();
 
                 // Populate dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(() =>
+                await QueuedTask.Run(() =>
                 {
-                    try
+                    // try getting the e0000n table
+                    var trygettab = GetTable_Nat(table_name);
+
+                    if (!trygettab.success)
                     {
-                        // try getting the e0000n table
-                        var trygettab = GetTable_Nat(table_name);
+                        throw new Exception("Unable to retrieve table.");
+                    }
 
-                        if (!trygettab.success)
-                        {
-                            return (false, "Unable to retrieve table");
-                        }
+                    // iterate
+                    using (Table table = trygettab.table)
+                    {
+                        QueryFilter queryFilter = new QueryFilter();
+                        queryFilter.SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE;
+                        queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} >= {min_cell_number} And {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} <= {max_cell_number}";
 
-                        // iterate
-                        using (Table table = trygettab.table)
-                        using (RowCursor rowCursor = table.Search())
+                        using (RowCursor rowCursor = table.Search(queryFilter))
                         {
                             while (rowCursor.MoveNext())
                             {
                                 using (Row row = rowCursor.Current)
                                 {
-                                    var cell_number = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
-                                    var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
+                                    var cn = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
+                                    var cv = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
 
-                                    // check for presence of cell_number in the hashset
-                                    if (cell_numbers.Contains(cell_number))
-                                    {
-                                        // save the KVP
-                                        dict.Add(cell_number, cell_value);
-                                    }
+                                    dict_test.Add(cn, cv);
                                 }
                             }
                         }
-
-                        return (true, "success");
-                    }
-                    catch (Exception ex)
-                    {
-                        return (false, ex.Message);
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, dict, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
+                // I'm here!!!
+                ProMsgBox.Show($"Test Dict Count: {dict_test.Count}");
+
+                return (true, dict, "success");
             }
             catch (Exception ex)
             {
                 return (false, null, ex.Message);
             }
         }
-
 
         #endregion
 

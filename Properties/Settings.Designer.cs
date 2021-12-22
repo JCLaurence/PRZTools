@@ -358,5 +358,17 @@ namespace NCC.PRZTools.Properties {
                 this["NATDB_DBTYPE"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool NATDB_DBVALID {
+            get {
+                return ((bool)(this["NATDB_DBVALID"]));
+            }
+            set {
+                this["NATDB_DBVALID"] = value;
+            }
+        }
     }
 }

@@ -914,132 +914,39 @@ namespace NCC.PRZTools
 
         public async Task<bool> Test()
         {
-            int val = 0;
-            bool edits_are_disabled = !Project.Current.IsEditingEnabled;
-
             try
             {
-                // Check for currently unsaved edits in the project
-                if (Project.Current.HasEdits)
+                await QueuedTask.Run(() =>
                 {
-                    ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding");
-                    return true;
+                var tryget = PRZH.GetGDB_Nat();
+
+                if (!tryget.success)
+                {
+                    throw new Exception("No valid nat gdb");
                 }
 
-                // Enable editing temporarily (reset this in 'finally')
-                if (edits_are_disabled)
+                using (Geodatabase geodatabase = tryget.geodatabase)
                 {
-                    await Project.Current.SetIsEditingEnabledAsync(true);
-                }
+                    string qualified_table = "prz.prz_creator.element";
+                    Table table = geodatabase.OpenDataset<Table>(qualified_table);
 
-                // Initialize ProgressBar and Progress Log
-                int max = 50;
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the tester..."), false, max, ++val);
-
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
-
-                int counter = 0;
-                int hundreds = 0;
-
-                if (!await QueuedTask.Run(async () =>
-                {
-                    bool success = false;
-
-                    try
+                    if (table == null)
                     {
-                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving table.");
-                        }
-
-                        using (Table tab = tryget.table)
-                        {
-                            // EditOperation approach
-                            var editOp = new EditOperation();
-                            editOp.Name = "Tester I";
-                            editOp.ShowProgressor = false;
-                            editOp.ShowModalMessageAfterFailure = false;
-                            
-                            editOp.Callback((context) =>
-                            {
-                                // callback editing function
-                                try
-                                {
-                                    using (Table table = PRZH.GetTable_Project(PRZC.c_TABLE_PUFEATURES).table)
-                                    using (RowCursor rowCursor = table.Search(null, false))
-                                    {
-                                        while (rowCursor.MoveNext())
-                                        {
-                                            using (Row row = rowCursor.Current)
-                                            {
-                                                context.Invalidate(row);
-                                                row[PRZC.c_FLD_TAB_PUCF_FEATURECOUNT] = 3;
-                                                row.Store();
-                                                context.Invalidate(row);
-                                            }
-                                        }
-                                    }
-
-                                    throw new Exception("whaaah happened?");
-
-                                }
-                                catch (Exception ex)
-                                {
-                                    context.Abort("Abortorama: " + ex.Message);
-                                }
-
-                            }, tab);
-
-                            success = await editOp.ExecuteAsync();
-
-                            if (success)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving edits..."), true, max, ++val);
-                                await Project.Current.SaveEditsAsync();
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error... Error...", LogMessageType.ERROR), true, max, ++val);
-                                ProMsgBox.Show("Error Message: " + editOp.ErrorMessage);
-                            }
-                        }
-
-                        return success;
+                        throw new Exception($"table {qualified_table} is null");
                     }
-                    catch (Exception ex)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error happened.", LogMessageType.ERROR), true, max, ++val);
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
+
+                    ProMsgBox.Show("Full Path: " + table.GetPath().AbsolutePath);
                     }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"test error.", LogMessageType.ERROR), true);
-                    ProMsgBox.Show($"test error.");
-                    return false;
-                }
+                });
 
-                stopwatch.Stop();
 
-                string message = PRZH.GetElapsedTimeInSeconds(stopwatch.Elapsed);
-                ProMsgBox.Show(message);
-
+                ProMsgBox.Show("Bort");
                 return true;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message);
                 return false;
-            }
-            finally
-            {
-                if (edits_are_disabled)
-                {
-                    await Project.Current.SetIsEditingEnabledAsync(false);
-                }
             }
         }
 
