@@ -2787,8 +2787,8 @@ namespace NCC.PRZTools
                 }
                 string table_name = trygetname.table_name;  // unqualified table name
 
-                // Create the dictionary
-                Dictionary<long, double> dict = new Dictionary<long, double>();
+                // Create the dictionaries
+                Dictionary<long, double> dict_final = new Dictionary<long, double>();
                 Dictionary<long, double> dict_test = new Dictionary<long, double>();
 
                 // Get the min and max cell numbers.  I can ignore all cell numbers outside this range
@@ -2806,12 +2806,12 @@ namespace NCC.PRZTools
                         throw new Exception("Unable to retrieve table.");
                     }
 
-                    // iterate
+                    // Retrieve all element table KVPs within the min max range
                     using (Table table = trygettab.table)
                     {
                         QueryFilter queryFilter = new QueryFilter();
                         queryFilter.SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE;
-                        queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} >= {min_cell_number} And {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} <= {max_cell_number}";
+                        queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} BETWEEN {min_cell_number} AND {max_cell_number}";
 
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
@@ -2829,10 +2829,16 @@ namespace NCC.PRZTools
                     }
                 });
 
-                // I'm here!!!
-                ProMsgBox.Show($"Test Dict Count: {dict_test.Count}");
+                // Populate the final dictionary
+                foreach (long cellnum in cell_numbers)
+                {
+                    if (dict_test.ContainsKey(cellnum))
+                    {
+                        dict_final.Add(cellnum, dict_test[cellnum]);
+                    }
+                }
 
-                return (true, dict, "success");
+                return (true, dict_final, "success");
             }
             catch (Exception ex)
             {
