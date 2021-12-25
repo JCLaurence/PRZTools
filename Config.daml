@@ -1,8 +1,9 @@
 ﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.4" desktopVersion="2.9">
+  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.5" desktopVersion="2.9">
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset
-    - National GDB can handle file gdb and enterprise gdb
+    - National GDB supports file and enterprise gdb
+    - 
     </Description>
     <Image>Images\PRZTools32B.png</Image>
     <Author>JC Laurence</Author>

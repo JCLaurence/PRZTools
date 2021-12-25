@@ -1157,7 +1157,7 @@ namespace NCC.PRZTools
                 // Some GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
                 #region VALIDATION
@@ -1536,12 +1536,12 @@ namespace NCC.PRZTools
                 #region STRIP MAP AND GDB
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removing PRZ layers and standalone tables from map..."), true, ++val);
-                var tryrem = await QueuedTask.Run(async () => { return await PRZH.RemovePRZItemsFromMap(_map); });
+                var tryremove = await PRZH.RemovePRZItemsFromMap(_map);
 
-                if (!tryrem.success)
+                if (!tryremove.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}\n{tryrem.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to remove PRZ layers and standalone tables from map\n{tryrem.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables where source = {gdbpath}\n{tryremove.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to remove PRZ layers and standalone tables from map\n{tryremove.message}");
                     return false;
                 }
                 else
@@ -1551,7 +1551,7 @@ namespace NCC.PRZTools
 
                 // Delete all Items from Project GDB
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting all objects from the PRZ project geodatabase at {gdbpath}..."), true, ++val);
-                var trydel = await QueuedTask.Run(async () => { return await PRZH.DeleteProjectGDBContents(); });
+                var trydel = await PRZH.DeleteProjectGDBContents();
 
                 if (!trydel.success)
                 {
@@ -1568,7 +1568,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} coded value domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1584,7 +1584,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 1 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Present, NationalElementPresence.Present.ToString());
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1600,7 +1600,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Absent, NationalElementPresence.Absent.ToString());
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1616,7 +1616,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_THEME_PRESENCE} coded value domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {PRZC.c_DOMAIN_THEME_PRESENCE} domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1632,7 +1632,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 1 to the {PRZC.c_DOMAIN_THEME_PRESENCE} domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, (int)NationalThemePresence.Present, NationalThemePresence.Present.ToString());
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1648,7 +1648,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_THEME_PRESENCE} domain..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_THEME_PRESENCE, (int)NationalThemePresence.Absent, NationalThemePresence.Absent.ToString());
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1780,7 +1780,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error creating study area feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1803,7 +1803,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(safcpath, SAflds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to study area feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1867,7 +1867,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating buffered study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error creating buffered study area feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1890,7 +1890,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to buffered study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(sabufffcpath, SABflds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error adding fields to buffered study area feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1984,7 +1984,7 @@ namespace NCC.PRZTools
                         object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", natgrid_sidelength, gridBounds.gridEnv };
                         toolParams = Geoprocessing.MakeValueArray(o);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2003,7 +2003,7 @@ namespace NCC.PRZTools
 
                         toolParams = Geoprocessing.MakeValueArray(o2);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2109,7 +2109,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting zeros to NoData..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_3, PRZC.c_RAS_TEMP_3, PRZC.c_RAS_PLANNING_UNITS, "VALUE = 0");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting zeros to NoData.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2125,7 +2125,7 @@ namespace NCC.PRZTools
                                 string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2 + ";" + PRZC.c_RAS_TEMP_3;
                                 toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2141,7 +2141,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, -1, "", "", "", "", "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2157,7 +2157,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS);
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2200,7 +2200,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, "OVERWRITE");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2233,7 +2233,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2286,7 +2286,7 @@ namespace NCC.PRZTools
                         object[] o = { PRZC.c_RAS_TEMP_1, 0, "INTEGER", side_length, gridBounds.gridEnv };
                         toolParams = Geoprocessing.MakeValueArray(o);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2305,7 +2305,7 @@ namespace NCC.PRZTools
 
                         toolParams = Geoprocessing.MakeValueArray(o2);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_TEMP_2} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2400,7 +2400,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting zeros to NoData..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_3, PRZC.c_RAS_TEMP_3, PRZC.c_RAS_PLANNING_UNITS, "VALUE = 0");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting zeros to NoData.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2416,7 +2416,7 @@ namespace NCC.PRZTools
                                 string rasters_to_delete = PRZC.c_RAS_TEMP_1 + ";" + PRZC.c_RAS_TEMP_2 + ";" + PRZC.c_RAS_TEMP_3;
                                 toolParams = Geoprocessing.MakeValueArray(rasters_to_delete, "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2432,7 +2432,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, -1, "", "", "", "", "");
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2448,7 +2448,7 @@ namespace NCC.PRZTools
                                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS);
                                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags);
+                                toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                                 if (toolOutput == null)
                                 {
                                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2491,7 +2491,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, "OVERWRITE");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table for the {PRZC.c_RAS_PLANNING_UNITS} raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2524,7 +2524,7 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(puraspath, flds);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                        toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_RAS_PLANNING_UNITS} raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2567,7 +2567,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating Planning Unit Feature Class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_PLANNING_UNITS, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2600,7 +2600,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(pufcpath, flds);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_FC_PLANNING_UNITS} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2691,7 +2691,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in the {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2724,7 +2724,7 @@ namespace NCC.PRZTools
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath);
-                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, toolFlags);
+                toolOutput = await PRZH.RunGPTool("Compact_management", toolParams, null, toolFlags_GPRefresh);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -3975,39 +3975,209 @@ namespace NCC.PRZTools
         {
             try
             {
-                var tryexists = await PRZH.GDBExists_Nat();
+                int val = 1;
 
-                if (!tryexists.exists)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Removing PRZ layers and standalone tables from map..."), true, ++val);
+                var tryrem = await QueuedTask.Run(async () => { return await PRZH.RemovePRZItemsFromMap(_map); });
+                var tryremove = await PRZH.RemovePRZItemsFromMap(_map);
+
+                if (!tryrem.success)
                 {
-                    ProMsgBox.Show($"Doesn't Exist: {tryexists.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to remove all layers and standalone tables.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to remove PRZ layers and standalone tables.");
                     return false;
                 }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"All PRZ layers and standalone tables removed from map"), true, ++val);
+                }
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // geodatabase path
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+
+                // Create the lists of object names
+                List<string> relNames = new List<string>();
+                List<string> fdsNames = new List<string>();
+                List<string> rdsNames = new List<string>();
+                List<string> fcNames = new List<string>();
+                List<string> tabNames = new List<string>();
+                List<string> domainNames = new List<string>();
 
                 await QueuedTask.Run(() =>
                 {
-                    var tryget = PRZH.GetGDB_Nat();
-
-                    if (!tryget.success)
+                    // Get the project gdb
+                    var tryget_gdb = PRZH.GetGDB_Project();
+                    if (!tryget_gdb.success)
                     {
-                        throw new Exception("Error retrieving national geodatabase");
+                        throw new Exception("Unable to retrieve geodatabase.");
                     }
 
-                    using (Geodatabase geodatabase = tryget.geodatabase)
+                    // Populate the lists of existing objects
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
                     {
-                        var tableDefs = geodatabase.GetDefinitions<TableDefinition>();
-                        List<string> names = new List<string>();
+                        // Get list of Relationship Classes
+                        relNames = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
 
-                        foreach (var tableDef in tableDefs)
+                        // Get list of Feature Dataset names
+                        fdsNames = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
+
+                        // Get list of Raster Dataset names
+                        rdsNames = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
+
+                        // Get list of top-level Feature Classes
+                        fcNames = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
+
+                        // Get list of tables
+                        tabNames = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
+
+                        // Get list of domains
+                        domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
+                    }
+                });
+
+                // Raster Datasets
+                if (rdsNames.Count > 0)
+                {
+                    Envelope env = NationalGrid.GetNatGridEnvelope();
+                    SpatialReference sr = PRZH.GetSR_PRZCanadaAlbers();
+
+                    foreach (string raster in rdsNames)
+                    {
+                        // Delete raster attribute table
+                        toolParams = Geoprocessing.MakeValueArray(raster);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("DeleteRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                        if (toolOutput == null)
                         {
-                            names.Add(tableDef.GetName());
+                        }
+                        else
+                        {
                         }
 
-                        names.Sort();
+                        // Create a new small raster overwriting the existing one...
+                        object[] o = { raster, 0, "INTEGER", 100000, env };
+                        toolParams = Geoprocessing.MakeValueArray(o);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: sr);
+                        toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
+                        if (toolOutput == null)
+                        {
+                        }
+                        else
+                        {
+                        }
 
-                        ProMsgBox.Show(string.Join("\n", names));
+                        // ... then delete the new raster.
+                        toolParams = Geoprocessing.MakeValueArray(raster);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                        if (toolOutput == null)
+                        {
+                        }
+                        else
+                        {
+                        }
                     }
+                }
 
-                });
+                // Feature Classes
+                if (fcNames.Count > 0)
+                {
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcNames));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                    }
+                    else
+                    {
+                    }
+                }
+
+                // Tables
+                if (tabNames.Count > 0)
+                {
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabNames));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                    }
+                    else
+                    {
+                    }
+                }
+
+                // Domains
+                if (domainNames.Count > 0)
+                {
+                    foreach (string domainName in domainNames)
+                    {
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, domainName);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("DeleteDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                        if (toolOutput == null)
+                        {
+                        }
+                        else
+                        {
+                        }
+                    }
+                }
+
+                // Create the ElementPresence domain
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} coded value domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Domain created."), true, ++val);
+                }
+
+                // Add coded value #1
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 1 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Present, NationalElementPresence.Present.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
+                // Add coded value #2
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding coded value 2 to the {PRZC.c_DOMAIN_ELEMENT_PRESENCE} domain..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_ELEMENT_PRESENCE, (int)NationalElementPresence.Absent, NationalElementPresence.Absent.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding coded value to domain.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding coded value to domain.");
+                    return false;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Coded value added."), true, ++val);
+                }
+
 
                 ProMsgBox.Show("Bort");
                 return true;
@@ -4018,6 +4188,7 @@ namespace NCC.PRZTools
                 return false;
             }
         }
+
         #endregion
 
 

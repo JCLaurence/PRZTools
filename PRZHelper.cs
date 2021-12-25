@@ -4752,20 +4752,13 @@ namespace NCC.PRZTools
         #region GENERIC DATA METHODS
 
         /// <summary>
-        /// Delete all contents of the project file geodatabase.  
-        /// Must be run on MCT.  Silent errors.
+        /// Delete all contents of the project file geodatabase.  Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool success, string message)> DeleteProjectGDBContents()
         {
             try
             {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
-                {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
-                }
-
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
@@ -4775,56 +4768,59 @@ namespace NCC.PRZTools
                 // geodatabase path
                 string gdbpath = GetPath_ProjectGDB();
 
-                // Get the project gdb
-                var tryget_gdb = GetGDB_Project();
-                if (!tryget_gdb.success)
+                // Create the lists of object names
+                List<string> relNames = new List<string>();
+                List<string> fdsNames = new List<string>();
+                List<string> rdsNames = new List<string>();
+                List<string> fcNames = new List<string>();
+                List<string> tabNames = new List<string>();
+                List<string> domainNames = new List<string>();
+
+                await QueuedTask.Run(() =>
                 {
-                    return (false, "Unable to retrieve the project geodatabase.");
-                }
+                    // Get the project gdb
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Unable to retrieve geodatabase.");
+                    }
 
-                // Create the lists of object definitions
-                List<string> relDefs = null;
-                List<string> fdsDefs = null;
-                List<string> rdsDefs = null;
-                List<string> fcDefs = null;
-                List<string> tabDefs = null;
-                List<string> domainNames = null;
+                    // Populate the lists of existing objects
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        // Get list of Relationship Classes
+                        relNames = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
+                        WriteLog($"{relNames.Count} Relationship Class(es) found in {gdbpath}...");
 
-                // Populate the lists of existing objects
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    // Get list of Relationship Classes
-                    relDefs = geodatabase.GetDefinitions<RelationshipClassDefinition>().Select(o => o.GetName()).ToList();
-                    WriteLog($"{relDefs.Count} Relationship Class(es) found in {gdbpath}...");
+                        // Get list of Feature Dataset names
+                        fdsNames = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
+                        WriteLog($"{fdsNames.Count} Feature Dataset(s) found in {gdbpath}...");
 
-                    // Get list of Feature Dataset names
-                    fdsDefs = geodatabase.GetDefinitions<FeatureDatasetDefinition>().Select(o => o.GetName()).ToList();
-                    WriteLog($"{fdsDefs.Count} Feature Dataset(s) found in {gdbpath}...");
+                        // Get list of Raster Dataset names
+                        rdsNames = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
+                        WriteLog($"{rdsNames.Count} Raster Dataset(s) found in {gdbpath}...");
 
-                    // Get list of Raster Dataset names
-                    rdsDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>().Select(o => o.GetName()).ToList();
-                    WriteLog($"{rdsDefs.Count} Raster Dataset(s) found in {gdbpath}...");
+                        // Get list of top-level Feature Classes
+                        fcNames = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
+                        WriteLog($"{fcNames.Count} Feature Class(es) found in {gdbpath}...");
 
-                    // Get list of top-level Feature Classes
-                    fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>().Select(o => o.GetName()).ToList();
-                    WriteLog($"{fcDefs.Count} Feature Class(es) found in {gdbpath}...");
+                        // Get list of tables
+                        tabNames = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
+                        WriteLog($"{tabNames.Count} Table(s) found in {gdbpath}...");
 
-                    // Get list of tables
-                    tabDefs = geodatabase.GetDefinitions<TableDefinition>().Select(o => o.GetName()).ToList();
-                    WriteLog($"{tabDefs.Count} Table(s) found in {gdbpath}...");
-
-                    // Get list of domains
-                    domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
-                    WriteLog($"{domainNames.Count} domain(s) found in {gdbpath}...");
-                }
+                        // Get list of domains
+                        domainNames = geodatabase.GetDomains().Select(o => o.GetName()).ToList();
+                        WriteLog($"{domainNames.Count} domain(s) found in {gdbpath}...");
+                    }
+                });
 
                 // Delete those objects using geoprocessing tools
                 // Relationship Classes
-                if (relDefs != null && relDefs.Count > 0)
+                if (relNames.Count > 0)
                 {
-                    WriteLog($"Deleting {relDefs.Count} relationship class(es)...");
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", relDefs));
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    WriteLog($"Deleting {relNames.Count} relationship class(es)...");
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", relNames));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: GetSR_PRZCanadaAlbers());
                     toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
                     {
@@ -4838,10 +4834,10 @@ namespace NCC.PRZTools
                 }
 
                 // Feature Datasets
-                if (fdsDefs != null && fdsDefs.Count > 0)
+                if (fdsNames.Count > 0)
                 {
-                    WriteLog($"Deleting {fdsDefs.Count} feature dataset(s)...");
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsDefs));
+                    WriteLog($"Deleting {fdsNames.Count} feature dataset(s)...");
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", fdsNames));
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
@@ -4856,10 +4852,10 @@ namespace NCC.PRZTools
                 }
 
                 // Raster Datasets
-                if (rdsDefs != null && rdsDefs.Count > 0)
+                if (rdsNames.Count > 0)
                 {
-                    WriteLog($"Deleting {rdsDefs.Count} raster dataset(s)...");
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsDefs));
+                    WriteLog($"Deleting {rdsNames.Count} raster dataset(s)...");
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", rdsNames));
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
@@ -4871,13 +4867,64 @@ namespace NCC.PRZTools
                     {
                         WriteLog($"Raster dataset(s) deleted.");
                     }
+
+                    //Envelope env = NationalGrid.GetNatGridEnvelope();
+                    //SpatialReference sr = GetSR_PRZCanadaAlbers();
+
+                    //foreach (string raster in rdsNames)
+                    //{
+                    //    // Delete raster attribute table
+                    //    WriteLog("Deleting raster attribute table");
+                    //    toolParams = Geoprocessing.MakeValueArray(raster);
+                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    //    toolOutput = await RunGPTool("DeleteRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    //    if (toolOutput == null)
+                    //    {
+                    //        WriteLog($"raster attribute table not found/deleted.");
+                    //    }
+                    //    else
+                    //    {
+                    //        WriteLog($"raster attribute table deleted.");
+                    //    }
+
+                    //    // Create a new small raster overwriting the existing one...
+                    //    WriteLog("Destroying raster by overwriting...");
+                    //    object[] o = { raster, 0, "INTEGER", 100000, env };
+                    //    toolParams = Geoprocessing.MakeValueArray(o);
+                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: sr);
+                    //    toolOutput = await RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    //    if (toolOutput == null)
+                    //    {
+                    //        WriteLog($"Error overwriting existing raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                    //        return (false, "Error overwriting existing raster.");
+                    //    }
+                    //    else
+                    //    {
+                    //        WriteLog($"Raster dataset overwritten.");
+                    //    }
+
+                    //    // ... then delete the new raster.
+                    //    WriteLog($"Deleting raster dataset...");
+                    //    toolParams = Geoprocessing.MakeValueArray(raster);
+                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    //    toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    //    if (toolOutput == null)
+                    //    {
+                    //        WriteLog($"Error deleting raster dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                    //        return (false, "Error deleting raster dataset(s).");
+                    //    }
+                    //    else
+                    //    {
+                    //        WriteLog($"Raster dataset(s) deleted.");
+                    //    }
+                    //}
                 }
 
                 // Feature Classes
-                if (fcDefs != null && fcDefs.Count > 0)
+                if (fcNames.Count > 0)
                 {
-                    WriteLog($"Deleting {fcDefs.Count} feature class(es)...");
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcDefs));
+                    WriteLog($"Deleting {fcNames.Count} feature class(es)...");
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", fcNames));
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
@@ -4892,10 +4939,10 @@ namespace NCC.PRZTools
                 }
 
                 // Tables
-                if (tabDefs != null && tabDefs.Count > 0)
+                if (tabNames.Count > 0)
                 {
-                    WriteLog($"Deleting {tabDefs.Count} table(s)...");
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabDefs));
+                    WriteLog($"Deleting {tabNames.Count} table(s)...");
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", tabNames));
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                     toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
                     if (toolOutput == null)
@@ -4910,7 +4957,7 @@ namespace NCC.PRZTools
                 }
 
                 // Domains
-                if (domainNames != null && domainNames.Count > 0)
+                if (domainNames.Count > 0)
                 {
                     WriteLog($"Deleting {domainNames.Count} domain(s)...");
                     foreach (string domainName in domainNames)
@@ -4942,7 +4989,7 @@ namespace NCC.PRZTools
 
         /// <summary>
         /// Remove all core layers from the active mapview's Prioritization group layer.
-        /// Must be run on MCT.  Silent errors.
+        /// Silent errors.
         /// </summary>
         /// <param name="map"></param>
         /// <returns></returns>
@@ -4950,164 +4997,90 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Ensure this method is called on the worker thread
-                if (!QueuedTask.OnWorker)
+                // Ensure that project gdb exists
+                var tryexists = await GDBExists_Project();
+                if (!tryexists.exists)
                 {
-                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                    return (false, tryexists.message);
                 }
 
-                // Relevant map contents
-                var standalone_tables = map.StandaloneTables;
-                var layers = map.GetLayersAsFlattenedList().Where(l => (l is FeatureLayer | l is RasterLayer));
+                // Get project gdb absolute path (forward slashes)
+                Uri gdburi = new Uri(GetPath_ProjectGDB());
+                string gdbpath = gdburi.AbsolutePath;
 
-                // Lists of items to remove
+                // Create empty lists
                 List<StandaloneTable> tables_to_remove = new List<StandaloneTable>();
                 List<Layer> layers_to_remove = new List<Layer>();
 
-                // geodatabase path
-                string gdbpath = GetPath_ProjectGDB();
-
-                // Get the project gdb
-                var tryget_gdb = GetGDB_Project();
-                if (!tryget_gdb.success)
+                // Populate the lists of layers to remove, then remove them
+                await QueuedTask.Run(() =>
                 {
-                    return (false, "Unable to retrieve the project geodatabase.");
-                }
+                    // Get layers & standalone tables to test
+                    var standalone_tables = map.GetStandaloneTablesAsFlattenedList();
+                    var layers = map.GetLayersAsFlattenedList().Where(l => l is RasterLayer | l is FeatureLayer);
 
-                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                {
-                    if (geodatabase == null)
-                    {
-                        return (false, "Unable to retrieve the geodatabase.");
-                    }
-
-                    // Get the Geodatabase Info
-                    var gdbUri = geodatabase.GetPath();
-                    string gdbPath = gdbUri.AbsolutePath;
-
-                    // Process the Standalone Tables
+                    // Standalone Tables
                     foreach (var standalone_table in standalone_tables)
                     {
-                        using (Table table = standalone_table.GetTable())
+                        var conn = standalone_table.GetDataConnection();
+                        if (conn == null)
                         {
-                            // Ensure table actually exists...
-                            if (table != null)
+                            tables_to_remove.Add(standalone_table);
+                        }
+                        else if (conn is CIMStandardDataConnection dataconn)
+                        {
+                            string datapath = dataconn.WorkspaceConnectionString.Split('=')[1];
+                            Uri uri = new Uri(datapath);
+                            if (uri == null || string.Equals(uri.AbsolutePath, gdbpath, StringComparison.OrdinalIgnoreCase))
                             {
-                                // Table's Datastore
-                                using (Datastore datastore = table.GetDatastore())
-                                {
-                                    if (datastore != null)
-                                    {
-                                        Uri datastoreUri = datastore.GetPath();
-                                        if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
-                                        {
-                                            if (gdbPath == datastoreUri.AbsolutePath)
-                                            {
-                                                tables_to_remove.Add(standalone_table);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // this standalone table has no source table.  Remove it.
                                 tables_to_remove.Add(standalone_table);
                             }
                         }
                     }
 
-                    // Process the Layers
-                    foreach (var layer in layers)
+                    // Layers
+                    foreach(var layer in layers)
                     {
-                        if (layer is FeatureLayer FL)
+                        // Connection Approach
+                        var conn = layer.GetDataConnection();
+                        if (conn == null)
                         {
-                            using (FeatureClass featureClass = FL.GetFeatureClass())
-                            {
-                                if (featureClass != null)
-                                {
-                                    // Feature Class's Datastore
-                                    using (Datastore datastore = featureClass.GetDatastore())
-                                    {
-                                        if (datastore != null)
-                                        {
-                                            Uri datastoreUri = datastore.GetPath();
-                                            if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
-                                            {
-                                                if (gdbPath == datastoreUri.AbsolutePath)
-                                                {
-                                                    layers_to_remove.Add(layer);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    // this feature layer has no source feature class.  Remove it.
-                                    layers_to_remove.Add(layer);
-                                }
-                            }
+                            layers_to_remove.Add(layer);
                         }
-                        else if (layer is RasterLayer RL)
+                        else if (conn is CIMStandardDataConnection dataconn)
                         {
-                            using (Raster raster = RL.GetRaster())
+                            string datapath = dataconn.WorkspaceConnectionString.Split('=')[1];
+                            Uri uri = new Uri(datapath);
+                            if (uri == null || string.Equals(uri.AbsolutePath, gdbpath, StringComparison.OrdinalIgnoreCase))
                             {
-                                var rasterDataset = raster.GetRasterDataset();
-
-                                if (rasterDataset != null)
-                                {
-                                    // Raster Dataset's Datastore
-                                    using (Datastore datastore = rasterDataset.GetDatastore())
-                                    {
-                                        if (datastore != null)
-                                        {
-                                            Uri datastoreUri = datastore.GetPath();
-                                            if (datastoreUri != null && datastoreUri.IsAbsoluteUri)
-                                            {
-                                                if (gdbPath == datastoreUri.AbsolutePath)
-                                                {
-                                                    layers_to_remove.Add(layer);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    // this raster layer has no source raster dataset.  Remove it.
-                                    layers_to_remove.Add(layer);
-                                }
+                                layers_to_remove.Add(layer);
                             }
                         }
                     }
-                }
 
-                // Remove the items
-                bool removed = false;
+                    standalone_tables = null;
+                    layers = null;
 
-                if (tables_to_remove.Count > 0)
-                {
-                    map.RemoveStandaloneTables(tables_to_remove);
-                    removed = true;
-                }
+                    // remove tables
+                    if (tables_to_remove.Count > 0)
+                    {
+                        map.RemoveStandaloneTables(tables_to_remove);
+                    }
 
-                if (layers_to_remove.Count > 0)
-                {
-                    map.RemoveLayers(layers_to_remove);
-                    removed = true;
-                }
+                    // remove layers
+                    if (layers_to_remove.Count > 0)
+                    {
+                        map.RemoveLayers(layers_to_remove);
 
-                // redraw
-                if (removed)
-                {
-                    await MapView.Active.RedrawAsync(false);
-                }
+                        MapView.Active.Redraw(true);
+                    }
+                });
 
                 return (true, "success");
             }
             catch (Exception ex)
             {
+                ProMsgBox.Show(ex.Message);
                 return (false, ex.Message);
             }
         }
@@ -5121,7 +5094,6 @@ namespace NCC.PRZTools
         {
             try
             {
-
                 #region VALIDATION
 
                 // Ensure that Project Workspace exists
@@ -5140,11 +5112,10 @@ namespace NCC.PRZTools
                     return (false, trygdbexists.message);
                 }
 
-                // Remove any PRZ items from the map
-                var try_rem = await QueuedTask.Run(async () => { return await RemovePRZItemsFromMap(map); });
-                if (!try_rem.success)
+                var tryremove = await RemovePRZItemsFromMap(map);
+                if (!tryremove.success)
                 {
-                    return (false, try_rem.message);
+                    return tryremove;
                 }
 
                 #endregion
