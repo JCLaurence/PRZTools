@@ -4867,57 +4867,6 @@ namespace NCC.PRZTools
                     {
                         WriteLog($"Raster dataset(s) deleted.");
                     }
-
-                    //Envelope env = NationalGrid.GetNatGridEnvelope();
-                    //SpatialReference sr = GetSR_PRZCanadaAlbers();
-
-                    //foreach (string raster in rdsNames)
-                    //{
-                    //    // Delete raster attribute table
-                    //    WriteLog("Deleting raster attribute table");
-                    //    toolParams = Geoprocessing.MakeValueArray(raster);
-                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    //    toolOutput = await RunGPTool("DeleteRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
-                    //    if (toolOutput == null)
-                    //    {
-                    //        WriteLog($"raster attribute table not found/deleted.");
-                    //    }
-                    //    else
-                    //    {
-                    //        WriteLog($"raster attribute table deleted.");
-                    //    }
-
-                    //    // Create a new small raster overwriting the existing one...
-                    //    WriteLog("Destroying raster by overwriting...");
-                    //    object[] o = { raster, 0, "INTEGER", 100000, env };
-                    //    toolParams = Geoprocessing.MakeValueArray(o);
-                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: sr);
-                    //    toolOutput = await RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
-                    //    if (toolOutput == null)
-                    //    {
-                    //        WriteLog($"Error overwriting existing raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                    //        return (false, "Error overwriting existing raster.");
-                    //    }
-                    //    else
-                    //    {
-                    //        WriteLog($"Raster dataset overwritten.");
-                    //    }
-
-                    //    // ... then delete the new raster.
-                    //    WriteLog($"Deleting raster dataset...");
-                    //    toolParams = Geoprocessing.MakeValueArray(raster);
-                    //    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    //    toolOutput = await RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GPRefresh);
-                    //    if (toolOutput == null)
-                    //    {
-                    //        WriteLog($"Error deleting raster dataset(s). GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                    //        return (false, "Error deleting raster dataset(s).");
-                    //    }
-                    //    else
-                    //    {
-                    //        WriteLog($"Raster dataset(s) deleted.");
-                    //    }
-                    //}
                 }
 
                 // Feature Classes
@@ -5094,8 +5043,6 @@ namespace NCC.PRZTools
         {
             try
             {
-                #region VALIDATION
-
                 // Ensure that Project Workspace exists
                 string project_path = GetPath_ProjectFolder();
                 var trydirexists = FolderExists_Project();
@@ -5118,96 +5065,97 @@ namespace NCC.PRZTools
                     return tryremove;
                 }
 
-                #endregion
-
-                (bool success, string message) tryprocess = await QueuedTask.Run(async () =>
+                // Process the layers
+                await QueuedTask.Run(async () =>
                 {
-                    try
+                    #region TOP-LEVEL LAYERS
+
+                    // Main PRZ Group Layer
+                    GroupLayer GL_MAIN = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.MAIN))
                     {
+                        GL_MAIN = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_MAIN);
+                    }
+                    else
+                    {
+                        GL_MAIN = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
+                        map.MoveLayer(GL_MAIN, 0);
+                    }
 
-                        #region TOP-LEVEL LAYERS
+                    GL_MAIN.SetVisibility(true);
+                    GL_MAIN.SetExpanded(true);
 
-                        // Main PRZ Group Layer
-                        GroupLayer GL_MAIN = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.MAIN))
+                    // Selection Rules Group Layer
+                    GroupLayer GL_SELRULES = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
+                    {
+                        GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
+                    }
+                    else
+                    {
+                        GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
+                        GL_MAIN.MoveLayer(GL_SELRULES, 0);
+                    }
+
+                    GL_SELRULES.SetVisibility(true);
+                    GL_SELRULES.SetExpanded(true);
+
+                    // Cost Group Layer
+                    GroupLayer GL_COST = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.COST))
+                    {
+                        GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
+                    }
+                    else
+                    {
+                        GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
+                        GL_MAIN.MoveLayer(GL_COST, 1);
+                    }
+
+                    GL_COST.SetVisibility(true);
+
+                    // Features Group Layer
+                    GroupLayer GL_FEATURES = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
+                    {
+                        GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
+                    }
+                    else
+                    {
+                        GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
+                        GL_MAIN.MoveLayer(GL_FEATURES, 2);
+                    }
+
+                    GL_FEATURES.SetVisibility(true);
+
+                    // Remove all top-level layers from GL_MAIN that are not supposed to be there
+                    List<Layer> layers_to_delete = new List<Layer>();
+
+                    var all_layers = GL_MAIN.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (lyr is GroupLayer)
                         {
-                            GL_MAIN = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_MAIN);
-                        }
-                        else
-                        {
-                            GL_MAIN = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                            map.MoveLayer(GL_MAIN, 0);
-                        }
-
-                        GL_MAIN.SetVisibility(true);
-
-                        // Selection Rules Group Layer
-                        GroupLayer GL_SELRULES = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
-                        {
-                            GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
-                        }
-                        else
-                        {
-                            GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
-                            GL_MAIN.MoveLayer(GL_SELRULES, 0);
-                        }
-
-                        GL_SELRULES.SetVisibility(true);
-
-                        // Cost Group Layer
-                        GroupLayer GL_COST = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.COST))
-                        {
-                            GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
-                        }
-                        else
-                        {
-                            GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
-                            GL_MAIN.MoveLayer(GL_COST, 1);
-                        }
-
-                        GL_COST.SetVisibility(true);
-
-                        // Features Group Layer
-                        GroupLayer GL_FEATURES = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
-                        {
-                            GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
-                        }
-                        else
-                        {
-                            GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
-                            GL_MAIN.MoveLayer(GL_FEATURES, 2);
-                        }
-
-                        GL_FEATURES.SetVisibility(true);
-
-                        // Remove all top-level layers from GL_MAIN that are not supposed to be there
-                        List<Layer> layers_to_delete = new List<Layer>();
-
-                        var all_layers = GL_MAIN.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (lyr is GroupLayer)
-                            {
-                                if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
-                                {
-                                    layers_to_delete.Add(lyr);
-                                }
-                            }
-                            else
+                            if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
                             {
                                 layers_to_delete.Add(lyr);
                             }
                         }
+                        else
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                    }
 
-                        GL_MAIN.RemoveLayers(layers_to_delete);
+                    GL_MAIN.RemoveLayers(layers_to_delete);
 
-                        int w = 0;
+                    int w = 0;
 
-                        // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
-                        if ((await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
+                    // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
+                    var trypuexists = await PUExists();
+                    if (trypuexists.exists)
+                    {
+                        if (trypuexists.puLayerType == PlanningUnitLayerType.FEATURE)
                         {
                             string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
                             Uri uri = new Uri(fc_path);
@@ -5215,7 +5163,7 @@ namespace NCC.PRZTools
                             await ApplyLegend_PU_Basic(featureLayer);
                             featureLayer.SetVisibility(true);
                         }
-                        else if ((await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
+                        else if (trypuexists.puLayerType == PlanningUnitLayerType.RASTER)
                         {
                             string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
                             Uri uri = new Uri(ras_path);
@@ -5223,178 +5171,165 @@ namespace NCC.PRZTools
                             // TODO: Renderer for this raster layer
                             rasterLayer.SetVisibility(true);
                         }
-
-                        // Add the Study Area Layer (MIGHT NOT EXIST YET)
-                        if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
-                        {
-                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
-                            Uri uri = new Uri(fc_path);
-                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
-                            ApplyLegend_SA_Simple(featureLayer);
-                            featureLayer.SetVisibility(true);
-                        }
-
-                        // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
-                        if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
-                        {
-                            string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
-                            Uri uri = new Uri(fc_path);
-                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
-                            ApplyLegend_SAB_Simple(featureLayer);
-                            featureLayer.SetVisibility(true);
-                        }
-
-                        #endregion
-
-                        #region SELECTION RULE LAYERS
-
-                        // Selection Rules - Include Layers
-                        GroupLayer GL_SELRULES_INCLUDE = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
-                        {
-                            GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
-                        }
-                        else
-                        {
-                            GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
-                            GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
-                        }
-
-                        GL_SELRULES_INCLUDE.SetVisibility(true);
-
-                        // Selection Rules - Exclude Layers
-                        GroupLayer GL_SELRULES_EXCLUDE = null;
-                        if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
-                        {
-                            GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
-                        }
-                        else
-                        {
-                            GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
-                            GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
-                        }
-
-                        GL_SELRULES_EXCLUDE.SetVisibility(true);
-
-                        // Remove all layers from GL_SELRULES that are not supposed to be there
-                        layers_to_delete = new List<Layer>();
-
-                        all_layers = GL_SELRULES.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (lyr is GroupLayer)
-                            {
-                                if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
-                                {
-                                    layers_to_delete.Add(lyr);
-                                }
-                            }
-                            else
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                        }
-
-                        GL_SELRULES.RemoveLayers(layers_to_delete);
-
-                        // Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
-                        layers_to_delete = new List<Layer>();
-
-                        all_layers = GL_SELRULES_INCLUDE.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                            else
-                            {
-                                lyr.SetVisibility(true);
-                            }
-                        }
-
-                        GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
-
-                        // Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
-                        layers_to_delete = new List<Layer>();
-
-                        all_layers = GL_SELRULES_EXCLUDE.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                            else
-                            {
-                                lyr.SetVisibility(true);
-                            }
-                        }
-
-                        GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
-
-                        #endregion
-
-                        #region COST LAYERS
-
-                        // Remove all layers from GL_COST that are not supposed to be there
-                        layers_to_delete = new List<Layer>();
-
-                        all_layers = GL_COST.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                            else
-                            {
-                                lyr.SetVisibility(true);
-                            }
-                        }
-
-                        GL_COST.RemoveLayers(layers_to_delete);
-
-                        #endregion
-
-                        #region FEATURES LAYERS
-
-                        // Remove all layers from GL_FEATURES that are not supposed to be there
-                        layers_to_delete = new List<Layer>();
-
-                        all_layers = GL_FEATURES.Layers;
-                        foreach (var lyr in all_layers)
-                        {
-                            if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                            else
-                            {
-                                lyr.SetVisibility(true);
-                            }
-                        }
-
-                        GL_FEATURES.RemoveLayers(layers_to_delete);
-
-                        #endregion
-
-                        return (true, "success");
                     }
-                    catch (Exception ex)
+
+                    // Add the Study Area Layer (MIGHT NOT EXIST YET)
+                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
                     {
-                        return (false, ex.Message);
+                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
+                        Uri uri = new Uri(fc_path);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
+                        ApplyLegend_SA_Simple(featureLayer);
+                        featureLayer.SetVisibility(true);
                     }
+
+                    // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
+                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
+                    {
+                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
+                        Uri uri = new Uri(fc_path);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
+                        ApplyLegend_SAB_Simple(featureLayer);
+                        featureLayer.SetVisibility(true);
+                    }
+
+                    #endregion
+
+                    #region SELECTION RULE LAYERS
+
+                    // Selection Rules - Include Layers
+                    GroupLayer GL_SELRULES_INCLUDE = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
+                    {
+                        GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
+                    }
+                    else
+                    {
+                        GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
+                        GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
+                    }
+
+                    GL_SELRULES_INCLUDE.SetVisibility(true);
+
+                    // Selection Rules - Exclude Layers
+                    GroupLayer GL_SELRULES_EXCLUDE = null;
+                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
+                    {
+                        GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
+                    }
+                    else
+                    {
+                        GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
+                        GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
+                    }
+
+                    GL_SELRULES_EXCLUDE.SetVisibility(true);
+
+                    // Remove all layers from GL_SELRULES that are not supposed to be there
+                    layers_to_delete = new List<Layer>();
+
+                    all_layers = GL_SELRULES.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (lyr is GroupLayer)
+                        {
+                            if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
+                            {
+                                layers_to_delete.Add(lyr);
+                            }
+                        }
+                        else
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                    }
+
+                    GL_SELRULES.RemoveLayers(layers_to_delete);
+
+                    // Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
+                    layers_to_delete = new List<Layer>();
+
+                    all_layers = GL_SELRULES_INCLUDE.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                        else
+                        {
+                            lyr.SetVisibility(true);
+                        }
+                    }
+
+                    GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
+
+                    // Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
+                    layers_to_delete = new List<Layer>();
+
+                    all_layers = GL_SELRULES_EXCLUDE.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                        else
+                        {
+                            lyr.SetVisibility(true);
+                        }
+                    }
+
+                    GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
+
+                    #endregion
+
+                    #region COST LAYERS
+
+                    // Remove all layers from GL_COST that are not supposed to be there
+                    layers_to_delete = new List<Layer>();
+
+                    all_layers = GL_COST.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                        else
+                        {
+                            lyr.SetVisibility(true);
+                        }
+                    }
+
+                    GL_COST.RemoveLayers(layers_to_delete);
+
+                    #endregion
+
+                    #region FEATURES LAYERS
+
+                    // Remove all layers from GL_FEATURES that are not supposed to be there
+                    layers_to_delete = new List<Layer>();
+
+                    all_layers = GL_FEATURES.Layers;
+                    foreach (var lyr in all_layers)
+                    {
+                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                        {
+                            layers_to_delete.Add(lyr);
+                        }
+                        else
+                        {
+                            lyr.SetVisibility(true);
+                        }
+                    }
+
+                    GL_FEATURES.RemoveLayers(layers_to_delete);
+
+                    #endregion
                 });
 
-                if (tryprocess.success)
-                {
-                    return (true, "success");
-                }
-                else
-                {
-                    return (false, tryprocess.message);
-                }
+                return (true, "success");
             }
             catch (Exception ex)
             {

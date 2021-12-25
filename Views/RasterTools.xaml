@@ -206,40 +206,6 @@
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
 
-                    <Button 
-                        DockPanel.Dock="Left"
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True" 
-                        Command="{Binding CmdTest}"
-                        Content="test" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True"
-                        Command="{Binding CmdTest}"
-                        Content="EXISTING INFO" />
 
                 </DockPanel>
             </Border>

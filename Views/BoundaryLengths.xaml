@@ -34,13 +34,13 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
 
             <!--Inner Border #1-->
             <Border
-                Grid.Row="0" 
+                Grid.Row="0"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -51,74 +51,28 @@
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
                     <DockPanel
-                        DockPanel.Dock="Top"
-                        LastChildFill="False">
+                        DockPanel.Dock="Top">
 
-                        <CheckBox
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Weights}"/>
+
+                        <TextBlock
                             DockPanel.Dock="Left"
                             Margin="5"
-                            VerticalContentAlignment="Center"
-                            IsChecked="{Binding BoundaryTableExists}"
-                            IsEnabled="False"
-                            Content="Planning Unit Boundary Table Exists" />
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Boundary Length Table" />
 
                     </DockPanel>
                 </DockPanel>
             </Border>
 
             <!--Inner Border #2-->
-            <Border 
+            <Border
                 Grid.Row="1" 
                 Margin="0,0,0,5"
-                BorderThickness="1.5"
-                BorderBrush="{DynamicResource Esri_BorderBrush}">
-
-                <DockPanel 
-                    LastChildFill="False"
-                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
-
-                    <Button 
-                        DockPanel.Dock="Left"
-                        Margin="5" 
-                        Height="25"
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True" 
-                        Command="{Binding CmdBuildBoundaryTable}"
-                        Content="GENERATE BOUNDARY TABLE" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True"
-                        Command="{Binding CmdTest}"
-                        Content="EXISTING INFO" />
-
-                </DockPanel>
-            </Border>
-
-
-            <!--Inner Border #3-->
-            <Border
-                Grid.Row="2" 
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
@@ -134,7 +88,7 @@
                             DockPanel.Dock="Left"
                             Margin="5"  
                             Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="Calculator Log" />
+                            Text="Generator Log" />
 
                         <Button
                             DockPanel.Dock="Right"
@@ -166,6 +120,58 @@
 
                 </DockPanel>
             </Border>
+
+            <!--Inner Border #3-->
+            <Border 
+                Grid.Row="2" 
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}" >
+
+                    <Button 
+                        DockPanel.Dock="Left"
+                        Margin="5" 
+                        Height="25"
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True" 
+                        Command="{Binding CmdBuildBoundaryTable}"
+                        Content="GENERATE BOUNDARY TABLE" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Visibility="Collapsed"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="False"
+                        Visibility="Collapsed"
+                        Content="---" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5,5,0,5" 
+                        Padding="5,0,5,0"
+                        Style="{DynamicResource Esri_Button}"   
+                        IsEnabled="True"
+                        Visibility="Collapsed"
+                        Command="{Binding CmdTest}"
+                        Content="EXISTING INFO" />
+
+                </DockPanel>
+            </Border>
+
         </Grid>
     </Border>
 </controls:ProWindow>

@@ -45,10 +45,19 @@ namespace NCC.PRZTools
         private ICommand _cmdBuildBoundaryTable;
         private ICommand _cmdTest;
 
+        private string _compStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+
+
 
         #endregion
 
         #region PROPERTIES
+
+        public string CompStat_Weights
+        {
+            get => _compStat_Weights;
+            set => SetProperty(ref _compStat_Weights, value, () => CompStat_Weights);
+        }
 
         public bool BoundaryTableExists
         {
@@ -87,6 +96,17 @@ namespace NCC.PRZTools
 
                 // Table presence
                 BoundaryTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+
+                bool Weights_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+                if (Weights_OK)
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+                }
+
 
             }
             catch (Exception ex)
@@ -890,6 +910,16 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
                 ProMsgBox.Show("Construction Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
+
+                bool Weights_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+                if (Weights_OK)
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+                }
 
                 return true;
 
