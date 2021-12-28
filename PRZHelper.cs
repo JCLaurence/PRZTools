@@ -2027,9 +2027,9 @@ namespace NCC.PRZTools
                 IEnumerable<NatTheme> v = (presence != null) ? themes.Where(t => t.ThemePresence == ((int)presence)) : themes;
 
                 // Sort by Theme ID
-                v.OrderBy(t => t.ThemeID);
+                IOrderedEnumerable<NatTheme> u = v.OrderBy(t => t.ThemeID);
 
-                return (true, v.ToList(), "success");
+                return (true, u.ToList(), "success");
             }
             catch (Exception ex)
             {
@@ -2062,7 +2062,7 @@ namespace NCC.PRZTools
                 List<NatElement> elements = new List<NatElement>();
 
                 // Populate the list
-                (bool success, string message) element_outcome = await QueuedTask.Run(() =>
+                await QueuedTask.Run(() =>
                 {
                     var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
                     if (!tryget.success)
@@ -2078,12 +2078,13 @@ namespace NCC.PRZTools
                             using (Row row = rowCursor.Current)
                             {
                                 int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_ELEMENT_ID]);
-                                string name = (string)row[PRZC.c_FLD_TAB_ELEMENT_NAME];
+                                string name = (string)row[PRZC.c_FLD_TAB_ELEMENT_NAME] ?? "";
                                 int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_TYPE]);
                                 int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_STATUS]);
-                                string data_path = (string)row[PRZC.c_FLD_TAB_ELEMENT_DATAPATH];
+                                string data_path = (string)row[PRZC.c_FLD_TAB_ELEMENT_DATAPATH] ?? "";
                                 int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_THEME_ID]);
                                 int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_PRESENCE]);
+                                string unit = (string)row[PRZC.c_FLD_TAB_ELEMENT_UNIT] ?? "";
 
                                 if (id > 0 && elem_type > 0 && elem_status > 0 && theme_id > 0 && !string.IsNullOrEmpty(name))
                                 {
@@ -2095,7 +2096,8 @@ namespace NCC.PRZTools
                                         ElementStatus = elem_status,
                                         ElementDataPath = data_path,
                                         ThemeID = theme_id,
-                                        ElementPresence = elem_presence
+                                        ElementPresence = elem_presence,
+                                        ElementUnit = unit
                                     };
 
                                     elements.Add(element);
@@ -2103,14 +2105,7 @@ namespace NCC.PRZTools
                             }
                         }
                     }
-
-                    return (true, "success");
                 });
-
-                if (!element_outcome.success)
-                {
-                    return (false, null, element_outcome.message);
-                }
 
                 // Populate the Theme Information
                 var theme_outcome = await GetNationalThemes();
@@ -2192,9 +2187,9 @@ namespace NCC.PRZTools
                 v = (presence != null) ? v.Where(e => e.ElementPresence == ((int)presence)) : v;
 
                 // Sort by Element ID
-                v.OrderBy(e => e.ElementID);
+                IOrderedEnumerable<NatElement> u = v.OrderBy(e => e.ElementID);
 
-                return (true, v.ToList(), "success");
+                return (true, u.ToList(), "success");
             }
             catch (Exception ex)
             {

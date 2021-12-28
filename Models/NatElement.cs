@@ -36,6 +36,8 @@ namespace NCC.PRZTools
 
         public int ElementStatus { get; set; }
 
+        public string ElementUnit { get; set; }
+
         public string ElementDataPath { get; set; }
 
         public int ThemeID { get; set; }
@@ -47,7 +49,6 @@ namespace NCC.PRZTools
         public string ElementTable { get; private set; }
 
         public int ElementPresence { get; set; }
-
     }
 }
 

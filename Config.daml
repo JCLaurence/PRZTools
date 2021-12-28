@@ -3,7 +3,7 @@
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset
     - National GDB supports file and enterprise gdb
-    - 
+    - Legends functionality
     </Description>
     <Image>Images\PRZTools32B.png</Image>
     <Author>JC Laurence</Author>
@@ -110,9 +110,9 @@
             </disabledText></tooltip>
         </button>
         <!--Boundary Length Calculator Dialog Button-->
-        <button id="prz_button_boundarylengths" caption="Boundary Length" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png" condition="esri_mapping_mapPane">
+        <button id="prz_button_boundarylengths" caption="Boundary Lengths" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png">
           <tooltip heading="Boundary Length Table Generator">
-            Build a boundary length table from your planning units.
+            Build a boundary lengths table from your planning units.
             <disabledText>
               Active Pane must be a Map
             </disabledText></tooltip>

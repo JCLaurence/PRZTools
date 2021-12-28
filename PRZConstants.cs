@@ -293,6 +293,7 @@
         public const string c_FLD_TAB_ELEMENT_THEME_ID = "theme_id";        // long
         public const string c_FLD_TAB_ELEMENT_DATAPATH = "data_path";       // text
         public const string c_FLD_TAB_ELEMENT_PRESENCE = "presence";        // short (domain)
+        public const string c_FLD_TAB_ELEMENT_UNIT = "unit";                // text
 
         // NATIONAL DB - ELEMENT VALUE TABLES
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER = "cell_number";

@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="Boundary Length Table Generator"
+    Title="Boundary Lengths Table Generator"
     Width="500" Height="300" MinWidth="500" MinHeight="300"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/BoundaryLengths32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
@@ -57,13 +57,13 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
-                            Source="{Binding CompStat_Weights}"/>
+                            Source="{Binding IndicatorImagePath}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Boundary Length Table" />
+                            Text="{Binding BoundaryLengthsTableLabel}" />
 
                     </DockPanel>
                 </DockPanel>
@@ -139,7 +139,7 @@
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
                         Command="{Binding CmdBuildBoundaryTable}"
-                        Content="GENERATE BOUNDARY TABLE" />
+                        Content="GENERATE BOUNDARY LENGTHS TABLE" />
 
                     <Button 
                         DockPanel.Dock="Right"

@@ -19,6 +19,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -292,7 +293,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> ExportWTWPackage()
+        private async Task ExportWTWPackage()
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
@@ -309,7 +310,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro Project has unsaved edits.  Please save all edits before proceeding.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("This ArcGIS Pro Project has some unsaved edits.  Please save all edits before proceeding.");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -323,7 +324,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
-                        return false;
+                        return;
                     }
                     else
                     {
@@ -341,7 +342,7 @@ namespace NCC.PRZTools
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
                 // Initialize ProgressBar and Progress Log
@@ -357,7 +358,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Project Geodatabase not found at {gdbpath}.");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -369,7 +370,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_DIR_EXPORT_WTW} folder not found in project workspace.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"{PRZC.c_DIR_EXPORT_WTW} folder not found in project workspace.");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -386,13 +387,13 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit layer not found in project geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Planning Unit layer not found in project geodatabase.");
-                    return false;
+                    return;
                 }
                 else if (pu_result.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit layer format unknown.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Planning Unit layer format unknown.");
-                    return false;
+                    return;
                 }
                 else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
@@ -401,7 +402,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit feature class not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit feature class not found.  Have you built it yet?");
-                        return false;
+                        return;
                     }
                     else
                     {
@@ -434,7 +435,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit raster dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                         ProMsgBox.Show("Planning Unit raster dataset not found.  Have you built it yet?");
-                        return false;
+                        return;
                     }
                     else
                     {
@@ -466,7 +467,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("There was a resounding KABOOM.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("KABOOM?");
-                    return false;
+                    return;
                 }
 
                 // Prompt users for permission to proceed
@@ -480,7 +481,7 @@ namespace NCC.PRZTools
                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
-                    return false;
+                    return;
                 }
 
                 #endregion
@@ -507,7 +508,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting files and folder from {export_folder_path}.\n{ex.Message}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Unable to delete files & subfolders in the {export_folder_path} folder.\n{ex.Message}");
-                    return false;
+                    return;
                 }
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Existing files deleted."), true, ++val);
 
@@ -529,7 +530,7 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing {PRZC.c_FC_PLANNING_UNITS} feature class to shapefile.\n{result.message}", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Error writing {PRZC.c_FC_PLANNING_UNITS} feature class to shapefile.\n{result.message}");
-                            return false;
+                            return;
                         }
                         else
                         {
@@ -545,7 +546,7 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting {PRZC.c_RAS_PLANNING_UNITS} raster dataset to shapefile.\n{result.message}", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Error converting {PRZC.c_RAS_PLANNING_UNITS} raster dataset to shapefile.\n{result.message}");
-                            return false;
+                            return;
                         }
                         else
                         {
@@ -557,7 +558,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster output is not supported at this time.", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Raster output is not supported at this time.");
-                    return false;
+                    return;
 
                 }
 
@@ -574,7 +575,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs.\n{puid_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{puid_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -589,7 +590,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -604,7 +605,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -621,7 +622,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -642,7 +643,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving national themes.\n{theme_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -657,7 +658,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -672,7 +673,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -687,7 +688,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -702,7 +703,7 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}");
-                    return false;
+                    return;
                 }
                 else
                 {
@@ -1004,7 +1005,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error zipping attribute CSV.\n{ex.Message}", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show($"Error zipping attribute CSV.\n{ex.Message}");
-                        return false;
+                        return;
                     }
                 }
 
@@ -1079,7 +1080,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating boundary CSV.", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show($"Error creating boundary CSV.");
-                        return false;
+                        return;
                     }
                     else
                     {
@@ -1104,7 +1105,7 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error zipping boundary CSV.\n{ex.Message}", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show($"Error zipping boundary CSV.\n{ex.Message}");
-                        return false;
+                        return;
                     }
                 }
 
@@ -1145,12 +1146,20 @@ namespace NCC.PRZTools
                         NatElement goal = theme_goals[j];
 
                         // Build the Yaml Legend
-                        YamlLegend yamlLegend = new YamlLegend();   // default legend
+                        YamlLegend yamlLegend = new YamlLegend();
+
+                        List<Color> colors = new List<Color>()
+                        {
+                            Color.Transparent,
+                            Color.DarkSeaGreen
+                        };
+
+                        yamlLegend.SetCategoricalColors(colors);
 
                         // Build the Yaml Variable
                         YamlVariable yamlVariable = new YamlVariable();
                         yamlVariable.index = goal.ElementTable;
-                        yamlVariable.units = "m\xB2";   // not sure about this one
+                        yamlVariable.units = goal.ElementUnit;
                         yamlVariable.provenance = WTWProvenanceType.national.ToString();
                         yamlVariable.legend = yamlLegend;
 
@@ -1190,12 +1199,19 @@ namespace NCC.PRZTools
                     NatElement weight = weights[i];
 
                     // Build the Yaml Legend
-                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+                    YamlLegend yamlLegend = new YamlLegend();
+                    List<Color> colors = new List<Color>()
+                    {
+                        Color.White,
+                        Color.DarkOrchid
+                    };
+
+                    yamlLegend.SetContinuousColors(colors);
 
                     // Build the Yaml Variable
                     YamlVariable yamlVariable = new YamlVariable();
                     yamlVariable.index = weight.ElementTable;
-                    yamlVariable.units = "bananas";
+                    yamlVariable.units = weight.ElementUnit;
                     yamlVariable.provenance = WTWProvenanceType.national.ToString();
                     yamlVariable.legend = yamlLegend;
 
@@ -1225,12 +1241,19 @@ namespace NCC.PRZTools
                     NatElement include = includes[i];
 
                     // Build the Yaml Legend
-                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+                    YamlLegend yamlLegend = new YamlLegend();
+                    List<(Color color, string label)> values = new List<(Color color, string label)>()
+                        {
+                            (Color.Transparent, "Do not include"),
+                            (Color.Green, "Include")
+                        };
+
+                    yamlLegend.SetManualColors(values);
 
                     // Build the Yaml Variable
                     YamlVariable yamlVariable = new YamlVariable();
                     yamlVariable.index = include.ElementTable;
-                    yamlVariable.units = "borts";
+                    yamlVariable.units = "";//include.ElementUnit;
                     yamlVariable.provenance = WTWProvenanceType.national.ToString();
                     yamlVariable.legend = yamlLegend;
 
@@ -1265,7 +1288,7 @@ namespace NCC.PRZTools
                     // Build the Yaml Variable
                     YamlVariable yamlVariable = new YamlVariable();
                     yamlVariable.index = exclude.ElementTable;
-                    yamlVariable.units = "umps";
+                    yamlVariable.units = exclude.ElementUnit;
                     yamlVariable.provenance = WTWProvenanceType.national.ToString();
                     yamlVariable.legend = yamlLegend;
 
@@ -1305,22 +1328,22 @@ namespace NCC.PRZTools
                 catch (Exception ex)
                 {
                     ProMsgBox.Show("Unable to write the Yaml Config File..." + Environment.NewLine + Environment.NewLine + ex.Message);
-                    return false;
+                    return;
                 }
 
                 #endregion
 
                 #endregion
 
-                ProMsgBox.Show("Export of WTW Files Complete :)");
+                ProMsgBox.Show("Export Complete.");
 
-                return true;
+                return;
             }
             catch (Exception ex)
             {
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
+                return;
             }
             finally
             {

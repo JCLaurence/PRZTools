@@ -127,6 +127,23 @@
                     </DockPanel>
 
                     <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Bounds}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="Boundary Lengths Table" />
+
+                    </DockPanel>
+
+                    <DockPanel
                         DockPanel.Dock="Top"
                         Visibility="Collapsed">
 
@@ -177,23 +194,6 @@
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
                             Text="Features" />
-
-                    </DockPanel>
-
-                    <DockPanel
-                        DockPanel.Dock="Top">
-
-                        <Image
-                            DockPanel.Dock="Left"
-                            Margin="3"
-                            Stretch="None"
-                            Source="{Binding CompStat_Bounds}"/>
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Planning Unit Bounds" />
 
                     </DockPanel>
 
