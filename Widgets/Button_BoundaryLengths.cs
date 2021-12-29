@@ -35,8 +35,8 @@ namespace NCC.PRZTools
                 }
 
                 // Check for presence of Planning Unit data
-                var result = await PRZH.PUExists();
-                if (!result.exists)
+                var try_puexists = await PRZH.PUExists();
+                if (!try_puexists.exists)
                 {
                     ProMsgBox.Show("Planning Unit Feature Class or Raster Dataset not found in the project geodatabase.");
                     return;
@@ -51,10 +51,18 @@ namespace NCC.PRZTools
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 
+                // Closing event handler
+                dlg.Closing += (o, e) =>
+                {
+                    // Event handler for Dialog closing event
+                    //ProMsgBox.Show("Closing...");
+                };
+
                 // Closed Event Handler
                 dlg.Closed += (o, e) =>
                 {
                     // Event Handler for Dialog close in case I need to do things...
+                    // ProMsgBox.Show("Closed...");
                     // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
                 };
 

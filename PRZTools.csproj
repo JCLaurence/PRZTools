@@ -557,6 +557,14 @@
   <ItemGroup>
     <AddInContent Include="DarkImages\PRZTools32B.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\BexDog16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\MarsCat16.png" />
+    <Resource Include="ImagesWPF\Rabbit16.png" />
+    <Resource Include="ImagesWPF\T-Rex16.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
   PackageAction can be:

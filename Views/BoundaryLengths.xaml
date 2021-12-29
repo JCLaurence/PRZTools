@@ -88,7 +88,18 @@
                             DockPanel.Dock="Left"
                             Margin="5"  
                             Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="Generator Log" />
+                            Text="{Binding OperationStatus_Txt_Label}" />
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="6, 3"
+                            Stretch="None"
+                            Source="pack://application:,,,/PRZTools;component/ImagesWPF/BexDog16.png"
+                            Visibility="{Binding OperationStatus_Img_Visibility}" >
+
+                            <Image.ToolTip>Operation is Underway!!!</Image.ToolTip>
+
+                        </Image>
 
                         <Button
                             DockPanel.Dock="Right"
@@ -135,7 +146,7 @@
                         DockPanel.Dock="Left"
                         Margin="5" 
                         Height="25"
-                        Padding="5,0,5,0"
+                        Padding="5,0"
                         Style="{DynamicResource Esri_Button}"   
                         IsEnabled="True" 
                         Command="{Binding CmdBuildBoundaryTable}"
@@ -144,30 +155,11 @@
                     <Button 
                         DockPanel.Dock="Right"
                         Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Visibility="Collapsed"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Visibility="Collapsed"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
+                        Padding="5,0"
+                        Style="{DynamicResource Esri_Button}"
                         IsEnabled="True"
-                        Visibility="Collapsed"
-                        Command="{Binding CmdTest}"
-                        Content="EXISTING INFO" />
+                        Command="{Binding CmdCancel}"
+                        Content="CANCEL" />
 
                 </DockPanel>
             </Border>

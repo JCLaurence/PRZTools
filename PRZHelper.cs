@@ -20,6 +20,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using System.Windows.Input;
@@ -6343,6 +6344,42 @@ namespace NCC.PRZTools
         {
             string[] fulluser = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split(new Char[] { '\\' });
             return fulluser[fulluser.Length - 1];
+        }
+
+
+        /// <summary>
+        /// Examines a Cancellation Token and determines if the token has been cancelled.
+        /// If it has been cancelled, the method will either throw an OperationCancelledException
+        /// (if the throw_error parameter is true) or return a true (cancelled) or false
+        /// (not cancelled).
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="throw_error"></param>
+        /// <returns></returns>
+        public static bool CheckForCancellation(CancellationToken token, bool throw_error = true)
+        {
+            try
+            {
+                // Check if the token has been cancelled
+                if (token.IsCancellationRequested)
+                {
+                    // throw the error if requested
+                    if (throw_error)
+                    {
+                        token.ThrowIfCancellationRequested();
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         #endregion

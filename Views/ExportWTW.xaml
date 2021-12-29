@@ -116,7 +116,7 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
-                            Source="{Binding CompStat_PUFC}"/>
+                            Source="{Binding CompStat_Img_PU}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
@@ -133,13 +133,13 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
-                            Source="{Binding CompStat_Bounds}"/>
+                            Source="{Binding CompStat_Img_BoundaryLengths}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Boundary Lengths Table" />
+                            Text="{Binding Txt_BoundaryLengthsLabel}" />
 
                     </DockPanel>
 
@@ -218,10 +218,21 @@
                         LastChildFill="False">
 
                         <TextBlock 
-                            DockPanel.Dock="Left" 
-                            Margin="5" 
+                            DockPanel.Dock="Left"
+                            Margin="5"  
                             Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="Exporter Log" />
+                            Text="{Binding OperationStatus_Txt_Label}" />
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="6, 3"
+                            Stretch="None"
+                            Source="pack://application:,,,/PRZTools;component/ImagesWPF/Rabbit16.png"
+                            Visibility="{Binding OperationStatus_Img_Visibility}" >
+
+                            <Image.ToolTip>Operation is Underway!!!</Image.ToolTip>
+
+                        </Image>
 
                         <Button 
                             DockPanel.Dock="Right"
@@ -267,40 +278,21 @@
                     <Button 
                         DockPanel.Dock="Left"
                         Margin="5" 
-                        Padding="5,0,5,0"
+                        Padding="5,0"
                         Height="25" 
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdExport}"
                         IsEnabled="{Binding ExportIsEnabled}"
-                        Content="EXPORT!" />
+                        Content="EXPORT WTW FILES" />
 
                     <Button 
-                        DockPanel.Dock="Right" 
+                        DockPanel.Dock="Right"
                         Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"  
-                        IsEnabled="False"
-                        Visibility="Hidden"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Visibility="Hidden"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"  
-                        Style="{DynamicResource Esri_Button}" 
-                        Command="{Binding CmdTest}"
+                        Padding="5,0"
+                        Style="{DynamicResource Esri_Button}"
                         IsEnabled="True"
-                        Visibility="Hidden"
-                        Content="TEST" />
+                        Command="{Binding CmdCancel}"
+                        Content="CANCEL" />
 
                 </DockPanel>
             </Border>

@@ -105,7 +105,8 @@
         INFO,
         WARNING,
         VALIDATION_ERROR,
-        ERROR
+        ERROR,
+        CANCELLATION
     }
 
     public enum PRZLayerNames

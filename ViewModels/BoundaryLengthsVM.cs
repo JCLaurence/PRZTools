@@ -22,7 +22,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using ProMsgBox = ArcGIS.Desktop.Framework.Dialogs.MessageBox;
 using PRZC = NCC.PRZTools.PRZConstants;
@@ -38,20 +40,35 @@ namespace NCC.PRZTools
 
         #region FIELDS
 
+        private CancellationTokenSource _cts = null;
+
         private string _boundaryLengthsTableLabel;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
 
         private ICommand _cmdClearLog;
         private ICommand _cmdBuildBoundaryTable;
-        private ICommand _cmdTest;
+        private ICommand _cmdCancel;
 
         private string _indicatorImagePath = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
 
-
+        private Visibility _operationStatus_Img_Visibility = Visibility.Visible;
+        private string _operationStatus_Txt_Label;
 
         #endregion
 
         #region PROPERTIES
+
+        public Visibility OperationStatus_Img_Visibility
+        {
+            get => _operationStatus_Img_Visibility;
+            set => SetProperty(ref _operationStatus_Img_Visibility, value, () => OperationStatus_Img_Visibility);
+        }
+
+        public string OperationStatus_Txt_Label
+        {
+            get => _operationStatus_Txt_Label;
+            set => SetProperty(ref _operationStatus_Txt_Label, value, () => OperationStatus_Txt_Label);
+        }
 
         public string IndicatorImagePath
         {
@@ -79,9 +96,37 @@ namespace NCC.PRZTools
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
 
-        public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () => await BuildBoundaryTable(), () => true));
+        public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () =>
+        {
+            // Operation Status indicators
+            OperationStatus_Img_Visibility = Visibility.Visible;
+            OperationStatus_Txt_Label = "Processing...";
 
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () => ProMsgBox.Show($"{await Test()}"), () => true));
+            // Start the operation
+            using (_cts = new CancellationTokenSource())
+            {
+                await BuildBoundaryTable(_cts.Token);
+            }
+
+            // Set back to null (already disposed)
+            _cts = null;
+
+            // Idle indicators
+            OperationStatus_Img_Visibility = Visibility.Hidden;
+            OperationStatus_Txt_Label = "Idle...";
+
+        }, () => true));
+
+        public ICommand CmdCancel => _cmdCancel ?? (_cmdCancel = new RelayCommand(() =>
+        {
+            if (_cts != null)
+            {
+                // Optionally notify the user or prompt the user here
+
+                // Cancel the operation
+                _cts.Cancel();
+            }
+        }, () => _cts != null, true, false));
 
         #endregion
 
@@ -94,6 +139,12 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
+                // Hide the Operation Status image
+                OperationStatus_Img_Visibility = Visibility.Hidden;
+
+                // Set the Operation Status label
+                OperationStatus_Txt_Label = "Idle...";
+
                 // Configure a few controls
                 await ValidateControls();                
             }
@@ -103,7 +154,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public async Task BuildBoundaryTable()
+        public async Task BuildBoundaryTable(CancellationToken token)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
@@ -280,6 +331,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region DELETE OBJECTS
 
                 // Delete the Boundary table if present
@@ -340,6 +393,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region GENERATE THE POLYGON NEIGHBOURS DATA
 
@@ -483,6 +538,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region TABULATE PUIDS, PERIMETERS, AND SHARED EDGES
 
@@ -670,6 +727,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region BUILD AND FILL THE BOUNDARY TABLE
 
                 // Now create the new table
@@ -838,6 +897,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region WRAP THINGS UP
 
                 // Delete temp table
@@ -910,10 +971,16 @@ namespace NCC.PRZTools
 
                 #endregion
             }
+            catch (OperationCanceledException)
+            {
+                // Cancelled by user
+                ProMsgBox.Show($"Operation cancelled by user.");
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Operation cancelled by user.", LogMessageType.CANCELLATION), true, ++val);
+            }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.CANCELLATION), true, ++val);
             }
             finally
             {
@@ -947,44 +1014,6 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            }
-        }
-
-        public async Task<bool> Test()
-        {
-            try
-            {
-                await QueuedTask.Run(() =>
-                {
-                var tryget = PRZH.GetGDB_Nat();
-
-                if (!tryget.success)
-                {
-                    throw new Exception("No valid nat gdb");
-                }
-
-                using (Geodatabase geodatabase = tryget.geodatabase)
-                {
-                    string qualified_table = "prz.prz_creator.element";
-                    Table table = geodatabase.OpenDataset<Table>(qualified_table);
-
-                    if (table == null)
-                    {
-                        throw new Exception($"table {qualified_table} is null");
-                    }
-
-                    ProMsgBox.Show("Full Path: " + table.GetPath().AbsolutePath);
-                    }
-                });
-
-
-                ProMsgBox.Show("Bort");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message);
-                return false;
             }
         }
 

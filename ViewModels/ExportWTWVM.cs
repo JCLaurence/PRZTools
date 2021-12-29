@@ -1,6 +1,4 @@
-﻿#define TEST
-
-using ArcGIS.Core.CIM;
+﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
@@ -27,6 +25,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -48,28 +47,48 @@ namespace NCC.PRZTools
 
         #region FIELDS
 
+        private CancellationTokenSource _cts = null;
+
+        private bool _boundaryTableExists = false;
+        private bool _puDataExists = false;
+
         private bool _settings_Rad_SpatialFormat_Vector_IsChecked;
         private bool _settings_Rad_SpatialFormat_Raster_IsChecked;
+
         private string _txt_PlanningUnitLabel;
+        private string _txt_BoundaryLengthsLabel;
 
         private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
 
+        private bool _exportIsEnabled;
 
+        private string _compStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+        private string _compStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
 
-        private bool _exportIsEnabled = false;
-        private string _compStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-        private string _compStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
-        private string _compStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
-        private string _compStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-        private string _compStat_Bounds = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
         private ICommand _cmdExport;
         private ICommand _cmdClearLog;
-        private ICommand _cmdTest;
+        private ICommand _cmdCancel;
+
+        private Visibility _operationStatus_Img_Visibility = Visibility.Visible;
+        private string _operationStatus_Txt_Label;
+
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
 
         #endregion
 
         #region PROPERTIES
+
+        public Visibility OperationStatus_Img_Visibility
+        {
+            get => _operationStatus_Img_Visibility;
+            set => SetProperty(ref _operationStatus_Img_Visibility, value, () => OperationStatus_Img_Visibility);
+        }
+
+        public string OperationStatus_Txt_Label
+        {
+            get => _operationStatus_Txt_Label;
+            set => SetProperty(ref _operationStatus_Txt_Label, value, () => OperationStatus_Txt_Label);
+        }
 
         public bool Settings_Rad_SpatialFormat_Vector_IsChecked
         {
@@ -104,9 +123,11 @@ namespace NCC.PRZTools
             set => SetProperty(ref _txt_PlanningUnitLabel, value, () => Txt_PlanningUnitLabel);
         }
 
-
-
-
+        public string Txt_BoundaryLengthsLabel
+        {
+            get => _txt_BoundaryLengthsLabel;
+            set => SetProperty(ref _txt_BoundaryLengthsLabel, value, () => Txt_BoundaryLengthsLabel);
+        }
 
         public bool ExportIsEnabled
         {
@@ -114,34 +135,16 @@ namespace NCC.PRZTools
             set => SetProperty(ref _exportIsEnabled, value, () => ExportIsEnabled);
         }
 
-        public string CompStat_PUFC
+        public string CompStat_Img_PU
         {
-            get => _compStat_PUFC;
-            set => SetProperty(ref _compStat_PUFC, value, () => CompStat_PUFC);
+            get => _compStat_Img_PU;
+            set => SetProperty(ref _compStat_Img_PU, value, () => CompStat_Img_PU);
         }
 
-        public string CompStat_SelRules
+        public string CompStat_Img_BoundaryLengths
         {
-            get => _compStat_SelRules;
-            set => SetProperty(ref _compStat_SelRules, value, () => CompStat_SelRules);
-        }
-
-        public string CompStat_Weights
-        {
-            get => _compStat_Weights;
-            set => SetProperty(ref _compStat_Weights, value, () => CompStat_Weights);
-        }
-
-        public string CompStat_Features
-        {
-            get => _compStat_Features;
-            set => SetProperty(ref _compStat_Features, value, () => CompStat_Features);
-        }
-
-        public string CompStat_Bounds
-        {
-            get => _compStat_Bounds;
-            set => SetProperty(ref _compStat_Bounds, value, () => CompStat_Bounds);
+            get => _compStat_Img_BoundaryLengths;
+            set => SetProperty(ref _compStat_Img_BoundaryLengths, value, () => CompStat_Img_BoundaryLengths);
         }
 
         public ProgressManager PM
@@ -154,14 +157,43 @@ namespace NCC.PRZTools
 
         #region COMMANDS
 
-        public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(() => ExportWTWPackage(), () => true));
+        public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(async () =>
+        {
+            // Operation Status indicators
+            OperationStatus_Img_Visibility = Visibility.Visible;
+            OperationStatus_Txt_Label = "Processing...";
 
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
+            // Start the operation
+            using (_cts = new CancellationTokenSource())
+            {
+                await ExportWTWPackage(_cts.Token);
+            }
+
+            // Set back to null (already disposed)
+            _cts = null;
+
+            // Idle indicators
+            OperationStatus_Img_Visibility = Visibility.Hidden;
+            OperationStatus_Txt_Label = "Idle...";
+
+        }, () => true));
 
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
         }, () => true));
+
+        public ICommand CmdCancel => _cmdCancel ?? (_cmdCancel = new RelayCommand(() =>
+        {
+            if (_cts != null)
+            {
+                // Optionally notify the user or prompt the user here
+
+                // Cancel the operation
+                _cts.Cancel();
+            }
+
+        }, () => _cts != null, true, false));
 
         #endregion
 
@@ -189,103 +221,8 @@ namespace NCC.PRZTools
                     Settings_Rad_SpatialFormat_Raster_IsChecked = true;
                 }
 
-                // Component Presence
-                var pu_result = await PRZH.PUExists();
-                if (!pu_result.exists)
-                {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset";
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.UNKNOWN)
-                {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset";
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                {
-                    Txt_PlanningUnitLabel = "Planning Unit Feature Class";
-                    // Ensure data present
-                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                    {
-                        // PU FC NOT FOUND
-                    }
-                    else
-                    {
-                        // PU FC FOUND
-                    }
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                {
-                    Txt_PlanningUnitLabel = "Planning Unit Raster Dataset";
-                    // Ensure data present
-                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                    {
-                        // RASTER NOT FOUND
-                    }
-                    else
-                    {
-                        // RASTER FOUND
-                    }
-                }
-                else
-                {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset";
-                }
-
-                // Initialize the indicator images
-                bool PlanningUnits_OK = pu_result.exists;
-                bool SelRules_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_SELRULES)).exists;
-                bool Weights_OK = false;    // TODO: ADD THIS LATER
-                bool Features_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_FEATURES)).exists;
-                bool Bounds_OK = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
-
-                // Set the Component Status Images
-                if (PlanningUnits_OK)
-                {
-                    CompStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_PUFC = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-                }
-
-                if (SelRules_OK)
-                {
-                    CompStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_SelRules = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
-                }
-
-                if (Weights_OK)
-                {
-                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_Weights = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
-                }
-
-                if (Features_OK)
-                {
-                    CompStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_Features = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-                }
-
-                if (Bounds_OK)
-                {
-                    CompStat_Bounds = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_Bounds = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-                }
-
-                // Set Enabled Status on export button
-                //                ExportIsEnabled = PUFC_OK & Features_OK & Bounds_OK;
-                ExportIsEnabled = true;
+                // Configure a few controls
+                await ValidateControls();
             }
             catch (Exception ex)
             {
@@ -293,7 +230,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task ExportWTWPackage()
+        private async Task ExportWTWPackage(CancellationToken token)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
@@ -486,6 +423,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region DELETE OBJECTS
 
                 // Delete all existing files within export dir
@@ -514,7 +453,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
-#if TEST
+                PRZH.CheckForCancellation(token);
+
                 #region EXPORT SPATIAL DATA
 
                 if (Settings_Rad_SpatialFormat_Vector_IsChecked)
@@ -524,7 +464,7 @@ namespace NCC.PRZTools
                     if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Existing Format: Feature"), true, ++val);
-                        var result = await ExportFeaturesToShapefile();
+                        var result = await ExportFeaturesToShapefile(token);
 
                         if (!result.success)
                         {
@@ -540,7 +480,7 @@ namespace NCC.PRZTools
                     else
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Existing Format: Raster"), true, ++val);
-                        var result = await ExportRasterToShapefile();
+                        var result = await ExportRasterToShapefile(token);
 
                         if (!result.success)
                         {
@@ -564,7 +504,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-#endif
+                PRZH.CheckForCancellation(token);
 
                 #region GET PUID AND NATGRID CELLNUMBER LISTS AND DICTIONARIES
 
@@ -633,6 +573,8 @@ namespace NCC.PRZTools
                 var DICT_CN_and_puids = cellpuid.dict;
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region GET NATIONAL TABLE CONTENTS
 
@@ -712,6 +654,8 @@ namespace NCC.PRZTools
                 List<NatElement> excludes = exclude_outcome.elements;
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region ASSEMBLE ELEMENT VALUE DICTIONARIES
 
@@ -814,6 +758,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region GENERATE THE ATTRIBUTE CSV
 
@@ -1013,7 +959,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-#if TEST
+                PRZH.CheckForCancellation(token);
 
                 #region GENERATE AND ZIP THE BOUNDARY CSV
 
@@ -1113,8 +1059,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-#endif
-
+                PRZH.CheckForCancellation(token);
 
                 #region GENERATE THE YAML FILE
 
@@ -1339,6 +1284,12 @@ namespace NCC.PRZTools
 
                 return;
             }
+            catch (OperationCanceledException)
+            {
+                // Cancelled by user
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"ExportWTWPackage: cancelled by user.", LogMessageType.CANCELLATION), true, ++val);
+                ProMsgBox.Show($"ExportWTWPackage: Cancelled by user.");
+            }
             catch (Exception ex)
             {
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.ERROR), true, ++val);
@@ -1353,10 +1304,13 @@ namespace NCC.PRZTools
                     await Project.Current.SetIsEditingEnabledAsync(false);
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
                 }
+
+                // redraw controls
+                await ValidateControls();
             }
         }
 
-        private async Task<(bool success, string message)> ExportRasterToShapefile()
+        private async Task<(bool success, string message)> ExportRasterToShapefile(CancellationToken token)
         {
             int val = 0;
 
@@ -1388,6 +1342,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster found."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Convert source raster to temp polygon feature class
                 string fldPUID_Temp = "gridcode";
 
@@ -1405,6 +1361,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Conversion successful."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Project temp polygon feature class
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting {PRZC.c_FC_TEMP_WTW_FC1} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC1, PRZC.c_FC_TEMP_WTW_FC2, Export_SR, "", "", "NO_PRESERVE_SHAPE", "", "");
@@ -1419,6 +1377,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Projection successful."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Repair Geometry
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
@@ -1435,6 +1395,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Geometry repaired."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete the unnecessary fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, fldPUID_Temp, "KEEP_FIELDS");
@@ -1449,6 +1411,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Calculate field
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating {PRZC.c_FLD_FC_PU_ID} field..."), true, ++val);
@@ -1466,6 +1430,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Field calculated successfully."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Export to Shapefile
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Export the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, export_shp_path);
@@ -1480,6 +1446,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Shapefile exported."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Index the new id field
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field..."), true, ++val);
@@ -1496,6 +1464,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete the unnecessary fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields (again)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
@@ -1510,6 +1480,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete temp feature classes
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC1} and {PRZC.c_FC_TEMP_WTW_FC2} feature classes..."), true, ++val);
@@ -1530,6 +1502,8 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 if ((await PRZH.FCExists_Project(PRZC.c_FC_TEMP_WTW_FC2)).exists)
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
@@ -1546,8 +1520,15 @@ namespace NCC.PRZTools
                     }
                 }
 
-
                 return (true, "success");
+            }
+            catch (OperationCanceledException cancelex)
+            {
+                // Cancelled by user
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"ExportRasterToShapefile: cancelled by user.", LogMessageType.CANCELLATION), true, ++val);
+
+                // Throw the cancellation error to the parent
+                throw cancelex;
             }
             catch (Exception ex)
             {
@@ -1555,7 +1536,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<(bool success, string message)> ExportFeaturesToShapefile()
+        private async Task<(bool success, string message)> ExportFeaturesToShapefile(CancellationToken token)
         {
             int val = 0;
 
@@ -1587,6 +1568,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_FC_PLANNING_UNITS} feature class found."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Project feature class
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FC_TEMP_WTW_FC2, Export_SR, "", "", "NO_PRESERVE_SHAPE", "", "");
@@ -1601,6 +1584,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Projection successful."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Repair Geometry
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
@@ -1617,6 +1602,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Geometry repaired."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete the unnecessary fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
@@ -1631,6 +1618,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Export to Shapefile
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Export the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile..."), true, ++val);
@@ -1647,6 +1636,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Shapefile exported."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Index the new id field
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, new List<string>() { PRZC.c_FLD_FC_PU_ID }, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
@@ -1662,6 +1653,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete the unnecessary fields
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields (again)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
@@ -1676,6 +1669,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields deleted."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete temp feature class
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FC_TEMP_WTW_FC2} feature class..."), true, ++val);
@@ -1697,519 +1692,92 @@ namespace NCC.PRZTools
 
                 return (true, "success");
             }
+            catch (OperationCanceledException cancelex)
+            {
+                // Cancelled by user
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"ExportFeaturesToShapefile: cancelled by user.", LogMessageType.CANCELLATION), true, ++val);
+
+                // Throw the cancellation error to the parent
+                throw cancelex;
+            }
             catch (Exception ex)
             {
                 return (false, ex.Message);
             }
         }
 
-
-
-        private bool Test()
+        public async Task ValidateControls()
         {
             try
             {
+                // Establish Geodatabase Object Existence:
+                // 1. Planning Unit Dataset
+                var try_exists = await PRZH.PUExists();
+                _puDataExists = try_exists.exists;
 
+                // 2. Boundary Lengths Table
+                _boundaryTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
-                ProMsgBox.Show("Bort");
-                return true;
+                // Configure Labels:
+                // 1. Planning Unit Dataset Label
+                if (!_puDataExists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                {
+                    Txt_PlanningUnitLabel = "Planning Units do not exist.  Build them.";
+                }
+                else if (try_exists.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    Txt_PlanningUnitLabel = "Planning Units exist (Feature Class).";
+                }
+                else if (try_exists.puLayerType == PlanningUnitLayerType.RASTER)
+                {
+                    Txt_PlanningUnitLabel = "Planning Units exist (Raster Dataset).";
+                }
+                else
+                {
+                    Txt_PlanningUnitLabel = "Planning Units do not exist.  Build them.";
+                }
+
+                // 2. Boundary Lengths Table Label
+                if (_boundaryTableExists)
+                {
+                    Txt_BoundaryLengthsLabel = "Boundary Lengths Table exists.";
+                }
+                else
+                {
+                    Txt_BoundaryLengthsLabel = "Boundary Lengths Table does not exist.  Build it.";
+                }
+
+                // Configure Images:
+                // 1. Planning Units
+                if (_puDataExists)
+                {
+                    CompStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                }
+
+                // 2. Boundary Lengths Table
+                if (_boundaryTableExists)
+                {
+                    CompStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                }
+
+                // Enable/Disable Export Button as required
+                ExportIsEnabled = _puDataExists && _boundaryTableExists;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
             }
         }
 
-        private void Placeholder()
-        {
-
-#region COMPILE FEATURE INFORMATION
-
-            //// First, retrieve key info from the Feature Table
-            //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving records from the {PRZC.c_TABLE_FEATURES} table..."), true, ++val);
-            //List<int> LIST_FeatureIDs = new List<int>();
-            //var DICT_Features = new Dictionary<int, (string feature_name, string variable_name, string area_field_name, bool enabled, int goal)>();
-
-            //if (!await QueuedTask.Run(async () =>
-            //{
-            //    try
-            //    {
-            //        using (Table table = await PRZH.GetTable_Features())
-            //        using (RowCursor rowCursor = table.Search(null, false))
-            //        {
-            //            while (rowCursor.MoveNext())
-            //            {
-            //                using (Row row = rowCursor.Current)
-            //                {
-            //                    // Feature ID
-            //                    int cfid = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ID]);
-
-            //                    // Names
-            //                    string name = (row[PRZC.c_FLD_TAB_CF_NAME] == null | row[PRZC.c_FLD_TAB_CF_NAME] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_CF_NAME].ToString();
-            //                    string varname = "CF_" + cfid.ToString("D3");   // Example:  for id 5, we get CF_005
-            //                    string areafieldname = PRZC.c_FLD_TAB_PUCF_PREFIX_CF + cfid.ToString() + PRZC.c_FLD_TAB_PUCF_SUFFIX_AREA;
-
-            //                    // Enabled
-            //                    bool enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_ENABLED]) == 1;
-
-            //                    // Goal
-            //                    int goal = Convert.ToInt32(row[PRZC.c_FLD_TAB_CF_GOAL]);
-
-            //                    LIST_FeatureIDs.Add(cfid);
-            //                    DICT_Features.Add(cfid, (name, varname, areafieldname, enabled, goal));
-            //                }
-            //            }
-            //        }
-
-            //        return true;
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            //        return false;
-            //    }
-            //}))
-            //{
-            //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving information from the {PRZC.c_TABLE_FEATURES} table.", LogMessageType.ERROR), true, ++val);
-            //    ProMsgBox.Show($"Error retrieving records from the {PRZC.c_TABLE_FEATURES} table.");
-            //    return false;
-            //}
-            //else
-            //{
-            //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Records retrieved."), true, ++val);
-            //}
-
-            //LIST_FeatureIDs.Sort();
-
-            //// List of Area Fields (in order by cf_id) from PU Features table
-            //List<string> AreaFieldNames_Features = new List<string>();
-            //for (int k = 0; k < LIST_FeatureIDs.Count; k++)
-            //{
-            //    AreaFieldNames_Features.Add(DICT_Features[LIST_FeatureIDs[k]].area_field_name);
-            //}
-
-#endregion
-
-#region COMPILE SELECTION RULE INFORMATION
-
-            //// Retrieve key information from the Selection Rule table
-
-            //PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving records from the {PRZC.c_TABLE_SELRULES} table..."), true, ++val);
-            //List<int> LIST_IncludeIDs = new List<int>();
-            //List<int> LIST_ExcludeIDs = new List<int>();
-            //var DICT_Includes = new Dictionary<int, (string include_name, string variable_name, string state_field_name, bool enabled)>();
-            //var DICT_Excludes = new Dictionary<int, (string exclude_name, string variable_name, string state_field_name, bool enabled)>();
-
-            //if (!await QueuedTask.Run(async () =>
-            //{
-            //    try
-            //    {
-            //        using (Table table = await PRZH.GetTable_SelRules())
-            //        using (RowCursor rowCursor = table.Search(null, false))
-            //        {
-            //            while (rowCursor.MoveNext())
-            //            {
-            //                using (Row row = rowCursor.Current)
-            //                {
-            //                    // Selection Rule ID
-            //                    int srid = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ID]);
-
-            //                    // Enabled
-            //                    bool enabled = Convert.ToInt32(row[PRZC.c_FLD_TAB_SELRULES_ENABLED]) == 1;
-
-            //                    // Name
-            //                    string name = (row[PRZC.c_FLD_TAB_SELRULES_NAME] == null | row[PRZC.c_FLD_TAB_SELRULES_NAME] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_SELRULES_NAME].ToString();
-
-            //                    // Rest depend on the type
-            //                    string ruletype = (row[PRZC.c_FLD_TAB_SELRULES_RULETYPE] == null | row[PRZC.c_FLD_TAB_SELRULES_RULETYPE] == DBNull.Value) ? "" : row[PRZC.c_FLD_TAB_SELRULES_RULETYPE].ToString();
-            //                    if (ruletype == SelectionRuleType.INCLUDE.ToString())
-            //                    {
-            //                        string varname = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString("D3"); // Example:  for id 5, we get IN_005
-            //                        string statename = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_INCLUDE + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
-            //                        LIST_IncludeIDs.Add(srid);
-            //                        DICT_Includes.Add(srid, (name, varname, statename, enabled));
-            //                    }
-            //                    else if (ruletype == SelectionRuleType.EXCLUDE.ToString())
-            //                    {
-            //                        string varname = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString("D3"); // Example:  for id 8, we get EX_008
-            //                        string statename = PRZC.c_FLD_TAB_PUSELRULES_PREFIX_EXCLUDE + srid.ToString() + PRZC.c_FLD_TAB_PUSELRULES_SUFFIX_STATE;
-            //                        LIST_ExcludeIDs.Add(srid);
-            //                        DICT_Excludes.Add(srid, (name, varname, statename, enabled));
-            //                    }
-            //                }
-            //            }
-            //        }
-
-            //        return true;
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            //        return false;
-            //    }
-            //}))
-            //{
-            //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving information from the {PRZC.c_TABLE_SELRULES} table.", LogMessageType.ERROR), true, ++val);
-            //    ProMsgBox.Show($"Error retrieving records from the {PRZC.c_TABLE_SELRULES} table.");
-            //    return false;
-            //}
-            //else
-            //{
-            //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Records retrieved."), true, ++val);
-            //}
-
-            //LIST_IncludeIDs.Sort();
-            //LIST_ExcludeIDs.Sort();
-
-            //// INCLUDES: List of State Fields (in order by sr_id) from PU Sel Rules table
-            //List<string> StateFieldNames_Includes = new List<string>();
-            //for (int k = 0; k < LIST_IncludeIDs.Count; k++)
-            //{
-            //    StateFieldNames_Includes.Add(DICT_Includes[LIST_IncludeIDs[k]].state_field_name);
-            //}
-
-            //// EXCLUDES: List of State Fields (in order by sr_id) from PU Sel Rules table
-            //List<string> StateFieldNames_Excludes = new List<string>();
-            //for (int k = 0; k < LIST_ExcludeIDs.Count; k++)
-            //{
-            //    StateFieldNames_Excludes.Add(DICT_Excludes[LIST_ExcludeIDs[k]].state_field_name);
-            //}
-
-#endregion
-
-#region COMPILE WEIGHTS INFORMATION
-
-            // TODO: Add this
-
-#endregion
-
-#region GENERATE THE ATTRIBUTE CSV
-
-            //string attributepath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_ATTR);
-
-            //// If file exists, delete it
-            //try
-            //{
-            //    if (File.Exists(attributepath))
-            //    {
-            //        File.Delete(attributepath);
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    ProMsgBox.Show("Unable to delete the existing Export WTW Attribute file..." +
-            //        Environment.NewLine + Environment.NewLine + ex.Message);
-            //    return false;
-            //}
-
-            //// Get the CSV file started
-            //var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
-            //{
-            //    HasHeaderRecord = false, // this is default
-            //    NewLine = Environment.NewLine
-            //};
-
-            //using (var writer = new StreamWriter(attributepath))
-            //using (var csv = new CsvWriter(writer, csvConfig))
-            //{
-            //    #region ADD COLUMN HEADERS (ROW 1)
-
-            //    // First, add the Feature Variable Name Columns
-            //    for (int i = 0; i < LIST_FeatureIDs.Count; i++)
-            //    {
-            //        csv.WriteField(DICT_Features[LIST_FeatureIDs[i]].variable_name);
-            //    }
-
-            //    // Now the Include columns
-            //    for (int i = 0; i < LIST_IncludeIDs.Count; i++)
-            //    {
-            //        csv.WriteField(DICT_Includes[LIST_IncludeIDs[i]].variable_name);
-            //    }
-
-            //    // Now the Exclude columns
-            //    for (int i = 0; i < LIST_ExcludeIDs.Count; i++)
-            //    {
-            //        csv.WriteField(DICT_Excludes[LIST_ExcludeIDs[i]].variable_name);
-            //    }
-
-            //    // Insert the PU ID Column => must the "_index" and must be the final column in the attributes CSV
-            //    csv.WriteField("_index");
-            //    csv.NextRecord();   // First line is done!
-
-            //    #endregion
-
-            //    #region ADD REMAINING ROWS
-
-            //    for (int i = 0; i < LIST_PUIDs.Count; i++)  // each iteration = single planning unit record = single CSV row
-            //    {
-            //        int puid = LIST_PUIDs[i];
-
-            //        #region FEATURE COLUMN VALUES
-
-            //        if (!await QueuedTask.Run(async () =>
-            //        {
-            //            try
-            //            {
-            //                QueryFilter featureQF = new QueryFilter
-            //                {
-            //                    WhereClause = $"{PRZC.c_FLD_TAB_PUCF_ID} = {puid}",
-            //                    SubFields = string.Join(",", AreaFieldNames_Features)
-            //                };
-
-            //                using (Table table = await PRZH.GetTable_PUFeatures())
-            //                using (RowCursor rowCursor = table.Search(featureQF, true))
-            //                {
-            //                    while (rowCursor.MoveNext())
-            //                    {
-            //                        using (Row row = rowCursor.Current)
-            //                        {
-            //                            for (int n = 0; n < AreaFieldNames_Features.Count; n++)
-            //                            {
-            //                                double area_m2 = Math.Round(Convert.ToDouble(row[AreaFieldNames_Features[n]]), 2, MidpointRounding.AwayFromZero);
-
-            //                                // *** THESE ARE OPTIONAL *********************************
-            //                                double area_ac = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-            //                                double area_ha = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_HA), 2, MidpointRounding.AwayFromZero);
-            //                                double area_km2 = Math.Round((area_m2 * PRZC.c_CONVERT_M2_TO_KM2), 2, MidpointRounding.AwayFromZero);
-            //                                // ********************************************************
-
-            //                                csv.WriteField(area_m2);    // make this user-specifiable (e.g. user picks an output unit)
-            //                            }
-            //                        }
-            //                    }
-            //                }
-
-            //                return true;
-            //            }
-            //            catch (Exception ex)
-            //            {
-            //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            //                return false;
-            //            }
-            //        }))
-            //        {
-            //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing features values to CSV.", LogMessageType.ERROR), true, ++val);
-            //            ProMsgBox.Show($"Error writing Features values to CSV.");
-            //            return false;
-            //        }
-
-            //        #endregion
-
-            //        #region INCLUDE AND EXCLUDE SELECTION RULES COLUMN VALUES
-
-            //        if (!await QueuedTask.Run(async () =>
-            //        {
-            //            try
-            //            {
-            //                // Merge the Include and Exclude State Field names
-            //                List<string> StateFieldNames = StateFieldNames_Includes.Concat(StateFieldNames_Excludes).ToList();
-
-            //                if (StateFieldNames.Count == 0)
-            //                {
-            //                    return true;    // no point proceeding with selection rules, there aren't any
-            //                }
-
-            //                QueryFilter selruleQF = new QueryFilter
-            //                {
-            //                    WhereClause = $"{PRZC.c_FLD_TAB_PUSELRULES_ID} = {puid}",
-            //                    SubFields = string.Join(",", StateFieldNames)
-            //                };
-
-            //                using (Table table = await PRZH.GetTable_PUSelRules())
-            //                using (RowCursor rowCursor = table.Search(selruleQF, true))
-            //                {
-            //                    while (rowCursor.MoveNext())
-            //                    {
-            //                        using (Row row = rowCursor.Current)
-            //                        {
-            //                            // First write the includes
-            //                            for (int n = 0; n < StateFieldNames_Includes.Count; n++)
-            //                            {
-            //                                int state = Convert.ToInt32(row[StateFieldNames_Includes[n]]);  // will be a zero or 1
-            //                                csv.WriteField(state);
-            //                            }
-
-            //                            // Next write the excludes
-            //                            for (int n = 0; n < StateFieldNames_Excludes.Count; n++)
-            //                            {
-            //                                int state = Convert.ToInt32(row[StateFieldNames_Excludes[n]]);  // will be a zero or 1
-            //                                csv.WriteField(state);
-            //                            }
-            //                        }
-            //                    }
-            //                }
-
-            //                return true;
-            //            }
-            //            catch (Exception ex)
-            //            {
-            //                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-            //                return false;
-            //            }
-            //        }))
-            //        {
-            //            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error writing selection rule values to CSV.", LogMessageType.ERROR), true, ++val);
-            //            ProMsgBox.Show($"Error writing selection rule values to CSV.");
-            //            return false;
-            //        }
-
-            //        #endregion
-
-            //        #region WEIGHTS COLUMN VALUES
-
-
-
-            //        #endregion
-
-            //        // Write the Planning Unit ID to the final column
-            //        csv.WriteField(puid);
-
-            //        // Finish the line
-            //        csv.NextRecord();
-            //    }
-
-            //    #endregion
-            //}
-
-            //// Compress Attribute CSV to gzip format
-            //FileInfo attribfi = new FileInfo(attributepath);
-            //FileInfo attribzgipfi = new FileInfo(string.Concat(attribfi.FullName, ".gz"));
-
-            //using (FileStream fileToBeZippedAsStream = attribfi.OpenRead())
-            //using (FileStream gzipTargetAsStream = attribzgipfi.Create())
-            //using (GZipStream gzipStream = new GZipStream(gzipTargetAsStream, CompressionMode.Compress))
-            //{
-            //    try
-            //    {
-            //        fileToBeZippedAsStream.CopyTo(gzipStream);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        ProMsgBox.Show("Unable to compress the Attribute CSV file to GZIP..." + Environment.NewLine + Environment.NewLine + ex.Message);
-            //        return false;
-            //    }
-            //}
-
-#endregion
-
-#region GENERATE THE YAML CONFIG FILE
-
-            //#region FEATURES
-
-            //List<YamlTheme> LIST_YamlThemes = new List<YamlTheme>();
-
-            //foreach (int cfid in LIST_FeatureIDs)
-            //{
-            //    var feature = DICT_Features[cfid];
-
-            //    // Set goal between 0 and 1 inclusive
-            //    int g = feature.goal; // g is between 0 and 100 inclusive
-            //    double dg = Math.Round(g / 100.0, 2, MidpointRounding.AwayFromZero); // I need dg to be between 0 and 1 inclusive
-
-            //    YamlLegend yamlLegend = new YamlLegend();
-
-            //    YamlVariable yamlVariable = new YamlVariable();
-            //    yamlVariable.index = feature.variable_name;
-            //    yamlVariable.units = "m\xB2";
-            //    yamlVariable.provenance = (cfid % 2 == 0) ? WTWProvenanceType.national.ToString() : WTWProvenanceType.regional.ToString();
-            //    yamlVariable.legend = yamlLegend;
-
-            //    YamlFeature yamlFeature = new YamlFeature();
-            //    yamlFeature.name = feature.feature_name;
-            //    yamlFeature.status = feature.enabled;
-            //    yamlFeature.visible = true;
-            //    yamlFeature.hidden = false;
-            //    yamlFeature.goal = dg;
-            //    yamlFeature.variable = yamlVariable;
-
-            //    YamlTheme yamlTheme = new YamlTheme();
-            //    yamlTheme.name = $"Theme_{cfid}";
-            //    yamlTheme.feature = new YamlFeature[] { yamlFeature };
-            //    LIST_YamlThemes.Add(yamlTheme);
-            //}
-
-            //#endregion
-
-            //#region INCLUDES
-
-            //List<YamlInclude> LIST_YamlIncludes = new List<YamlInclude>();
-
-            //foreach (var srid in LIST_IncludeIDs)
-            //{
-            //    var include = DICT_Includes[srid];
-
-            //    // Legend
-            //    YamlLegend yamlLegend = new YamlLegend();
-            //    yamlLegend.type = WTWLegendType.manual.ToString();
-            //    yamlLegend.colors = new string[] { "#ffffff", "#4ce30b" };
-            //    yamlLegend.labels = new string[] { "Available", "Included" };
-
-            //    // Variable
-            //    YamlVariable yamlVariable = new YamlVariable();
-            //    yamlVariable.index = include.variable_name;
-            //    yamlVariable.legend = yamlLegend;
-            //    yamlVariable.units = "";
-            //    yamlVariable.provenance = WTWProvenanceType.national.ToString();
-
-            //    // Include
-            //    YamlInclude yamlInclude = new YamlInclude();
-            //    yamlInclude.name = include.include_name;
-            //    yamlInclude.variable = yamlVariable;
-            //    yamlInclude.mandatory = false;
-            //    yamlInclude.hidden = false;
-            //    yamlInclude.status = include.enabled;
-            //    yamlInclude.visible = true;
-
-            //    LIST_YamlIncludes.Add(yamlInclude);
-            //}
-
-            //#endregion
-
-            //#region EXCLUDES
-
-
-
-            //#endregion
-
-            //#region WEIGHTS
-
-
-
-            //#endregion
-
-            //#region FINAL
-
-            //YamlPackage yamlPackage = new YamlPackage();
-            //yamlPackage.name = "TEMP PROJECT NAME";
-            //yamlPackage.mode = WTWModeType.advanced.ToString();
-            //yamlPackage.themes = LIST_YamlThemes.ToArray();
-            //yamlPackage.includes = LIST_YamlIncludes.ToArray();
-            //yamlPackage.weights = new YamlWeight[] { };
-
-            //ISerializer builder = new SerializerBuilder().DisableAliases().Build();
-            //string the_yaml = builder.Serialize(yamlPackage);
-
-            //string yamlpath = Path.Combine(export_folder_path, PRZC.c_FILE_WTW_EXPORT_YAML);
-            //try
-            //{
-            //    File.WriteAllText(yamlpath, the_yaml);
-            //}
-            //catch (Exception ex)
-            //{
-            //    ProMsgBox.Show("Unable to write the Yaml Config File..." + Environment.NewLine + Environment.NewLine + ex.Message);
-            //    return false;
-            //}
-
-            //#endregion
-
-#endregion
-
-        }
-
         #endregion
-
-
     }
 }
 
