@@ -13,6 +13,8 @@
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/ExportToWTW32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
+    ResizeMode="CanResize"
+    Cursor="{Binding ProWindowCursor}"
     >
     
     <controls:ProWindow.Resources>
@@ -282,7 +284,7 @@
                         Height="25" 
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdExport}"
-                        IsEnabled="{Binding Export_Cmd_IsEnabled}"
+                        IsEnabled="{Binding Operation_Cmd_IsEnabled}"
                         Content="EXPORT WTW FILES" />
 
                     <Button 

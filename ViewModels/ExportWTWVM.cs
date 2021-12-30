@@ -49,12 +49,13 @@ namespace NCC.PRZTools
 
         private CancellationTokenSource _cts = null;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
-        private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
-        private bool _export_Cmd_IsEnabled;
+        private bool _operation_Cmd_IsEnabled;
         private bool _operationIsUnderway = false;
+        private Cursor _proWindowCursor;
 
-        bool _pu_exists = false;
-        bool _blt_exists = false;
+        private bool _pu_exists = false;
+        private bool _blt_exists = false;
+        private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
 
         #region COMMANDS
 
@@ -100,15 +101,21 @@ namespace NCC.PRZTools
             set => SetProperty(ref _pm, value, () => PM);
         }
 
-        public bool Export_Cmd_IsEnabled
+        public bool Operation_Cmd_IsEnabled
         {
-            get => _export_Cmd_IsEnabled;
-            set => SetProperty(ref _export_Cmd_IsEnabled, value, () => Export_Cmd_IsEnabled);
+            get => _operation_Cmd_IsEnabled;
+            set => SetProperty(ref _operation_Cmd_IsEnabled, value, () => Operation_Cmd_IsEnabled);
         }
 
         public bool OperationIsUnderway
         {
             get => _operationIsUnderway;
+        }
+
+        public Cursor ProWindowCursor
+        {
+            get => _proWindowCursor;
+            set => SetProperty(ref _proWindowCursor, value, () => ProWindowCursor);
         }
 
         #region COMPONENT STATUS INDICATORS
@@ -196,15 +203,12 @@ namespace NCC.PRZTools
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
-        }, () => true));
+        }, () => true, true, false));
 
         public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(async () =>
         {
-            // Operation Status indicators
-            _operationIsUnderway = true;
-            Export_Cmd_IsEnabled = false;
-            OpStat_Img_Visibility = Visibility.Visible;
-            OpStat_Txt_Label = "Processing...";
+            // Change UI to Underway
+            StartOpUI();
 
             // Start the operation
             using (_cts = new CancellationTokenSource())
@@ -212,14 +216,14 @@ namespace NCC.PRZTools
                 await ExportWTWPackage(_cts.Token);
             }
 
-            // Set back to null (already disposed)
+            // Set source to null (it's already disposed)
             _cts = null;
 
-            // Idle indicators
-            Export_Cmd_IsEnabled = _pu_exists && _blt_exists;
-            OpStat_Img_Visibility = Visibility.Hidden;
-            OpStat_Txt_Label = "Idle...";
-            _operationIsUnderway = false;
+            // Validate controls
+            await ValidateControls();
+
+            // Reset UI to Idle
+            ResetOpUI();
 
         }, () => true, true, false));
 
@@ -246,11 +250,11 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                // Hide the Operation Status image
-                OpStat_Img_Visibility = Visibility.Hidden;
+                // Configure a few controls
+                await ValidateControls();
 
-                // Set the Operation Status label
-                OpStat_Txt_Label = "Idle...";
+                // Reset the UI
+                ResetOpUI();
 
                 // Spatial Format Radio Buttons
                 string spatial_format = Properties.Settings.Default.WTW_SPATIAL_FORMAT;
@@ -266,9 +270,6 @@ namespace NCC.PRZTools
                 {
                     Settings_Rad_SpatialFormat_Raster_IsChecked = true;
                 }
-
-                // Configure a few controls
-                await ValidateControls();
             }
             catch (Exception ex)
             {
@@ -322,18 +323,8 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 string export_folder_path = PRZH.GetPath_ExportWTWFolder();
 
-                // Declare some generic GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
-                string toolOutput;
-
                 // Initialize ProgressBar and Progress Log
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Where to Work Exporter..."), false, max, ++val);
-
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
 
                 // Ensure the Project Geodatabase Exists
                 var try_gdbexists = await PRZH.GDBExists_Project();
@@ -466,6 +457,10 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("User bailed out."), true, ++val);
                     return;
                 }
+
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
 
                 #endregion
 
@@ -1326,7 +1321,12 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                ProMsgBox.Show("Export Complete.");
+                // End timer
+                stopwatch.Stop();
+                string message = PRZH.GetElapsedTimeMessage(stopwatch.Elapsed);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("WTW export completed successfully!"), true, 1, 1);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
+                ProMsgBox.Show("WTW Export Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
 
                 return;
             }
@@ -1350,9 +1350,6 @@ namespace NCC.PRZTools
                     await Project.Current.SetIsEditingEnabledAsync(false);
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
                 }
-
-                // redraw controls
-                await ValidateControls();
             }
         }
 
@@ -1813,15 +1810,31 @@ namespace NCC.PRZTools
                 {
                     CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
-
-                // Enable/Disable Export Button as required
-                Export_Cmd_IsEnabled = _pu_exists && _blt_exists;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
+
+        private void StartOpUI()
+        {
+            _operationIsUnderway = true;
+            Operation_Cmd_IsEnabled = false;
+            OpStat_Img_Visibility = Visibility.Visible;
+            OpStat_Txt_Label = "Processing...";
+            ProWindowCursor = Cursors.Wait;
+        }
+
+        private void ResetOpUI()
+        {
+            ProWindowCursor = Cursors.Arrow;
+            Operation_Cmd_IsEnabled = _pu_exists && _blt_exists;
+            OpStat_Img_Visibility = Visibility.Hidden;
+            OpStat_Txt_Label = "Idle.";
+            _operationIsUnderway = false;
+        }
+
 
         #endregion
     }

@@ -14,6 +14,7 @@
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
     ResizeMode="CanResize"
+    Cursor="{Binding ProWindowCursor}"
     >
     <controls:ProWindow.Resources>
         <ResourceDictionary>
@@ -172,7 +173,7 @@
                         Padding="5,0"
                         Style="{DynamicResource Esri_Button}"   
                         Command="{Binding CmdBuildBoundaryTable}"
-                        IsEnabled="{Binding Generate_Cmd_IsEnabled}"
+                        IsEnabled="{Binding Operation_Cmd_IsEnabled}"
                         Content="GENERATE BOUNDARY LENGTHS TABLE" />
 
                     <Button 

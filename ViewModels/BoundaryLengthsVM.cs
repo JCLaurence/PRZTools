@@ -42,8 +42,9 @@ namespace NCC.PRZTools
 
         private CancellationTokenSource _cts = null;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
-        private bool _generate_Cmd_IsEnabled;
+        private bool _operation_Cmd_IsEnabled;
         private bool _operationIsUnderway = false;
+        private Cursor _proWindowCursor;
 
         private bool _pu_exists = false;
         private bool _blt_exists = false;
@@ -84,15 +85,21 @@ namespace NCC.PRZTools
             get => _pm; set => SetProperty(ref _pm, value, () => PM);
         }
 
-        public bool Generate_Cmd_IsEnabled
+        public bool Operation_Cmd_IsEnabled
         {
-            get => _generate_Cmd_IsEnabled;
-            set => SetProperty(ref _generate_Cmd_IsEnabled, value, () => Generate_Cmd_IsEnabled);
+            get => _operation_Cmd_IsEnabled;
+            set => SetProperty(ref _operation_Cmd_IsEnabled, value, () => Operation_Cmd_IsEnabled);
         }
 
         public bool OperationIsUnderway
         {
             get => _operationIsUnderway;
+        }
+
+        public Cursor ProWindowCursor
+        {
+            get => _proWindowCursor;
+            set => SetProperty(ref _proWindowCursor, value, () => ProWindowCursor);
         }
 
         #region COMPONENT STATUS INDICATORS
@@ -148,15 +155,12 @@ namespace NCC.PRZTools
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
-        }, () => true));
+        }, () => true, true, false));
 
         public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () =>
         {
-            // Operation Status indicators
-            _operationIsUnderway = true;
-            Generate_Cmd_IsEnabled = false;
-            OpStat_Img_Visibility = Visibility.Visible;
-            OpStat_Txt_Label = "Processing...";
+            // Change UI to Underway
+            StartOpUI();
 
             // Start the operation
             using (_cts = new CancellationTokenSource())
@@ -164,14 +168,14 @@ namespace NCC.PRZTools
                 await BuildBoundaryTable(_cts.Token);
             }
 
-            // Set back to null (already disposed)
+            // Set source to null (it's already disposed)
             _cts = null;
 
-            // Idle indicators
-            Generate_Cmd_IsEnabled = _pu_exists;
-            OpStat_Img_Visibility = Visibility.Hidden;
-            OpStat_Txt_Label = "Idle...";
-            _operationIsUnderway = false;
+            // Validate controls
+            await ValidateControls();
+
+            // Reset UI to Idle
+            ResetOpUI();
 
         }, () => true, true, false));
 
@@ -197,14 +201,11 @@ namespace NCC.PRZTools
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
-                // Hide the Operation Status image
-                OpStat_Img_Visibility = Visibility.Hidden;
-
-                // Set the Operation Status label
-                OpStat_Txt_Label = "Idle...";
-
                 // Configure a few controls
-                await ValidateControls();                
+                await ValidateControls();
+
+                // Reset the UI
+                ResetOpUI();
             }
             catch (Exception ex)
             {
@@ -265,10 +266,6 @@ namespace NCC.PRZTools
 
                 // Initialize ProgressBar and Progress Log
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Boundary Table generator..."), false, max, ++val);
-
-                // Start a stopwatch
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
 
                 // Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
@@ -387,6 +384,10 @@ namespace NCC.PRZTools
                     return;
                 }
 
+                // Start a stopwatch
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
                 #endregion
 
                 PRZH.CheckForCancellation(token);
@@ -412,6 +413,8 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete the temp table if present
                 if ((await PRZH.TableExists_Project(temp_table)).exists)
                 {
@@ -430,6 +433,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Table deleted successfully."), true, ++val);
                     }
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete the temp fc if present
                 if ((await PRZH.FCExists_Project(temp_fc)).exists)
@@ -476,6 +481,8 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Common values
                 string source_fc = "";
                 string source_field = "";
@@ -505,6 +512,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully executed the Polygon Neighbors tool."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete point records from temp table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting point records from {temp_table} table..."), true, ++val);
@@ -564,6 +573,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Point records deleted."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Index both id fields
                 string fldSource = "";
                 string fldNeighbour = "";
@@ -616,6 +627,8 @@ namespace NCC.PRZTools
                 }
 
                 HashSet<int> PUIDs = outcome.puids;
+
+                PRZH.CheckForCancellation(token);
 
                 // Get full perimeters of each planning unit
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting planning unit perimeters..."), true, ++val);
@@ -683,6 +696,8 @@ namespace NCC.PRZTools
                 }
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dictionary populated: {PUIDs_and_perimeters.Count} entries."), true, ++val);
 
+                PRZH.CheckForCancellation(token);
+
                 // Get shared edges of each planning unit (from temp boundary table)
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting shared edges..."), true, ++val);
                 Dictionary<int, double> PUIDs_and_shared_edges = new Dictionary<int, double>();
@@ -749,6 +764,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Shared edges retrieved: {PUIDs_and_shared_edges.Count} entries."), true, max, val++);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Get "Self-Intersecting" edge lengths by planning unit
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Self-Intersection Edge Lengths..."), true, max, val++);
                 Dictionary<int, double> PUIDs_and_self_intersecting_edges = new Dictionary<int, double>();
@@ -805,6 +822,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table created."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Add fields to the table
                 string fldPUID1 = PRZC.c_FLD_TAB_BOUND_ID1 + " LONG 'Planning Unit ID 1' # # #;";
                 string fldPUID2 = PRZC.c_FLD_TAB_BOUND_ID2 + " LONG 'Planning Unit ID 2' # # #;";
@@ -826,6 +845,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully added fields."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Populate the boundary table
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_PUBOUNDARY} table.."), true, ++val);
@@ -975,6 +996,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Table deleted."), true, ++val);
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete temp feature class (if applicable)
                 if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
                 {
@@ -993,6 +1016,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"{temp_fc} feature class deleted."), true, ++val);
                     }
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Compact the Geodatabase
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Compacting the Geodatabase..."), true, ++val);
@@ -1038,9 +1063,6 @@ namespace NCC.PRZTools
                     await Project.Current.SetIsEditingEnabledAsync(false);
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
                 }
-
-                // redraw controls
-                await ValidateControls();
             }
         }
 
@@ -1105,14 +1127,29 @@ namespace NCC.PRZTools
                 {
                     CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
                 }
-
-                // Enable/Disable Export Button as required
-                Generate_Cmd_IsEnabled = _pu_exists;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
+        }
+
+        private void StartOpUI()
+        {
+            _operationIsUnderway = true;
+            Operation_Cmd_IsEnabled = false;
+            OpStat_Img_Visibility = Visibility.Visible;
+            OpStat_Txt_Label = "Processing...";
+            ProWindowCursor = Cursors.Wait;
+        }
+
+        private void ResetOpUI()
+        {
+            ProWindowCursor = Cursors.Arrow;
+            Operation_Cmd_IsEnabled = _pu_exists;
+            OpStat_Img_Visibility = Visibility.Hidden;
+            OpStat_Txt_Label = "Idle.";
+            _operationIsUnderway = false;
         }
 
         #endregion
