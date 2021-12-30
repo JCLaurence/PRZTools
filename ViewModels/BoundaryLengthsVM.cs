@@ -41,10 +41,12 @@ namespace NCC.PRZTools
         #region FIELDS
 
         private CancellationTokenSource _cts = null;
-
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
-
         private bool _generate_Cmd_IsEnabled;
+        private bool _operationIsUnderway = false;
+
+        private bool _pu_exists = false;
+        private bool _blt_exists = false;
 
         #region COMMANDS
 
@@ -68,7 +70,7 @@ namespace NCC.PRZTools
 
         #region OPERATION STATUS INDICATORS
 
-        private Visibility _opStat_Img_Visibility = Visibility.Visible;
+        private Visibility _opStat_Img_Visibility;
         private string _opStat_Txt_Label;
 
         #endregion
@@ -86,6 +88,11 @@ namespace NCC.PRZTools
         {
             get => _generate_Cmd_IsEnabled;
             set => SetProperty(ref _generate_Cmd_IsEnabled, value, () => Generate_Cmd_IsEnabled);
+        }
+
+        public bool OperationIsUnderway
+        {
+            get => _operationIsUnderway;
         }
 
         #region COMPONENT STATUS INDICATORS
@@ -146,6 +153,8 @@ namespace NCC.PRZTools
         public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () =>
         {
             // Operation Status indicators
+            _operationIsUnderway = true;
+            Generate_Cmd_IsEnabled = false;
             OpStat_Img_Visibility = Visibility.Visible;
             OpStat_Txt_Label = "Processing...";
 
@@ -159,10 +168,12 @@ namespace NCC.PRZTools
             _cts = null;
 
             // Idle indicators
+            Generate_Cmd_IsEnabled = _pu_exists;
             OpStat_Img_Visibility = Visibility.Hidden;
             OpStat_Txt_Label = "Idle...";
+            _operationIsUnderway = false;
 
-        }, () => true));
+        }, () => true, true, false));
 
         public ICommand CmdCancel => _cmdCancel ?? (_cmdCancel = new RelayCommand(() =>
         {
@@ -1040,14 +1051,14 @@ namespace NCC.PRZTools
                 // Establish Geodatabase Object Existence:
                 // 1. Planning Unit Dataset
                 var try_exists = await PRZH.PUExists();
-                bool pu_exists = try_exists.exists;
+                _pu_exists = try_exists.exists;
 
                 // 2. Boundary Lengths Table
-                bool blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+                _blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
                 // Configure Labels:
                 // 1. Planning Unit Dataset Label
-                if (!pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                if (!_pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.  Build it.";
                 }
@@ -1065,7 +1076,7 @@ namespace NCC.PRZTools
                 }
 
                 // 2. Boundary Lengths Table Label
-                if (blt_exists)
+                if (_blt_exists)
                 {
                     CompStat_Txt_BoundaryLengths_Label = "Boundary Lengths Table exists.";
                 }
@@ -1076,7 +1087,7 @@ namespace NCC.PRZTools
 
                 // Configure Images:
                 // 1. Planning Units
-                if (pu_exists)
+                if (_pu_exists)
                 {
                     CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
@@ -1086,7 +1097,7 @@ namespace NCC.PRZTools
                 }
 
                 // 2. Boundary Lengths Table
-                if (blt_exists)
+                if (_blt_exists)
                 {
                     CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
@@ -1096,7 +1107,7 @@ namespace NCC.PRZTools
                 }
 
                 // Enable/Disable Export Button as required
-                Generate_Cmd_IsEnabled = pu_exists;
+                Generate_Cmd_IsEnabled = _pu_exists;
             }
             catch (Exception ex)
             {

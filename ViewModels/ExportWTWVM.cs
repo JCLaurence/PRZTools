@@ -48,44 +48,116 @@ namespace NCC.PRZTools
         #region FIELDS
 
         private CancellationTokenSource _cts = null;
+        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+        private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
+        private bool _export_Cmd_IsEnabled;
+        private bool _operationIsUnderway = false;
+
+        bool _pu_exists = false;
+        bool _blt_exists = false;
+
+        #region COMMANDS
+
+        private ICommand _cmdExport;
+        private ICommand _cmdCancel;
+        private ICommand _cmdClearLog;
+
+        #endregion
+
+        #region COMPONENT STATUS INDICATORS
+
+        // Planning Unit Dataset
+        private string _compStat_Img_PlanningUnits_Path;
+        private string _compStat_Txt_PlanningUnits_Label;
+
+        // Boundary Lengths Table
+        private string _compStat_Img_BoundaryLengths_Path;
+        private string _compStat_Txt_BoundaryLengths_Label;
+
+        #endregion
+
+        #region OPERATION STATUS INDICATORS
+
+        private Visibility _opStat_Img_Visibility;
+        private string _opStat_Txt_Label;
+
+        #endregion
+
+        #region SPATIAL OUTPUT FORMAT
 
         private bool _settings_Rad_SpatialFormat_Vector_IsChecked;
         private bool _settings_Rad_SpatialFormat_Raster_IsChecked;
 
-        private string _txt_PlanningUnitLabel;
-        private string _txt_BoundaryLengthsLabel;
-
-        private readonly SpatialReference Export_SR = SpatialReferences.WGS84;
-
-        private bool _exportIsEnabled;
-
-        private string _compStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-        private string _compStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-
-        private ICommand _cmdExport;
-        private ICommand _cmdClearLog;
-        private ICommand _cmdCancel;
-
-        private Visibility _operationStatus_Img_Visibility = Visibility.Visible;
-        private string _operationStatus_Txt_Label;
-
-        private ProgressManager _pm = ProgressManager.CreateProgressManager(50);    // initialized to min=0, current=0, message=""
+        #endregion
 
         #endregion
 
         #region PROPERTIES
 
-        public Visibility OperationStatus_Img_Visibility
+        public ProgressManager PM
         {
-            get => _operationStatus_Img_Visibility;
-            set => SetProperty(ref _operationStatus_Img_Visibility, value, () => OperationStatus_Img_Visibility);
+            get => _pm;
+            set => SetProperty(ref _pm, value, () => PM);
         }
 
-        public string OperationStatus_Txt_Label
+        public bool Export_Cmd_IsEnabled
         {
-            get => _operationStatus_Txt_Label;
-            set => SetProperty(ref _operationStatus_Txt_Label, value, () => OperationStatus_Txt_Label);
+            get => _export_Cmd_IsEnabled;
+            set => SetProperty(ref _export_Cmd_IsEnabled, value, () => Export_Cmd_IsEnabled);
         }
+
+        public bool OperationIsUnderway
+        {
+            get => _operationIsUnderway;
+        }
+
+        #region COMPONENT STATUS INDICATORS
+
+        // Planning Units Dataset
+        public string CompStat_Img_PlanningUnits_Path
+        {
+            get => _compStat_Img_PlanningUnits_Path;
+            set => SetProperty(ref _compStat_Img_PlanningUnits_Path, value, () => CompStat_Img_PlanningUnits_Path);
+        }
+
+        public string CompStat_Txt_PlanningUnits_Label
+        {
+            get => _compStat_Txt_PlanningUnits_Label;
+            set => SetProperty(ref _compStat_Txt_PlanningUnits_Label, value, () => CompStat_Txt_PlanningUnits_Label);
+        }
+
+        // Boundary Lengths Table
+        public string CompStat_Img_BoundaryLengths_Path
+        {
+            get => _compStat_Img_BoundaryLengths_Path;
+            set => SetProperty(ref _compStat_Img_BoundaryLengths_Path, value, () => CompStat_Img_BoundaryLengths_Path);
+        }
+
+        public string CompStat_Txt_BoundaryLengths_Label
+        {
+            get => _compStat_Txt_BoundaryLengths_Label;
+            set => SetProperty(ref _compStat_Txt_BoundaryLengths_Label, value, () => CompStat_Txt_BoundaryLengths_Label);
+        }
+
+        #endregion
+
+        #region OPERATION STATUS INDICATORS
+
+        public Visibility OpStat_Img_Visibility
+        {
+            get => _opStat_Img_Visibility;
+            set => SetProperty(ref _opStat_Img_Visibility, value, () => OpStat_Img_Visibility);
+        }
+
+        public string OpStat_Txt_Label
+        {
+            get => _opStat_Txt_Label;
+            set => SetProperty(ref _opStat_Txt_Label, value, () => OpStat_Txt_Label);
+        }
+
+        #endregion
+
+        #region SPATIAL OUTPUT FORMAT
 
         public bool Settings_Rad_SpatialFormat_Vector_IsChecked
         {
@@ -115,51 +187,24 @@ namespace NCC.PRZTools
             }
         }
 
-        public string Txt_PlanningUnitLabel
-        {
-            get => _txt_PlanningUnitLabel;
-            set => SetProperty(ref _txt_PlanningUnitLabel, value, () => Txt_PlanningUnitLabel);
-        }
-
-        public string Txt_BoundaryLengthsLabel
-        {
-            get => _txt_BoundaryLengthsLabel;
-            set => SetProperty(ref _txt_BoundaryLengthsLabel, value, () => Txt_BoundaryLengthsLabel);
-        }
-
-        public bool ExportIsEnabled
-        {
-            get => _exportIsEnabled;
-            set => SetProperty(ref _exportIsEnabled, value, () => ExportIsEnabled);
-        }
-
-        public string CompStat_Img_PU
-        {
-            get => _compStat_Img_PU;
-            set => SetProperty(ref _compStat_Img_PU, value, () => CompStat_Img_PU);
-        }
-
-        public string CompStat_Img_BoundaryLengths
-        {
-            get => _compStat_Img_BoundaryLengths;
-            set => SetProperty(ref _compStat_Img_BoundaryLengths, value, () => CompStat_Img_BoundaryLengths);
-        }
-
-        public ProgressManager PM
-        {
-            get => _pm;
-            set => SetProperty(ref _pm, value, () => PM);
-        }
+        #endregion
 
         #endregion
 
         #region COMMANDS
 
+        public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
+        {
+            PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+        }, () => true));
+
         public ICommand CmdExport => _cmdExport ?? (_cmdExport = new RelayCommand(async () =>
         {
             // Operation Status indicators
-            OperationStatus_Img_Visibility = Visibility.Visible;
-            OperationStatus_Txt_Label = "Processing...";
+            _operationIsUnderway = true;
+            Export_Cmd_IsEnabled = false;
+            OpStat_Img_Visibility = Visibility.Visible;
+            OpStat_Txt_Label = "Processing...";
 
             // Start the operation
             using (_cts = new CancellationTokenSource())
@@ -171,15 +216,12 @@ namespace NCC.PRZTools
             _cts = null;
 
             // Idle indicators
-            OperationStatus_Img_Visibility = Visibility.Hidden;
-            OperationStatus_Txt_Label = "Idle...";
+            Export_Cmd_IsEnabled = _pu_exists && _blt_exists;
+            OpStat_Img_Visibility = Visibility.Hidden;
+            OpStat_Txt_Label = "Idle...";
+            _operationIsUnderway = false;
 
-        }, () => true));
-
-        public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
-        {
-            PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
-        }, () => true));
+        }, () => true, true, false));
 
         public ICommand CmdCancel => _cmdCancel ?? (_cmdCancel = new RelayCommand(() =>
         {
@@ -201,8 +243,14 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Clear the Progress Bar
+                // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+
+                // Hide the Operation Status image
+                OpStat_Img_Visibility = Visibility.Hidden;
+
+                // Set the Operation Status label
+                OpStat_Txt_Label = "Idle...";
 
                 // Spatial Format Radio Buttons
                 string spatial_format = Properties.Settings.Default.WTW_SPATIAL_FORMAT;
@@ -1711,63 +1759,63 @@ namespace NCC.PRZTools
                 // Establish Geodatabase Object Existence:
                 // 1. Planning Unit Dataset
                 var try_exists = await PRZH.PUExists();
-                bool pu_exists = try_exists.exists;
+                _pu_exists = try_exists.exists;
 
                 // 2. Boundary Lengths Table
-                bool blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+                _blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
                 // Configure Labels:
                 // 1. Planning Unit Dataset Label
-                if (!pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                if (!_pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset does not exist.  Build it.";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.  Build it.";
                 }
                 else if (try_exists.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset exists (Feature Class).";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Feature Class).";
                 }
                 else if (try_exists.puLayerType == PlanningUnitLayerType.RASTER)
                 {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset exists (Raster Dataset).";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Raster Dataset).";
                 }
                 else
                 {
-                    Txt_PlanningUnitLabel = "Planning Unit Dataset does not exist.  Build it.";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.  Build it.";
                 }
 
                 // 2. Boundary Lengths Table Label
-                if (blt_exists)
+                if (_blt_exists)
                 {
-                    Txt_BoundaryLengthsLabel = "Boundary Lengths Table exists.";
+                    CompStat_Txt_BoundaryLengths_Label = "Boundary Lengths Table exists.";
                 }
                 else
                 {
-                    Txt_BoundaryLengthsLabel = "Boundary Lengths Table does not exist.  Build it.";
+                    CompStat_Txt_BoundaryLengths_Label = "Boundary Lengths Table does not exist.  Build it.";
                 }
 
                 // Configure Images:
                 // 1. Planning Units
-                if (pu_exists)
+                if (_pu_exists)
                 {
-                    CompStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
-                    CompStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
                 // 2. Boundary Lengths Table
-                if (blt_exists)
+                if (_blt_exists)
                 {
-                    CompStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                    CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
-                    CompStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                    CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
                 // Enable/Disable Export Button as required
-                ExportIsEnabled = pu_exists && blt_exists;
+                Export_Cmd_IsEnabled = _pu_exists && _blt_exists;
             }
             catch (Exception ex)
             {

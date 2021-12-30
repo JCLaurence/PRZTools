@@ -17,7 +17,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                #region Project Workspace and Planning Unit Check
+                #region VALIDATE PROJECT WORKSPACE AND CONTENTS
 
                 // Verify that the Project Folder exists
                 if (!PRZH.FolderExists_Project().exists)
@@ -34,17 +34,9 @@ namespace NCC.PRZTools
                     return;
                 }
 
-                // Check for presence of Planning Unit data
-                var try_puexists = await PRZH.PUExists();
-                if (!try_puexists.exists)
-                {
-                    ProMsgBox.Show("Planning Unit Feature Class or Raster Dataset not found in the project geodatabase.");
-                    return;
-                }
-
                 #endregion
 
-                #region Configure and Show the Boundary Length Dialog
+                #region SHOW DIALOG
 
                 BoundaryLengths dlg = new BoundaryLengths();                    // View
                 BoundaryLengthsVM vm = (BoundaryLengthsVM)dlg.DataContext;      // View Model
@@ -55,7 +47,11 @@ namespace NCC.PRZTools
                 dlg.Closing += (o, e) =>
                 {
                     // Event handler for Dialog closing event
-                    //ProMsgBox.Show("Closing...");
+                    if (vm.OperationIsUnderway)
+                    {
+                        ProMsgBox.Show("Operation is underway.  Please cancel the operation before closing this window.");
+                        e.Cancel = true;
+                    }
                 };
 
                 // Closed Event Handler
@@ -75,7 +71,7 @@ namespace NCC.PRZTools
                     }
                 };
 
-                var result2 = dlg.ShowDialog();
+                var result = dlg.ShowDialog();
 
                 // Take whatever action required here once the dialog is close (true or false)
                 // do stuff here!

@@ -50,6 +50,12 @@
                     LastChildFill="False"
                     Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
 
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockH5}"
+                        Text="Component Status" />
+
                     <DockPanel
                         DockPanel.Dock="Top">
 
@@ -114,7 +120,7 @@
                             Source="pack://application:,,,/PRZTools;component/ImagesWPF/BexDog16.png"
                             Visibility="{Binding OpStat_Img_Visibility}" >
 
-                            <Image.ToolTip>Operation is Underway!!!</Image.ToolTip>
+                            <Image.ToolTip>Operation is underway!!!</Image.ToolTip>
 
                         </Image>
 
@@ -174,7 +180,6 @@
                         Margin="5" 
                         Padding="5,0"
                         Style="{DynamicResource Esri_Button}"
-                        IsEnabled="True"
                         Command="{Binding CmdCancel}"
                         Content="CANCEL" />
 
