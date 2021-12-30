@@ -57,13 +57,30 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
-                            Source="{Binding IndicatorImagePath}"/>
+                            Source="{Binding CompStat_Img_PlanningUnits_Path}"/>
 
                         <TextBlock
                             DockPanel.Dock="Left"
                             Margin="5"
                             Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="{Binding BoundaryLengthsTableLabel}" />
+                            Text="{Binding CompStat_Txt_PlanningUnits_Label}" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Img_BoundaryLengths_Path}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding CompStat_Txt_BoundaryLengths_Label}" />
 
                     </DockPanel>
                 </DockPanel>
@@ -88,14 +105,14 @@
                             DockPanel.Dock="Left"
                             Margin="5"  
                             Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="{Binding OperationStatus_Txt_Label}" />
+                            Text="{Binding OpStat_Txt_Label}" />
 
                         <Image
                             DockPanel.Dock="Left"
                             Margin="6, 3"
                             Stretch="None"
                             Source="pack://application:,,,/PRZTools;component/ImagesWPF/BexDog16.png"
-                            Visibility="{Binding OperationStatus_Img_Visibility}" >
+                            Visibility="{Binding OpStat_Img_Visibility}" >
 
                             <Image.ToolTip>Operation is Underway!!!</Image.ToolTip>
 
@@ -148,8 +165,8 @@
                         Height="25"
                         Padding="5,0"
                         Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True" 
                         Command="{Binding CmdBuildBoundaryTable}"
+                        IsEnabled="{Binding Generate_Cmd_IsEnabled}"
                         Content="GENERATE BOUNDARY LENGTHS TABLE" />
 
                     <Button 

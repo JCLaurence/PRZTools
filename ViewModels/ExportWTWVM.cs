@@ -49,9 +49,6 @@ namespace NCC.PRZTools
 
         private CancellationTokenSource _cts = null;
 
-        private bool _boundaryTableExists = false;
-        private bool _puDataExists = false;
-
         private bool _settings_Rad_SpatialFormat_Vector_IsChecked;
         private bool _settings_Rad_SpatialFormat_Raster_IsChecked;
 
@@ -103,6 +100,7 @@ namespace NCC.PRZTools
                 }
             }
         }
+
         public bool Settings_Rad_SpatialFormat_Raster_IsChecked
         {
             get => _settings_Rad_SpatialFormat_Raster_IsChecked;
@@ -1713,32 +1711,32 @@ namespace NCC.PRZTools
                 // Establish Geodatabase Object Existence:
                 // 1. Planning Unit Dataset
                 var try_exists = await PRZH.PUExists();
-                _puDataExists = try_exists.exists;
+                bool pu_exists = try_exists.exists;
 
                 // 2. Boundary Lengths Table
-                _boundaryTableExists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
+                bool blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
                 // Configure Labels:
                 // 1. Planning Unit Dataset Label
-                if (!_puDataExists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                if (!pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
-                    Txt_PlanningUnitLabel = "Planning Units do not exist.  Build them.";
+                    Txt_PlanningUnitLabel = "Planning Unit Dataset does not exist.  Build it.";
                 }
                 else if (try_exists.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
-                    Txt_PlanningUnitLabel = "Planning Units exist (Feature Class).";
+                    Txt_PlanningUnitLabel = "Planning Unit Dataset exists (Feature Class).";
                 }
                 else if (try_exists.puLayerType == PlanningUnitLayerType.RASTER)
                 {
-                    Txt_PlanningUnitLabel = "Planning Units exist (Raster Dataset).";
+                    Txt_PlanningUnitLabel = "Planning Unit Dataset exists (Raster Dataset).";
                 }
                 else
                 {
-                    Txt_PlanningUnitLabel = "Planning Units do not exist.  Build them.";
+                    Txt_PlanningUnitLabel = "Planning Unit Dataset does not exist.  Build it.";
                 }
 
                 // 2. Boundary Lengths Table Label
-                if (_boundaryTableExists)
+                if (blt_exists)
                 {
                     Txt_BoundaryLengthsLabel = "Boundary Lengths Table exists.";
                 }
@@ -1749,7 +1747,7 @@ namespace NCC.PRZTools
 
                 // Configure Images:
                 // 1. Planning Units
-                if (_puDataExists)
+                if (pu_exists)
                 {
                     CompStat_Img_PU = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
@@ -1759,7 +1757,7 @@ namespace NCC.PRZTools
                 }
 
                 // 2. Boundary Lengths Table
-                if (_boundaryTableExists)
+                if (blt_exists)
                 {
                     CompStat_Img_BoundaryLengths = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
@@ -1769,7 +1767,7 @@ namespace NCC.PRZTools
                 }
 
                 // Enable/Disable Export Button as required
-                ExportIsEnabled = _puDataExists && _boundaryTableExists;
+                ExportIsEnabled = pu_exists && blt_exists;
             }
             catch (Exception ex)
             {
@@ -1780,120 +1778,3 @@ namespace NCC.PRZTools
         #endregion
     }
 }
-
-
-//PRZH.UpdateProgress(PM, PRZH.WriteLog($"Export Format: Raster"), true, ++val);
-
-//if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-//{
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Existing Format: Feature (conversion required)"), true, ++val);
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature to Raster conversion is not allowed yet.", LogMessageType.VALIDATION_ERROR), true, ++val);
-//    ProMsgBox.Show("Feature to Raster conversion is not allowed yet.");
-//    return false;
-//}
-//else
-//{
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Existing Format: Raster"), true, ++val);
-
-//    // Filenames and Paths
-//    string source_raster_path = PRZH.GetPath_Raster_PU();
-//    string temp_raster_file = "export_temp.tif";
-//    string output_raster_file = PRZC.c_FILE_WTW_EXPORT_SPATIAL + ".tif";
-//    string temp_raster_path = Path.Combine(export_folder_path, temp_raster_file);
-//    string output_raster_path = Path.Combine(export_folder_path, output_raster_file);
-
-//    // Confirm that raster is present
-//    if (!await PRZH.RasterExists_PU())
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster not found.", LogMessageType.ERROR), true, ++val);
-//        ProMsgBox.Show($"{PRZC.c_RAS_PLANNING_UNITS} raster not found.");
-//        return false;
-//    }
-//    else
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster found."), true, ++val);
-//    }
-
-//    // Copy raster to temp raster
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying {PRZC.c_RAS_PLANNING_UNITS} raster dataset..."), true, ++val);
-//    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, temp_raster_path, "", "", "", "", "", "32_BIT_UNSIGNED", "", "", "", "", "", "");
-//    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-//    toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags);
-//    if (toolOutput == null)
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-//        ProMsgBox.Show($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
-//        return false;
-//    }
-//    else
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_PLANNING_UNITS} raster dataset copied successfully..."), true, ++val);
-//    }
-
-//    // Project temp raster to final raster
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting raster dataset to Web Mercator..."), true, ++val);
-//    toolParams = Geoprocessing.MakeValueArray(temp_raster_path, output_raster_path, Export_SR, "NEAREST", cell_size, "", "", "", "");
-//    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path, overwriteoutput: true);
-//    toolOutput = await PRZH.RunGPTool("ProjectRaster_management", toolParams, toolEnvs, toolFlags);
-//    if (toolOutput == null)
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error projecting the raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-//        ProMsgBox.Show($"Error projecting the raster dataset.");
-//        return false;
-//    }
-//    else
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster dataset projected successfully..."), true, ++val);
-//    }
-
-//    // Delete the temp raster
-//    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp raster dataset..."), true, ++val);
-//    toolParams = Geoprocessing.MakeValueArray(temp_raster_path, "");
-//    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-//    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
-//    if (toolOutput == null)
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-//        ProMsgBox.Show($"Error deleting temp raster.");
-//        return false;
-//    }
-//    else
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp raster deleted."), true, ++val);
-//    }
-
-//    // Delete the final raster attribute table (if it exists)
-//    if (await QueuedTask.Run(async () =>
-//    {
-//        try
-//        {
-//            using (RasterDataset rasterDataset = await PRZH.GetRaster_PU())
-//            using (Raster raster = rasterDataset.CreateFullRaster())
-//            {
-//                var t = raster.GetAttributeTable();
-//                return t != null;
-//            }
-//        }
-//        catch (Exception ex)
-//        {
-//            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-//            return false;
-//        }
-//    }))
-//    {
-//        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting raster attribute table..."), true, ++val);
-//        toolParams = Geoprocessing.MakeValueArray(output_raster_path);
-//        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-//        toolOutput = await PRZH.RunGPTool("DeleteRasterAttributeTable_management", toolParams, toolEnvs, toolFlags);
-//        if (toolOutput == null)
-//        {
-//            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-//            ProMsgBox.Show($"Error deleting raster attribute table.");
-//            return false;
-//        }
-//        else
-//        {
-//            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster attribute table deleted."), true, ++val);
-//        }
-//    }
-//}
