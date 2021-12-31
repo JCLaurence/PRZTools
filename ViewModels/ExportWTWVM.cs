@@ -1749,7 +1749,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public async Task ValidateControls()
+        private async Task ValidateControls()
         {
             try
             {

@@ -16,7 +16,7 @@ namespace NCC.PRZTools
         {
             try
             {
-                #region Project Workspace Check
+                #region VALIDATE PROJECT WORKSPACE AND CONTENTS
 
                 // Verify that the Project Folder exists
                 if (!PRZH.FolderExists_Project().exists)
@@ -35,57 +35,43 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region MapView Check
-
-                // Ensure that there is an active MapView
-                var mapView = MapView.Active;
-                if (mapView == null)
-                {
-                    ProMsgBox.Show("Not sure how this is possible, but there is no active Map View.  Huh???");
-                    return;
-                }
-
-                // Ensure that MapView is ready to work with
-                if (!mapView.IsReady)
-                {
-                    ProMsgBox.Show("The Map View is not ready!  Try again later.");
-                    return;
-                }
-
-                // Ensure that the MapView is a regular 2D MapView
-                if (mapView.ViewingMode != MapViewingMode.Map)
-                {
-                    ProMsgBox.Show("The Map View must be a regular 2D Map View.  Please change the viewing mode to 2D.");
-                    return;
-                }
-
-                Map map = mapView.Map;
-                if (map.MapType != MapType.Map)
-                {
-                    ProMsgBox.Show("The Map must be of type 'Map'");
-                    return;
-                }                
-
-                #endregion
-
-                #region Configure and Show the Planning Units Dialog
+                #region SHOW DIALOG
 
                 PlanningUnits dlg = new PlanningUnits();                    // View
                 PlanningUnitsVM vm = (PlanningUnitsVM)dlg.DataContext;      // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 
+                // Closing event handler
+                dlg.Closing += (o, e) =>
+                {
+                    // Event handler for Dialog closing event
+                    if (vm.OperationIsUnderway)
+                    {
+                        ProMsgBox.Show("Operation is underway.  Please cancel the operation before closing this window.");
+                        e.Cancel = true;
+                    }
+                };
+
                 // Closed Event Handler
-                dlg.Closed += (sender, e) =>
+                dlg.Closed += (o, e) =>
                 {
                     // Event Handler for Dialog close in case I need to do things...
+                    // ProMsgBox.Show("Closed...");
                     // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
                 };
 
                 // Loaded Event Handler
-                dlg.Loaded += async (sender, e) => { if (vm != null) { await vm.OnProWinLoaded(); } };
+                dlg.Loaded += async (sender, e) =>
+                {
+                    if (vm != null)
+                    {
+                        await vm.OnProWinLoaded();
+                    }
+                };
 
                 var result = dlg.ShowDialog();
+
                 // Take whatever action required here once the dialog is closed (true or false)
                 // do stuff here!
 
@@ -96,6 +82,5 @@ namespace NCC.PRZTools
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
-
     }
 }

@@ -1,5 +1,4 @@
-﻿using ArcGIS.Core.CIM;
-using ArcGIS.Core.Data;
+﻿using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
@@ -7,21 +6,11 @@ using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
-using ArcGIS.Desktop.Framework.Controls;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
-using ArcGIS.Desktop.Layouts;
-using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -152,11 +141,6 @@ namespace NCC.PRZTools
 
         #region COMMANDS
 
-        public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
-        {
-            PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
-        }, () => true, true, false));
-
         public ICommand CmdBuildBoundaryTable => _cmdBuildBoundaryTable ?? (_cmdBuildBoundaryTable = new RelayCommand(async () =>
         {
             // Change UI to Underway
@@ -190,6 +174,11 @@ namespace NCC.PRZTools
             }
         }, () => _cts != null, true, false));
 
+        public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
+        {
+            PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+        }, () => true, true, false));
+
         #endregion
 
         #region METHODS
@@ -213,7 +202,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public async Task BuildBoundaryTable(CancellationToken token)
+        private async Task BuildBoundaryTable(CancellationToken token)
         {
             bool edits_are_disabled = !Project.Current.IsEditingEnabled;
             int val = 0;
@@ -242,8 +231,8 @@ namespace NCC.PRZTools
                 {
                     if (!await Project.Current.SetIsEditingEnabledAsync(true))
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enabled editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show("Unable to enabled editing for this ArcGIS Pro Project.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to enable editing for this ArcGIS Pro Project.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Unable to enable editing for this ArcGIS Pro Project.");
                         return;
                     }
                     else
@@ -265,7 +254,7 @@ namespace NCC.PRZTools
                 string toolOutput;
 
                 // Initialize ProgressBar and Progress Log
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Boundary Table generator..."), false, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Boundary Lengths Table Generator..."), false, max, ++val);
 
                 // Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
@@ -1047,13 +1036,13 @@ namespace NCC.PRZTools
             catch (OperationCanceledException)
             {
                 // Cancelled by user
-                ProMsgBox.Show($"Operation cancelled by user.");
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Operation cancelled by user.", LogMessageType.CANCELLATION), true, ++val);
+                ProMsgBox.Show($"Operation cancelled by user.");
             }
             catch (Exception ex)
             {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(ex.Message, LogMessageType.CANCELLATION), true, ++val);
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
             finally
             {
@@ -1066,7 +1055,7 @@ namespace NCC.PRZTools
             }
         }
 
-        public async Task ValidateControls()
+        private async Task ValidateControls()
         {
             try
             {
@@ -1146,7 +1135,7 @@ namespace NCC.PRZTools
         private void ResetOpUI()
         {
             ProWindowCursor = Cursors.Arrow;
-            Operation_Cmd_IsEnabled = _pu_exists;
+            Operation_Cmd_IsEnabled = true;
             OpStat_Img_Visibility = Visibility.Hidden;
             OpStat_Txt_Label = "Idle.";
             _operationIsUnderway = false;

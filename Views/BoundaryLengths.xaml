@@ -16,6 +16,7 @@
     ResizeMode="CanResize"
     Cursor="{Binding ProWindowCursor}"
     >
+    
     <controls:ProWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

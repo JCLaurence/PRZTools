@@ -83,6 +83,5 @@ namespace NCC.PRZTools
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
-
     }
 }

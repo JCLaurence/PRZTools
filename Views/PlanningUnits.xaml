@@ -8,11 +8,13 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="PLANNING UNIT GENERATOR"
+    Title="Planning Unit Dataset Generator"
     Height="650" Width="600" MinHeight="650" MinWidth="600"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/PlanningUnits32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
+    ResizeMode="CanResize"
+    Cursor="{Binding ProWindowCursor}"
     >
     
     <controls:ProWindow.Resources>
@@ -37,13 +39,51 @@
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
                 <RowDefinition Height="*"></RowDefinition>
                 <RowDefinition Height="Auto"></RowDefinition>
             </Grid.RowDefinitions>
-        
+
             <!--Inner Border #1-->
-            <Border 
+            <Border
                 Grid.Row="0"
+                Margin="0,0,0,5"
+                BorderThickness="1.5"
+                BorderBrush="{DynamicResource Esri_BorderBrush}">
+
+                <DockPanel 
+                    Margin="0" 
+                    LastChildFill="False"
+                    Background="{DynamicResource Esri_DialogClientAreaBackgroundBrush}">
+
+                    <TextBlock
+                        DockPanel.Dock="Top"
+                        Margin="5"
+                        Style="{DynamicResource Esri_TextBlockH4}"
+                        Text="Component Status" />
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Img_PlanningUnits_Path}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding CompStat_Txt_PlanningUnits_Label}" />
+
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+
+            <!--Inner Border #2-->
+            <Border 
+                Grid.Row="1"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -248,9 +288,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #2-->
+            <!--Inner Border #3-->
             <Border 
-                Grid.Row="1"
+                Grid.Row="2"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -359,9 +399,9 @@
                 </DockPanel>
             </Border>
             
-            <!--- Inner Border #3-->
+            <!--- Inner Border #4-->
             <Border 
-                Grid.Row="2"
+                Grid.Row="3"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
@@ -410,9 +450,9 @@
                 </DockPanel>
             </Border>
             
-            <!--Inner Border #4-->
+            <!--Inner Border #5-->
             <Border 
-                Grid.Row="3"
+                Grid.Row="4"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}"
@@ -528,9 +568,10 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #5-->
+            <!--Inner Border #6-->
             <Border 
-                Grid.Row="4"
+                Grid.Row="5"
+                Margin="0,0,0,5"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
@@ -546,7 +587,18 @@
                             DockPanel.Dock="Left" 
                             Margin="5" 
                             Style="{DynamicResource Esri_TextBlockH4}"
-                            Text="Generator Log" />
+                            Text="{Binding OpStat_Txt_Label}" />
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="6, 3"
+                            Stretch="None"
+                            Source="pack://application:,,,/PRZTools;component/ImagesWPF/MarsCat16.png"
+                            Visibility="{Binding OpStat_Img_Visibility}" >
+
+                            <Image.ToolTip>Operation is underway!!!</Image.ToolTip>
+
+                        </Image>
 
                         <Button 
                             DockPanel.Dock="Right"
@@ -580,11 +632,9 @@
                 </DockPanel>
             </Border>
 
-            <!--Inner Border #6-->
-
+            <!--Inner Border #7-->
             <Border 
-                Grid.Row="5" 
-                Margin="0,0,0,5"
+                Grid.Row="6"
                 BorderThickness="1.5"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
@@ -596,29 +646,19 @@
                         DockPanel.Dock="Left"
                         Margin="5" 
                         Height="25"
-                        Padding="5,0,5,0"
+                        Padding="5,0"
                         Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="True" 
                         Command="{Binding CmdGeneratePlanningUnits}"
-                        Content="GENERATE PLANNING UNITS" />
+                        IsEnabled="{Binding Operation_Cmd_IsEnabled}"
+                        Content="GENERATE PLANNING UNIT DATASET" />
 
                     <Button 
                         DockPanel.Dock="Right"
                         Margin="5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Visibility="Hidden"
-                        Content="---" />
-
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5,5,0,5" 
-                        Padding="5,0,5,0"
-                        Style="{DynamicResource Esri_Button}"   
-                        IsEnabled="False"
-                        Visibility="Hidden"
-                        Content="---" />
+                        Padding="5,0"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdCancel}"
+                        Content="CANCEL" />
 
                 </DockPanel>
             </Border>
