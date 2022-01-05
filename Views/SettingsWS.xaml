@@ -13,6 +13,8 @@
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/WorkspaceSettings32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"
     ShowMinButton="True" ShowMaxRestoreButton="True" ShowCloseButton="True" ShowTitleBar="True"
+    ResizeMode="CanResize"
+    Cursor="{Binding ProWindowCursor}"
     >
     <controls:ProWindow.Resources>
         <ResourceDictionary>
@@ -52,7 +54,7 @@
                     <TextBlock
                         DockPanel.Dock="Top"
                         Margin="5" 
-                        Style="{DynamicResource Esri_TextBlockH3}"
+                        Style="{DynamicResource Esri_TextBlockH4}"
                         Text="Project Settings" />
 
                     <DockPanel
@@ -62,7 +64,7 @@
                         <Button 
                             DockPanel.Dock="Left"
                             Margin="0,0,0,5"
-                            Command="{Binding CmdSelectFolder}">
+                            Command="{Binding CmdSelectProjectFolder}">
 
                             <StackPanel
                                 Orientation="Horizontal">
@@ -170,6 +172,39 @@
                         <Button 
                             DockPanel.Dock="Left"
                             Margin="0,0,0,5"
+                            Command="{Binding CmdSelectRegionalFolder}">
+
+                            <StackPanel
+                                Orientation="Horizontal">
+
+                                <TextBlock
+                                    Margin="5"
+                                    Text="Regional Data Folder" />
+
+                                <Image
+                                    Margin="5,0"
+                                    Source="pack://application:,,,/PRZTools;component/ImagesWPF/FolderGrey16.png"
+                                    Stretch="None" />
+
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock
+                            Margin="5"
+                            VerticalAlignment="Center"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Foreground="{DynamicResource Esri_TextSelectionHighlightBrush}"
+                            Text="{Binding PrjSettings_Txt_RegionalFolderPath}" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top"
+                        LastChildFill="True">
+
+                        <Button 
+                            DockPanel.Dock="Left"
+                            Margin="0,0,0,5"
                             Command="{Binding CmdViewLogFile}">
 
                             <StackPanel
@@ -224,6 +259,7 @@
                 Grid.Row="1" 
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
+                Visibility="Collapsed"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
@@ -271,6 +307,7 @@
                 Grid.Row="2" 
                 Margin="0"
                 BorderThickness="1.5"
+                Visibility="Collapsed"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel
@@ -333,7 +370,7 @@
                     <Button
                         Margin="5" 
                         Height="25"
-                        Padding="5,0,5,0" 
+                        Padding="5,0"
                         DockPanel.Dock="Left"
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdResetWorkspace}"
@@ -342,11 +379,20 @@
                     <Button
                         Margin="5" 
                         Height="25"
-                        Padding="5,0,5,0" 
+                        Padding="5,0" 
                         DockPanel.Dock="Left"
                         Style="{DynamicResource Esri_Button}"
                         Command="{Binding CmdExploreWorkspace}"
                         Content="EXPLORE" />
+
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Margin="5" 
+                        Padding="5,0"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdTest}"
+                        Content="layer test" />
+
                 </DockPanel>
             </Border>
         </Grid>

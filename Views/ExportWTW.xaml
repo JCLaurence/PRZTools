@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:extensions="clr-namespace:ArcGIS.Desktop.Extensions;assembly=ArcGIS.Desktop.Extensions"
     mc:Ignorable="d"
-    Title="Export Project To 'Where to Work' Application" 
+    Title="Export Project Data To 'Where to Work' Format" 
     Height="500" Width="500" MinHeight="500" MinWidth="500"
     Icon="pack://application:,,,/PRZTools;component/ImagesWPF/ExportToWTW32.png" ShowIconOnTitleBar="True"
     WindowStartupLocation="CenterOwner"

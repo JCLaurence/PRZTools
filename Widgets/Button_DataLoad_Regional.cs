@@ -11,9 +11,8 @@ using PRZH = NCC.PRZTools.PRZHelper;
 
 namespace NCC.PRZTools
 {
-    internal class Button_BoundaryLengths : Button
+    internal class Button_DataLoad_Regional : Button
     {
-
         protected override async void OnClick()
         {
             try

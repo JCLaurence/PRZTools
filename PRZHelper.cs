@@ -312,6 +312,57 @@ namespace NCC.PRZTools
             }
         }
 
+        // Regional Data Folder
+        public static string GetPath_RegionalDataFolder()
+        {
+            try
+            {
+                return Properties.Settings.Default.REGIONAL_FOLDER_PATH;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
+        // Regional Data Subfolder
+        public static string GetPath_RegionalDataSubfolder(RegionalDataSubfolder subfolder)
+        {
+            try
+            {
+                // Get the folder path
+                string regpath = GetPath_RegionalDataFolder();
+                string subpath = "";
+
+                switch (subfolder)
+                {
+                    case RegionalDataSubfolder.GOALS:
+                        subpath = PRZC.c_DIR_REGDATA_GOALS;
+                        break;
+
+                    case RegionalDataSubfolder.WEIGHTS:
+                        subpath = PRZC.c_DIR_REGDATA_WEIGHTS;
+                        break;
+
+                    case RegionalDataSubfolder.INCLUDES:
+                        subpath = PRZC.c_DIR_REGDATA_INCLUDES;
+                        break;
+                    case RegionalDataSubfolder.EXCLUDES:
+                        subpath = PRZC.c_DIR_REGDATA_EXCLUDES;
+                        break;
+                }
+
+                return Path.Combine(regpath, subpath);
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return null;
+            }
+        }
+
 
         #endregion
 
@@ -418,6 +469,46 @@ namespace NCC.PRZTools
                 return (false, ex.Message);
             }
         }
+
+        /// <summary>
+        /// Establish the existence of the regional data folder.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static (bool exists, string message) FolderExists_RegionalData()
+        {
+            try
+            {
+                string path = GetPath_RegionalDataFolder();
+                bool exists = Directory.Exists(path);
+
+                return (exists, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Establish the existence of the specified regional data subfolder.  Silent errors.
+        /// </summary>
+        /// <param name="subfolder"></param>
+        /// <returns></returns>
+        public static (bool exists, string message) FolderExists_RegionalDataSubfolder(RegionalDataSubfolder subfolder)
+        {
+            try
+            {
+                string path = GetPath_RegionalDataSubfolder(subfolder);
+                bool exists = Directory.Exists(path);
+
+                return (exists, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
 
         /// <summary>
         /// Establish the existence of the export where-to-work tool folder.  Silent errors.

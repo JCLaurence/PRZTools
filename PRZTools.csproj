@@ -184,6 +184,8 @@
     <Compile Include="Views\RasterToTable.xaml.cs">
       <DependentUpon>RasterToTable.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Widgets\Button_DataLoad_National.cs" />
+    <Compile Include="Widgets\Button_DataLoad_Regional.cs" />
     <Compile Include="Widgets\Button_Export_WTW.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Boundary.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
@@ -564,6 +566,18 @@
     <Resource Include="ImagesWPF\MarsCat16.png" />
     <Resource Include="ImagesWPF\Rabbit16.png" />
     <Resource Include="ImagesWPF\T-Rex16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\NationalData32.png" />
+    <AddInContent Include="DarkImages\RegionalData32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\NationalData32.png" />
+    <AddInContent Include="Images\RegionalData32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\NationalData32.png" />
+    <Resource Include="ImagesWPF\RegionalData32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

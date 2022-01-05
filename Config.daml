@@ -1,9 +1,10 @@
 ﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.5" desktopVersion="2.9">
+  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.6" desktopVersion="2.9">
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset
     - National GDB supports file and enterprise gdb
     - Legends functionality
+    - Cancellation functionality
     </Description>
     <Image>Images\PRZTools32B.png</Image>
     <Author>JC Laurence</Author>
@@ -40,12 +41,10 @@
         <group id="prz_group_assembly" caption="Project Assembly" keytip="z">
           <!--Planning Unit Generator Dialog Button-->
           <button refID="prz_button_planningunits" size="large" />
-          <!--Planning Unit Selection Rules Dialog Button-->
-          <button refID="prz_button_selectionrules" size="large" />
-          <!--Planning Unit Cost Dialog Button-->
-          <button refID="prz_button_pucost" size="large" />
-          <!--Conservation Feature Generator Dialog Button-->
-          <button refID="prz_button_features" size="large" />
+          <!--National Data Load Button-->
+          <button refID="prz_button_dataload_national" size="large"/>          
+          <!--Regional Data Load Button-->
+          <button refID="prz_button_dataload_regional" size="large"/>
           <!--Planning Unit Boundary Lengths Generator Dialog Button-->
           <button refID="prz_button_boundarylengths" size="large" />
         </group>
@@ -85,29 +84,22 @@
               Active Pane must be a Map
             </disabledText></tooltip>
         </button>
-        <!--Planning Unit Selection Rules Dialog Button-->
-        <button id="prz_button_selectionrules" caption="Selection Rules" className="Button_SelectionRules" keytip="z" loadOnClick="true" smallImage="Images\PUStatus16.png" largeImage="Images\PUStatus32.png" condition="prz_disabled_buttons">
-          <tooltip heading="Planning Unit Selection Rule Generator">
-            Update your planning unit selection rules using various input layers.
+        <!--National Data Loader-->
+        <button id="prz_button_dataload_national" caption="National Data Load" className="Button_DataLoad_National" keytip="z" loadOnClick="true" largeImage="Images\NationalData32.png" condition="prz_disabled_buttons">
+          <tooltip heading="Load National Data into this project">
+            Load any applicable conservation elements into this project's planning units, from the national database.
             <disabledText>
-              Code in development
-            </disabledText></tooltip>
-        </button>
-        <!--Planning Unit Cost Calculator Dialog Button-->
-        <button id="prz_button_pucost" caption="Planning Unit Cost" className="Button_PUCost" keytip="z" loadOnClick="true" smallImage="Images\PUCost16.png" largeImage="Images\PUCost32.png" condition="prz_disabled_buttons">
-          <tooltip heading="Planning Unit Cost Calculator">
-            Update your planning unit costs using various input layers.
+              In Development.
+            </disabledText>
+          </tooltip>
+        </button>        
+        <!--Regional Data Loader-->
+        <button id="prz_button_dataload_regional" caption="Regional Data Load" className="Button_DataLoad_Regional" keytip="z" loadOnClick="true" largeImage="Images\RegionalData32.png" condition="esri_mapping_mapPane">
+          <tooltip heading="Load Regional Data into this project">
+            Load any applicable conservation elements into this project's planning units, from the regional database.
             <disabledText>
-              Code in development
-            </disabledText></tooltip>
-        </button>
-        <!--Conservation Feature Generator Dialog Button-->
-        <button id="prz_button_features" caption="Conservation Features" className="Button_Features" keytip="z" loadOnClick="true" smallImage="Images\ConservationFeatures16.png" largeImage="Images\ConservationFeatures32.png" condition="prz_disabled_buttons">
-          <tooltip heading="Conservation Features">
-            Build a conservation feature table and a PU v CF table, based on your planning units and conservation feature layers
-            <disabledText>
-              Code in development
-            </disabledText></tooltip>
+            </disabledText>
+          </tooltip>
         </button>
         <!--Boundary Length Calculator Dialog Button-->
         <button id="prz_button_boundarylengths" caption="Boundary Lengths" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png">

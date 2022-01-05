@@ -1,4 +1,5 @@
-﻿using ArcGIS.Core.Data;
+﻿using ArcGIS.Core.CIM;
+using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Desktop.Catalog;
@@ -8,6 +9,7 @@ using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Controls;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,7 +35,7 @@ namespace NCC.PRZTools
         #region FIELDS
 
         // Commands
-        private ICommand _cmdSelectFolder;
+        private ICommand _cmdSelectProjectFolder;
         private ICommand _cmdSelectNationalDb;
         private ICommand _cmdValidateNationalDb;
         private ICommand _cmdInitializeWorkspace;
@@ -41,9 +43,12 @@ namespace NCC.PRZTools
         private ICommand _cmdExploreWorkspace;
         private ICommand _cmdViewLogFile;
         private ICommand _cmdClearLogFile;
+        private ICommand _cmdTest;
+        private ICommand _cmdSelectRegionalFolder;
 
         // Other Fields
         private string _prjSettings_Txt_ProjectFolderPath;
+        private string _prjSettings_Txt_RegionalFolderPath;
         private string _prjSettings_Txt_NationalDbPath;
         private bool _prjSettings_Rad_WSViewer_Dir_IsChecked;
         private bool _prjSettings_Rad_WSViewer_Gdb_IsChecked;
@@ -53,6 +58,7 @@ namespace NCC.PRZTools
         private string _natDbInfo_Txt_DbName;
         private List<string> _natDbInfo_Cmb_SchemaNames;
         private string _natDbInfo_Cmb_SelectedSchemaName;
+        private Cursor _proWindowCursor;
 
         private string _natDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
 
@@ -101,6 +107,11 @@ namespace NCC.PRZTools
             }
         }
 
+        public Cursor ProWindowCursor
+        {
+            get => _proWindowCursor;
+            set => SetProperty(ref _proWindowCursor, value, () => ProWindowCursor);
+        }
 
         public string PrjSettings_Txt_ProjectFolderPath
         {
@@ -109,6 +120,17 @@ namespace NCC.PRZTools
             {
                 SetProperty(ref _prjSettings_Txt_ProjectFolderPath, value, () => PrjSettings_Txt_ProjectFolderPath);
                 Properties.Settings.Default.WORKSPACE_PATH = value;
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        public string PrjSettings_Txt_RegionalFolderPath
+        {
+            get => _prjSettings_Txt_RegionalFolderPath;
+            set
+            {
+                SetProperty(ref _prjSettings_Txt_RegionalFolderPath, value, () => PrjSettings_Txt_RegionalFolderPath);
+                Properties.Settings.Default.REGIONAL_FOLDER_PATH = value;
                 Properties.Settings.Default.Save();
             }
         }
@@ -168,9 +190,11 @@ namespace NCC.PRZTools
 
         public ICommand CmdClearLogFile => _cmdClearLogFile ?? (_cmdClearLogFile = new RelayCommand(() => ClearLogFile(), () => true));
 
-        public ICommand CmdSelectFolder => _cmdSelectFolder ?? (_cmdSelectFolder = new RelayCommand(() => SelectFolder(), () => true));
+        public ICommand CmdSelectProjectFolder => _cmdSelectProjectFolder ?? (_cmdSelectProjectFolder = new RelayCommand(() => SelectProjectFolder(), () => true));
 
         public ICommand CmdSelectNationalDb => _cmdSelectNationalDb ?? (_cmdSelectNationalDb = new RelayCommand(() => SelectNationalDb(), () => true));
+
+        public ICommand CmdSelectRegionalFolder => _cmdSelectRegionalFolder ?? (_cmdSelectRegionalFolder = new RelayCommand(() => SelectRegionalFolder(), () => true));
 
         public ICommand CmdValidateNationalDb => _cmdValidateNationalDb ?? (_cmdValidateNationalDb = new RelayCommand(() => ValidateNationalDb(), () => true));
 
@@ -179,6 +203,8 @@ namespace NCC.PRZTools
         public ICommand CmdResetWorkspace => _cmdResetWorkspace ?? (_cmdResetWorkspace = new RelayCommand(async () => await ResetWorkspace(), () => true));
 
         public ICommand CmdExploreWorkspace => _cmdExploreWorkspace ?? (_cmdExploreWorkspace = new RelayCommand(() => ExploreWorkspace(), () => true));
+
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
 
         #endregion
 
@@ -199,6 +225,17 @@ namespace NCC.PRZTools
                     PrjSettings_Txt_ProjectFolderPath = wspath;
                 }
 
+                // Regional Data Folder Folder
+                string regpath = Properties.Settings.Default.REGIONAL_FOLDER_PATH;
+                if (string.IsNullOrEmpty(regpath) || string.IsNullOrWhiteSpace(regpath))
+                {
+                    PrjSettings_Txt_RegionalFolderPath = "";
+                }
+                else
+                {
+                    PrjSettings_Txt_RegionalFolderPath = regpath;
+                }
+
                 // National DB
                 string natpath = Properties.Settings.Default.NATDB_DBPATH;
                 if (string.IsNullOrEmpty(natpath) || string.IsNullOrWhiteSpace(natpath))
@@ -208,18 +245,6 @@ namespace NCC.PRZTools
                 else
                 {
                     PrjSettings_Txt_NationalDbPath = natpath;
-                }
-
-                // Validate National Db
-                var tryvalidate = await ValidateNationalDb();
-
-                if (tryvalidate.success && tryvalidate.valid)
-                {
-                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
                 // Workspace Viewer
@@ -238,11 +263,28 @@ namespace NCC.PRZTools
                 }
 
 
+                // Validate National Db
+                ProWindowCursor = Cursors.Wait;
+                var tryvalidate = await ValidateNationalDb();
+                ProWindowCursor = Cursors.Arrow;
+
+                if (tryvalidate.success && tryvalidate.valid)
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                }
 
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+            finally
+            {
+                ProWindowCursor = Cursors.Arrow;
             }
         }
 
@@ -456,7 +498,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private void SelectFolder()
+        private void SelectProjectFolder()
         {
             try
             {
@@ -497,6 +539,60 @@ namespace NCC.PRZTools
                 }
 
                 PrjSettings_Txt_ProjectFolderPath = item.Path;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+        }
+
+        private void SelectRegionalFolder()
+        {
+            try
+            {
+                string initDir = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                if (Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
+                {
+                    DirectoryInfo di = new DirectoryInfo(PrjSettings_Txt_ProjectFolderPath);
+                    DirectoryInfo dip = di.Parent;
+
+                    if (dip != null)
+                    {
+                        initDir = dip.FullName;
+                    }
+                }
+
+                OpenItemDialog dlg = new OpenItemDialog
+                {
+                    Title = "Specify a Regional Data Folder",
+                    InitialLocation = initDir,
+                    MultiSelect = false,
+                    AlwaysUseInitialLocation = true,
+                    Filter = ItemFilters.folders
+                };
+
+                bool? result = dlg.ShowDialog();
+
+                // stop if user didn't specify anything
+                if (!result.HasValue || !result.Value)
+                {
+                    return;
+                }
+                else if (dlg.Items == null || dlg.Items.Count() < 1)
+                {
+                    return;
+                }
+
+                Item item = dlg.Items.FirstOrDefault();
+
+                if (item == null)
+                {
+                    return;
+                }
+
+                string thePath = item.Path;
+                PrjSettings_Txt_RegionalFolderPath = thePath;
             }
             catch (Exception ex)
             {
@@ -878,7 +974,10 @@ namespace NCC.PRZTools
                 PrjSettings_Txt_NationalDbPath = thePath;
 
                 // Finally, validate the database.
+                ProWindowCursor = Cursors.Wait;
                 var tryvalidate = await ValidateNationalDb();
+                ProWindowCursor = Cursors.Arrow;
+
                 if (tryvalidate.success && tryvalidate.valid)
                 {
                     NatDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
@@ -891,6 +990,10 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+            }
+            finally
+            {
+                ProWindowCursor = Cursors.Arrow;
             }
         }
 
@@ -1063,6 +1166,100 @@ namespace NCC.PRZTools
                 Properties.Settings.Default.Save();
 
                 return (false, false, ex.Message);
+            }
+        }
+
+        private async Task Test()
+        {
+            try
+            {
+                var tryexists_regdata = PRZH.FolderExists_RegionalData();
+                if (!tryexists_regdata.exists)
+                {
+                    ProMsgBox.Show("Regional Data folder does not exist.");
+                    return;
+                }
+
+                var tryexists_goals = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
+                if (!tryexists_goals.exists)
+                {
+                    ProMsgBox.Show("Regional Data - GOALS folder does not exist.");
+                    return;
+                }
+
+                string goalpath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
+
+                // Get all .lyrx files in the GOALS folder
+                if (!Directory.Exists(goalpath))
+                {
+                    ProMsgBox.Show("GOALS directory doesn't exist");
+                    return;
+                }
+
+                var layer_files = Directory.EnumerateFiles(goalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
+
+                if (layer_files.Count() == 0)
+                {
+                    ProMsgBox.Show("No layer files in GOALS directory");
+                    return;
+                }
+
+                MapView mv = MapView.Active;
+
+                Map map = mv?.Map;
+                if (map == null)
+                {
+                    ProMsgBox.Show("empty map");
+                    return;
+                }
+
+                await QueuedTask.Run(() =>
+                {
+                    foreach (var layer_file in layer_files)
+                    {
+                        // Get the layer file LayerDocument and CIMLayerDocument
+                        LayerDocument layerDocument = new LayerDocument(layer_file);
+
+                        // Get the individual CIMDefinitions for each layer in the lyrx file
+                        CIMDefinition[] layerdefs = layerDocument.GetCIMLayerDocument().LayerDefinitions;
+
+                        foreach (CIMDefinition def in layerdefs)
+                        {
+                            if (def is CIMFeatureLayer cimFL)
+                            {
+                                CIMLayerDocument cimLayerDoc = layerDocument.GetCIMLayerDocument();
+
+                                ProMsgBox.Show($"Feature Layer Name: {def.Name}");
+
+                                var defs = cimLayerDoc.LayerDefinitions;
+
+                                defs = new CIMDefinition[] { def };
+
+                                cimLayerDoc.LayerDefinitions = defs;
+
+                                LayerDocument newLD = new LayerDocument(cimLayerDoc);
+                                newLD.Save($@"c:\temp\{def.Name}.lyrx");
+                            }
+                            else if (def is CIMRasterLayer cimRL)
+                            {
+                                ProMsgBox.Show($"Name: {def.Name}\nURI: {def.URI}\nRaster Layer!");
+                            }
+                            else
+                            {
+                                ProMsgBox.Show($"Name: {def.Name}\nURI: {def.URI}\nSome other layer type");
+                            }
+                        }
+                    }
+                });
+
+
+
+
+                ProMsgBox.Show("BORT");
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 

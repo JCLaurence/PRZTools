@@ -370,5 +370,17 @@ namespace NCC.PRZTools.Properties {
                 this["NATDB_DBVALID"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\TEMP")]
+        public string REGIONAL_FOLDER_PATH {
+            get {
+                return ((string)(this["REGIONAL_FOLDER_PATH"]));
+            }
+            set {
+                this["REGIONAL_FOLDER_PATH"] = value;
+            }
+        }
     }
 }

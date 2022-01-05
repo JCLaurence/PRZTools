@@ -4360,7 +4360,7 @@ namespace NCC.PRZTools
             ProWindowCursor = Cursors.Arrow;
             Operation_Cmd_IsEnabled = true;
             OpStat_Img_Visibility = Visibility.Hidden;
-            OpStat_Txt_Label = "Idle.";
+            OpStat_Txt_Label = "Idle";
             _operationIsUnderway = false;
         }
 

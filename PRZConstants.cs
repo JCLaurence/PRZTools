@@ -28,6 +28,18 @@
 
     #endregion
 
+    #region REGIONAL DATA
+
+    public enum RegionalDataSubfolder
+    {
+        GOALS,
+        WEIGHTS,
+        INCLUDES,
+        EXCLUDES
+    }
+
+    #endregion
+
     #region PLANNING UNIT GENERATION
 
     #endregion
@@ -171,6 +183,10 @@
 
         // FOLDERS
         public const string c_DIR_EXPORT_WTW = "EXPORT_WTW";
+        public const string c_DIR_REGDATA_GOALS = "GOALS";
+        public const string c_DIR_REGDATA_WEIGHTS = "WEIGHTS";
+        public const string c_DIR_REGDATA_INCLUDES = "INCLUDES";
+        public const string c_DIR_REGDATA_EXCLUDES = "EXCLUDES";
 
         // PROJECT FILES
         public const string c_FILE_PRZ_LOG = "PRZ.log";
