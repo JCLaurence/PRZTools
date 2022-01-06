@@ -34,7 +34,7 @@
         <group id="prz_group_configuration" caption="Tools and Settings" keytip="z">
           <!--Workspace Settings Button-->
           <button refID="prz_button_settings_ws" size="large" />
-          <!--Where to Work Settings Button-->
+          <!--Raster Tools Button-->
           <button refID="prz_button_rastertools" size="large" />
         </group>
         <!--ASSEMBLY GROUP-->
@@ -42,9 +42,9 @@
           <!--Planning Unit Generator Dialog Button-->
           <button refID="prz_button_planningunits" size="large" />
           <!--National Data Load Button-->
-          <button refID="prz_button_dataload_national" size="large"/>          
+          <button refID="prz_button_dataload_national" size="large" />
           <!--Regional Data Load Button-->
-          <button refID="prz_button_dataload_regional" size="large"/>
+          <button refID="prz_button_dataload_regional" size="large" />
           <!--Planning Unit Boundary Lengths Generator Dialog Button-->
           <button refID="prz_button_boundarylengths" size="large" />
         </group>
@@ -85,21 +85,18 @@
             </disabledText></tooltip>
         </button>
         <!--National Data Loader-->
-        <button id="prz_button_dataload_national" caption="National Data Load" className="Button_DataLoad_National" keytip="z" loadOnClick="true" largeImage="Images\NationalData32.png" condition="prz_disabled_buttons">
+        <button id="prz_button_dataload_national" caption="National Data Load" className="Button_DataLoad_National" keytip="z" loadOnClick="true" largeImage="Images\NationalData32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Load National Data into this project">
             Load any applicable conservation elements into this project's planning units, from the national database.
             <disabledText>
               In Development.
-            </disabledText>
-          </tooltip>
-        </button>        
+            </disabledText></tooltip>
+        </button>
         <!--Regional Data Loader-->
         <button id="prz_button_dataload_regional" caption="Regional Data Load" className="Button_DataLoad_Regional" keytip="z" loadOnClick="true" largeImage="Images\RegionalData32.png" condition="esri_mapping_mapPane">
           <tooltip heading="Load Regional Data into this project">
             Load any applicable conservation elements into this project's planning units, from the regional database.
-            <disabledText>
-            </disabledText>
-          </tooltip>
+            <disabledText></disabledText></tooltip>
         </button>
         <!--Boundary Length Calculator Dialog Button-->
         <button id="prz_button_boundarylengths" caption="Boundary Lengths" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png">
@@ -135,36 +132,31 @@
         <button id="prz_button_legend_pu_selrules" keytip="z" caption="Planning Units - Selection Rules" className="Button_Legend_PU_SelRules" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="prz_disabled_buttons">
           <tooltip heading="Planning Unit Legend">
             Legend Element
-            <disabledText>Currently disabled</disabledText>
-          </tooltip>
+            <disabledText>Currently disabled</disabledText></tooltip>
         </button>
         <!--Legend Button - Planning Unit Selection Rule Conflicts-->
         <button id="prz_button_legend_pu_selruleconflicts" keytip="z" caption="Planning Units - Selection Rule Conflicts" className="Button_Legend_PU_SelRuleConflicts" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="prz_disabled_buttons">
           <tooltip heading="Planning Unit Legend">
             Legend Element
-            <disabledText>Currently disabled</disabledText>
-          </tooltip>
+            <disabledText>Currently disabled</disabledText></tooltip>
         </button>
         <!--Legend Button - Planning Unit Cost-->
         <button id="prz_button_legend_pu_cost" keytip="z" caption="Planning Units - Cost" className="Button_Legend_PU_Cost" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="prz_disabled_buttons">
           <tooltip heading="Planning Unit Legend">
             Legend Element
-            <disabledText>Currently disabled</disabledText>
-          </tooltip>
+            <disabledText>Currently disabled</disabledText></tooltip>
         </button>
         <!--Legend Button - Planning Unit Conservation Feature Count-->
         <button id="prz_button_legend_pu_cf_count" keytip="z" caption="Planning Units - Conservation Feature Count" className="Button_Legend_PU_CFCount" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="prz_disabled_buttons">
           <tooltip heading="Planning Unit Legend">
             Legend Element
-            <disabledText>Currently disabled</disabledText>
-          </tooltip>
+            <disabledText>Currently disabled</disabledText></tooltip>
         </button>
         <!--Legend Button - Planning Unit Boundary-->
         <button id="prz_button_legend_pu_boundary" keytip="z" caption="Planning Units - Boundary" className="Button_Legend_PU_Boundary" loadOnClick="true" smallImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen16.png" largeImage="pack://application:,,,/ArcGIS.Desktop.Resources;component/Images/GenericButtonGreen32.png" condition="prz_disabled_buttons">
           <tooltip heading="Planning Unit Legend">
             Legend Element
-            <disabledText>Currently disabled</disabledText>
-          </tooltip>
+            <disabledText>Currently disabled</disabledText></tooltip>
         </button>
       </controls>
       <menus>

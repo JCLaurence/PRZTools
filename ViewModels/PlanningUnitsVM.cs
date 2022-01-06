@@ -3753,7 +3753,7 @@ namespace NCC.PRZTools
                 PRZH.CheckForCancellation(token);
 
                 // INSERT EXTRA FIELDS INTO ELEMENT TABLE
-                string fldElemPresence = PRZC.c_FLD_TAB_ELEMENT_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_ELEMENT_PRESENCE + "';";
+                string fldElemPresence = PRZC.c_FLD_TAB_NATELEMENT_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_ELEMENT_PRESENCE + "';";
                 string flds = fldElemPresence;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
@@ -3794,7 +3794,7 @@ namespace NCC.PRZTools
                 PRZH.CheckForCancellation(token);
 
                 // INSERT EXTRA FIELDS INTO THEME TABLE
-                string fldThemePresence = PRZC.c_FLD_TAB_THEME_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_THEME_PRESENCE + "';";
+                string fldThemePresence = PRZC.c_FLD_TAB_NATTHEME_PRESENCE + " SHORT 'Presence' # 2 '" + PRZC.c_DOMAIN_THEME_PRESENCE + "';";
                 flds = fldThemePresence;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
@@ -4071,7 +4071,7 @@ namespace NCC.PRZTools
 
                 #region UPDATE THE LOCAL ELEMENT TABLE PRESENCE FIELD
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_ELEMENT_PRESENCE} field in local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field in local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -4080,7 +4080,7 @@ namespace NCC.PRZTools
                     try
                     {
                         var loader = new EditOperation();
-                        loader.Name = $"{PRZC.c_FLD_TAB_ELEMENT_PRESENCE} field updater";
+                        loader.Name = $"{PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field updater";
                         loader.ShowProgressor = false;
                         loader.ShowModalMessageAfterFailure = false;
                         loader.SelectNewFeatures = false;
@@ -4103,15 +4103,15 @@ namespace NCC.PRZTools
                                     {
                                         using (Row row = rowCursor.Current)
                                         {
-                                            int element_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_ELEMENT_ELEMENT_ID]);
+                                            int element_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID]);
 
                                             if (elements_with_intersection.Contains(element_id))
                                             {
-                                                row[PRZC.c_FLD_TAB_ELEMENT_PRESENCE] = (int)NationalElementPresence.Present;
+                                                row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)NationalElementPresence.Present;
                                             }
                                             else
                                             {
-                                                row[PRZC.c_FLD_TAB_ELEMENT_PRESENCE] = (int)NationalElementPresence.Absent;
+                                                row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)NationalElementPresence.Absent;
                                             }
 
                                             row.Store();
@@ -4161,8 +4161,8 @@ namespace NCC.PRZTools
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_ELEMENT_PRESENCE} field.", LogMessageType.ERROR), true, val++);
-                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_ELEMENT_PRESENCE} field.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field.", LogMessageType.ERROR), true, val++);
+                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field.");
                     return false;
                 }
                 else
@@ -4176,7 +4176,7 @@ namespace NCC.PRZTools
 
                 #region UPDATE THE LOCAL THEME TABLE PRESENCE FIELD
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field in local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field in local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
 
                 if (!await QueuedTask.Run(async () =>
                 {
@@ -4185,7 +4185,7 @@ namespace NCC.PRZTools
                     try
                     {
                         var loader = new EditOperation();
-                        loader.Name = $"{PRZC.c_FLD_TAB_THEME_PRESENCE} updater";
+                        loader.Name = $"{PRZC.c_FLD_TAB_NATTHEME_PRESENCE} updater";
                         loader.ShowProgressor = false;
                         loader.ShowModalMessageAfterFailure = false;
                         loader.SelectNewFeatures = false;
@@ -4208,15 +4208,15 @@ namespace NCC.PRZTools
                                     {
                                         using (Row row = rowCursor.Current)
                                         {
-                                            int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_THEME_THEME_ID]);
+                                            int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_THEME_ID]);
 
                                             if (themes_with_intersection.Contains(theme_id))
                                             {
-                                                row[PRZC.c_FLD_TAB_THEME_PRESENCE] = (int)NationalThemePresence.Present;
+                                                row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)NationalThemePresence.Present;
                                             }
                                             else
                                             {
-                                                row[PRZC.c_FLD_TAB_THEME_PRESENCE] = (int)NationalThemePresence.Absent;
+                                                row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)NationalThemePresence.Absent;
                                             }
 
                                             row.Store();
@@ -4266,8 +4266,8 @@ namespace NCC.PRZTools
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field.", LogMessageType.ERROR), true, val++);
-                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_THEME_PRESENCE} field.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field.", LogMessageType.ERROR), true, val++);
+                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field.");
                     return false;
                 }
                 else

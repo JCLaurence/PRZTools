@@ -38,8 +38,8 @@ namespace NCC.PRZTools
 
                 #region SHOW DIALOG
 
-                BoundaryLengths dlg = new BoundaryLengths();                    // View
-                BoundaryLengthsVM vm = (BoundaryLengthsVM)dlg.DataContext;      // View Model
+                DataLoad_Regional dlg = new DataLoad_Regional();                    // View
+                DataLoad_RegionalVM vm = (DataLoad_RegionalVM)dlg.DataContext;      // View Model
 
                 dlg.Owner = FrameworkApplication.Current.MainWindow;
 

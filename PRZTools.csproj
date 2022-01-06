@@ -169,11 +169,19 @@
     <Compile Include="Models\YamlVariable.cs" />
     <Compile Include="Models\YamlWeight.cs" />
     <Compile Include="ViewModels\CostImportFieldsVM.cs" />
+    <Compile Include="ViewModels\DataLoad_NationalVM.cs" />
+    <Compile Include="ViewModels\DataLoad_RegionalVM.cs" />
     <Compile Include="ViewModels\ExportWTWVM.cs" />
     <Compile Include="ViewModels\RasterToolsVM.cs" />
     <Compile Include="ViewModels\RasterToTableVM.cs" />
     <Compile Include="Views\CostImportFields.xaml.cs">
       <DependentUpon>CostImportFields.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DataLoad_National.xaml.cs">
+      <DependentUpon>DataLoad_National.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\DataLoad_Regional.xaml.cs">
+      <DependentUpon>DataLoad_Regional.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\ExportWTW.xaml.cs">
       <DependentUpon>ExportWTW.xaml</DependentUpon>
@@ -269,6 +277,14 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\DataLoad_National.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\DataLoad_Regional.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\Features.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -311,6 +327,7 @@
     <Resource Include="DarkImages\PRZTools32.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="ImagesWPF\dragonfly16.png" />
     <Resource Include="Images\PRZTools16.ico" />
     <Resource Include="Images\PRZTools32.ico" />
   </ItemGroup>
@@ -578,6 +595,9 @@
   <ItemGroup>
     <Resource Include="ImagesWPF\NationalData32.png" />
     <Resource Include="ImagesWPF\RegionalData32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\Tree16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--

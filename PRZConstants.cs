@@ -240,9 +240,14 @@
         public const string c_TABLE_COSTSTATS = "pu_cost";      // this will change soon
 
         // NATIONAL DB TABLES
-        public const string c_TABLE_NAT_ELEMENTS = "element";
-        public const string c_TABLE_NAT_THEMES = "theme";
-        public const string c_TABLE_NAT_PREFIX_ELEMENT = "e";
+        public const string c_TABLE_NAT_ELEMENTS = "element";   // TODO: Change to nat_element
+        public const string c_TABLE_NAT_THEMES = "theme";       // TODO: Change to nat_theme
+        public const string c_TABLE_NAT_PREFIX_ELEMENT = "e";   // TODO: Change to n
+
+        // REGIONAL DB TABLES
+        public const string c_TABLE_REG_ELEMENTS = "reg_element";
+        public const string c_TABLE_REG_THEMES = "reg_theme";
+        public const string c_TABLE_REG_PREFIX_ELEMENT = "r";
 
         #endregion
 
@@ -297,24 +302,44 @@
         #region TABLE COLUMN NAMES
 
         // NATIONAL DB - THEME TABLE
-        public const string c_FLD_TAB_THEME_THEME_ID = "theme_id";          // long
-        public const string c_FLD_TAB_THEME_NAME = "name";                  // text
-        public const string c_FLD_TAB_THEME_CODE = "code";                  // text
-        public const string c_FLD_TAB_THEME_PRESENCE = "presence";          // short (domain)
+        public const string c_FLD_TAB_NATTHEME_THEME_ID = "theme_id";          // long
+        public const string c_FLD_TAB_NATTHEME_NAME = "name";                  // text
+        public const string c_FLD_TAB_NATTHEME_CODE = "code";                  // text
+        public const string c_FLD_TAB_NATTHEME_PRESENCE = "presence";          // short (domain)
 
         // NATIONAL DB - ELEMENT TABLE
-        public const string c_FLD_TAB_ELEMENT_ELEMENT_ID = "element_id";    // long
-        public const string c_FLD_TAB_ELEMENT_NAME = "name";                // text
-        public const string c_FLD_TAB_ELEMENT_TYPE = "type";                // short (domain)
-        public const string c_FLD_TAB_ELEMENT_STATUS = "status";            // short (domain)
-        public const string c_FLD_TAB_ELEMENT_THEME_ID = "theme_id";        // long
-        public const string c_FLD_TAB_ELEMENT_DATAPATH = "data_path";       // text
-        public const string c_FLD_TAB_ELEMENT_PRESENCE = "presence";        // short (domain)
-        public const string c_FLD_TAB_ELEMENT_UNIT = "unit";                // text
+        public const string c_FLD_TAB_NATELEMENT_ELEMENT_ID = "element_id";    // long
+        public const string c_FLD_TAB_NATELEMENT_NAME = "name";                // text
+        public const string c_FLD_TAB_NATELEMENT_TYPE = "type";                // short (domain)
+        public const string c_FLD_TAB_NATELEMENT_STATUS = "status";            // short (domain)
+        public const string c_FLD_TAB_NATELEMENT_THEME_ID = "theme_id";        // long
+        public const string c_FLD_TAB_NATELEMENT_DATAPATH = "data_path";       // text
+        public const string c_FLD_TAB_NATELEMENT_PRESENCE = "presence";        // short (domain)
+        public const string c_FLD_TAB_NATELEMENT_UNIT = "unit";                // text
 
         // NATIONAL DB - ELEMENT VALUE TABLES
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER = "cell_number";
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE = "cell_value";
+
+        // REGIONAL DB - THEME TABLE
+        public const string c_FLD_TAB_REGTHEME_THEME_ID = "theme_id";          // long
+        public const string c_FLD_TAB_REGTHEME_NAME = "name";                  // text
+        public const string c_FLD_TAB_REGTHEME_CODE = "code";                  // text
+        public const string c_FLD_TAB_REGTHEME_PRESENCE = "presence";          // short (domain)
+
+        // REGIONAL DB - ELEMENT TABLE
+        public const string c_FLD_TAB_REGELEMENT_ELEMENT_ID = "element_id";    // long
+        public const string c_FLD_TAB_REGELEMENT_NAME = "name";                // text
+        public const string c_FLD_TAB_REGELEMENT_TYPE = "type";                // short (domain)
+        public const string c_FLD_TAB_REGELEMENT_STATUS = "status";            // short (domain)
+        public const string c_FLD_TAB_REGELEMENT_THEME_ID = "theme_id";        // long
+        public const string c_FLD_TAB_REGELEMENT_DATAPATH = "data_path";       // text
+        public const string c_FLD_TAB_REGELEMENT_PRESENCE = "presence";        // short (domain)
+        public const string c_FLD_TAB_REGELEMENT_UNIT = "unit";                // text
+
+        // REGIONAL DB - ELEMENT VALUE TABLES
+        public const string c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER = "cell_number";
+        public const string c_FLD_TAB_REG_ELEMVAL_CELL_VALUE = "cell_value";
 
         // PU + FEATURES
         public const string c_FLD_TAB_PUCF_ID = c_FLD_FC_PU_ID;

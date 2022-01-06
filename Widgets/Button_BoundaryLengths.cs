@@ -13,7 +13,6 @@ namespace NCC.PRZTools
 {
     internal class Button_BoundaryLengths : Button
     {
-
         protected override async void OnClick()
         {
             try
