@@ -385,14 +385,6 @@
                         Command="{Binding CmdExploreWorkspace}"
                         Content="EXPLORE" />
 
-                    <Button 
-                        DockPanel.Dock="Right"
-                        Margin="5" 
-                        Padding="5,0"
-                        Style="{DynamicResource Esri_Button}"
-                        Command="{Binding CmdTest}"
-                        Content="layer test" />
-
                 </DockPanel>
             </Border>
         </Grid>

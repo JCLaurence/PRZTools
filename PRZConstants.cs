@@ -44,12 +44,7 @@
 
     #endregion
 
-    public enum GeoDBType
-    {
-        Unknown,
-        FileGDB,
-        EnterpriseGDB
-    }
+    #region ELEMENT AND THEME TABLES
 
     public enum NationalElementType
     {
@@ -76,6 +71,16 @@
         Present = 1,
         Absent
     }
+
+    #endregion
+
+    public enum GeoDBType
+    {
+        Unknown,
+        FileGDB,
+        EnterpriseGDB
+    }
+
 
     // SELECTION RULES
 
@@ -204,7 +209,10 @@
 
         // DOMAINS
         public const string c_DOMAIN_ELEMENT_PRESENCE = "ElementPresence";
+        public const string c_DOMAIN_ELEMENT_STATUS = "ElementStatus";
+        public const string c_DOMAIN_ELEMENT_TYPE = "ElementType";
         public const string c_DOMAIN_THEME_PRESENCE = "ThemePresence";
+        public const string c_DOMAIN_THEME_NAMES = "ThemeNames";
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";

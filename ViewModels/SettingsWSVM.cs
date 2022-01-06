@@ -43,7 +43,6 @@ namespace NCC.PRZTools
         private ICommand _cmdExploreWorkspace;
         private ICommand _cmdViewLogFile;
         private ICommand _cmdClearLogFile;
-        private ICommand _cmdTest;
         private ICommand _cmdSelectRegionalFolder;
 
         // Other Fields
@@ -203,8 +202,6 @@ namespace NCC.PRZTools
         public ICommand CmdResetWorkspace => _cmdResetWorkspace ?? (_cmdResetWorkspace = new RelayCommand(async () => await ResetWorkspace(), () => true));
 
         public ICommand CmdExploreWorkspace => _cmdExploreWorkspace ?? (_cmdExploreWorkspace = new RelayCommand(() => ExploreWorkspace(), () => true));
-
-        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(() => Test(), () => true));
 
         #endregion
 
@@ -1166,100 +1163,6 @@ namespace NCC.PRZTools
                 Properties.Settings.Default.Save();
 
                 return (false, false, ex.Message);
-            }
-        }
-
-        private async Task Test()
-        {
-            try
-            {
-                var tryexists_regdata = PRZH.FolderExists_RegionalData();
-                if (!tryexists_regdata.exists)
-                {
-                    ProMsgBox.Show("Regional Data folder does not exist.");
-                    return;
-                }
-
-                var tryexists_goals = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
-                if (!tryexists_goals.exists)
-                {
-                    ProMsgBox.Show("Regional Data - GOALS folder does not exist.");
-                    return;
-                }
-
-                string goalpath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
-
-                // Get all .lyrx files in the GOALS folder
-                if (!Directory.Exists(goalpath))
-                {
-                    ProMsgBox.Show("GOALS directory doesn't exist");
-                    return;
-                }
-
-                var layer_files = Directory.EnumerateFiles(goalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
-
-                if (layer_files.Count() == 0)
-                {
-                    ProMsgBox.Show("No layer files in GOALS directory");
-                    return;
-                }
-
-                MapView mv = MapView.Active;
-
-                Map map = mv?.Map;
-                if (map == null)
-                {
-                    ProMsgBox.Show("empty map");
-                    return;
-                }
-
-                await QueuedTask.Run(() =>
-                {
-                    foreach (var layer_file in layer_files)
-                    {
-                        // Get the layer file LayerDocument and CIMLayerDocument
-                        LayerDocument layerDocument = new LayerDocument(layer_file);
-
-                        // Get the individual CIMDefinitions for each layer in the lyrx file
-                        CIMDefinition[] layerdefs = layerDocument.GetCIMLayerDocument().LayerDefinitions;
-
-                        foreach (CIMDefinition def in layerdefs)
-                        {
-                            if (def is CIMFeatureLayer cimFL)
-                            {
-                                CIMLayerDocument cimLayerDoc = layerDocument.GetCIMLayerDocument();
-
-                                ProMsgBox.Show($"Feature Layer Name: {def.Name}");
-
-                                var defs = cimLayerDoc.LayerDefinitions;
-
-                                defs = new CIMDefinition[] { def };
-
-                                cimLayerDoc.LayerDefinitions = defs;
-
-                                LayerDocument newLD = new LayerDocument(cimLayerDoc);
-                                newLD.Save($@"c:\temp\{def.Name}.lyrx");
-                            }
-                            else if (def is CIMRasterLayer cimRL)
-                            {
-                                ProMsgBox.Show($"Name: {def.Name}\nURI: {def.URI}\nRaster Layer!");
-                            }
-                            else
-                            {
-                                ProMsgBox.Show($"Name: {def.Name}\nURI: {def.URI}\nSome other layer type");
-                            }
-                        }
-                    }
-                });
-
-
-
-
-                ProMsgBox.Show("BORT");
-            }
-            catch (Exception ex)
-            {
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
