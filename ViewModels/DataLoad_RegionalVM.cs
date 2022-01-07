@@ -1,9 +1,11 @@
-﻿using ArcGIS.Core.Data;
+﻿//#define blarg
+
+using ArcGIS.Core.CIM;
+using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
-using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
@@ -11,6 +13,8 @@ using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -212,13 +216,6 @@ namespace NCC.PRZTools
 
             try
             {
-                /*
-                - process the GOALS folder
-                    > retrieve all layerdocuments
-                    > foreach layerdocument
-                    >   foreach layerdescription
-                */
-
                 #region INITIALIZATION
 
                 #region EDITING CHECK
@@ -262,7 +259,7 @@ namespace NCC.PRZTools
                 string regexcludepath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.EXCLUDES);
 
                 // Initialize ProgressBar and Progress Log
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Where to Work Exporter..."), false, max, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Regional Data Loader..."), false, max, ++val);
 
                 // Ensure the Project Geodatabase Exists
                 var try_gdbexists = await PRZH.GDBExists_Project();
@@ -420,6 +417,7 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
+#if blarg
                 #region DELETE EXISTING TABLES
 
                 // Declare some generic GP variables
@@ -829,13 +827,212 @@ namespace NCC.PRZTools
 
                 #endregion
 
+#endif
                 #region PROCESS THE GOALS FOLDER
 
                 if (goaldirexists)
                 {
-                    
-                }
+                    // find all lyrx files
+                    var layer_files = Directory.EnumerateFiles(reggoalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
 
+                    // Lists of individual FL and RL CIM Documents.  I can turn these into layers later.  OPTION A
+                    List<CIMLayerDocument> cimDocuments_FL = new List<CIMLayerDocument>();
+                    List<CIMLayerDocument> cimDocuments_RL = new List<CIMLayerDocument>();
+
+                    // Lists of lyrx paths and associated lists of FL or RL CIMLayerDocuments.  OPTION B
+                    List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> FL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
+                    List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> RL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
+
+                    await QueuedTask.Run(() =>
+                    {
+                        foreach (var layer_file in layer_files)
+                        {
+                            // Get the lyrx file's underlying CIMLayerDocument and all FL and RL cimdefinitions in it
+                            LayerDocument layerDocument = new LayerDocument(layer_file);
+                            CIMLayerDocument cimLayerDocument = layerDocument.GetCIMLayerDocument();
+
+                            // Get a list of any feature or raster layer definitions in the CIMLayerDocument
+                            List<CIMFeatureLayer> cimFLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMFeatureLayer>().ToList();
+                            List<CIMRasterLayer> cimRLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMRasterLayer>().ToList();
+
+                            // Move on if this lyrx file contains no feature or raster layers
+                            if (cimFLDefs.Count == 0 & cimRLDefs.Count == 0)
+                            {
+                                continue;
+                            }
+
+                            // Process the FL CIMDefinitions
+                            if (cimFLDefs.Count > 0)
+                            {
+                                List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
+
+                                foreach (var cimFLDef in cimFLDefs)
+                                {
+                                    // Create a new CIMLayerDocument
+                                    CIMLayerDocument tempCIM = new CIMLayerDocument();
+
+                                    // Set properties
+                                    tempCIM.Layers = new string[] { cimFLDef.URI };
+                                    tempCIM.LayerDefinitions = new CIMDefinition[] { cimFLDef };
+
+                                    // Store the CIM Doc
+                                    cimDocuments_FL.Add(tempCIM);
+                                    tempCIMs.Add(tempCIM);
+                                }
+
+                                FL_CIMDocs.Add((layer_file, tempCIMs));
+                            }
+
+                            // Process the RL CIMDefinitions
+                            if (cimRLDefs.Count > 0)
+                            {
+                                List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
+
+                                foreach (var cimRLDef in cimRLDefs)
+                                {
+                                    // Create a new CIMLayerDocument
+                                    CIMLayerDocument tempCIM = new CIMLayerDocument();
+
+                                    // Set properties
+                                    tempCIM.Layers = new string[] { cimRLDef.URI };
+                                    tempCIM.LayerDefinitions = new CIMDefinition[] { cimRLDef };
+
+                                    // Store the CIM Doc
+                                    cimDocuments_RL.Add(tempCIM);
+                                    tempCIMs.Add(tempCIM);
+                                }
+
+                                RL_CIMDocs.Add((layer_file, tempCIMs));
+                            }
+                        }
+                    });
+
+                    // Create temp group layer (delete first if already exists)
+                    GroupLayer GL_GOALS = map.GetLayersAsFlattenedList().OfType<GroupLayer>().FirstOrDefault(gl => gl.Name == "REGGOALS");
+
+                    if (GL_GOALS != null)
+                    {
+                        await QueuedTask.Run(() => { map.RemoveLayer(GL_GOALS); });
+                    }
+
+                    GL_GOALS = await QueuedTask.Run(() => { return LayerFactory.Instance.CreateGroupLayer(map, map.Layers.Count, "REGGOALS"); });
+
+                    // Build lists of layers
+                    List<(string lyrx_path, List<FeatureLayer> FLs)> lyrx_FLs = new List<(string lyrx_path, List<FeatureLayer> FLs)>();
+                    List<(string lyrx_path, List<RasterLayer> RLs)> lyrx_RLs = new List<(string lyrx_path, List<RasterLayer> RLs)>();
+
+                    // Load the feature layers here
+                    foreach (var o in FL_CIMDocs)
+                    {
+                        List<FeatureLayer> fls = new List<FeatureLayer>();
+
+                        foreach(var a in o.cimLyrDocs)
+                        {
+                            LayerCreationParams lcparams = new LayerCreationParams(a);
+                            await QueuedTask.Run(async () =>
+                            {
+                                // Create and add the layer
+                                var l = LayerFactory.Instance.CreateLayer<FeatureLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
+
+                                // Check for valid source Feature Class
+                                bool bad_fc = false;
+
+                                try
+                                {
+                                    using (FeatureClass featureClass = l.GetFeatureClass())
+                                    {
+                                        if (featureClass == null)
+                                        {
+                                            bad_fc = true;
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                    bad_fc = true;
+                                }
+
+                                // Remove layer if invalid FC or if shapetype is not polygon
+                                if (bad_fc)
+                                {
+                                    GL_GOALS.RemoveLayer(l);
+                                }
+                                else if (l.ShapeType == esriGeometryType.esriGeometryPolygon)
+                                {
+                                    fls.Add(l);
+                                }
+                                else
+                                {
+                                    GL_GOALS.RemoveLayer(l);
+                                }
+
+                                await MapView.Active.RedrawAsync(false);
+                            });
+                        }
+
+                        lyrx_FLs.Add((o.lyrx_path, fls));
+                    }
+
+                    // Load the raster layers here
+                    foreach (var o in RL_CIMDocs)
+                    {
+                        List<RasterLayer> rls = new List<RasterLayer>();
+
+                        foreach (var a in o.cimLyrDocs)
+                        {
+                            LayerCreationParams lcparams = new LayerCreationParams(a);
+                            await QueuedTask.Run(async () =>
+                            {
+                                // Create and add the layer
+                                var l = LayerFactory.Instance.CreateLayer<RasterLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
+
+                                // Check for a valid Raster source
+                                bool bad_raster = false;
+
+                                try
+                                {
+                                    using (Raster raster = l.GetRaster())
+                                    {
+                                        if (raster == null)
+                                        {
+                                            bad_raster = true;
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                    bad_raster = true;
+                                }
+
+                                if (bad_raster)
+                                {
+                                    GL_GOALS.RemoveLayer(l);
+                                }
+                                else
+                                {
+                                    rls.Add(l);
+                                }
+
+                                await MapView.Active.RedrawAsync(false);
+                            });
+                        }
+
+                        lyrx_RLs.Add((o.lyrx_path, rls));
+                    }
+
+                    // my two lists now contain Raster Layers and Polygon Feature Layers
+
+
+
+
+
+
+
+                }
+                else
+                {
+                    ProMsgBox.Show("No goaldir");
+                }
                 #endregion
 
                 #region PROCESS THE WEIGHTS FOLDER
@@ -991,46 +1188,6 @@ namespace NCC.PRZTools
 }
 
 /*
-                 var tryexists_regdata = PRZH.FolderExists_RegionalData();
-                if (!tryexists_regdata.exists)
-                {
-                    ProMsgBox.Show("Regional Data folder does not exist.");
-                    return;
-                }
-
-                var tryexists_goals = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
-                if (!tryexists_goals.exists)
-                {
-                    ProMsgBox.Show("Regional Data - GOALS folder does not exist.");
-                    return;
-                }
-
-                string goalpath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.GOALS);
-
-                // Get all .lyrx files in the GOALS folder
-                if (!Directory.Exists(goalpath))
-                {
-                    ProMsgBox.Show("GOALS directory doesn't exist");
-                    return;
-                }
-
-                var layer_files = Directory.EnumerateFiles(goalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
-
-                if (layer_files.Count() == 0)
-                {
-                    ProMsgBox.Show("No layer files in GOALS directory");
-                    return;
-                }
-
-                MapView mv = MapView.Active;
-
-                Map map = mv?.Map;
-                if (map == null)
-                {
-                    ProMsgBox.Show("empty map");
-                    return;
-                }
-
                 await QueuedTask.Run(() =>
                 {
                     foreach (var layer_file in layer_files)
