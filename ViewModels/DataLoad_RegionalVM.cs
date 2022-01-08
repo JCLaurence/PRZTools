@@ -1,4 +1,4 @@
-﻿//#define blarg
+﻿#define blarg
 
 using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
@@ -6,6 +6,7 @@ using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
@@ -805,10 +806,28 @@ namespace NCC.PRZTools
                 string fldElementStatus = PRZC.c_FLD_TAB_REGELEMENT_STATUS + $" SHORT 'Element Status' # 0 '{PRZC.c_DOMAIN_ELEMENT_STATUS}';";
                 //string fldThemeID = PRZC.c_FLD_TAB_REGELEMENT_THEME_ID + $" SHORT 'Theme ID' # 0 '{PRZC.c_DOMAIN_THEME_NAMES}';";
                 string fldThemeID = PRZC.c_FLD_TAB_REGELEMENT_THEME_ID + $" SHORT 'Theme ID' # 0 #;";
-                string fldElementPresence = PRZC.c_FLD_TAB_REGELEMENT_PRESENCE + $" SHORT 'Element Presence' # 0 '{PRZC.c_DOMAIN_ELEMENT_PRESENCE}'";
+                string fldElementPresence = PRZC.c_FLD_TAB_REGELEMENT_PRESENCE + $" SHORT 'Element Presence' # 0 '{PRZC.c_DOMAIN_ELEMENT_PRESENCE}';";
+                string fldLyrxPath = PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH + " TEXT 'Lyrx Path' 250 # #;";
+                string fldLayerName = PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME + " TEXT 'Layer Name' 100 # #;";
+                string fldLayerType = PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE + " TEXT 'Layer Type' 20 # #;";
+                string fldLayerJson = PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON + " TEXT 'Layer JSON' 100000 # #;";
+                string fldLayerWhereClause = PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE + " TEXT 'WHERE Clause' 1000 # #;";
+                string fldLegendGroup = PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP + " TEXT 'Legend Group' 100 # #;";
+                string fldLegendClass = PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS + " TEXT 'Legend Class' 100 # #;";
 
-
-                string fields = fldElementID + fldElementName + fldElementType + fldElementStatus + fldThemeID + fldElementPresence;
+                string fields = fldElementID + 
+                                fldElementName + 
+                                fldElementType + 
+                                fldElementStatus + 
+                                fldThemeID + 
+                                fldElementPresence + 
+                                fldLyrxPath +
+                                fldLayerName + 
+                                fldLayerType +
+                                fldLayerJson +
+                                fldLayerWhereClause +
+                                fldLegendGroup +
+                                fldLegendClass;
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {PRZC.c_TABLE_REG_ELEMENTS} table..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REG_ELEMENTS, fields);
@@ -832,6 +851,8 @@ namespace NCC.PRZTools
 
                 if (goaldirexists)
                 {
+                    #region ASSEMBLE LAYERS
+
                     // find all lyrx files
                     var layer_files = Directory.EnumerateFiles(reggoalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
 
@@ -928,10 +949,10 @@ namespace NCC.PRZTools
 
                         foreach(var a in o.cimLyrDocs)
                         {
-                            LayerCreationParams lcparams = new LayerCreationParams(a);
                             await QueuedTask.Run(async () =>
                             {
                                 // Create and add the layer
+                                LayerCreationParams lcparams = new LayerCreationParams(a);
                                 var l = LayerFactory.Instance.CreateLayer<FeatureLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
 
                                 // Check for valid source Feature Class
@@ -952,18 +973,32 @@ namespace NCC.PRZTools
                                     bad_fc = true;
                                 }
 
-                                // Remove layer if invalid FC or if shapetype is not polygon
+                                // If FC is invalid, leave
                                 if (bad_fc)
                                 {
                                     GL_GOALS.RemoveLayer(l);
                                 }
-                                else if (l.ShapeType == esriGeometryType.esriGeometryPolygon)
-                                {
-                                    fls.Add(l);
-                                }
-                                else
+
+                                // If FL is not a polygon feature layer, leave
+                                else if (l.ShapeType != esriGeometryType.esriGeometryPolygon)
                                 {
                                     GL_GOALS.RemoveLayer(l);
+                                }
+
+                                // If FL has null or unknown spatial reference, leave
+                                else
+                                {
+                                    var sr = l.GetSpatialReference();
+
+                                    if (sr == null || sr.IsUnknown)
+                                    {
+                                        GL_GOALS.RemoveLayer(l);
+                                    }
+                                    else
+                                    {
+                                        // Finally, we have an OK feature layer!
+                                        fls.Add(l);
+                                    }
                                 }
 
                                 await MapView.Active.RedrawAsync(false);
@@ -980,10 +1015,10 @@ namespace NCC.PRZTools
 
                         foreach (var a in o.cimLyrDocs)
                         {
-                            LayerCreationParams lcparams = new LayerCreationParams(a);
                             await QueuedTask.Run(async () =>
                             {
                                 // Create and add the layer
+                                LayerCreationParams lcparams = new LayerCreationParams(a);
                                 var l = LayerFactory.Instance.CreateLayer<RasterLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
 
                                 // Check for a valid Raster source
@@ -1004,13 +1039,26 @@ namespace NCC.PRZTools
                                     bad_raster = true;
                                 }
 
+                                // If Raster is invalid, leave
                                 if (bad_raster)
                                 {
                                     GL_GOALS.RemoveLayer(l);
                                 }
+
+                                // If RL has null or unknown spatial reference, leave
                                 else
                                 {
-                                    rls.Add(l);
+                                    var sr = l.GetSpatialReference();
+
+                                    if (sr == null || sr.IsUnknown)
+                                    {
+                                        GL_GOALS.RemoveLayer(l);
+                                    }
+                                    else
+                                    {
+                                        // Finally, we have an OK raster layer!
+                                        rls.Add(l);
+                                    }
                                 }
 
                                 await MapView.Active.RedrawAsync(false);
@@ -1020,14 +1068,291 @@ namespace NCC.PRZTools
                         lyrx_RLs.Add((o.lyrx_path, rls));
                     }
 
-                    // my two lists now contain Raster Layers and Polygon Feature Layers
+                    // ensure at least one layer is available
+                    bool fls_present = false;
+                    bool rls_present = false;
 
+                    foreach (var u in lyrx_FLs)
+                    {
+                        if (u.FLs.Count > 0)
+                        {
+                            fls_present = true;
+                            break;
+                        }
+                    }
 
+                    foreach (var u in lyrx_RLs)
+                    {
+                        if (u.RLs.Count > 0)
+                        {
+                            rls_present = true;
+                            break;
+                        }
+                    }
 
+                    if (!fls_present & !rls_present)
+                    {
+                        ProMsgBox.Show("No available layers for processing!");
+                        return;
+                    }
 
+                    #endregion
 
+                    #region PROCESS LAYERS TO EXTRACT ELEMENTS
 
+                    // I will be populating a list of RegElement objects
 
+                    List<RegElement> regElements = new List<RegElement>();
+                    int id = 1;
+
+                    // First, the Feature Layers
+                    if (fls_present)
+                    {
+                        for (int i = 0; i < lyrx_FLs.Count; i++)
+                        {
+                            (string lyrx_path, List<FeatureLayer> FLs) FLInfo = lyrx_FLs[i];
+
+                            foreach (FeatureLayer FL in FLInfo.FLs)
+                            {
+                                // validate this feature layer for renderer stuff
+
+                                await QueuedTask.Run(async () =>
+                                {
+                                    // Get the renderer
+                                    var rend = FL.GetRenderer();
+
+                                    if (rend is CIMUniqueValueRenderer UVRend)
+                                    {
+                                        // Get the field index plus the field type, for each of the 1, 2, or 3 fields in the UV Renderer
+                                        Dictionary<int, FieldCategory> DICT_FieldIndex_and_category = new Dictionary<int, FieldCategory>();
+
+                                        for (int b = 0; b < UVRend.Fields.Length; b++)
+                                        {
+                                            string uvrend_fieldname = UVRend.Fields[b];
+
+                                            foreach (FieldDescription fieldDescription in FL.GetFieldDescriptions())
+                                            {
+                                                if (uvrend_fieldname == fieldDescription.Name)
+                                                {
+                                                    FieldCategory fcat = PRZH.GetFieldCategory(fieldDescription);
+
+                                                    if (fcat == FieldCategory.DATE)
+                                                    {
+                                                        throw new Exception($"Layer: {FL.Name} >> Date Fields in UV Legends not supported.");
+                                                    }
+
+                                                    DICT_FieldIndex_and_category.Add(b, fcat);
+                                                }
+                                            }
+                                        }
+
+                                        // Make sure we picked up a DICT entry for each UVRend field name
+                                        if (UVRend.Fields.Length != DICT_FieldIndex_and_category.Count)
+                                        {
+                                            throw new Exception($"Layer: {FL.Name} >> Not all renderer fields found within layer table.");
+                                        }
+
+                                        // Cycle through each Legend Group, retrieve Group heading...
+                                        CIMUniqueValueGroup[] UVGroups = UVRend.Groups;
+
+                                        if (UVGroups is null)
+                                        {
+                                            throw new Exception($"Layer: {FL.Name} >> UV Renderer has no groups.");
+                                        }
+
+                                        foreach (CIMUniqueValueGroup UVGroup in UVGroups)
+                                        {
+                                            // Get the group heading
+                                            string group_heading = UVGroup.Heading;
+
+                                            // Retrieve the Classes in this Group
+                                            CIMUniqueValueClass[] UVClasses = UVGroup.Classes;
+
+                                            // Each UVClass will become its own unique regional element
+                                            foreach (CIMUniqueValueClass UVClass in UVClasses)
+                                            {
+                                                // Get the class label
+                                                string class_label = UVClass.Label;
+
+                                                // Retrieve the "Tuples" associated with this UVClass
+                                                // A "Tuple" is a collection of 1, 2, or 3 specific field values (from the 1, 2 or 3 fields in the UV Renderer)
+                                                // A UVClass can consist of 1 or more "Tuples".  By default, 1, but if the user groups together 2 or more classes into a single class,
+                                                // the UVClass will consist of those 2 or more "Tuples".
+                                                CIMUniqueValue[] UVClassTuples = UVClass.Values;
+
+                                                string classClause = "";
+
+                                                // For Each Tuple (could be 1 to many many)
+                                                for (int tupIx = 0; tupIx < UVClassTuples.Length; tupIx++)
+                                                {
+                                                    CIMUniqueValue tuple = UVClassTuples[tupIx];
+
+                                                    string tupleClause = "";
+
+                                                    // For each field value in the tuple (could be 1, 2, or 3)
+                                                    for (int fldIx = 0; fldIx < tuple.FieldValues.Length; fldIx++)
+                                                    {
+                                                        string fieldValue = tuple.FieldValues[fldIx];
+                                                        bool IsNull = fieldValue == "<Null>";
+
+                                                        string Expression = "";
+
+                                                        switch (DICT_FieldIndex_and_category[fldIx])
+                                                        {
+                                                            case FieldCategory.STRING:
+                                                                Expression = (IsNull) ? "IS NULL" : "= '" + fieldValue.Replace("'", "''") + "'";
+                                                                break;
+
+                                                            case FieldCategory.NUMERIC:
+                                                                Expression = (IsNull) ? "IS NULL" : "= " + fieldValue;
+                                                                break;
+
+                                                            default:
+                                                                break;
+                                                        }
+
+                                                        // Assemble the unit clause - the building block of the main where clause
+                                                        string unitClause = "(" + UVRend.Fields[fldIx] + " " + Expression + ")";
+
+                                                        // Assemble the tuple clause - the where clause of this particular tuple
+                                                        if (fldIx == 0)
+                                                        {
+                                                            tupleClause = unitClause;
+                                                        }
+                                                        else
+                                                        {
+                                                            tupleClause += " And " + unitClause;
+                                                        }
+                                                    }
+
+                                                    tupleClause = "(" + tupleClause + ")";
+
+                                                    if (tupIx == 0)
+                                                    {
+                                                        classClause = tupleClause;
+                                                    }
+                                                    else
+                                                    {
+                                                        classClause += " Or " + tupleClause;
+                                                    }
+                                                }
+
+                                                classClause = "(" + classClause + ")";  // this is the where clause
+
+                                                // Assemble the new element
+                                                RegElement regElement = new RegElement();
+
+                                                regElement.ElementID = id++;
+                                                regElement.ElementName = FL.Name + " - " + group_heading + " - " + class_label;
+                                                regElement.ElementType = (int)NationalElementType.Goal;
+                                                regElement.LayerObject = FL;
+                                                regElement.LayerName = FL.Name;
+                                                regElement.LayerType = (int)LayerType.FEATURE;
+                                                regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                                regElement.LyrxPath = FLInfo.lyrx_path;
+                                                regElement.WhereClause = classClause;
+                                                regElement.LegendGroup = group_heading;
+                                                regElement.LegendClass = class_label;
+
+                                                regElements.Add(regElement);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        RegElement regElement = new RegElement();
+
+                                        regElement.ElementID = id++;
+                                        regElement.ElementName = FL.Name;
+                                        regElement.ElementType = (int)NationalElementType.Goal;
+                                        regElement.LayerObject = FL;
+                                        regElement.LayerName = FL.Name;
+                                        regElement.LayerType = (int)LayerType.FEATURE;
+                                        regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                        regElement.LyrxPath = FLInfo.lyrx_path;
+
+                                        regElements.Add(regElement);
+                                    }
+                                });
+                            }                            
+                        }
+                    }
+                    
+                    // Next, the Raster Layers
+                    if (rls_present)
+                    {
+                        for (int i = 0; i < lyrx_RLs.Count; i++)
+                        {
+                            (string lyrx_path, List<RasterLayer> RLs) RLInfo = lyrx_RLs[i];
+
+                            foreach (RasterLayer RL in RLInfo.RLs)
+                            {
+                                RegElement regElement = new RegElement();
+
+                                regElement.ElementID = id++;
+                                regElement.ElementName = RL.Name;
+                                regElement.ElementType = (int)NationalElementType.Goal;
+                                regElement.LayerObject = RL;
+                                regElement.LayerName = RL.Name;
+                                regElement.LayerType = (int)LayerType.RASTER;
+                                regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)RL.GetDefinition()).ToJson(); });
+                                regElement.LyrxPath = RLInfo.lyrx_path;
+
+                                regElements.Add(regElement);
+                            }
+                        }
+                    }
+
+                    #endregion
+
+                    #region WRITE ELEMENTS TO REG ELEMENT TABLE
+
+                    // Sort by element ID (just in case).  I think the objects got added to the list already ordered correctly...
+                    regElements.Sort((x, y) => x.ElementID.CompareTo(y.ElementID));
+
+                    // Ensure the table is present
+                    var tryex_regelem = await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                    if (!tryex_regelem.exists)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                        return;
+                    }
+
+                    // Populate the table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_gdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
+                        using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                        {
+                            geodatabase.ApplyEdits(() =>
+                            {
+                                foreach (var elem in regElements)
+                                {
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID] = elem.ElementID;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_NAME] = elem.ElementName;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_TYPE] = elem.ElementType;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_STATUS] = (int)NationalElementStatus.Active;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)NationalElementPresence.Absent;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH] = elem.LyrxPath;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME] = elem.LayerName;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE] = ((LayerType)elem.LayerType).ToString();
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON] = elem.LayerJson;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] = elem.WhereClause;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] = elem.LegendGroup;
+                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] = elem.LegendClass;
+
+                                    table.CreateRow(rowBuffer);
+                                }
+                            });
+                        }
+                    });
+
+                    #endregion
                 }
                 else
                 {

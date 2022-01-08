@@ -38,6 +38,13 @@
         EXCLUDES
     }
 
+    public enum LayerType
+    {
+        UNKNOWN,
+        FEATURE,
+        RASTER
+    }
+
     #endregion
 
     #region PLANNING UNIT GENERATION
@@ -344,6 +351,15 @@
         public const string c_FLD_TAB_REGELEMENT_DATAPATH = "data_path";       // text
         public const string c_FLD_TAB_REGELEMENT_PRESENCE = "presence";        // short (domain)
         public const string c_FLD_TAB_REGELEMENT_UNIT = "unit";                // text
+        public const string c_FLD_TAB_REGELEMENT_LYRXPATH = "lyrx_path";       // text
+        public const string c_FLD_TAB_REGELEMENT_LAYERNAME = "layer_name";     // text
+        public const string c_FLD_TAB_REGELEMENT_LAYERTYPE = "layer_type";     // string
+        public const string c_FLD_TAB_REGELEMENT_LAYERJSON = "layer_json";     // string
+        public const string c_FLD_TAB_REGELEMENT_WHERECLAUSE = "layer_whereclause"; // string
+        public const string c_FLD_TAB_REGELEMENT_LEGENDGROUP = "legend_group"; // string
+        public const string c_FLD_TAB_REGELEMENT_LEGENDCLASS = "legend_class"; // string
+        //public const string c_FLD_TAB_REGELEMENT_ = "";
+        //public const string c_FLD_TAB_REGELEMENT_ = "";
 
         // REGIONAL DB - ELEMENT VALUE TABLES
         public const string c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER = "cell_number";

@@ -158,6 +158,7 @@
     <Compile Include="Models\NationalGrid.cs" />
     <Compile Include="Models\NatTheme.cs" />
     <Compile Include="Models\PlanningUnitTileInfo.cs" />
+    <Compile Include="Models\RegElement.cs" />
     <Compile Include="Models\SelectionRule.cs" />
     <Compile Include="Models\FeatureUV.cs" />
     <Compile Include="Models\YamlExclude.cs" />
