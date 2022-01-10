@@ -1,6 +1,4 @@
-﻿#define blarg
-
-using ArcGIS.Core.CIM;
+﻿using ArcGIS.Core.CIM;
 using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
@@ -418,7 +416,6 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
-#if blarg
                 #region DELETE EXISTING TABLES
 
                 // Declare some generic GP variables
@@ -846,7 +843,6 @@ namespace NCC.PRZTools
 
                 #endregion
 
-#endif
                 #region PROCESS THE GOALS FOLDER
 
                 if (goaldirexists)
@@ -952,7 +948,11 @@ namespace NCC.PRZTools
                             await QueuedTask.Run(async () =>
                             {
                                 // Create and add the layer
-                                LayerCreationParams lcparams = new LayerCreationParams(a);
+                                LayerCreationParams lcparams = new LayerCreationParams(a)
+                                {
+                                    IsVisible = false
+                                };
+
                                 var l = LayerFactory.Instance.CreateLayer<FeatureLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
 
                                 // Check for valid source Feature Class
@@ -1018,7 +1018,11 @@ namespace NCC.PRZTools
                             await QueuedTask.Run(async () =>
                             {
                                 // Create and add the layer
-                                LayerCreationParams lcparams = new LayerCreationParams(a);
+                                LayerCreationParams lcparams = new LayerCreationParams(a)
+                                {
+                                    IsVisible = false
+                                };
+
                                 var l = LayerFactory.Instance.CreateLayer<RasterLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
 
                                 // Check for a valid Raster source
@@ -1351,6 +1355,177 @@ namespace NCC.PRZTools
                             });
                         }
                     });
+
+                    #endregion
+
+                    #region LOAD PLANNING UNIT LAYER
+
+                    Layer pu_layer = null;
+
+                    Uri uri = new Uri(pu_path);
+                    LayerCreationParams pa = new LayerCreationParams(uri)
+                    {
+                        Name = "pu",
+                        IsVisible = false
+                    };
+
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            pu_layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(pa, GL_GOALS, LayerPosition.AddToBottom);                        
+                        });
+                    }
+                    else
+                    {
+                        await QueuedTask.Run(() =>
+                        {
+                            pu_layer = LayerFactory.Instance.CreateLayer<RasterLayer>(pa, GL_GOALS, LayerPosition.AddToBottom);
+                        });
+                    }
+
+                    await MapView.Active.RedrawAsync(false);
+
+                    #endregion
+
+                    #region OVERLAY ELEMENTS WITH PLANNING UNITS
+
+                    // Process depends on Planning Unit dataset type
+                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        // Process each element
+                        foreach (var regElement in regElements)
+                        {
+                            // Process varies based on element layer type
+                            LayerType layerType = (LayerType)regElement.LayerType;
+
+                            if (layerType == LayerType.FEATURE)
+                            {
+
+
+                            }
+                            else if (layerType == LayerType.RASTER)
+                            {
+
+
+                            }
+                            else
+                            {
+                                // huh?
+                            }
+                        }
+                    }
+                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        // Get some pu raster properties
+                        RasterLayer pu_rl = (RasterLayer)pu_layer;
+                        double pu_ras_cellsize = await QueuedTask.Run(() =>
+                        {
+                            using (Raster raster = pu_rl.GetRaster())
+                            {
+                                return raster.GetMeanCellSize().Item1;
+                            }
+                        });
+                        double poly_to_ras_cellsize = pu_ras_cellsize / 10.0;
+                        double poly_to_ras_cellarea = poly_to_ras_cellsize * poly_to_ras_cellsize;
+
+                        // Process each element
+                        foreach (var regElement in regElements)
+                        {
+                            // Process varies based on element layer type
+                            LayerType layerType = (LayerType)regElement.LayerType;
+
+                            if (layerType == LayerType.FEATURE)
+                            {
+                                // Get the element feature layer
+                                FeatureLayer regFL = (FeatureLayer)regElement.LayerObject;
+
+                                // Apply selection if where clause was stored
+                                if (!string.IsNullOrEmpty(regElement.WhereClause))
+                                {
+                                    await QueuedTask.Run(() =>
+                                    {
+                                        QueryFilter queryFilter = new QueryFilter()
+                                        {
+                                            WhereClause = regElement.WhereClause
+                                        };
+
+                                        regFL.Select(queryFilter, SelectionCombinationMethod.New);
+                                    });
+
+                                    if (regFL.SelectionCount == 0)
+                                    {
+                                        // no matching features - I can skip this element
+                                        continue;
+                                    }
+                                }
+
+                                // Get the object id field
+                                string oidfield = await QueuedTask.Run(() =>
+                                {
+                                    using (FeatureClass featureClass = regFL.GetFeatureClass())
+                                    using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                                    {
+                                        return fcDef.GetObjectIDField();
+                                    }
+                                });
+
+                                // Convert feature layer to raster
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {regElement.ElementName} to raster..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, $"BORT{regElement.ElementID}", "CELL_CENTER", "NONE", "", "BUILD");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR);
+                                toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GPRefresh);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting polygons to raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error converting polygons to raster.");
+                                    return;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
+                                }
+
+                                // Reclass the new raster so that all non-null values are now equal to cell area
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
+                                toolParams = Geoprocessing.MakeValueArray($"BORT{regElement.ElementID}", poly_to_ras_cellarea, $"BLORT{regElement.ElementID}", "", "Value IS NOT NULL");
+                                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR);
+                                toolOutput = await PRZH.RunGPTool("Con_sa", toolParams, toolEnvs, toolFlags_GPRefresh);
+                                if (toolOutput == null)
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error reclassing values.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                                    ProMsgBox.Show($"Error reclassing values.");
+                                    return;
+                                }
+                                else
+                                {
+                                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
+                                }
+
+
+                                // I'm here!!!
+
+                                // > use CON to reclass raster so that its either NODATA or the pixel area (i.e. 10,000)
+                                // > run the zonal stats to table 
+                                // > examine table
+
+                                // If there is a where clause, select features with it
+                            }
+                            else if (layerType == LayerType.RASTER)
+                            {
+
+
+                            }
+                            else
+                            {
+                                // huh?
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // huh?
+                    }
 
                     #endregion
                 }
