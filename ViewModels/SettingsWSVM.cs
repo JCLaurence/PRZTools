@@ -49,18 +49,14 @@ namespace NCC.PRZTools
         private string _prjSettings_Txt_ProjectFolderPath;
         private string _prjSettings_Txt_RegionalFolderPath;
         private string _prjSettings_Txt_NationalDbPath;
-        private bool _prjSettings_Rad_WSViewer_Dir_IsChecked;
-        private bool _prjSettings_Rad_WSViewer_Gdb_IsChecked;
-        private string _prjSettings_Txt_WorkspaceContents;
 
-        private Visibility _natDbInfo_Vis_DockPanel = Visibility.Collapsed;
+        private Visibility _natDbInfo_Vis_DockPanel = Visibility.Hidden;
         private string _natDbInfo_Txt_DbName;
         private List<string> _natDbInfo_Cmb_SchemaNames;
         private string _natDbInfo_Cmb_SelectedSchemaName;
         private Cursor _proWindowCursor;
 
         private string _natDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-
 
         #endregion
 
@@ -145,44 +141,6 @@ namespace NCC.PRZTools
             }
         }
 
-        public string PrjSettings_Txt_WorkspaceContents
-        {
-            get => _prjSettings_Txt_WorkspaceContents;
-            set => SetProperty(ref _prjSettings_Txt_WorkspaceContents, value, () => PrjSettings_Txt_WorkspaceContents);
-        }
-
-        public bool PrjSettings_Rad_WSViewer_Dir_IsChecked
-        {
-            get => _prjSettings_Rad_WSViewer_Dir_IsChecked;
-            set
-            {
-                SetProperty(ref _prjSettings_Rad_WSViewer_Dir_IsChecked, value, () => PrjSettings_Rad_WSViewer_Dir_IsChecked);
-                if (value)
-                {
-                    Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = (int)WorkspaceDisplayMode.DIR;
-                    Properties.Settings.Default.Save();
-                    DisplayContent(WorkspaceDisplayMode.DIR);
-                }
-            }
-        }
-
-        public bool PrjSettings_Rad_WSViewer_Gdb_IsChecked
-        {
-            get => _prjSettings_Rad_WSViewer_Gdb_IsChecked;
-            set
-            {
-                SetProperty(ref _prjSettings_Rad_WSViewer_Gdb_IsChecked, value, () => PrjSettings_Rad_WSViewer_Gdb_IsChecked);
-                if (value)
-                {
-                    Properties.Settings.Default.WORKSPACE_DISPLAY_MODE = (int)WorkspaceDisplayMode.GDB;
-                    Properties.Settings.Default.Save();
-                    DisplayContent(WorkspaceDisplayMode.GDB);
-                }
-            }
-        }
-
-        #endregion
-
         #region COMMANDS
 
         public ICommand CmdViewLogFile => _cmdViewLogFile ?? (_cmdViewLogFile = new RelayCommand(() => ViewLogFile(), () => true));
@@ -202,6 +160,8 @@ namespace NCC.PRZTools
         public ICommand CmdResetWorkspace => _cmdResetWorkspace ?? (_cmdResetWorkspace = new RelayCommand(async () => await ResetWorkspace(), () => true));
 
         public ICommand CmdExploreWorkspace => _cmdExploreWorkspace ?? (_cmdExploreWorkspace = new RelayCommand(() => ExploreWorkspace(), () => true));
+
+        #endregion
 
         #endregion
 
@@ -244,22 +204,6 @@ namespace NCC.PRZTools
                     PrjSettings_Txt_NationalDbPath = natpath;
                 }
 
-                // Workspace Viewer
-                WorkspaceDisplayMode mode = (WorkspaceDisplayMode)Properties.Settings.Default.WORKSPACE_DISPLAY_MODE;
-                if (mode == WorkspaceDisplayMode.DIR)
-                {
-                    PrjSettings_Rad_WSViewer_Dir_IsChecked = true;
-                }
-                else if (mode == WorkspaceDisplayMode.GDB)
-                {
-                    PrjSettings_Rad_WSViewer_Gdb_IsChecked = true;
-                }
-                else
-                {
-                    PrjSettings_Rad_WSViewer_Dir_IsChecked = true;
-                }
-
-
                 // Validate National Db
                 ProWindowCursor = Cursors.Wait;
                 var tryvalidate = await ValidateNationalDb();
@@ -282,216 +226,6 @@ namespace NCC.PRZTools
             finally
             {
                 ProWindowCursor = Cursors.Arrow;
-            }
-        }
-
-        private async Task DisplayContent(WorkspaceDisplayMode mode)
-        {
-            StringBuilder contents = new StringBuilder("");
-
-            try
-            {
-                string wspath = PrjSettings_Txt_ProjectFolderPath;
-
-                if (mode == WorkspaceDisplayMode.DIR)
-                {
-                    // Validate the Project Folder
-                    if (!Directory.Exists(wspath))
-                    {
-                        contents.AppendLine($"Directory does not exist: {wspath}");
-                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // Enter top-level info
-                    contents.AppendLine("PRZ PROJECT FOLDER");
-                    contents.AppendLine("******************");
-                    contents.AppendLine("PATH: " + wspath);
-                    contents.AppendLine();
-
-                    // List Directories
-                    string[] subdirs = Directory.GetDirectories(wspath);
-
-                    contents.AppendLine("SUBFOLDERS");
-                    contents.AppendLine("**********");
-
-                    if (subdirs.Length == 0)
-                    {
-                        contents.AppendLine(" > No Subfolders Found");
-                        contents.AppendLine();
-                    }
-                    else
-                    {
-                        foreach (string dir in subdirs)
-                        {
-                            contents.AppendLine(" > " + dir);
-                        }
-
-                        contents.AppendLine();
-                    }
-
-                    // List Files
-                    string[] files = Directory.GetFiles(wspath);
-
-                    contents.AppendLine("FILES");
-                    contents.AppendLine("*****");
-
-                    if (files.Length == 0)
-                    {
-                        contents.AppendLine(" > No Files Found");
-                        contents.AppendLine();
-                    }
-                    else
-                    {
-                        foreach (string file in files)
-                        {
-                            contents.AppendLine(" > " + file);
-                        }
-
-                        contents.AppendLine();
-                    }
-
-                    // EXPORT WTW Folder Contents, if present
-                    string wtwdir = PRZH.GetPath_ExportWTWFolder();
-
-                    if (Directory.Exists(wtwdir))
-                    {
-                        contents.AppendLine("EXPORT_WTW FOLDER FILES");
-                        contents.AppendLine("***********************");
-
-                        string[] wtwfiles = Directory.GetFiles(wtwdir);
-
-                        if (wtwfiles.Length == 0)
-                        {
-                            contents.AppendLine(" > No Files Found");
-                            contents.AppendLine();
-                        }
-                        else
-                        {
-                            foreach (string f in wtwfiles)
-                            {
-                                contents.AppendLine(" > " + f);
-                            }
-
-                            contents.AppendLine();
-                        }
-                    }
-                }
-                else if (mode == WorkspaceDisplayMode.GDB)
-                {
-                    string gdbpath = PRZH.GetPath_ProjectGDB();
-
-                    // ensure project gdb exists
-                    var try_exists = await PRZH.GDBExists_Project();
-                    
-                    if (!try_exists.exists)
-                    {
-                        contents.AppendLine($"Project Geodatabase does not exist at path: {gdbpath}");
-                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // Create the lists of gdb object names
-                    List<string> FCNames = new List<string>();
-                    List<string> RasterNames = new List<string>();
-                    List<string> TableNames = new List<string>();
-
-                    if (!await QueuedTask.Run(() =>
-                    {
-                        // Get the project geodatabase
-                        var try_gdb = PRZH.GetGDB_Project();
-
-                        if (!try_gdb.success)
-                        {
-                            return false;
-                        }
-
-                        // Populate the geodatabase object name lists
-                        using (Geodatabase geodatabase = try_gdb.geodatabase)
-                        {
-                            IReadOnlyList<FeatureClassDefinition> fcDefs = geodatabase.GetDefinitions<FeatureClassDefinition>();
-
-                            foreach (var fcDef in fcDefs)
-                            {
-                                FCNames.Add(fcDef.GetName());
-                            }
-
-                            IReadOnlyList<RasterDatasetDefinition> rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
-
-                            foreach (var rasDef in rasDefs)
-                            {
-                                RasterNames.Add(rasDef.GetName());
-                            }
-
-                            IReadOnlyList<TableDefinition> tabDefs = geodatabase.GetDefinitions<TableDefinition>();
-
-                            foreach (var tabDef in tabDefs)
-                            {
-                                TableNames.Add(tabDef.GetName());
-                            }
-                        }
-
-                        return true;
-                    }))
-                    {
-                        contents.AppendLine($"Unable to retrieve project geodatabase.");
-                        this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-                        return;
-                    }
-
-                    // Enter top-level info
-                    contents.AppendLine("PROJECT GEODATABASE");
-                    contents.AppendLine("*******************");
-                    contents.AppendLine("PATH: " + gdbpath);
-                    contents.AppendLine();
-
-                    // List Feature Classes
-                    contents.AppendLine("FEATURE CLASSES");
-                    contents.AppendLine("***************");
-
-                    FCNames.Sort();
-
-                    foreach (string name in FCNames)
-                    {
-                        contents.AppendLine($" > {name}");
-                    }
-
-                    contents.AppendLine();
-
-                    // List Feature Classes
-                    contents.AppendLine("RASTER DATASETS");
-                    contents.AppendLine("***************");
-
-                    RasterNames.Sort();
-
-                    foreach (string name in RasterNames)
-                    {
-                        contents.AppendLine($" > {name}");
-                    }
-
-                    contents.AppendLine();
-
-                    // List Tables
-                    contents.AppendLine("TABLES");
-                    contents.AppendLine("******");
-
-                    TableNames.Sort();
-
-                    foreach (string name in TableNames)
-                    {
-                        contents.AppendLine($" > {name}");
-                    }
-
-                    contents.AppendLine();
-                }
-
-                this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-            }
-            catch (Exception ex)
-            {
-                contents.AppendLine(ex.Message);
-                this.PrjSettings_Txt_WorkspaceContents = contents.ToString();
-                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
             }
         }
 
@@ -597,44 +331,26 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<bool> InitializeWorkspace()
+        private async Task InitializeWorkspace()
         {
             try
             {
-                // Validate the current Project Workspace
+                // Ensure the project folder exists
                 if (!Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
                 {
                     ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + PrjSettings_Txt_ProjectFolderPath + " does not exist");
-                    return false;
+                    return;
                 }
 
-                // Prompt User for permission to proceed
-                if (ProMsgBox.Show("Proper Prompt Here" + Environment.NewLine + Environment.NewLine +
-                   "Do you wish to proceed?" +
-                   Environment.NewLine + Environment.NewLine +
-                   "Choose wisely...",
-                   "INITIALIZE PROJECT WORKSPACE",
-                   System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
-                   System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
-                {
-                    return false;
-                }
-
-                #region SUBDIRECTORIES
-
-                // EXPORT WTW
+                // Ensure the WTW Export folder exists
                 string wtw_folder = PRZH.GetPath_ExportWTWFolder();
                 if (!Directory.Exists(wtw_folder))
                 {
                     Directory.CreateDirectory(wtw_folder);
                 }
 
-                #endregion
-
-                #region LOG FILE
-
+                // Ensure the Log file exists
                 string logpath = PRZH.GetPath_ProjectLog();
-
                 if (!File.Exists(logpath))
                 {
                     PRZH.WriteLog("Log File Created");
@@ -644,14 +360,11 @@ namespace NCC.PRZTools
                     PRZH.WriteLog("Project Folder Initialized");
                 }
 
-                #endregion
-
-                #region GEODATABASE
-
+                // Ensure the Project file geodatabase exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                var try_gdbexists = await PRZH.GDBExists_Project();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
 
+                var try_gdbexists = await PRZH.GDBExists_Project();
                 if (!try_gdbexists.exists)
                 {
                     if (gdbfolderexists)
@@ -662,111 +375,97 @@ namespace NCC.PRZTools
                         }
                         catch (Exception ex)
                         {
-                            ProMsgBox.Show($"Unable to delete the geodatabase folder at {gdbpath}" + Environment.NewLine + Environment.NewLine + ex.Message);
-                            return false;
+                            ProMsgBox.Show($"Unable to delete the geodatabase folder at {gdbpath}\n{ex.Message}");
                         }
                     }
 
-                    // create the geodatabase
-                    Uri uri = new Uri(gdbpath);
-                    FileGeodatabaseConnectionPath fgcp = new FileGeodatabaseConnectionPath(uri);
-                    try
+                    // Declare some generic GP variables
+                    IReadOnlyList<string> toolParams;
+                    IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                    GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
+                    string toolOutput;
+
+                    // Create a new geodatabase
+                    toolParams = Geoprocessing.MakeValueArray(PrjSettings_Txt_ProjectFolderPath, PRZC.c_FILE_PRZ_FGDB);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CreateFileGDB_management", toolParams, null, toolFlags_GPRefresh);
+                    if (toolOutput == null)
                     {
-                        using (Geodatabase gdb = SchemaBuilder.CreateGeodatabase(fgcp)) { }
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show("Unable to create the geodatabase..." + Environment.NewLine + Environment.NewLine + ex.Message);
-                        return false;
+                        ProMsgBox.Show($"Error creating the {PRZC.c_FILE_PRZ_FGDB} geodatabase in the project folder.");
+                        return;
                     }
                 }
 
-                #endregion
-
-                // Refresh the Display
-                if (PrjSettings_Rad_WSViewer_Dir_IsChecked)
+                // Create the Regional Data Domains in the geodatabase if not already present
+                var trybuild = await PRZH.CreateRegionalDomains();
+                if (!trybuild.success)
                 {
-                    await DisplayContent(WorkspaceDisplayMode.DIR);
-                }
-                else if (PrjSettings_Rad_WSViewer_Gdb_IsChecked)
-                {
-                    await DisplayContent(WorkspaceDisplayMode.GDB);
+                    ProMsgBox.Show($"Error creating regional domains.\n{trybuild.message}");
+                    return;
                 }
 
                 ProMsgBox.Show("Workspace has been initialized");
-                return true;
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
             }
         }
 
-        private async Task<bool> ResetWorkspace()
+        private async Task ResetWorkspace()
         {
             try
             {
-                // Validate the current Project Workspace
+                // Ensure the project folder exists
                 if (!Directory.Exists(PrjSettings_Txt_ProjectFolderPath))
                 {
-                    ProMsgBox.Show("Please select a valid Project Folder" + Environment.NewLine + Environment.NewLine + PrjSettings_Txt_ProjectFolderPath + " does not exist");
-                    return false;
+                    ProMsgBox.Show($"Please select a valid Project Folder\n{PrjSettings_Txt_ProjectFolderPath} does not exist.");
+                    return;
                 }
 
                 // Prompt User for permission to proceed
-                if (ProMsgBox.Show("Suitable Prompt goes here" + Environment.NewLine + Environment.NewLine +
+                if (ProMsgBox.Show("This action will reset your project folder and delete all data in the project geodatabase." + Environment.NewLine + Environment.NewLine +
                    "Do you wish to proceed?" +
                    Environment.NewLine + Environment.NewLine +
                    "Choose wisely...",
-                   "RESET PROJECT WORKSPACE",
+                   "RESET PROJECT FOLDER",
                    System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Exclamation,
                    System.Windows.MessageBoxResult.Cancel) == System.Windows.MessageBoxResult.Cancel)
                 {
-                    return false;
+                    return;
                 }
 
-                #region SUBDIRECTORIES
-
-                // EXPORT WTW
+                // Delete/create the WTW Export folder
                 string wtw_folder = PRZH.GetPath_ExportWTWFolder();
                 if (Directory.Exists(wtw_folder))
                 {
                     Directory.Delete(wtw_folder, true);
                 }
-
                 Directory.CreateDirectory(wtw_folder);
-
-                #endregion
-
-                #region LOG FILE
 
                 // Reset Log File
                 PRZH.WriteLog("Log File Created.", LogMessageType.INFO, false);
 
-                #endregion
-
-                #region GEODATABASE
-
+                // Delete and Rebuild the project geodatabase
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 bool gdbfolderexists = Directory.Exists(gdbpath);
                 var try_gdbexists = await PRZH.GDBExists_Project();
 
-                // Create the Geodatabase
+                // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
                 if (try_gdbexists.exists)  // geodatabase exists
                 {
-                    // delete the geodatabase
                     toolParams = Geoprocessing.MakeValueArray(gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, null, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, null, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         ProMsgBox.Show("Unable to delete the PRZ geodatabase...");
-                        return false;
+                        return;
                     }
                 }
                 else if (gdbfolderexists)   // folder exists but it is not a valid geodatabase
@@ -778,43 +477,33 @@ namespace NCC.PRZTools
                     catch (Exception ex)
                     {
                         ProMsgBox.Show($"Unable to delete the {gdbpath} directory..." + Environment.NewLine + Environment.NewLine + ex.Message);
-                        return false;
+                        return;
                     }
                 }
 
-                // Create the Geodatabase
-                Uri uri = new Uri(gdbpath);
-                FileGeodatabaseConnectionPath fgcp = new FileGeodatabaseConnectionPath(uri);
-                try
+                // Create a new geodatabase
+                toolParams = Geoprocessing.MakeValueArray(PrjSettings_Txt_ProjectFolderPath, PRZC.c_FILE_PRZ_FGDB);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFileGDB_management", toolParams, null, toolFlags_GPRefresh);
+                if (toolOutput == null)
                 {
-                    using (Geodatabase gdb = SchemaBuilder.CreateGeodatabase(fgcp)) { }
-                }
-                catch (Exception ex)
-                {
-                    ProMsgBox.Show("Unable to create the geodatabase..." + Environment.NewLine + Environment.NewLine + ex.Message);
-                    return false;
+                    ProMsgBox.Show($"Error creating the {PRZC.c_FILE_PRZ_FGDB} geodatabase in the project folder.");
+                    return;
                 }
 
-                #endregion
-
-                // Refresh the Display
-                if (PrjSettings_Rad_WSViewer_Dir_IsChecked)
+                // Create the Regional Data Domains in the geodatabase if not already present
+                var trybuild = await PRZH.CreateRegionalDomains();
+                if (!trybuild.success)
                 {
-                    await DisplayContent(WorkspaceDisplayMode.DIR);
-                }
-                else if (PrjSettings_Rad_WSViewer_Gdb_IsChecked)
-                {
-                    await DisplayContent(WorkspaceDisplayMode.GDB);
+                    ProMsgBox.Show($"Error creating regional domains.\n{trybuild.message}");
+                    return;
                 }
 
-                ProMsgBox.Show("Workspace has been reset");
-
-                return true;
+                ProMsgBox.Show("Project folder has been reset.");
             }
             catch (Exception ex)
             {
                 ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                return false;
             }
         }
 
@@ -1105,7 +794,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    NatDbInfo_Vis_DockPanel = Visibility.Collapsed;
+                    NatDbInfo_Vis_DockPanel = Visibility.Hidden;
                 }
 
                 // Review the schema dictionary. KVP having V = 2 are valid (they have an element and a theme table).  KVP less than 2 are invalid
@@ -1155,7 +844,7 @@ namespace NCC.PRZTools
             }
             catch (Exception ex)
             {
-                NatDbInfo_Vis_DockPanel = Visibility.Collapsed;
+                NatDbInfo_Vis_DockPanel = Visibility.Hidden;
                 NatDbInfo_Txt_DbName = "";
                 NatDbInfo_Cmb_SchemaNames = new List<string>();
                 NatDbInfo_Cmb_SelectedSchemaName = "";

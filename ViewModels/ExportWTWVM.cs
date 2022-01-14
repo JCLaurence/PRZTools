@@ -621,7 +621,7 @@ namespace NCC.PRZTools
 
                 // Get the National Themes
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
-                var theme_outcome = await PRZH.GetNationalThemes(NationalThemePresence.Present);
+                var theme_outcome = await PRZH.GetNationalThemes(ElementPresence.Present);
                 if (!theme_outcome.success)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
@@ -635,62 +635,62 @@ namespace NCC.PRZTools
                 List<NatTheme> themes = theme_outcome.themes;
 
                 // Get the goals
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Goal} elements..."), true, ++val);
-                var goal_outcome = await PRZH.GetNationalElements(NationalElementType.Goal, NationalElementStatus.Active, NationalElementPresence.Present);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Goal} elements..."), true, ++val);
+                var goal_outcome = await PRZH.GetNationalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
                 if (!goal_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Goal} elements.\n{goal_outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}");
                     return;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goal_outcome.elements.Count} national {NationalElementType.Goal} elements."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goal_outcome.elements.Count} national {ElementType.Goal} elements."), true, ++val);
                 }
                 List<NatElement> goals = goal_outcome.elements;
 
                 // Get the weights
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Weight} elements..."), true, ++val);
-                var weight_outcome = await PRZH.GetNationalElements(NationalElementType.Weight, NationalElementStatus.Active, NationalElementPresence.Present);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Weight} elements..."), true, ++val);
+                var weight_outcome = await PRZH.GetNationalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
                 if (!weight_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Weight} elements.\n{weight_outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}");
                     return;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weight_outcome.elements.Count} national {NationalElementType.Weight} elements."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weight_outcome.elements.Count} national {ElementType.Weight} elements."), true, ++val);
                 }
                 List<NatElement> weights = weight_outcome.elements;
 
                 // Get the includes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Include} elements..."), true, ++val);
-                var include_outcome = await PRZH.GetNationalElements(NationalElementType.Include, NationalElementStatus.Active, NationalElementPresence.Present);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Include} elements..."), true, ++val);
+                var include_outcome = await PRZH.GetNationalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
                 if (!include_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Include} elements.\n{include_outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}");
                     return;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {include_outcome.elements.Count} national {NationalElementType.Include} elements."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {include_outcome.elements.Count} national {ElementType.Include} elements."), true, ++val);
                 }
                 List<NatElement> includes = include_outcome.elements;
 
                 // Get the excludes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {NationalElementType.Exclude} elements..."), true, ++val);
-                var exclude_outcome = await PRZH.GetNationalElements(NationalElementType.Exclude, NationalElementStatus.Active, NationalElementPresence.Present);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Exclude} elements..."), true, ++val);
+                var exclude_outcome = await PRZH.GetNationalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
                 if (!exclude_outcome.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {NationalElementType.Exclude} elements.\n{exclude_outcome.message}");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}");
                     return;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {exclude_outcome.elements.Count} national {NationalElementType.Exclude} elements."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {exclude_outcome.elements.Count} national {ElementType.Exclude} elements."), true, ++val);
                 }
                 List<NatElement> excludes = exclude_outcome.elements;
 
@@ -1827,7 +1827,7 @@ namespace NCC.PRZTools
         private void ResetOpUI()
         {
             ProWindowCursor = Cursors.Arrow;
-            Operation_Cmd_IsEnabled = _pu_exists && _blt_exists;
+            Operation_Cmd_IsEnabled = _pu_exists & _blt_exists;
             OpStat_Img_Visibility = Visibility.Hidden;
             OpStat_Txt_Label = "Idle";
             _operationIsUnderway = false;

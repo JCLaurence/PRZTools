@@ -691,6 +691,7 @@ namespace NCC.PRZTools
                 }
 
                 // Ensure that national geodatabase is valid
+                // TODO: This is not ideal.  Actual test should be done here rather than relying on a flag set somewhere else.
                 if (!Properties.Settings.Default.NATDB_DBVALID)
                 {
                     return (false, GeoDBType.Unknown, "National geodatabase exists but is invalid.");
@@ -1135,6 +1136,91 @@ namespace NCC.PRZTools
                 return (false, PlanningUnitLayerType.UNKNOWN, ex.Message);
             }
         }
+
+        /// <summary>
+        /// Identifies whether or not a planning unit dataset is configured as a national grid.
+        /// Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, bool is_national, string message)> PUIsNational()
+        {
+            try
+            {
+                // Run entire method on the worker thread
+                return await QueuedTask.Run(async () =>
+                {
+                    // Try to retrieve the project geodatabase
+                    var tryget_gdb = GetGDB_Project();
+
+                    if (!tryget_gdb.success)
+                    {
+                        return (false, false, tryget_gdb.message);
+                    }
+
+                    // Ensure the pu dataset exists
+                    var tryexists = await PUExists();
+                    if (!tryexists.exists)
+                    {
+                        return (false, false, tryexists.message);
+                    }
+
+                    // Examine table for required field
+                    if (tryexists.puLayerType == PlanningUnitLayerType.FEATURE)
+                    {
+                        var tryget_fc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        using (FeatureClass FC = tryget_fc.featureclass)
+                        using (FeatureClassDefinition fcDef = FC.GetDefinition())
+                        {
+                            // Search for the cell number field
+                            var a = fcDef.GetFields().Where(f => f.Name == PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER).FirstOrDefault();
+
+                            if (a == null)
+                            {
+                                // no cellnumber field found
+                                return (true, false, "cell number field not found");
+                            }
+                            else
+                            {
+                                // cell number field found
+                                return (true, true, "cell number field found");
+                            }
+                        }
+                    }
+                    else if (tryexists.puLayerType == PlanningUnitLayerType.RASTER)
+                    {
+                        var tryget_ras = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        using (RasterDataset rasterDataset = tryget_ras.rasterDataset)
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (TableDefinition tblDef = table.GetDefinition())
+                        {
+                            // Search for the cell number field
+                            var a = tblDef.GetFields().Where(f => f.Name == PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER).FirstOrDefault();
+
+                            if (a == null)
+                            {
+                                // no cellnumber field found
+                                return (true, false, "cell number field not found");
+                            }
+                            else
+                            {
+                                // cell number field found
+                                return (true, true, "cell number field found");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return (false, false, "Unable to retrieve planning unit dataset");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, false, ex.Message);
+            }
+        }
+
 
         /// <summary>
         /// Establish the existence of a project log file.  Silent errors.
@@ -1992,7 +2078,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="element_id"></param>
         /// <returns></returns>
-        public static (bool success, string table_name, string message) GetElementTableName(int element_id)
+        public static (bool success, string table_name, string message) GetNationalElementTableName(int element_id)
         {
             try
             {
@@ -2099,7 +2185,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="presence"></param>
         /// <returns></returns>
-        public static async Task<(bool success, List<NatTheme> themes, string message)> GetNationalThemes(NationalThemePresence? presence)
+        public static async Task<(bool success, List<NatTheme> themes, string message)> GetNationalThemes(ElementPresence? presence)
         {
             try
             {
@@ -2253,7 +2339,7 @@ namespace NCC.PRZTools
         /// <param name="status"></param>
         /// <param name="presence"></param>
         /// <returns></returns>
-        public static async Task<(bool success, List<NatElement> elements, string message)> GetNationalElements(NationalElementType? type, NationalElementStatus? status, NationalElementPresence? presence)
+        public static async Task<(bool success, List<NatElement> elements, string message)> GetNationalElements(ElementType? type, ElementStatus? status, ElementPresence? presence)
         {
             try
             {
@@ -2373,7 +2459,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygettab = GetElementTableName(element_id);
+                var trygettab = GetNationalElementTableName(element_id);
                 if (!trygettab.success)
                 {
                     return (false, value, "Unable to retrieve element table name");
@@ -2479,7 +2565,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
 
                 if (!trygetname.success)
                 {
@@ -2594,7 +2680,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
 
                 if (!trygetname.success)
                 {
@@ -2672,7 +2758,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
 
                 if (!trygetname.success)
                 {
@@ -2780,7 +2866,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
                 if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
@@ -2851,7 +2937,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
                 if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
@@ -2928,7 +3014,7 @@ namespace NCC.PRZTools
                 }
 
                 // Get element table name
-                var trygetname = GetElementTableName(element_id);
+                var trygetname = GetNationalElementTableName(element_id);
                 if (!trygetname.success)
                 {
                     return (false, null, "Unable to retrieve element table name");
@@ -3942,6 +4028,30 @@ namespace NCC.PRZTools
         #endregion
 
         #region REGIONAL TABLES
+
+        /// <summary>
+        /// Returns the regional element table name for the supplied element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static (bool success, string table_name, string message) GetRegionalElementTableName(int element_id)
+        {
+            try
+            {
+                if (element_id > 99999 || element_id < 1)
+                {
+                    throw new Exception($"Element ID {element_id} is out of range (1 to 99999)");
+                }
+                else
+                {
+                    return (true, PRZC.c_TABLE_REG_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, "", ex.Message);
+            }
+        }
 
         /// <summary>
         /// Retrieve a list of regional element table names (e.g. r00042) from the project geodatabase.
@@ -5648,7 +5758,199 @@ namespace NCC.PRZTools
 
         #endregion
 
+        #region DOMAINS
 
+        /// <summary>
+        /// Creates several domains associated with Regional Data.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, string message)> CreateRegionalDomains()
+        {
+            try
+            {
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // Flags for regional domain existence
+                bool presence_domain_exists = false;
+                bool status_domain_exists = false;
+                bool type_domain_exists = false;
+
+                // Determine existence of each domain
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening the project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var domains = geodatabase.GetDomains();
+
+                        foreach (var domain in domains)
+                        {
+                            using (domain)
+                            {
+                                if (domain is CodedValueDomain cvd)
+                                {
+                                    string domname = cvd.GetName();
+                                    if (domname == PRZC.c_DOMAIN_PRESENCE)
+                                    {
+                                        presence_domain_exists = true;
+                                    }
+                                    else if (domname == PRZC.c_DOMAIN_REG_STATUS)
+                                    {
+                                        status_domain_exists = true;
+                                    }
+                                    else if (domname == PRZC.c_DOMAIN_REG_TYPE)
+                                    {
+                                        type_domain_exists = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                string gdbpath = GetPath_ProjectGDB();
+
+                // Create the Presence domain if it is missing
+                if (!presence_domain_exists)
+                {
+                    // create domain
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error creating {PRZC.c_DOMAIN_PRESENCE}");
+                    }
+
+                    // Add coded value #1
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Present, ElementPresence.Present.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
+                    }
+
+                    // Add coded value #2
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Absent, ElementPresence.Absent.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
+                    }
+                }
+                else
+                {
+                    // TODO: Domain found - verify values
+                }
+
+                // Create the Status domain if it is missing
+                if (!status_domain_exists)
+                {
+                    // create domain
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error creating {PRZC.c_DOMAIN_REG_STATUS}");
+                    }
+
+                    // Add coded value #1
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Active, ElementStatus.Active.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                    }
+
+                    // Add coded value #2
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Inactive, ElementStatus.Inactive.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                    }
+                }
+                else
+                {
+                    // TODO: Domain found - verify values
+                }
+
+                // Create the Type domain if it is missing
+                if (!type_domain_exists)
+                {
+                    // create domain
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error creating {PRZC.c_DOMAIN_REG_TYPE}");
+                    }
+
+                    // Add coded value #1
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Goal, ElementType.Goal.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                    }
+
+                    // Add coded value #2
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Weight, ElementType.Weight.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                    }
+
+                    // Add coded value #3
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Include, ElementType.Include.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                    }
+
+                    // Add coded value #4
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Exclude, ElementType.Exclude.ToString());
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                    }
+                }
+                else
+                {
+                    // TODO: Domain found - verify values
+                }
+
+                return (true, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        #endregion
 
 
         #region *** MAY NOT BE NECESSARY ANY MORE!!! ***

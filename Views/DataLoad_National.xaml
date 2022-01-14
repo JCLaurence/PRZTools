@@ -74,6 +74,23 @@
                             Text="{Binding CompStat_Txt_PlanningUnits_Label}" />
 
                     </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
+                            Source="{Binding CompStat_Img_NatDB_Path}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding CompStat_Txt_NatDB_Label}" />
+
+                    </DockPanel>
                 </DockPanel>
             </Border>
 

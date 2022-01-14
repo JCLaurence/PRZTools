@@ -51,32 +51,29 @@
 
     #endregion
 
-    #region ELEMENT AND THEME TABLES
+    #region DOMAIN ENUMS
 
-    public enum NationalElementType
+    public enum ElementPresence
+    {
+        Present = 1,
+        Absent,
+        Unknown
+    }
+
+    public enum ElementType
     {
         Goal = 1,
         Weight,
         Include,
-        Exclude
+        Exclude,
+        Unknown
     }
 
-    public enum NationalElementStatus
+    public enum ElementStatus
     {
         Active = 1,
-        Inactive
-    }
-
-    public enum NationalElementPresence
-    {
-        Present = 1,
-        Absent
-    }
-
-    public enum NationalThemePresence
-    {
-        Present = 1,
-        Absent
+        Inactive,
+        Unknown
     }
 
     #endregion
@@ -87,7 +84,6 @@
         FileGDB,
         EnterpriseGDB
     }
-
 
     // SELECTION RULES
 
@@ -214,12 +210,20 @@
 
         #region GEODATABASE OBJECT NAMES
 
-        // DOMAINS
-        public const string c_DOMAIN_ELEMENT_PRESENCE = "ElementPresence";
-        public const string c_DOMAIN_ELEMENT_STATUS = "ElementStatus";
-        public const string c_DOMAIN_ELEMENT_TYPE = "ElementType";
-        public const string c_DOMAIN_THEME_PRESENCE = "ThemePresence";
-        public const string c_DOMAIN_THEME_NAMES = "ThemeNames";
+        #region DOMAINS
+
+        // National
+        public const string c_DOMAIN_NAT_STATUS = "Nat_Status";
+        public const string c_DOMAIN_NAT_TYPE = "Nat_Type";
+
+        // Regional
+        public const string c_DOMAIN_REG_STATUS = "Reg_Status";
+        public const string c_DOMAIN_REG_TYPE = "Reg_Type";
+
+        // General
+        public const string c_DOMAIN_PRESENCE = "Gen_Presence";
+
+        #endregion
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
@@ -228,6 +232,9 @@
         public const string c_RAS_TEMP_3 = "TempRas3";
         public const string c_RAS_NATGRID_ZERO = "natgrid_zero";
         public const string c_RAS_NATGRID_CELLNUMS = "natgrid_cellnums";
+        public const string c_RAS_TEMP_A = "z_tmpras_a";
+        public const string c_RAS_TEMP_B = "z_tmpras_b";
+        public const string c_RAS_TEMP_C = "z_tmpras_c";
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
@@ -253,11 +260,14 @@
         public const string c_TABLE_FEATURES = "features";
         public const string c_TABLE_PUFEATURES = "pu_features";
         public const string c_TABLE_COSTSTATS = "pu_cost";      // this will change soon
+        public const string c_TABLE_TEMP_A = "z_tmptab_a";
+        public const string c_TABLE_TEMP_B = "z_tmptab_b";
+        public const string c_TABLE_TEMP_C = "z_tmptab_c";
 
         // NATIONAL DB TABLES
-        public const string c_TABLE_NAT_ELEMENTS = "element";   // TODO: Change to nat_element
-        public const string c_TABLE_NAT_THEMES = "theme";       // TODO: Change to nat_theme
-        public const string c_TABLE_NAT_PREFIX_ELEMENT = "e";   // TODO: Change to n
+        public const string c_TABLE_NAT_ELEMENTS = "nat_element";
+        public const string c_TABLE_NAT_THEMES = "nat_theme";
+        public const string c_TABLE_NAT_PREFIX_ELEMENT = "n";
 
         // REGIONAL DB TABLES
         public const string c_TABLE_REG_ELEMENTS = "reg_element";
@@ -358,10 +368,9 @@
         public const string c_FLD_TAB_REGELEMENT_WHERECLAUSE = "layer_whereclause"; // string
         public const string c_FLD_TAB_REGELEMENT_LEGENDGROUP = "legend_group"; // string
         public const string c_FLD_TAB_REGELEMENT_LEGENDCLASS = "legend_class"; // string
-        //public const string c_FLD_TAB_REGELEMENT_ = "";
-        //public const string c_FLD_TAB_REGELEMENT_ = "";
 
         // REGIONAL DB - ELEMENT VALUE TABLES
+        public const string c_FLD_TAB_REG_ELEMVAL_PU_ID = "id";
         public const string c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER = "cell_number";
         public const string c_FLD_TAB_REG_ELEMVAL_CELL_VALUE = "cell_value";
 
