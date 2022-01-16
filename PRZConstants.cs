@@ -235,6 +235,7 @@
         public const string c_RAS_TEMP_A = "z_tmpras_a";
         public const string c_RAS_TEMP_B = "z_tmpras_b";
         public const string c_RAS_TEMP_C = "z_tmpras_c";
+        public const string c_RAS_REG_ELEMENT = "reg_elem_";
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
@@ -343,6 +344,7 @@
         public const string c_FLD_TAB_NATELEMENT_UNIT = "unit";                // text
 
         // NATIONAL DB - ELEMENT VALUE TABLES
+        public const string c_FLD_TAB_NAT_ELEMVAL_PU_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER = "cell_number";
         public const string c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE = "cell_value";
 
@@ -370,7 +372,7 @@
         public const string c_FLD_TAB_REGELEMENT_LEGENDCLASS = "legend_class"; // string
 
         // REGIONAL DB - ELEMENT VALUE TABLES
-        public const string c_FLD_TAB_REG_ELEMVAL_PU_ID = "id";
+        public const string c_FLD_TAB_REG_ELEMVAL_PU_ID = c_FLD_FC_PU_ID;
         public const string c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER = "cell_number";
         public const string c_FLD_TAB_REG_ELEMVAL_CELL_VALUE = "cell_value";
 

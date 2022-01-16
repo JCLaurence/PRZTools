@@ -60,7 +60,7 @@ namespace NCC.PRZTools
 
         #region OPERATION STATUS INDICATORS
 
-        private Visibility _opStat_Img_Visibility;
+        private Visibility _opStat_Img_Visibility = Visibility.Collapsed;
         private string _opStat_Txt_Label;
 
         #endregion

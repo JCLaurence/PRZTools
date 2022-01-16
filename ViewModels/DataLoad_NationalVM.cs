@@ -63,7 +63,7 @@ namespace NCC.PRZTools
 
         #region OPERATION STATUS INDICATORS
 
-        private Visibility _opStat_Img_Visibility;
+        private Visibility _opStat_Img_Visibility = Visibility.Collapsed;
         private string _opStat_Txt_Label;
 
         #endregion
@@ -398,8 +398,8 @@ namespace NCC.PRZTools
 
                 if (!trynatdb.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($".", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($".");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing National DB tables.\n{trynatdb.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error processing National DB tables.\n{trynatdb.message}.");
                     return;
                 }
                 else
@@ -595,20 +595,17 @@ namespace NCC.PRZTools
 
                 #region RETRIEVE INTERSECTING ELEMENTS
 
-                // Iterate through the Planning Unit Attribute Table (Raster or Feature) and copy the cell numbers into a hashset
-                var gethash_outcome = await PRZH.GetCellNumberHashset();
-                if (!gethash_outcome.success)
+                // Get the cell_numbers and associated puids
+                var tryget_cnpuid = await PRZH.GetCellNumbersAndPUIDs();
+                if (!tryget_cnpuid.success)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell numbers\n{gethash_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to retrieve cell numbers\n{gethash_outcome.message}");
-                    return (false, "error retrieving cell numbers.");
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved hashset with {gethash_outcome.cell_numbers.Count} cell numbers."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve cell number and puid dictionary", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to retrieve cell number and puid dictionary");
+                    return (false, "error retrieving dictionary.");
                 }
 
-                HashSet<long> puCellNumbers = gethash_outcome.cell_numbers;
+                var DICT_CN_and_PUIDs = tryget_cnpuid.dict;
+                var puCellNumbers = new HashSet<long>(DICT_CN_and_PUIDs.Keys);
 
                 PRZH.CheckForCancellation(token);
 
@@ -618,16 +615,16 @@ namespace NCC.PRZTools
                 foreach (var element in elements)
                 {
                     // Attempt to retrieve intersection dictionary
-                    var getint_outcome = await PRZH.GetElementIntersection(element.ElementID, puCellNumbers);
+                    var tryget_elemintersect = await PRZH.GetElementIntersection(element.ElementID, puCellNumbers);
 
-                    if (!getint_outcome.success)
+                    if (!tryget_elemintersect.success)
                     {
                         // Failed, exit
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve values from the {element.ElementTable} table.\n{getint_outcome.message}", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Unable to retrieve values from the {element.ElementTable} table.\n{getint_outcome.message}");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve values from the {element.ElementTable} table.\n{tryget_elemintersect.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve values from the {element.ElementTable} table.\n{tryget_elemintersect.message}");
                         return (false, "error getting element intersections.");
                     }
-                    else if (getint_outcome.dict.Count == 0)
+                    else if (tryget_elemintersect.dict.Count == 0)
                     {
                         // No intersection, continue
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: no intersection."), true, ++val);
@@ -643,8 +640,9 @@ namespace NCC.PRZTools
                             themes_with_intersection.Add(element.ThemeID);
                         }
 
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: intersection with {getint_outcome.dict.Count} planning units."), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{element.ElementTable} table: intersection with {tryget_elemintersect.dict.Count} planning units."), true, ++val);
                     }
+                    var DICT_ElemIntersect = tryget_elemintersect.dict;
 
                     PRZH.CheckForCancellation(token);
 
@@ -690,102 +688,46 @@ namespace NCC.PRZTools
 
                     PRZH.CheckForCancellation(token);
 
-                    // add record for each KVP in dict
-                    if (!await QueuedTask.Run(async () =>
+                    // Populate the table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {element.ElementTable} table.."), true, ++val);
+                    await QueuedTask.Run(() =>
                     {
-                        bool success = false;
+                        var tryget_gdb = PRZH.GetGDB_Project();
 
-                        // I'm here!  change this to geodatabase.applyedits
-                        try
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(element.ElementTable))
+                        using (InsertCursor insertCursor = table.CreateInsertCursor())
+                        using (RowBuffer rowBuffer = table.CreateRowBuffer())
                         {
-                            var loader = new EditOperation();
-                            loader.Name = "Element Table Inserts";
-                            loader.ShowProgressor = false;
-                            loader.ShowModalMessageAfterFailure = false;
-                            loader.SelectNewFeatures = false;
-                            loader.SelectModifiedFeatures = false;
-
-                            int flusher = 0;
-
-                            var tryget = PRZH.GetTable_Project(element.ElementTable);
-                            if (!tryget.success)
+                            geodatabase.ApplyEdits(() =>
                             {
-                                throw new Exception("Error retrieving table.");
-                            }
+                                int flusher = 0;
 
-                            using (Table tab = tryget.table)
-                            {
-                                loader.Callback((context) =>
+                                foreach (var kvp in DICT_ElemIntersect)
                                 {
-                                    using (Table table = PRZH.GetTable_Project(element.ElementTable).table)
-                                    using (InsertCursor insertCursor = table.CreateInsertCursor())
-                                    using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                                    rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = kvp.Key;
+                                    rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = kvp.Value;
+
+                                    if (DICT_CN_and_PUIDs.ContainsKey(kvp.Key))
                                     {
-                                        foreach (var kvp in getint_outcome.dict)
-                                        {
-                                            rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER] = kvp.Key;
-                                            rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE] = kvp.Value;
-
-                                            insertCursor.Insert(rowBuffer);
-
-                                            flusher++;
-
-                                            if (flusher == 10000)
-                                            {
-                                                insertCursor.Flush();
-                                                flusher = 0;
-                                            }
-                                        }
-
-                                        insertCursor.Flush();
+                                        rowBuffer[PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID] = DICT_CN_and_PUIDs[kvp.Key];
                                     }
-                                }, tab);
-                            }
 
-                            PRZH.CheckForCancellation(token);
+                                    insertCursor.Insert(rowBuffer);
 
-                            // Execute all the queued "creates"
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Executing Edit Operation - row inserts into {element.ElementTable}..."), true, max, ++val);
-                            success = loader.Execute();
+                                    flusher++;
 
-                            if (!success)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to add rows to {element.ElementTable}", LogMessageType.ERROR), true, max, ++val);
-                                ProMsgBox.Show($"Edit Operation error: unable to add rows to {element.ElementTable}");
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Rows added to {element.ElementTable}."), true, max, ++val);
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Saving new rows in {element.ElementTable}..."), true, max, ++val);
-                                if (!await Project.Current.SaveEditsAsync())
-                                {
-                                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving new rows.", LogMessageType.ERROR), true, max, ++val);
-                                    ProMsgBox.Show($"Error saving new rows.");
-                                    return false;
+                                    if (flusher == 10000)
+                                    {
+                                        insertCursor.Flush();
+                                        flusher = 0;
+                                    }
                                 }
-                                else
-                                {
-                                    PRZH.UpdateProgress(PM, PRZH.WriteLog("New rows saved."), true, max, ++val);
-                                }
-                            }
 
-                            return success;
+                                insertCursor.Flush();
+                            });
                         }
-                        catch (OperationCanceledException cancelex)
-                        {
-                            throw cancelex;
-                        }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to add rows to {element.ElementTable}", LogMessageType.ERROR), true, max, ++val);
-                        ProMsgBox.Show($"Edit Operation error: unable to add rows to {element.ElementTable}");
-                        return false;
-                    }
+                    });
 
                     PRZH.CheckForCancellation(token);
 
@@ -793,12 +735,28 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} field in the {element.ElementTable} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(element.ElementTable, PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "", "");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Error indexing field.");
-                        return false;
+                        return (false, "error indexing field.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+
+                    // index the puid field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID} field in the {element.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(element.ElementTable, PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID, "ix" + PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return (false, "error indexing field.");
                     }
                     else
                     {
@@ -810,108 +768,41 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Found {elements_with_intersection.Count} intersecting elements."), true, ++val);
-
                 #region UPDATE THE LOCAL ELEMENT TABLE PRESENCE FIELD
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field in local {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
-
-                if (!await QueuedTask.Run(async () =>
+                // Update the table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NAT_ELEMENTS} table {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field..."), true, ++val);
+                await QueuedTask.Run(() =>
                 {
-                    bool success = false;
+                    var tryget_gdb = PRZH.GetGDB_Project();
 
-                    try
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_ELEMENTS))
+                    using (RowCursor rowCursor = table.Search(null, false))
                     {
-                        var loader = new EditOperation();
-                        loader.Name = $"{PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field updater";
-                        loader.ShowProgressor = false;
-                        loader.ShowModalMessageAfterFailure = false;
-                        loader.SelectNewFeatures = false;
-                        loader.SelectModifiedFeatures = false;
-
-                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
-                        if (!tryget.success)
+                        geodatabase.ApplyEdits(() =>
                         {
-                            throw new Exception("Error retrieving table.");
-                        }
-
-                        using (Table tab = tryget.table)
-                        {
-                            loader.Callback((context) =>
+                            while (rowCursor.MoveNext())
                             {
-                                using (Table table = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS).table)
-                                using (RowCursor rowCursor = table.Search(null, false))
+                                using (Row row = rowCursor.Current)
                                 {
-                                    while (rowCursor.MoveNext())
+                                    int element_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID]);
+
+                                    if (elements_with_intersection.Contains(element_id))
                                     {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            int element_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID]);
-
-                                            if (elements_with_intersection.Contains(element_id))
-                                            {
-                                                row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)ElementPresence.Present;
-                                            }
-                                            else
-                                            {
-                                                row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)ElementPresence.Absent;
-                                            }
-
-                                            row.Store();
-                                            context.Invalidate(row);
-                                        }
+                                        row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)ElementPresence.Present;
                                     }
+                                    else
+                                    {
+                                        row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE] = (int)ElementPresence.Absent;
+                                    }
+
+                                    row.Store();
                                 }
-                            }, tab);
-                        }
-
-                        PRZH.CheckForCancellation(token);
-
-                        // Execute all the queued "creates"
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation - updating element record presence..."), true, max, ++val);
-                        success = loader.Execute();
-
-                        if (success)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving updates..."), true, max, ++val);
-                            if (!await Project.Current.SaveEditsAsync())
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving updates.", LogMessageType.ERROR), true, max, ++val);
-                                ProMsgBox.Show($"Error saving updates.");
-                                return false;
                             }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updates saved."), true, max, ++val);
-                            }
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to update records: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
-                            ProMsgBox.Show($"Edit Operation error: unable to update records: {loader.ErrorMessage}");
-                        }
-
-                        return success;
+                        });
                     }
-                    catch (OperationCanceledException cancelex)
-                    {
-                        throw cancelex;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field.", LogMessageType.ERROR), true, val++);
-                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Field updated."), true, val++);
-                }
+                });
 
                 #endregion
 
@@ -919,107 +810,42 @@ namespace NCC.PRZTools
 
                 #region UPDATE THE LOCAL THEME TABLE PRESENCE FIELD
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field in local {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
-
-                if (!await QueuedTask.Run(async () =>
+                // Update the table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NAT_THEMES} table {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field..."), true, ++val);
+                await QueuedTask.Run(() =>
                 {
-                    bool success = false;
+                    var tryget_gdb = PRZH.GetGDB_Project();
 
-                    try
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_THEMES))
+                    using (RowCursor rowCursor = table.Search(null, false))
                     {
-                        var loader = new EditOperation();
-                        loader.Name = $"{PRZC.c_FLD_TAB_NATTHEME_PRESENCE} updater";
-                        loader.ShowProgressor = false;
-                        loader.ShowModalMessageAfterFailure = false;
-                        loader.SelectNewFeatures = false;
-                        loader.SelectModifiedFeatures = false;
-
-                        var tryget = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
-                        if (!tryget.success)
+                        geodatabase.ApplyEdits(() =>
                         {
-                            throw new Exception("Error retrieving table.");
-                        }
-
-                        using (Table tab = tryget.table)
-                        {
-                            loader.Callback((context) =>
+                            while (rowCursor.MoveNext())
                             {
-                                using (Table table = PRZH.GetTable_Project(PRZC.c_TABLE_NAT_THEMES).table)
-                                using (RowCursor rowCursor = table.Search(null, false))
+                                using (Row row = rowCursor.Current)
                                 {
-                                    while (rowCursor.MoveNext())
+                                    int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_THEME_ID]);
+
+                                    if (themes_with_intersection.Contains(theme_id))
                                     {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_THEME_ID]);
-
-                                            if (themes_with_intersection.Contains(theme_id))
-                                            {
-                                                row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)ElementPresence.Present;
-                                            }
-                                            else
-                                            {
-                                                row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)ElementPresence.Absent;
-                                            }
-
-                                            row.Store();
-                                            context.Invalidate(row);
-                                        }
+                                        row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)ElementPresence.Present;
                                     }
+                                    else
+                                    {
+                                        row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE] = (int)ElementPresence.Absent;
+                                    }
+
+                                    row.Store();
                                 }
-                            }, tab);
-                        }
-
-                        PRZH.CheckForCancellation(token);
-
-                        // Execute all the queued "creates"
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Edit Operation - updating element record presence..."), true, max, ++val);
-                        success = loader.Execute();
-
-                        if (success)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog("Saving updates..."), true, max, ++val);
-                            if (!await Project.Current.SaveEditsAsync())
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error saving updates.", LogMessageType.ERROR), true, max, ++val);
-                                ProMsgBox.Show($"Error saving updates.");
-                                return false;
                             }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Updates saved."), true, max, ++val);
-                            }
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Edit Operation error: unable to update records: {loader.ErrorMessage}", LogMessageType.ERROR), true, max, ++val);
-                            ProMsgBox.Show($"Edit Operation error: unable to update records: {loader.ErrorMessage}");
-                        }
-
-                        return success;
+                        });
                     }
-                    catch (OperationCanceledException cancelex)
-                    {
-                        throw cancelex;
-                    }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field.", LogMessageType.ERROR), true, val++);
-                    ProMsgBox.Show($"Error updating {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field.");
-                    return false;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Field updated."), true, val++);
-                }
+                });
 
                 // we're done here
-                return true;
+                return (true, "success");
 
                 #endregion
             }

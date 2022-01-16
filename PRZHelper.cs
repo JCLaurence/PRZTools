@@ -4114,6 +4114,59 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of regional element raster names.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalElementRasters()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Create the list
+                List<string> raster_names = new List<string>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+
+                        foreach (RasterDatasetDefinition rasDef in rasDefs)
+                        {
+                            using (rasDef)
+                            {
+                                string name = rasDef.GetName();
+
+                                if (name.StartsWith(PRZC.c_RAS_REG_ELEMENT, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    raster_names.Add(name);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, raster_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
 
         #endregion
 
@@ -5235,18 +5288,23 @@ namespace NCC.PRZTools
                     WriteLog($"Deleting {domainNames.Count} domain(s)...");
                     foreach (string domainName in domainNames)
                     {
-                        WriteLog($"Deleting {domainName} domain...");
-                        toolParams = Geoprocessing.MakeValueArray(gdbpath, domainName);
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await RunGPTool("DeleteDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
-                        if (toolOutput == null)
+                        if (!string.Equals(domainName, PRZC.c_DOMAIN_PRESENCE, StringComparison.OrdinalIgnoreCase) &
+                            !string.Equals(domainName, PRZC.c_DOMAIN_REG_STATUS, StringComparison.OrdinalIgnoreCase) &
+                            !string.Equals(domainName, PRZC.c_DOMAIN_REG_TYPE, StringComparison.OrdinalIgnoreCase))
                         {
-                            WriteLog($"Error deleting {domainName} domain. GP Tool failed or was cancelled by user", LogMessageType.ERROR);
-                            return (false, $"Error deleting {domainName} domain.");
-                        }
-                        else
-                        {
-                            WriteLog($"Domain deleted.");
+                            WriteLog($"Deleting {domainName} domain...");
+                            toolParams = Geoprocessing.MakeValueArray(gdbpath, domainName);
+                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                            toolOutput = await RunGPTool("DeleteDomain_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                            if (toolOutput == null)
+                            {
+                                WriteLog($"Error deleting {domainName} domain. GP Tool failed or was cancelled by user", LogMessageType.ERROR);
+                                return (false, $"Error deleting {domainName} domain.");
+                            }
+                            else
+                            {
+                                WriteLog($"Domain deleted.");
+                            }
                         }
                     }
                 }
