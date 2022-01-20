@@ -696,6 +696,85 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region GET REGIONAL TABLE CONTENTS
+
+                // Get the Regional Themes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional themes..."), true, ++val);
+                var tryget_regthemes = await PRZH.GetRegionalThemes(ElementPresence.Present);
+                if (!tryget_regthemes.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional themes.\n{tryget_regthemes.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving regional themes.\n{tryget_regthemes.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_regthemes.themes.Count} regional themes."), true, ++val);
+                }
+                List<NatTheme> reg_themes = tryget_regthemes.themes;
+
+                // Get the goals
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Goal} elements..."), true, ++val);
+                var tryget_reg_goals = await PRZH.GetRegionalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
+                if (!tryget_reg_goals.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_goals.elements.Count} regional {ElementType.Goal} elements."), true, ++val);
+                }
+                List<NatElement> reg_goals = tryget_reg_goals.elements;
+
+                // Get the weights
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Weight} elements..."), true, ++val);
+                var tryget_reg_weights = await PRZH.GetRegionalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
+                if (!tryget_reg_weights.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Weight} elements.\n{tryget_reg_weights.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{tryget_reg_weights.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_weights.elements.Count} regional {ElementType.Weight} elements."), true, ++val);
+                }
+                List<NatElement> reg_weights = tryget_reg_weights.elements;
+
+                // Get the includes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Include} elements..."), true, ++val);
+                var tryget_reg_includes = await PRZH.GetRegionalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
+                if (!tryget_reg_includes.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_includes.elements.Count} regional {ElementType.Include} elements."), true, ++val);
+                }
+                List<NatElement> reg_includes = tryget_reg_includes.elements;
+
+                // Get the excludes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Exclude} elements..."), true, ++val);
+                var tryget_reg_excludes = await PRZH.GetRegionalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
+                if (!tryget_reg_excludes.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_excludes.elements.Count} regional {ElementType.Exclude} elements."), true, ++val);
+                }
+                List<NatElement> reg_excludes = tryget_reg_excludes.elements;
+
+                #endregion
+
                 PRZH.CheckForCancellation(token);
 
                 #region ASSEMBLE ELEMENT VALUE DICTIONARIES

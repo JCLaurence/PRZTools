@@ -180,6 +180,11 @@
         public const string c_GROUPLAYER_SELRULES_EXCLUDE = "EXCLUDE";
         public const string c_GROUPLAYER_FEATURES = "FEATURES";
 
+        public const string c_GROUPLAYER_REG_GOALS = "REG_GOALS";
+        public const string c_GROUPLAYER_REG_WEIGHTS = "REG_WEIGHTS";
+        public const string c_GROUPLAYER_REG_INCLUDES = "REG_INCLUDES";
+        public const string c_GROUPLAYER_REG_EXCLUDES = "REG_EXCLUDES";
+
         // FEATURE LAYERS
         public const string c_LAYER_PLANNING_UNITS = "Planning Units";
         public const string c_LAYER_STUDY_AREA = "Study Area";
@@ -219,6 +224,7 @@
         // Regional
         public const string c_DOMAIN_REG_STATUS = "Reg_Status";
         public const string c_DOMAIN_REG_TYPE = "Reg_Type";
+        public const string c_DOMAIN_REG_THEME = "Reg_Theme";
 
         // General
         public const string c_DOMAIN_PRESENCE = "Gen_Presence";
@@ -227,6 +233,7 @@
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
+        public const string c_RAS_PLANNING_UNITS_TEMP = "pu_ras_temp";
         public const string c_RAS_TEMP_1 = "TempRas1";
         public const string c_RAS_TEMP_2 = "TempRas2";
         public const string c_RAS_TEMP_3 = "TempRas3";
@@ -264,6 +271,7 @@
         public const string c_TABLE_TEMP_A = "z_tmptab_a";
         public const string c_TABLE_TEMP_B = "z_tmptab_b";
         public const string c_TABLE_TEMP_C = "z_tmptab_c";
+        public const string c_TABLE_TEMP_ZONALSTATS = "z_zstats_";
 
         // NATIONAL DB TABLES
         public const string c_TABLE_NAT_ELEMENTS = "nat_element";

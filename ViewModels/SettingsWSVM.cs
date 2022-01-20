@@ -54,7 +54,7 @@ namespace NCC.PRZTools
         private string _natDbInfo_Txt_DbName;
         private List<string> _natDbInfo_Cmb_SchemaNames;
         private string _natDbInfo_Cmb_SelectedSchemaName;
-        private Cursor _proWindowCursor;
+        private Cursor _proWindowCursor = Cursors.Arrow;
 
         private string _natDBInfo_Img_Status = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
 
@@ -169,6 +169,9 @@ namespace NCC.PRZTools
 
         public async Task OnProWinLoaded()
         {
+            // set cursor
+            ProWindowCursor = Cursors.Wait;
+
             try
             {
                 // Project Folder
@@ -205,9 +208,7 @@ namespace NCC.PRZTools
                 }
 
                 // Validate National Db
-                ProWindowCursor = Cursors.Wait;
                 var tryvalidate = await ValidateNationalDb();
-                ProWindowCursor = Cursors.Arrow;
 
                 if (tryvalidate.success && tryvalidate.valid)
                 {

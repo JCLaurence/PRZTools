@@ -258,6 +258,13 @@ namespace NCC.PRZTools
                 string regincludepath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.INCLUDES);
                 string regexcludepath = PRZH.GetPath_RegionalDataSubfolder(RegionalDataSubfolder.EXCLUDES);
 
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
                 // Initialize ProgressBar and Progress Log
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Initializing the Regional Data Loader..."), false, max, ++val);
 
@@ -287,13 +294,13 @@ namespace NCC.PRZTools
                 }
 
                 // Determine the existence of the 4 possible regional data subfolders
-                bool goaldirexists = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.GOALS).exists;
-                bool weightdirexists = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.WEIGHTS).exists;
-                bool includedirexists = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.INCLUDES).exists;
-                bool excludedirexists = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.EXCLUDES).exists;
+                bool direxists_goals = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.GOALS).exists;
+                bool direxists_weights = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.WEIGHTS).exists;
+                bool direxists_includes = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.INCLUDES).exists;
+                bool direxists_excludes = PRZH.FolderExists_RegionalDataSubfolder(RegionalDataSubfolder.EXCLUDES).exists;
 
                 // Ensure there's at least one subfolder
-                if (!goaldirexists & !weightdirexists & !includedirexists & !excludedirexists)
+                if (!direxists_goals & !direxists_weights & !direxists_includes & !direxists_excludes)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional Data Folder must contain at least one of the following subfolders: {PRZC.c_DIR_REGDATA_GOALS}, {PRZC.c_DIR_REGDATA_WEIGHTS}, {PRZC.c_DIR_REGDATA_INCLUDES}, {PRZC.c_DIR_REGDATA_EXCLUDES}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Regional Data Folder must contain at least one of the following subfolders: { PRZC.c_DIR_REGDATA_GOALS}, { PRZC.c_DIR_REGDATA_WEIGHTS}, { PRZC.c_DIR_REGDATA_INCLUDES}, { PRZC.c_DIR_REGDATA_EXCLUDES}");
@@ -301,100 +308,20 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional Data Subfolders found: {(goaldirexists ? PRZC.c_DIR_REGDATA_GOALS : "")}  {(weightdirexists ? PRZC.c_DIR_REGDATA_WEIGHTS : "")}  {(includedirexists ? PRZC.c_DIR_REGDATA_INCLUDES : "")}  {(excludedirexists ? PRZC.c_DIR_REGDATA_EXCLUDES : "")}"), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional Data Subfolders found: {(direxists_goals ? PRZC.c_DIR_REGDATA_GOALS : "")}  {(direxists_weights ? PRZC.c_DIR_REGDATA_WEIGHTS : "")}  {(direxists_includes ? PRZC.c_DIR_REGDATA_INCLUDES : "")}  {(direxists_excludes ? PRZC.c_DIR_REGDATA_EXCLUDES : "")}"), true, ++val);
                 }
 
-                // Validate Existence/Type of Planning Unit Spatial Data, capture infos
+                // Ensure the Planning Unit dataset exists
                 var pu_result = await PRZH.PUExists();
-                string pu_path = "";            // path to data
-                SpatialReference PU_SR = null;  // PU spatial reference
-                double cell_size = 0;           // Only applies to raster PU
-
-                if (!pu_result.exists)
+                if (!pu_result.exists || pu_result.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit layer not found in project geodatabase.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"Planning Unit layer not found in project geodatabase.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Planning Unit dataset not found.");
                     return;
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.UNKNOWN)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit layer format unknown.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show($"Planning Unit layer format unknown.");
-                    return;
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                {
-                    // Ensure data present
-                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit feature class not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Planning Unit feature class not found.  Have you built it yet?");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit feature class found."), true, ++val);
-                    }
-
-                    // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
-
-                    // Get Spatial Reference
-                    await QueuedTask.Run(() =>
-                    {
-                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (FeatureClass FC = tryget.featureclass)
-                        using (FeatureClassDefinition fcDef = FC.GetDefinition())
-                        {
-                            PU_SR = fcDef.GetSpatialReference();
-                        }
-                    });
-                }
-                else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                {
-                    // Ensure data present
-                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Planning Unit raster dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Planning Unit raster dataset not found.  Have you built it yet?");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit raster dataset found."), true, ++val);
-                    }
-
-                    // Get path
-                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
-
-                    // Get Spatial Reference and cell size
-                    await QueuedTask.Run(() =>
-                    {
-                        var tryget = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Unable to retrieve planning unit raster dataset.");
-                        }
-
-                        using (RasterDataset RD = tryget.rasterDataset)
-                        using (Raster raster = RD.CreateFullRaster())
-                        {
-                            PU_SR = raster.GetSpatialReference();
-                            var msc = raster.GetMeanCellSize();
-                            cell_size = msc.Item1;
-                        }
-                    });
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("There was a resounding KABOOM.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show("KABOOM?");
-                    return;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Unit feature class found."), true, ++val);
                 }
 
                 // Prompt users for permission to proceed
@@ -415,16 +342,223 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region DICTIONARIES
+
+                // Prepare dictionary of puids > cellnumbers (this data is optional)
+                Dictionary<int, long> DICT_PUID_and_cellnumbers = new Dictionary<int, long>();
+
+                var tryget_isnat = await PRZH.PUIsNational();
+                if (tryget_isnat.is_national)
+                {
+                    (bool success, Dictionary<int, long> dict, string message) tryget_cellnumbers = await PRZH.GetPUIDsAndCellNumbers();    // this dictionary could have no entries, if the PU dataset has no populated cell_numbers
+                    if (!tryget_cellnumbers.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving puid dictionary.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving puid dictionary.");
+                        return;
+                    }
+                    DICT_PUID_and_cellnumbers = tryget_cellnumbers.dict;
+                }
+                bool pu_is_national = tryget_isnat.is_national;
+
+                #endregion
+
+                #region PREPARE PLANNING UNIT RASTER INFORMATION
+
+                // Some pu infos
+                SpatialReference pu_sr = null;
+                double pu_raster_cellsize = 0;
+                string pu_raster_path = "";
+                Envelope pu_extent = null;
+
+                // Gather infos from existing planning unit dataset
+                if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                {
+                    // Get Spatial Reference and cell size
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+
+                        using (RasterDataset RD = tryget.rasterDataset)
+                        using (Raster raster = RD.CreateFullRaster())
+                        {
+                            pu_sr = raster.GetSpatialReference();
+                            var msc = raster.GetMeanCellSize();
+                            pu_raster_cellsize = msc.Item1;
+                            pu_extent = raster.GetExtent();
+                        }
+                    });
+
+                    // Get path to original pu raster
+                    pu_raster_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
+                }
+                else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    // Gather cell size and spatial reference
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_fc = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                        using (FeatureClass fc = tryget_fc.featureclass)
+                        using (FeatureClassDefinition fcDef = fc.GetDefinition())
+                        using (RowCursor rowCursor = fc.Search())
+                        {
+                            // get cell size
+                            // TODO: Ensure that cell size is derived differently when source pu fc is not a grid.
+                            if (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    double l = Convert.ToDouble(row[fcDef.GetLengthField()]);
+                                    pu_raster_cellsize = l / 4.0;
+                                }
+                            }
+
+                            // get spatial reference
+                            pu_sr = fcDef.GetSpatialReference();
+                        }
+                    });
+
+                    // Convert FC to raster
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {PRZC.c_FC_PLANNING_UNITS} featureclass to raster..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, PRZC.c_RAS_PLANNING_UNITS_TEMP, "CELL_CENTER", "NONE", pu_raster_cellsize, "BUILD");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: pu_sr);
+                    toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting polygons to raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error converting polygons to raster.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
+                    }
+
+                    // Build Pyramids for pu raster
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error building pyramids.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                    }
+
+                    // Build Statistics
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP, 1, 1, "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error calculating statistics.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                    }
+
+                    // Build the Raster Attribute table...
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP, "OVERWRITE");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table .  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error Building the raster attribute table.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster attribute table built successfully."), true, ++val);
+                    }
+
+                    // Add fields to Raster Attribute Table
+                    string fldPUID = PRZC.c_FLD_RAS_PU_ID + " LONG 'Planning Unit ID' # # #;";
+                    string fldNatGridCellNum = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + " LONG 'National Grid Cell Number' # 0 #;";
+
+                    string flds = fldPUID + fldNatGridCellNum;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to raster attribute table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error adding fields to raster attribute table.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields added successfully."), true, ++val);
+                    }
+
+                    // Populate the table (pu id and optionally cell numbers)
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the raster attribute table.."), true, ++val);
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_gdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(PRZC.c_RAS_PLANNING_UNITS_TEMP))
+                        using (Raster raster = rasterDataset.CreateFullRaster())
+                        using (Table table = raster.GetAttributeTable())
+                        using (RowCursor rowCursor = table.Search(null, false))
+                        {
+                            geodatabase.ApplyEdits(() =>
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int value = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_VALUE]);
+
+                                        // copy value to id field
+                                        row[PRZC.c_FLD_RAS_PU_ID] = value;
+
+                                        // retrieve cell_number if it exists
+                                        if (DICT_PUID_and_cellnumbers.ContainsKey(value))
+                                        {
+                                            row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER] = DICT_PUID_and_cellnumbers[value];
+                                        }
+
+                                        row.Store();
+                                    }
+                                }
+                            });
+
+                            // Get the extent
+                            pu_extent = raster.GetExtent();
+                        }
+                    });
+
+                    // get path to new temp pu raster
+                    pu_raster_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS_TEMP).path;
+                }
+
+                // Calculate some pu raster-related values
+                double poly_to_ras_cellsize = pu_raster_cellsize / 10.0;    // TODO: Is this the best way to determine cell size?
+                double poly_to_ras_cellarea = poly_to_ras_cellsize * poly_to_ras_cellsize;  // square meters
+
+
+
+                #endregion
+
                 PRZH.CheckForCancellation(token);
 
-                #region DELETE EXISTING TABLES
+                #region DELETE EXISTING GEODATABASE OBJECTS
 
-                // Declare some generic GP variables
-                IReadOnlyList<string> toolParams;
-                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
-                string toolOutput;
 
                 // Delete the Regional Theme Table if present
                 if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REG_THEMES)).exists)
@@ -602,1247 +736,60 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region PROCESS THE GOALS FOLDER
+                PRZH.CheckForCancellation(token);
 
-                if (goaldirexists)
+                #region PROCESS EACH REGIONAL SUBDIR
+
+                if (direxists_goals)
                 {
-                    #region ASSEMBLE LAYERS
+                    var subdir = RegionalDataSubfolder.GOALS;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
 
-                    // find all lyrx files
-                    var layer_files = Directory.EnumerateFiles(reggoalpath, "*.lyrx", SearchOption.TopDirectoryOnly);
-
-                    // Lists of individual FL and RL CIM Documents.  I can turn these into layers later.  OPTION A
-                    List<CIMLayerDocument> cimDocuments_FL = new List<CIMLayerDocument>();
-                    List<CIMLayerDocument> cimDocuments_RL = new List<CIMLayerDocument>();
-
-                    // Lists of lyrx paths and associated lists of FL or RL CIMLayerDocuments.  OPTION B
-                    List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> FL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
-                    List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> RL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
-
-                    await QueuedTask.Run(() =>
+                    if (!tryprocess.success)
                     {
-                        foreach (var layer_file in layer_files)
-                        {
-                            // Get the lyrx file's underlying CIMLayerDocument and all FL and RL cimdefinitions in it
-                            LayerDocument layerDocument = new LayerDocument(layer_file);
-                            CIMLayerDocument cimLayerDocument = layerDocument.GetCIMLayerDocument();
-
-                            // Get a list of any feature or raster layer definitions in the CIMLayerDocument
-                            List<CIMFeatureLayer> cimFLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMFeatureLayer>().ToList();
-                            List<CIMRasterLayer> cimRLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMRasterLayer>().ToList();
-
-                            // Move on if this lyrx file contains no feature or raster layers
-                            if (cimFLDefs.Count == 0 & cimRLDefs.Count == 0)
-                            {
-                                continue;
-                            }
-
-                            // Process the FL CIMDefinitions
-                            if (cimFLDefs.Count > 0)
-                            {
-                                List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
-
-                                foreach (var cimFLDef in cimFLDefs)
-                                {
-                                    // Create a new CIMLayerDocument
-                                    CIMLayerDocument tempCIM = new CIMLayerDocument();
-
-                                    // Set properties
-                                    tempCIM.Layers = new string[] { cimFLDef.URI };
-                                    tempCIM.LayerDefinitions = new CIMDefinition[] { cimFLDef };
-
-                                    // Store the CIM Doc
-                                    cimDocuments_FL.Add(tempCIM);
-                                    tempCIMs.Add(tempCIM);
-                                }
-
-                                FL_CIMDocs.Add((layer_file, tempCIMs));
-                            }
-
-                            // Process the RL CIMDefinitions
-                            if (cimRLDefs.Count > 0)
-                            {
-                                List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
-
-                                foreach (var cimRLDef in cimRLDefs)
-                                {
-                                    // Create a new CIMLayerDocument
-                                    CIMLayerDocument tempCIM = new CIMLayerDocument();
-
-                                    // Set properties
-                                    tempCIM.Layers = new string[] { cimRLDef.URI };
-                                    tempCIM.LayerDefinitions = new CIMDefinition[] { cimRLDef };
-
-                                    // Store the CIM Doc
-                                    cimDocuments_RL.Add(tempCIM);
-                                    tempCIMs.Add(tempCIM);
-                                }
-
-                                RL_CIMDocs.Add((layer_file, tempCIMs));
-                            }
-                        }
-                    });
-
-                    // Create temp group layer (delete first if already exists)
-                    GroupLayer GL_GOALS = map.GetLayersAsFlattenedList().OfType<GroupLayer>().FirstOrDefault(gl => gl.Name == "REGGOALS");
-
-                    if (GL_GOALS != null)
-                    {
-                        await QueuedTask.Run(() => { map.RemoveLayer(GL_GOALS); });
-                    }
-
-                    GL_GOALS = await QueuedTask.Run(() => { return LayerFactory.Instance.CreateGroupLayer(map, map.Layers.Count, "REGGOALS"); });
-
-                    // Build lists of layers
-                    List<(string lyrx_path, List<FeatureLayer> FLs)> lyrx_FLs = new List<(string lyrx_path, List<FeatureLayer> FLs)>();
-                    List<(string lyrx_path, List<RasterLayer> RLs)> lyrx_RLs = new List<(string lyrx_path, List<RasterLayer> RLs)>();
-
-                    // Load the feature layers here
-                    foreach (var o in FL_CIMDocs)
-                    {
-                        List<FeatureLayer> fls = new List<FeatureLayer>();
-
-                        foreach(var a in o.cimLyrDocs)
-                        {
-                            await QueuedTask.Run(async () =>
-                            {
-                                // Create and add the layer
-                                LayerCreationParams lcparams = new LayerCreationParams(a)
-                                {
-                                    IsVisible = false
-                                };
-
-                                var l = LayerFactory.Instance.CreateLayer<FeatureLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
-
-                                // Check for valid source Feature Class
-                                bool bad_fc = false;
-
-                                try
-                                {
-                                    using (FeatureClass featureClass = l.GetFeatureClass())
-                                    {
-                                        if (featureClass == null)
-                                        {
-                                            bad_fc = true;
-                                        }
-                                    }
-                                }
-                                catch
-                                {
-                                    bad_fc = true;
-                                }
-
-                                // If FC is invalid, leave
-                                if (bad_fc)
-                                {
-                                    GL_GOALS.RemoveLayer(l);
-                                }
-
-                                // If FL is not a polygon feature layer, leave
-                                else if (l.ShapeType != esriGeometryType.esriGeometryPolygon)
-                                {
-                                    GL_GOALS.RemoveLayer(l);
-                                }
-
-                                // If FL has null or unknown spatial reference, leave
-                                else
-                                {
-                                    var sr = l.GetSpatialReference();
-
-                                    if (sr == null || sr.IsUnknown)
-                                    {
-                                        GL_GOALS.RemoveLayer(l);
-                                    }
-                                    else
-                                    {
-                                        // Finally, we have an OK feature layer!
-                                        fls.Add(l);
-                                    }
-                                }
-
-                                await MapView.Active.RedrawAsync(false);
-                            });
-                        }
-
-                        lyrx_FLs.Add((o.lyrx_path, fls));
-                    }
-
-                    // Load the raster layers here
-                    foreach (var o in RL_CIMDocs)
-                    {
-                        List<RasterLayer> rls = new List<RasterLayer>();
-
-                        foreach (var a in o.cimLyrDocs)
-                        {
-                            await QueuedTask.Run(async () =>
-                            {
-                                // Create and add the layer
-                                LayerCreationParams lcparams = new LayerCreationParams(a)
-                                {
-                                    IsVisible = false
-                                };
-
-                                var l = LayerFactory.Instance.CreateLayer<RasterLayer>(lcparams, GL_GOALS, LayerPosition.AddToTop);
-
-                                // Check for a valid Raster source
-                                bool bad_raster = false;
-
-                                try
-                                {
-                                    using (Raster raster = l.GetRaster())
-                                    {
-                                        if (raster == null)
-                                        {
-                                            bad_raster = true;
-                                        }
-                                    }
-                                }
-                                catch
-                                {
-                                    bad_raster = true;
-                                }
-
-                                // If Raster is invalid, leave
-                                if (bad_raster)
-                                {
-                                    GL_GOALS.RemoveLayer(l);
-                                }
-
-                                // If RL has null or unknown spatial reference, leave
-                                else
-                                {
-                                    var sr = l.GetSpatialReference();
-
-                                    if (sr == null || sr.IsUnknown)
-                                    {
-                                        GL_GOALS.RemoveLayer(l);
-                                    }
-                                    else
-                                    {
-                                        // Finally, we have an OK raster layer!
-                                        rls.Add(l);
-                                    }
-                                }
-
-                                await MapView.Active.RedrawAsync(false);
-                            });
-                        }
-
-                        lyrx_RLs.Add((o.lyrx_path, rls));
-                    }
-
-                    // ensure at least one layer is available
-                    bool fls_present = false;
-                    bool rls_present = false;
-
-                    foreach (var u in lyrx_FLs)
-                    {
-                        if (u.FLs.Count > 0)
-                        {
-                            fls_present = true;
-                            break;
-                        }
-                    }
-
-                    foreach (var u in lyrx_RLs)
-                    {
-                        if (u.RLs.Count > 0)
-                        {
-                            rls_present = true;
-                            break;
-                        }
-                    }
-
-                    if (!fls_present & !rls_present)
-                    {
-                        ProMsgBox.Show("No available layers for processing!");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing the regional {subdir} directory.\n{tryprocess.message}"), true, ++val);
                         return;
                     }
+                }
 
-                    #endregion
+                if (direxists_weights)
+                {
+                    var subdir = RegionalDataSubfolder.WEIGHTS;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
 
-                    #region PROCESS LAYERS TO EXTRACT ELEMENTS
-
-                    // I will be populating a list of RegElement objects
-
-                    List<RegElement> regElements = new List<RegElement>();
-                    int id = 1;
-
-                    // First, the Feature Layers
-                    if (fls_present)
+                    if (!tryprocess.success)
                     {
-                        for (int i = 0; i < lyrx_FLs.Count; i++)
-                        {
-                            (string lyrx_path, List<FeatureLayer> FLs) FLInfo = lyrx_FLs[i];
-
-                            foreach (FeatureLayer FL in FLInfo.FLs)
-                            {
-                                // validate this feature layer for renderer stuff
-
-                                await QueuedTask.Run(async () =>
-                                {
-                                    // Get the renderer
-                                    var rend = FL.GetRenderer();
-
-                                    if (rend is CIMUniqueValueRenderer UVRend)
-                                    {
-                                        // Get the field index plus the field type, for each of the 1, 2, or 3 fields in the UV Renderer
-                                        Dictionary<int, FieldCategory> DICT_FieldIndex_and_category = new Dictionary<int, FieldCategory>();
-
-                                        for (int b = 0; b < UVRend.Fields.Length; b++)
-                                        {
-                                            string uvrend_fieldname = UVRend.Fields[b];
-
-                                            foreach (FieldDescription fieldDescription in FL.GetFieldDescriptions())
-                                            {
-                                                if (uvrend_fieldname == fieldDescription.Name)
-                                                {
-                                                    FieldCategory fcat = PRZH.GetFieldCategory(fieldDescription);
-
-                                                    if (fcat == FieldCategory.DATE)
-                                                    {
-                                                        throw new Exception($"Layer: {FL.Name} >> Date Fields in UV Legends not supported.");
-                                                    }
-
-                                                    DICT_FieldIndex_and_category.Add(b, fcat);
-                                                }
-                                            }
-                                        }
-
-                                        // Make sure we picked up a DICT entry for each UVRend field name
-                                        if (UVRend.Fields.Length != DICT_FieldIndex_and_category.Count)
-                                        {
-                                            throw new Exception($"Layer: {FL.Name} >> Not all renderer fields found within layer table.");
-                                        }
-
-                                        // Cycle through each Legend Group, retrieve Group heading...
-                                        CIMUniqueValueGroup[] UVGroups = UVRend.Groups;
-
-                                        if (UVGroups is null)
-                                        {
-                                            throw new Exception($"Layer: {FL.Name} >> UV Renderer has no groups.");
-                                        }
-
-                                        foreach (CIMUniqueValueGroup UVGroup in UVGroups)
-                                        {
-                                            // Get the group heading
-                                            string group_heading = UVGroup.Heading;
-
-                                            // Retrieve the Classes in this Group
-                                            CIMUniqueValueClass[] UVClasses = UVGroup.Classes;
-
-                                            // Each UVClass will become its own unique regional element
-                                            foreach (CIMUniqueValueClass UVClass in UVClasses)
-                                            {
-                                                // Get the class label
-                                                string class_label = UVClass.Label;
-
-                                                // Retrieve the "Tuples" associated with this UVClass
-                                                // A "Tuple" is a collection of 1, 2, or 3 specific field values (from the 1, 2 or 3 fields in the UV Renderer)
-                                                // A UVClass can consist of 1 or more "Tuples".  By default, 1, but if the user groups together 2 or more classes into a single class,
-                                                // the UVClass will consist of those 2 or more "Tuples".
-                                                CIMUniqueValue[] UVClassTuples = UVClass.Values;
-
-                                                string classClause = "";
-
-                                                // For Each Tuple (could be 1 to many many)
-                                                for (int tupIx = 0; tupIx < UVClassTuples.Length; tupIx++)
-                                                {
-                                                    CIMUniqueValue tuple = UVClassTuples[tupIx];
-
-                                                    string tupleClause = "";
-
-                                                    // For each field value in the tuple (could be 1, 2, or 3)
-                                                    for (int fldIx = 0; fldIx < tuple.FieldValues.Length; fldIx++)
-                                                    {
-                                                        string fieldValue = tuple.FieldValues[fldIx];
-                                                        bool IsNull = fieldValue == "<Null>";
-
-                                                        string Expression = "";
-
-                                                        switch (DICT_FieldIndex_and_category[fldIx])
-                                                        {
-                                                            case FieldCategory.STRING:
-                                                                Expression = (IsNull) ? "IS NULL" : "= '" + fieldValue.Replace("'", "''") + "'";
-                                                                break;
-
-                                                            case FieldCategory.NUMERIC:
-                                                                Expression = (IsNull) ? "IS NULL" : "= " + fieldValue;
-                                                                break;
-
-                                                            default:
-                                                                break;
-                                                        }
-
-                                                        // Assemble the unit clause - the building block of the main where clause
-                                                        string unitClause = "(" + UVRend.Fields[fldIx] + " " + Expression + ")";
-
-                                                        // Assemble the tuple clause - the where clause of this particular tuple
-                                                        if (fldIx == 0)
-                                                        {
-                                                            tupleClause = unitClause;
-                                                        }
-                                                        else
-                                                        {
-                                                            tupleClause += " And " + unitClause;
-                                                        }
-                                                    }
-
-                                                    tupleClause = "(" + tupleClause + ")";
-
-                                                    if (tupIx == 0)
-                                                    {
-                                                        classClause = tupleClause;
-                                                    }
-                                                    else
-                                                    {
-                                                        classClause += " Or " + tupleClause;
-                                                    }
-                                                }
-
-                                                classClause = "(" + classClause + ")";  // this is the where clause
-
-                                                // Assemble the new element
-                                                RegElement regElement = new RegElement();
-
-                                                regElement.ElementID = id++;
-                                                regElement.ElementName = FL.Name + " - " + group_heading + " - " + class_label;
-                                                regElement.ElementType = (int)ElementType.Goal;
-                                                regElement.LayerObject = FL;
-                                                regElement.LayerName = FL.Name;
-                                                regElement.LayerType = (int)LayerType.FEATURE;
-                                                regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
-                                                regElement.LyrxPath = FLInfo.lyrx_path;
-                                                regElement.WhereClause = classClause;
-                                                regElement.LegendGroup = group_heading;
-                                                regElement.LegendClass = class_label;
-
-                                                regElements.Add(regElement);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        RegElement regElement = new RegElement();
-
-                                        regElement.ElementID = id++;
-                                        regElement.ElementName = FL.Name;
-                                        regElement.ElementType = (int)ElementType.Goal;
-                                        regElement.LayerObject = FL;
-                                        regElement.LayerName = FL.Name;
-                                        regElement.LayerType = (int)LayerType.FEATURE;
-                                        regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
-                                        regElement.LyrxPath = FLInfo.lyrx_path;
-
-                                        regElements.Add(regElement);
-                                    }
-                                });
-                            }                            
-                        }
-                    }
-
-                    // Next, the Raster Layers
-                    if (rls_present)
-                    {
-                        for (int i = 0; i < lyrx_RLs.Count; i++)
-                        {
-                            (string lyrx_path, List<RasterLayer> RLs) RLInfo = lyrx_RLs[i];
-
-                            foreach (RasterLayer RL in RLInfo.RLs)
-                            {
-                                RegElement regElement = new RegElement();
-
-                                regElement.ElementID = id++;
-                                regElement.ElementName = RL.Name;
-                                regElement.ElementType = (int)ElementType.Goal;
-                                regElement.LayerObject = RL;
-                                regElement.LayerName = RL.Name;
-                                regElement.LayerType = (int)LayerType.RASTER;
-                                regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)RL.GetDefinition()).ToJson(); });
-                                regElement.LyrxPath = RLInfo.lyrx_path;
-
-                                regElements.Add(regElement);
-                            }
-                        }
-                    }
-
-                    #endregion
-
-                    #region WRITE ELEMENTS TO REG ELEMENT TABLE
-
-                    // Sort by element ID (just in case).  I think the objects got added to the list already ordered correctly...
-                    regElements.Sort((x, y) => x.ElementID.CompareTo(y.ElementID));
-
-                    // Ensure the table is present
-                    var tryex_regelem = await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS);
-                    if (!tryex_regelem.exists)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing the regional {subdir} directory.\n{tryprocess.message}"), true, ++val);
                         return;
                     }
-
-                    // Populate the table
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
-                    await QueuedTask.Run(() =>
-                    {
-                        var tryget_gdb = PRZH.GetGDB_Project();
-
-                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                        using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
-                        using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                        {
-                            geodatabase.ApplyEdits(() =>
-                            {
-                                foreach (var elem in regElements)
-                                {
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID] = elem.ElementID;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_NAME] = elem.ElementName;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_TYPE] = elem.ElementType;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_STATUS] = (int)ElementStatus.Active;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)ElementPresence.Absent;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH] = elem.LyrxPath;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME] = elem.LayerName;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE] = ((LayerType)elem.LayerType).ToString();
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON] = elem.LayerJson;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] = elem.WhereClause;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] = elem.LegendGroup;
-                                    rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] = elem.LegendClass;
-
-                                    table.CreateRow(rowBuffer);
-                                }
-                            });
-                        }
-                    });
-
-                    #endregion
-
-                    #region LOAD PLANNING UNIT LAYER
-
-                    Layer pu_layer = null;
-
-                    Uri uri = new Uri(pu_path);
-                    LayerCreationParams pa = new LayerCreationParams(uri)
-                    {
-                        Name = "pu",
-                        IsVisible = false
-                    };
-
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        await QueuedTask.Run(() =>
-                        {
-                            pu_layer = LayerFactory.Instance.CreateLayer<FeatureLayer>(pa, GL_GOALS, LayerPosition.AddToBottom);                        
-                        });
-                    }
-                    else
-                    {
-                        await QueuedTask.Run(() =>
-                        {
-                            pu_layer = LayerFactory.Instance.CreateLayer<RasterLayer>(pa, GL_GOALS, LayerPosition.AddToBottom);
-                        });
-                    }
-
-                    await MapView.Active.RedrawAsync(false);
-
-                    #endregion
-
-                    #region OVERLAY ELEMENTS WITH PLANNING UNITS
-
-                    // Need a Raster planning unit layer - if fc, convert
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        // I'm here!!!
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {regElement.ElementName} to raster..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, temp_raster, "CELL_CENTER", "NONE", "", "BUILD");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl,
-                            cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR, extent: pu_rl);
-                        toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
-                        if (toolOutput == null)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting polygons to raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error converting polygons to raster.");
-                            return;
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
-                        }
-
-
-
-                    }
-
-                    // Get some pu raster properties
-                    RasterLayer pu_rl = (RasterLayer)pu_layer;
-                    double pu_ras_cellsize = 0;
-                    Envelope pu_env = null; // probably don't need this
-
-                    await QueuedTask.Run(() =>
-                    {
-                        using (Raster raster = pu_rl.GetRaster())
-                        {
-                            pu_ras_cellsize = raster.GetMeanCellSize().Item1;
-                            pu_env = raster.GetExtent();    // probably don't need this
-                        }
-                    });
-
-                    double poly_to_ras_cellsize = pu_ras_cellsize / 10.0;
-                    double poly_to_ras_cellarea = poly_to_ras_cellsize * poly_to_ras_cellsize;  // square meters
-
-                    // Process each element
-                    foreach (var regElement in regElements)
-                    {
-                        // Process varies based on element layer type
-                        LayerType layerType = (LayerType)regElement.LayerType;
-
-                        if (layerType == LayerType.FEATURE)
-                        {
-                            // Get the element feature layer
-                            FeatureLayer regFL = (FeatureLayer)regElement.LayerObject;
-
-                            // Apply selection if where clause was stored
-                            if (!string.IsNullOrEmpty(regElement.WhereClause))
-                            {
-                                await QueuedTask.Run(() =>
-                                {
-                                    QueryFilter queryFilter = new QueryFilter()
-                                    {
-                                        WhereClause = regElement.WhereClause
-                                    };
-
-                                    regFL.Select(queryFilter, SelectionCombinationMethod.New);
-                                });
-
-                                if (regFL.SelectionCount == 0)
-                                {
-                                    // no matching features - I can skip this element
-                                    continue;
-                                }
-                            }
-
-                            // Get the object id field
-                            string oidfield = await QueuedTask.Run(() =>
-                            {
-                                using (FeatureClass featureClass = regFL.GetFeatureClass())
-                                using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
-                                {
-                                    return fcDef.GetObjectIDField();
-                                }
-                            });
-
-                            // Temp Raster Dataset names
-                            string temp_raster = PRZC.c_RAS_TEMP_A + regElement.ElementID.ToString();
-                            string reg_raster = PRZC.c_RAS_REG_ELEMENT + regElement.ElementID.ToString();
-                            string temp_table_a = PRZC.c_TABLE_TEMP_A + regElement.ElementID.ToString();
-
-                            // Convert feature layer to raster
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {regElement.ElementName} to raster..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, temp_raster, "CELL_CENTER", "NONE", "", "BUILD");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, 
-                                cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR, extent: pu_rl);
-                            toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting polygons to raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error converting polygons to raster.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
-                            }
-
-                            // Reclass the new raster so that all non-null values are now equal to cell area
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(temp_raster, poly_to_ras_cellarea, reg_raster, "", "Value IS NOT NULL");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR);
-                            toolOutput = await PRZH.RunGPTool("Con_sa", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error reclassing values.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error reclassing values.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
-                            }
-
-                            // Zonal Statistics as Table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, reg_raster, temp_table_a, "DATA", "ALL");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: PU_SR);
-                            toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error calculating zonal statistics.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
-                            }
-
-                            // Retrieve dictionary from zonal stats table:   puid, sum
-                            Dictionary<int, double> DICT_PUID_and_value_sum = new Dictionary<int, double>();
-
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_table = PRZH.GetTable_Project(temp_table_a);
-                                if (!tryget_table.success)
-                                {
-                                    throw new Exception($"Unable to retrieve the temp zonal stats table {temp_table_a}");
-                                }
-
-                                using (Table table = tryget_table.table)
-                                using (RowCursor rowCursor = table.Search())
-                                {
-                                    while (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID]);
-                                            double sumval = Convert.ToDouble(row[PRZC.c_FLD_ZONALSTATS_SUM]);
-
-                                            if (puid > 0 && sumval > 0)
-                                            {
-                                                DICT_PUID_and_value_sum.Add(puid, sumval);
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-
-                            // Delete temp objects
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp objects..."), true, ++val);
-                            // string dellist = temp_raster_a + ";" + temp_raster_b + ";" + temp_table_a;
-                            string dellist = temp_raster + ";" + temp_table_a;
-                            toolParams = Geoprocessing.MakeValueArray(dellist);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp objects.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error deleting temp objects.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp objects deleted successfully."), true, ++val);
-                            }
-
-                            // if there are no entries in the zonal stats dict, move on to next regElement
-                            if (DICT_PUID_and_value_sum.Count == 0)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"No data to store for regional element {regElement.ElementName}"), true, ++val);
-                                continue;
-                            }
-
-                            // Retrieve dictionary of puids, cellnumbers
-                            var tryget_cellnumbers = await PRZH.GetPUIDsAndCellNumbers();    // this dictionary could have no entries, if the PU dataset has no populated cell_numbers
-                            if (!tryget_cellnumbers.success)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving puid dictionary.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error retrieving puid dictionary.");
-                                return;
-                            }
-
-                            var DICT_PUID_and_cellnumbers = tryget_cellnumbers.dict;
-
-                            // Create the regional element table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(gdbpath, regElement.ElementTable, "", "", "Element " + regElement.ElementID.ToString("D5"));
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error creating the {regElement.ElementTable} table.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {regElement.ElementTable} table."), true, ++val);
-                            }
-
-                            PRZH.CheckForCancellation(token);
-
-                            // Add fields to the table
-                            string fldPUID = PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID + " LONG 'Planning Unit ID' # 0 #;";
-                            string fldCellNum = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
-                            string fldCellVal = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #;";
-
-                            string flds = fldPUID + fldCellNum + fldCellVal;
-
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, flds);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error adding fields to the {regElement.ElementTable} table.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields added successfully."), true, ++val);
-                            }
-
-                            // Populate the table...
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_gdb = PRZH.GetGDB_Project();
-
-                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                                using (Table table = geodatabase.OpenDataset<Table>(regElement.ElementTable))
-                                using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                                {
-                                    geodatabase.ApplyEdits(() =>
-                                    {
-                                        foreach (int puid in DICT_PUID_and_value_sum.Keys) // PUIDs showing up in this regElement's zonal stats table
-                                        {
-                                            // store the puid
-                                            rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID] = puid;
-
-                                            // store the value
-                                            rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE] = DICT_PUID_and_value_sum[puid];
-
-                                            // store the cell number (if present)
-                                            if (DICT_PUID_and_cellnumbers.ContainsKey(puid))
-                                            {
-                                                rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER] = DICT_PUID_and_cellnumbers[puid];
-                                            }
-
-                                            table.CreateRow(rowBuffer);
-                                        }
-                                    });
-                                }
-                            });
-
-                            // index the PUID field
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID} field in the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show("Error indexing field.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
-                            }
-
-                            // index the Cell Number field
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER} field in the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GPRefresh);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show("Error indexing field.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
-                            }
-
-                            // Update the regElements table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_gdb = PRZH.GetGDB_Project();
-
-                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                                using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
-                                {
-                                    QueryFilter queryFilter = new QueryFilter()
-                                    {
-                                        WhereClause = $"{PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID} = {regElement.ElementID}"
-                                    };
-
-                                    using (RowCursor rowCursor = table.Search(queryFilter, false))
-                                    {
-                                        if (rowCursor.MoveNext())
-                                        {
-                                            using (Row row = rowCursor.Current)
-                                            {
-                                                geodatabase.ApplyEdits(() =>
-                                                {
-                                                    row[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)ElementPresence.Present;
-                                                    row.Store();
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                        else if (layerType == LayerType.RASTER)
-                        {
-                            // Get the element raster layer
-                            RasterLayer regRL = (RasterLayer)regElement.LayerObject;
-
-                            // Get some raster details
-                            int band_count = 0;
-                            bool has_nodata_value = false;
-                            List<double> nodata_values = new List<double>();
-                            bool is_integer_raster = false;
-
-                            await QueuedTask.Run(() =>
-                            {
-                                using (Raster raster = regRL.GetRaster())
-                                {
-                                    // Is it an integer raster?
-                                    is_integer_raster = raster.IsInteger();
-
-                                    // Get Band Count
-                                    band_count = raster.GetBandCount();
-
-                                    // Get nodata values if they exist
-                                    var nodata_object = raster.GetNoDataValue();
-
-                                    if (nodata_object != null)
-                                    {
-                                        // there is a nodata value
-                                        has_nodata_value = true;
-
-                                        // cast to ienumerable
-                                        IEnumerable enumerable = nodata_object as IEnumerable;
-
-                                        if (enumerable != null)
-                                        {
-                                            foreach (object o in enumerable)
-                                            {
-                                                try
-                                                {
-                                                    double d = Convert.ToDouble(o);
-                                                    nodata_values.Add(d);
-                                                }
-                                                catch
-                                                {
-                                                    nodata_values.Add(-9999);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-
-                            // Raster can only have a single band
-                            if (band_count > 1)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster has more than 1 band.\n{regRL.Name}", LogMessageType.VALIDATION_ERROR), true, ++val);
-                                ProMsgBox.Show($"Raster has more than 1 band.\n{regRL.Name}");
-                                return;
-                            }
-
-                            // Prepare nodata string
-                            string nodataval = "";
-                            if (has_nodata_value)
-                            {
-                                nodataval = nodata_values[0].ToString();                                
-                            }
-
-                            // Copy Raster to temp raster
-                            string temp_raster = "zz_temp_" + regElement.ElementID.ToString();
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copy raster..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regRL, temp_raster, "", "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, extent: pu_rl);
-                            toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error copying raster.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster copied."), true, ++val);
-                            }
-
-                            // Project Raster
-                            string temp_raster2 = "zz_temp2_" + regElement.ElementID.ToString();
-                            string interpolation = is_integer_raster ? "NEAREST" : "BILINEAR";
-
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting raster..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(temp_raster, temp_raster2, PU_SR, interpolation);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("ProjectRaster_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error projecting raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error projecting raster.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster projected."), true, ++val);
-                            }
-
-                            // Zonal Statistics as Table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                            string temp_table = PRZC.c_TABLE_TEMP_A + regElement.ElementID.ToString();
-                            toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, regRL, temp_table, "DATA", "ALL");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl, cellSize: "MAXOF", outputCoordinateSystem: PU_SR);
-                            toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error calculating zonal statistics.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
-                            }
-
-                            // Retrieve dictionary from zonal stats table:   puid, sum
-                            Dictionary<int, double> DICT_PUID_and_value_sum = new Dictionary<int, double>();
-
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_table = PRZH.GetTable_Project(temp_table);
-                                if (!tryget_table.success)
-                                {
-                                    throw new Exception($"Unable to retrieve the temp zonal stats table {temp_table}");
-                                }
-
-                                using (Table table = tryget_table.table)
-                                using (RowCursor rowCursor = table.Search())
-                                {
-                                    while (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            int puid = Convert.ToInt32(row[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID]);
-                                            double sumval = Convert.ToDouble(row[PRZC.c_FLD_ZONALSTATS_SUM]);
-
-                                            //if (puid > 0 && sumval > 0)
-                                            if (puid > 0)
-                                            {
-                                                DICT_PUID_and_value_sum.Add(puid, sumval);
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-
-                            // Delete temp objects
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp objects..."), true, ++val);
-                            string dellist = temp_raster + ";" + temp_raster2 + ";" + temp_table;
-                            toolParams = Geoprocessing.MakeValueArray(dellist);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                            toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp objects.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error deleting temp objects.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp objects deleted successfully."), true, ++val);
-                            }
-
-                            // if there are no entries in the zonal stats dict, move on to next regElement
-                            if (DICT_PUID_and_value_sum.Count == 0)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"No data to store for regional element {regElement.ElementName}"), true, ++val);
-                                continue;
-                            }
-
-                            // Retrieve dictionary of puids, cellnumbers
-                            var tryget_cellnumbers = await PRZH.GetPUIDsAndCellNumbers();    // this dictionary could have no entries, if the PU dataset has no populated cell_numbers
-                            if (!tryget_cellnumbers.success)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving puid dictionary.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error retrieving puid dictionary.");
-                                return;
-                            }
-
-                            var DICT_PUID_and_cellnumbers = tryget_cellnumbers.dict;
-
-                            // Create the regional element table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(gdbpath, regElement.ElementTable, "", "", "Element " + regElement.ElementID.ToString("D5"));
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error creating the {regElement.ElementTable} table.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {regElement.ElementTable} table."), true, ++val);
-                            }
-
-                            PRZH.CheckForCancellation(token);
-
-                            // Add fields to the table
-                            string fldPUID = PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID + " LONG 'Planning Unit ID' # 0 #;";
-                            string fldCellNum = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
-                            string fldCellVal = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #;";
-
-                            string flds = fldPUID + fldCellNum + fldCellVal;
-
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, flds);
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show($"Error adding fields to the {regElement.ElementTable} table.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields added successfully."), true, ++val);
-                            }
-
-                            // Populate the table...
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_gdb = PRZH.GetGDB_Project();
-
-                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                                using (Table table = geodatabase.OpenDataset<Table>(regElement.ElementTable))
-                                using (RowBuffer rowBuffer = table.CreateRowBuffer())
-                                {
-                                    geodatabase.ApplyEdits(() =>
-                                    {
-                                        foreach (int puid in DICT_PUID_and_value_sum.Keys) // PUIDs showing up in this regElement's zonal stats table
-                                        {
-                                            // store the puid
-                                            rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID] = puid;
-
-                                            // store the value
-                                            rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE] = DICT_PUID_and_value_sum[puid];
-
-                                            // store the cell number (if present)
-                                            if (DICT_PUID_and_cellnumbers.ContainsKey(puid))
-                                            {
-                                                rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER] = DICT_PUID_and_cellnumbers[puid];
-                                            }
-
-                                            table.CreateRow(rowBuffer);
-                                        }
-                                    });
-                                }
-                            });
-
-                            // index the PUID field
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID} field in the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show("Error indexing field.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
-                            }
-
-                            // index the Cell Number field
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER} field in the {regElement.ElementTable} table..."), true, ++val);
-                            toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "", "");
-                            toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                            toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GPRefresh);
-                            if (toolOutput == null)
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                                ProMsgBox.Show("Error indexing field.");
-                                return;
-                            }
-                            else
-                            {
-                                PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
-                            }
-
-                            // Update the regElements table
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
-                            await QueuedTask.Run(() =>
-                            {
-                                var tryget_gdb = PRZH.GetGDB_Project();
-
-                                using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                                using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
-                                {
-                                    QueryFilter queryFilter = new QueryFilter()
-                                    {
-                                        WhereClause = $"{PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID} = {regElement.ElementID}"
-                                    };
-
-                                    using (RowCursor rowCursor = table.Search(queryFilter, false))
-                                    {
-                                        if (rowCursor.MoveNext())
-                                        {
-                                            using (Row row = rowCursor.Current)
-                                            {
-                                                geodatabase.ApplyEdits(() =>
-                                                {
-                                                    row[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)ElementPresence.Present;
-                                                    row.Store();
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-
-                        }
-                        else
-                        {
-                            // huh?
-                        }
-                    }
-
-                    #endregion
-                }
-                else
-                {
-                    ProMsgBox.Show("No goaldir");
                 }
 
-                #endregion
-
-                #region PROCESS THE WEIGHTS FOLDER
-
-                if (weightdirexists)
+                if (direxists_includes)
                 {
+                    var subdir = RegionalDataSubfolder.INCLUDES;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
 
+                    if (!tryprocess.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing the regional {subdir} directory.\n{tryprocess.message}"), true, ++val);
+                        return;
+                    }
                 }
 
-                #endregion
-
-                #region PROCESS THE INCLUDES FOLDER
-
-                if (includedirexists)
+                if (direxists_excludes)
                 {
+                    var subdir = RegionalDataSubfolder.EXCLUDES;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
 
-                }
-
-                #endregion
-
-                #region PROCESS THE EXCLUDES FOLDER
-
-                if (excludedirexists)
-                {
-
+                    if (!tryprocess.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing the regional {subdir} directory.\n{tryprocess.message}"), true, ++val);
+                        return;
+                    }
                 }
 
                 #endregion
@@ -1888,6 +835,1125 @@ namespace NCC.PRZTools
                     await Project.Current.SetIsEditingEnabledAsync(false);
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("ArcGIS Pro editing disabled."), true, max, ++val);
                 }
+            }
+        }
+
+        private async Task<(bool success, string message)> ProcessRegionalFolder(
+            RegionalDataSubfolder subFolderType,
+            double pu_cell_size,
+            SpatialReference pu_sr,
+            string pu_raster_path,
+            Dictionary<int, long> DICT_PUID_and_cellnumbers,
+            Envelope pu_extent,
+            CancellationToken token)
+        {
+            int val = PM.Current;
+            int max = PM.Max;
+
+            try
+            {
+                #region INITIALIZE
+
+                // Initialize a few objects and names
+                Map map = MapView.Active.Map;
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string regpath = PRZH.GetPath_RegionalDataFolder();
+                string regpath_subdir = PRZH.GetPath_RegionalDataSubfolder(subFolderType);
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // Set some values based on subdir type
+                string gl_name = "";
+                ElementType elementType = ElementType.Unknown;
+
+                switch (subFolderType)
+                {
+                    case RegionalDataSubfolder.GOALS:
+                        gl_name = PRZC.c_GROUPLAYER_REG_GOALS;
+                        elementType = ElementType.Goal;
+                        break;
+
+                    case RegionalDataSubfolder.WEIGHTS:
+                        gl_name = PRZC.c_GROUPLAYER_REG_WEIGHTS;
+                        elementType = ElementType.Weight;
+                        break;
+
+                    case RegionalDataSubfolder.INCLUDES:
+                        gl_name = PRZC.c_GROUPLAYER_REG_INCLUDES;
+                        elementType = ElementType.Include;
+                        break;
+
+                    case RegionalDataSubfolder.EXCLUDES:
+                        gl_name = PRZC.c_GROUPLAYER_REG_EXCLUDES;
+                        elementType = ElementType.Exclude;
+                        break;
+                }
+
+                // Calculate some pu raster-related values
+                double poly_to_ras_cellsize = pu_cell_size / 10.0;    // TODO: Is this the best way to determine cell size?
+                double poly_to_ras_cellarea = poly_to_ras_cellsize * poly_to_ras_cellsize;  // square meters
+
+                #endregion
+
+                #region PREPARE GROUP LAYER
+
+                // Determine if the group layer exists already - if so, delete it
+                GroupLayer GL = map.GetLayersAsFlattenedList().OfType<GroupLayer>().FirstOrDefault(gl => string.Equals(gl.Name, gl_name, StringComparison.OrdinalIgnoreCase));
+                if (GL != null)
+                {
+                    await QueuedTask.Run(() => { map.RemoveLayer(GL); });
+                }
+
+                // Create the new group layer
+                GL = await QueuedTask.Run(() => { return LayerFactory.Instance.CreateGroupLayer(map, map.Layers.Count, gl_name); });
+
+                // Create and load the raster layer
+                Uri uri = new Uri(pu_raster_path);
+                LayerCreationParams creationParams = new LayerCreationParams(uri)
+                {
+                    Name = "pu",
+                    IsVisible = false
+                };
+
+                Layer pu_layer = null;
+                await QueuedTask.Run(() =>
+                {
+                    pu_layer = LayerFactory.Instance.CreateLayer<RasterLayer>(creationParams, GL, LayerPosition.AddToBottom);
+                });
+                RasterLayer pu_rl = (RasterLayer)pu_layer;
+                await MapView.Active.RedrawAsync(false);
+
+
+                #endregion
+
+                #region ASSEMBLE LAYERS
+
+                // find all lyrx files
+                var layer_files = Directory.EnumerateFiles(regpath_subdir, "*.lyrx", SearchOption.TopDirectoryOnly);
+
+                // Lists of individual FL and RL CIM Documents.  I can turn these into layers later.  OPTION A
+                List<CIMLayerDocument> cimDocuments_FL = new List<CIMLayerDocument>();
+                List<CIMLayerDocument> cimDocuments_RL = new List<CIMLayerDocument>();
+
+                // Lists of lyrx paths and associated lists of FL or RL CIMLayerDocuments.  OPTION B
+                List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> FL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
+                List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)> RL_CIMDocs = new List<(string lyrx_path, List<CIMLayerDocument> cimLyrDocs)>();
+
+                await QueuedTask.Run(() =>
+                {
+                    foreach (var layer_file in layer_files)
+                    {
+                        // Get the lyrx file's underlying CIMLayerDocument and all FL and RL cimdefinitions in it
+                        LayerDocument layerDocument = new LayerDocument(layer_file);
+                        CIMLayerDocument cimLayerDocument = layerDocument.GetCIMLayerDocument();
+
+                        // Get a list of any feature or raster layer definitions in the CIMLayerDocument
+                        List<CIMFeatureLayer> cimFLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMFeatureLayer>().ToList();
+                        List<CIMRasterLayer> cimRLDefs = cimLayerDocument.LayerDefinitions.OfType<CIMRasterLayer>().ToList();
+
+                        // Move on if this lyrx file contains no feature or raster layers
+                        if (cimFLDefs.Count == 0 & cimRLDefs.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        // Process the FL CIMDefinitions
+                        if (cimFLDefs.Count > 0)
+                        {
+                            List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
+
+                            foreach (var cimFLDef in cimFLDefs)
+                            {
+                                // Create a new CIMLayerDocument
+                                CIMLayerDocument tempCIM = new CIMLayerDocument();
+
+                                // Set properties
+                                tempCIM.Layers = new string[] { cimFLDef.URI };
+                                tempCIM.LayerDefinitions = new CIMDefinition[] { cimFLDef };
+
+                                // Store the CIM Doc
+                                cimDocuments_FL.Add(tempCIM);
+                                tempCIMs.Add(tempCIM);
+                            }
+
+                            FL_CIMDocs.Add((layer_file, tempCIMs));
+                        }
+
+                        // Process the RL CIMDefinitions
+                        if (cimRLDefs.Count > 0)
+                        {
+                            List<CIMLayerDocument> tempCIMs = new List<CIMLayerDocument>();
+
+                            foreach (var cimRLDef in cimRLDefs)
+                            {
+                                // Create a new CIMLayerDocument
+                                CIMLayerDocument tempCIM = new CIMLayerDocument();
+
+                                // Set properties
+                                tempCIM.Layers = new string[] { cimRLDef.URI };
+                                tempCIM.LayerDefinitions = new CIMDefinition[] { cimRLDef };
+
+                                // Store the CIM Doc
+                                cimDocuments_RL.Add(tempCIM);
+                                tempCIMs.Add(tempCIM);
+                            }
+
+                            RL_CIMDocs.Add((layer_file, tempCIMs));
+                        }
+                    }
+                });
+
+                // Build lists of layers
+                List<(string lyrx_path, List<FeatureLayer> FLs)> lyrx_FLs = new List<(string lyrx_path, List<FeatureLayer> FLs)>();
+                List<(string lyrx_path, List<RasterLayer> RLs)> lyrx_RLs = new List<(string lyrx_path, List<RasterLayer> RLs)>();
+
+                // Load the feature layers here
+                foreach (var o in FL_CIMDocs)
+                {
+                    List<FeatureLayer> fls = new List<FeatureLayer>();
+
+                    foreach (var a in o.cimLyrDocs)
+                    {
+                        await QueuedTask.Run(async () =>
+                        {
+                            // Create and add the layer
+                            LayerCreationParams lcparams = new LayerCreationParams(a)
+                            {
+                                IsVisible = false
+                            };
+
+                            var l = LayerFactory.Instance.CreateLayer<FeatureLayer>(lcparams, GL, LayerPosition.AddToTop);
+
+                            // Check for valid source Feature Class
+                            bool bad_fc = false;
+
+                            try
+                            {
+                                using (FeatureClass featureClass = l.GetFeatureClass())
+                                {
+                                    if (featureClass == null)
+                                    {
+                                        bad_fc = true;
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                bad_fc = true;
+                            }
+
+                            // If FC is invalid, leave
+                            if (bad_fc)
+                            {
+                                GL.RemoveLayer(l);
+                            }
+
+                            // If FL is not a polygon feature layer, leave
+                            else if (l.ShapeType != esriGeometryType.esriGeometryPolygon)
+                            {
+                                GL.RemoveLayer(l);
+                            }
+
+                            // If FL has null or unknown spatial reference, leave
+                            else
+                            {
+                                var sr = l.GetSpatialReference();
+
+                                if (sr == null || sr.IsUnknown)
+                                {
+                                    GL.RemoveLayer(l);
+                                }
+                                else
+                                {
+                                    // Finally, we have an OK feature layer!
+                                    fls.Add(l);
+                                }
+                            }
+
+                            await MapView.Active.RedrawAsync(false);
+                        });
+                    }
+
+                    lyrx_FLs.Add((o.lyrx_path, fls));
+                }
+
+                // Load the raster layers here
+                foreach (var o in RL_CIMDocs)
+                {
+                    List<RasterLayer> rls = new List<RasterLayer>();
+
+                    foreach (var a in o.cimLyrDocs)
+                    {
+                        await QueuedTask.Run(async () =>
+                        {
+                            // Create and add the layer
+                            LayerCreationParams lcparams = new LayerCreationParams(a)
+                            {
+                                IsVisible = false
+                            };
+
+                            var l = LayerFactory.Instance.CreateLayer<RasterLayer>(lcparams, GL, LayerPosition.AddToTop);
+
+                            // Check for a valid Raster source
+                            bool bad_raster = false;
+
+                            try
+                            {
+                                using (Raster raster = l.GetRaster())
+                                {
+                                    if (raster == null)
+                                    {
+                                        bad_raster = true;
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                bad_raster = true;
+                            }
+
+                            // If Raster is invalid, leave
+                            if (bad_raster)
+                            {
+                                GL.RemoveLayer(l);
+                            }
+
+                            // If RL has null or unknown spatial reference, leave
+                            else
+                            {
+                                var sr = l.GetSpatialReference();
+
+                                if (sr == null || sr.IsUnknown)
+                                {
+                                    GL.RemoveLayer(l);
+                                }
+                                else
+                                {
+                                    // Finally, we have an OK raster layer!
+                                    rls.Add(l);
+                                }
+                            }
+
+                            await MapView.Active.RedrawAsync(false);
+                        });
+                    }
+
+                    lyrx_RLs.Add((o.lyrx_path, rls));
+                }
+
+                // ensure at least one layer is available
+                bool fls_present = false;
+                bool rls_present = false;
+
+                foreach (var u in lyrx_FLs)
+                {
+                    if (u.FLs.Count > 0)
+                    {
+                        fls_present = true;
+                        break;
+                    }
+                }
+
+                foreach (var u in lyrx_RLs)
+                {
+                    if (u.RLs.Count > 0)
+                    {
+                        rls_present = true;
+                        break;
+                    }
+                }
+
+                if (!fls_present & !rls_present)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"No valid layers found within the regional {subFolderType} directory"), true, ++val);
+                    return (true, "success");
+                }
+
+                #endregion
+
+                #region PROCESS LAYERS TO EXTRACT ELEMENTS
+
+                // Prepare list of Elements
+                List<RegElement> regElements = new List<RegElement>();
+                int id = 1;
+
+                // Populate list with Feature Elements
+                if (fls_present)
+                {
+                    for (int i = 0; i < lyrx_FLs.Count; i++)
+                    {
+                        (string lyrx_path, List<FeatureLayer> FLs) FLInfo = lyrx_FLs[i];
+
+                        foreach (FeatureLayer FL in FLInfo.FLs)
+                        {
+                            // validate this feature layer for renderer stuff
+                            await QueuedTask.Run(async () =>
+                            {
+                                // Get the renderer
+                                var rend = FL.GetRenderer();
+
+                                if (rend is CIMUniqueValueRenderer UVRend)
+                                {
+                                    // Get the field index plus the field type, for each of the 1, 2, or 3 fields in the UV Renderer
+                                    Dictionary<int, FieldCategory> DICT_FieldIndex_and_category = new Dictionary<int, FieldCategory>();
+
+                                    for (int b = 0; b < UVRend.Fields.Length; b++)
+                                    {
+                                        string uvrend_fieldname = UVRend.Fields[b];
+
+                                        foreach (FieldDescription fieldDescription in FL.GetFieldDescriptions())
+                                        {
+                                            if (uvrend_fieldname == fieldDescription.Name)
+                                            {
+                                                FieldCategory fcat = PRZH.GetFieldCategory(fieldDescription);
+
+                                                if (fcat == FieldCategory.DATE)
+                                                {
+                                                    throw new Exception($"Layer: {FL.Name} >> Date Fields in UV Legends not supported.");
+                                                }
+
+                                                DICT_FieldIndex_and_category.Add(b, fcat);
+                                            }
+                                        }
+                                    }
+
+                                    // Make sure we picked up a DICT entry for each UVRend field name
+                                    if (UVRend.Fields.Length != DICT_FieldIndex_and_category.Count)
+                                    {
+                                        throw new Exception($"Layer: {FL.Name} >> Not all renderer fields found within layer table.");
+                                    }
+
+                                    // Cycle through each Legend Group, retrieve Group heading...
+                                    CIMUniqueValueGroup[] UVGroups = UVRend.Groups;
+
+                                    if (UVGroups is null)
+                                    {
+                                        throw new Exception($"Layer: {FL.Name} >> UV Renderer has no groups.");
+                                    }
+
+                                    foreach (CIMUniqueValueGroup UVGroup in UVGroups)
+                                    {
+                                        // Get the group heading
+                                        string group_heading = UVGroup.Heading;
+
+                                        // Retrieve the Classes in this Group
+                                        CIMUniqueValueClass[] UVClasses = UVGroup.Classes;
+
+                                        // Each UVClass will become its own unique regional element
+                                        foreach (CIMUniqueValueClass UVClass in UVClasses)
+                                        {
+                                            // Get the class label
+                                            string class_label = UVClass.Label;
+
+                                            // Retrieve the "Tuples" associated with this UVClass
+                                            // A "Tuple" is a collection of 1, 2, or 3 specific field values (from the 1, 2 or 3 fields in the UV Renderer)
+                                            // A UVClass can consist of 1 or more "Tuples".  By default, 1, but if the user groups together 2 or more classes into a single class,
+                                            // the UVClass will consist of those 2 or more "Tuples".
+                                            CIMUniqueValue[] UVClassTuples = UVClass.Values;
+
+                                            string classClause = "";
+
+                                            // For Each Tuple (could be 1 to many many)
+                                            for (int tupIx = 0; tupIx < UVClassTuples.Length; tupIx++)
+                                            {
+                                                CIMUniqueValue tuple = UVClassTuples[tupIx];
+
+                                                string tupleClause = "";
+
+                                                // For each field value in the tuple (could be 1, 2, or 3)
+                                                for (int fldIx = 0; fldIx < tuple.FieldValues.Length; fldIx++)
+                                                {
+                                                    string fieldValue = tuple.FieldValues[fldIx];
+                                                    bool IsNull = fieldValue == "<Null>";
+
+                                                    string Expression = "";
+
+                                                    switch (DICT_FieldIndex_and_category[fldIx])
+                                                    {
+                                                        case FieldCategory.STRING:
+                                                            Expression = (IsNull) ? "IS NULL" : "= '" + fieldValue.Replace("'", "''") + "'";
+                                                            break;
+
+                                                        case FieldCategory.NUMERIC:
+                                                            Expression = (IsNull) ? "IS NULL" : "= " + fieldValue;
+                                                            break;
+
+                                                        default:
+                                                            break;
+                                                    }
+
+                                                    // Assemble the unit clause - the building block of the main where clause
+                                                    string unitClause = "(" + UVRend.Fields[fldIx] + " " + Expression + ")";
+
+                                                    // Assemble the tuple clause - the where clause of this particular tuple
+                                                    if (fldIx == 0)
+                                                    {
+                                                        tupleClause = unitClause;
+                                                    }
+                                                    else
+                                                    {
+                                                        tupleClause += " And " + unitClause;
+                                                    }
+                                                }
+
+                                                tupleClause = "(" + tupleClause + ")";
+
+                                                if (tupIx == 0)
+                                                {
+                                                    classClause = tupleClause;
+                                                }
+                                                else
+                                                {
+                                                    classClause += " Or " + tupleClause;
+                                                }
+                                            }
+
+                                            classClause = "(" + classClause + ")";  // this is the where clause
+
+                                            // Assemble the new element
+                                            RegElement regElement = new RegElement();
+
+                                            regElement.ElementID = id++;
+                                            regElement.ElementName = FL.Name + " - " + group_heading + " - " + class_label;
+                                            regElement.ElementType = (int)elementType;
+                                            regElement.LayerObject = FL;
+                                            regElement.LayerName = FL.Name;
+                                            regElement.LayerType = (int)LayerType.FEATURE;
+                                            regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                            regElement.LyrxPath = FLInfo.lyrx_path;
+                                            regElement.WhereClause = classClause;
+                                            regElement.LegendGroup = group_heading;
+                                            regElement.LegendClass = class_label;
+
+                                            regElements.Add(regElement);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    RegElement regElement = new RegElement();
+
+                                    regElement.ElementID = id++;
+                                    regElement.ElementName = FL.Name;
+                                    regElement.ElementType = (int)elementType;
+                                    regElement.LayerObject = FL;
+                                    regElement.LayerName = FL.Name;
+                                    regElement.LayerType = (int)LayerType.FEATURE;
+                                    regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                    regElement.LyrxPath = FLInfo.lyrx_path;
+
+                                    regElements.Add(regElement);
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // Populate list with Raster Elements
+                if (rls_present)
+                {
+                    for (int i = 0; i < lyrx_RLs.Count; i++)
+                    {
+                        (string lyrx_path, List<RasterLayer> RLs) RLInfo = lyrx_RLs[i];
+
+                        foreach (RasterLayer RL in RLInfo.RLs)
+                        {
+                            RegElement regElement = new RegElement();
+
+                            regElement.ElementID = id++;
+                            regElement.ElementName = RL.Name;
+                            regElement.ElementType = (int)elementType;
+                            regElement.LayerObject = RL;
+                            regElement.LayerName = RL.Name;
+                            regElement.LayerType = (int)LayerType.RASTER;
+                            regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)RL.GetDefinition()).ToJson(); });
+                            regElement.LyrxPath = RLInfo.lyrx_path;
+
+                            regElements.Add(regElement);
+                        }
+                    }
+                }
+
+                #endregion
+
+                #region WRITE ELEMENTS TO REG ELEMENT TABLE
+
+                // Sort by element ID (just in case).  I think the objects got added to the list already ordered correctly...
+                regElements.Sort((x, y) => x.ElementID.CompareTo(y.ElementID));
+
+                // Ensure the table is present
+                var tryex_regelem = await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                if (!tryex_regelem.exists)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                    return (false, "error finding table.");
+                }
+
+                // Populate the table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = PRZH.GetGDB_Project();
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
+                    using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                    {
+                        geodatabase.ApplyEdits(() =>
+                        {
+                            foreach (var elem in regElements)
+                            {
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID] = elem.ElementID;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_NAME] = elem.ElementName;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_TYPE] = elem.ElementType;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_STATUS] = (int)ElementStatus.Active;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)ElementPresence.Absent;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH] = elem.LyrxPath;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME] = elem.LayerName;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE] = ((LayerType)elem.LayerType).ToString();
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON] = elem.LayerJson;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] = elem.WhereClause;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] = elem.LegendGroup;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] = elem.LegendClass;
+
+                                table.CreateRow(rowBuffer);
+                            }
+                        });
+                    }
+                });
+
+                #endregion
+
+                #region OVERLAY ELEMENTS WITH PLANNING UNITS
+
+                // Process each element
+                foreach (var regElement in regElements)
+                {
+                    // Set up some temp object names
+                    string temp_raster = PRZC.c_RAS_TEMP_A + regElement.ElementID.ToString();
+                    string reg_raster = PRZC.c_RAS_REG_ELEMENT + regElement.ElementID.ToString();
+                    string zonal_stats_table = PRZC.c_TABLE_TEMP_ZONALSTATS + regElement.ElementID.ToString();
+                    List<string> items_to_delete = new List<string>();
+
+                    SpatialReference lyr_sr = null;
+
+                    // Process varies based on element layer type
+                    LayerType layerType = (LayerType)regElement.LayerType;
+                    if (layerType == LayerType.FEATURE)
+                    {
+                        // Get the element feature layer
+                        FeatureLayer regFL = (FeatureLayer)regElement.LayerObject;
+
+                        // Get spatial reference
+                        lyr_sr = await QueuedTask.Run(() => { return regFL.GetSpatialReference(); });
+
+                        // Project pu extent to the layer's spatial reference
+                        ProjectionTransformation projectionTransformation = ProjectionTransformation.Create(pu_sr, lyr_sr, pu_extent);
+                        Envelope pu_extent_projected = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projectionTransformation);
+
+                        ProMsgBox.Show($"PU Extent in Feature Layer SR: {pu_extent_projected.XMin} {pu_extent_projected.YMin} {pu_extent_projected.XMax} {pu_extent_projected.YMax}");
+
+                        // Apply selection if where clause was stored
+                        if (!string.IsNullOrEmpty(regElement.WhereClause))
+                        {
+                            await QueuedTask.Run(() =>
+                            {
+                                QueryFilter queryFilter = new QueryFilter()
+                                {
+                                    WhereClause = regElement.WhereClause
+                                };
+
+                                regFL.Select(queryFilter, SelectionCombinationMethod.New);
+                            });
+
+                            if (regFL.SelectionCount == 0)
+                            {
+                                // no matching features - I can skip this element
+                                continue;
+                            }
+                        }
+
+                        // Get the object id field
+                        string oidfield = await QueuedTask.Run(() =>
+                        {
+                            using (FeatureClass featureClass = regFL.GetFeatureClass())
+                            using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                            {
+                                return fcDef.GetObjectIDField();
+                            }
+                        });
+
+                        // Convert feature layer to raster
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {regElement.ElementName} to raster..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, temp_raster, "CELL_CENTER", "NONE", "", "BUILD");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl,
+                            cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent_projected);
+                        toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error converting polygons to raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error converting polygons to raster.");
+                            return (false, "error converting polygons to raster.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
+                        }
+                        items_to_delete.Add(temp_raster);
+
+                        // Build Statistics
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(temp_raster, 1, 1, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating statistics.");
+                            return (false, "error calculating stats.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                        }
+
+                        // Reclass the new raster so that all non-null values are now equal to cell area
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(temp_raster, poly_to_ras_cellarea, reg_raster, "", "Value IS NOT NULL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, 
+                            snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent);
+                        toolOutput = await PRZH.RunGPTool("Con_sa", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error reclassing values.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error reclassing values.");
+                            return (false, "error reclassing values.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
+                        }
+                        items_to_delete.Add(reg_raster);
+
+                        // Build Pyramids
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                        toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error building pyramids.");
+                            return (false, "error building pyramids.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                        }
+
+                        // Build Statistics
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster, 1, 1, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating statistics.");
+                            return (false, "error calculating stats.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                        }
+
+                        // Zonal Statistics as Table
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, reg_raster, zonal_stats_table, "DATA", "ALL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl,
+                            cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating zonal statistics.");
+                            return (false, "error calculating zonal statistics");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
+                        }
+                        items_to_delete.Add(zonal_stats_table);
+                    }
+                    else if (layerType == LayerType.RASTER)
+                    {
+                        // Get the element raster layer
+                        RasterLayer regRL = (RasterLayer)regElement.LayerObject;
+
+                        // Get spatial reference
+                        lyr_sr = await QueuedTask.Run(() => { return regRL.GetSpatialReference(); });
+
+                        // Project pu extent to the layer's spatial reference
+                        ProjectionTransformation projectionTransformation = ProjectionTransformation.Create(pu_sr, lyr_sr, pu_extent);
+                        Envelope pu_extent_projected = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projectionTransformation);
+
+                        ProMsgBox.Show($"PU Extent in Raster Layer SR: {pu_extent_projected.XMin} {pu_extent_projected.YMin} {pu_extent_projected.XMax} {pu_extent_projected.YMax}");
+
+                        // Get some raster details
+                        int band_count = 0;
+                        bool has_nodata_value = false;
+                        List<double> nodata_values = new List<double>();
+                        bool is_integer_raster = false;
+
+                        await QueuedTask.Run(() =>
+                        {
+                            using (Raster raster = regRL.GetRaster())
+                            {
+                                // Is it an integer raster?
+                                is_integer_raster = raster.IsInteger();
+
+                                // Get Band Count
+                                band_count = raster.GetBandCount();
+
+                                // Get nodata values if they exist
+                                var nodata_object = raster.GetNoDataValue();
+
+                                if (nodata_object != null)
+                                {
+                                    // there is a nodata value
+                                    has_nodata_value = true;
+
+                                    // cast to ienumerable
+                                    IEnumerable enumerable = nodata_object as IEnumerable;
+
+                                    if (enumerable != null)
+                                    {
+                                        foreach (object o in enumerable)
+                                        {
+                                            try
+                                            {
+                                                double d = Convert.ToDouble(o);
+                                                nodata_values.Add(d);
+                                            }
+                                            catch
+                                            {
+                                                nodata_values.Add(-9999);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Raster can only have a single band
+                        if (band_count > 1)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster has more than 1 band.\n{regRL.Name}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                            ProMsgBox.Show($"Raster has more than 1 band.\n{regRL.Name}");
+                            return (false, "error - raster has more than 1 band.");
+                        }
+
+                        // Prepare nodata string
+                        string nodataval = "";
+                        if (has_nodata_value)
+                        {
+                            nodataval = nodata_values[0].ToString();
+                        }
+
+                        // Copy Raster to temp raster
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copy raster..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(regRL, temp_raster, "", "", "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true,
+                            extent: pu_extent_projected, outputCoordinateSystem: pu_sr, rasterStatistics: "STATISTICS 1 1");
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error copying raster.");
+                            return (false, "error copying raster.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster copied."), true, ++val);
+                        }
+                        items_to_delete.Add(temp_raster);
+
+                        // Project Raster
+                        string interpolation = is_integer_raster ? "NEAREST" : "BILINEAR";
+
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting raster..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(temp_raster, reg_raster, pu_sr, interpolation);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("ProjectRaster_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error projecting raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error projecting raster.");
+                            return (false, "error projecting raster.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster projected."), true, ++val);
+                        }
+                        items_to_delete.Add(reg_raster);
+
+                        // Build Statistics
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster, 1, 1, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating statistics.");
+                            return (false, "error calculating statistics.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                        }
+
+                        // Build Statistics
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(regRL, 1, 1, "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating statistics.");
+                            return (false, "error calculating statistics.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                        }
+
+                        // Zonal Statistics as Table
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, regRL, zonal_stats_table, "DATA", "ALL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true,
+                            snapRaster: pu_rl, cellSize: "MAXOF", outputCoordinateSystem: pu_sr);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating zonal statistics.");
+                            return (false, "error calculating zonal statistics.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
+                        }
+                        items_to_delete.Add(zonal_stats_table);
+                    }
+
+                    // Retrieve dictionary from zonal stats table:   puid, sum
+                    Dictionary<int, double> DICT_PUID_and_value_sum = new Dictionary<int, double>();
+
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_table = PRZH.GetTable_Project(zonal_stats_table);
+                        if (!tryget_table.success)
+                        {
+                            throw new Exception($"Unable to retrieve the temp zonal stats table {zonal_stats_table}");
+                        }
+
+                        using (Table table = tryget_table.table)
+                        using (RowCursor rowCursor = table.Search())
+                        {
+                            while (rowCursor.MoveNext())
+                            {
+                                using (Row row = rowCursor.Current)
+                                {
+                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
+                                    double sumval = Convert.ToDouble(row[PRZC.c_FLD_ZONALSTATS_SUM]);
+
+                                    //if (puid > 0 && sumval > 0)
+                                    if (puid > 0)
+                                    {
+                                        DICT_PUID_and_value_sum.Add(puid, sumval);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Delete temp objects
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp objects..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", items_to_delete));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting temp objects.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting temp objects.");
+                        return (false, "error deleting temp objects.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp objects deleted successfully."), true, ++val);
+                    }
+
+                    // if there are no entries in the zonal stats dict, move on to next regElement
+                    if (DICT_PUID_and_value_sum.Count == 0)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"No data to store for regional element {regElement.ElementName}"), true, ++val);
+                        continue;
+                    }
+
+                    // Create the regional element table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {regElement.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, regElement.ElementTable, "", "", "Element " + regElement.ElementID.ToString("D5"));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error creating the {regElement.ElementTable} table.");
+                        return (false, "error creating table.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {regElement.ElementTable} table."), true, ++val);
+                    }
+
+                    PRZH.CheckForCancellation(token);
+
+                    // Add fields to the table
+                    string fldPUID = PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID + " LONG 'Planning Unit ID' # 0 #;";
+                    string fldCellNum = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
+                    string fldCellVal = PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #;";
+
+                    string flds = fldPUID + fldCellNum + fldCellVal;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {regElement.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, flds);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {regElement.ElementTable} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error adding fields to the {regElement.ElementTable} table.");
+                        return (false, "error adding fields.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Fields added successfully."), true, ++val);
+                    }
+
+                    // Populate the table...
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_gdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(regElement.ElementTable))
+                        using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                        {
+                            geodatabase.ApplyEdits(() =>
+                            {
+                                foreach (int puid in DICT_PUID_and_value_sum.Keys) // PUIDs showing up in this regElement's zonal stats table
+                                {
+                                    // store the puid
+                                    rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID] = puid;
+
+                                    // store the value
+                                    rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE] = DICT_PUID_and_value_sum[puid];
+
+                                    // store the cell number (if present)
+                                    if (DICT_PUID_and_cellnumbers.ContainsKey(puid))
+                                    {
+                                        rowBuffer[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER] = DICT_PUID_and_cellnumbers[puid];
+                                    }
+
+                                    table.CreateRow(rowBuffer);
+                                }
+                            });
+                        }
+                    });
+
+                    // index the PUID field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID} field in the {regElement.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return (false, "error indexing field.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+
+                    // index the Cell Number field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER} field in the {regElement.ElementTable} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return (false, "error indexing field.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+
+                    // Update the regElements table
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_gdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
+                        {
+                            QueryFilter queryFilter = new QueryFilter()
+                            {
+                                WhereClause = $"{PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID} = {regElement.ElementID}"
+                            };
+
+                            using (RowCursor rowCursor = table.Search(queryFilter, false))
+                            {
+                                if (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        geodatabase.ApplyEdits(() =>
+                                        {
+                                            row[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE] = (int)ElementPresence.Present;
+                                            row.Store();
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                #endregion
+
+                return (true, "success");
+            }
+            catch (OperationCanceledException cancelex)
+            {
+                throw cancelex;
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
             }
         }
 

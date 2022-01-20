@@ -4054,6 +4054,285 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
+        /// Retrieve a list of RegTheme objects from the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<NatTheme> themes, string message)> GetRegionalThemes()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Check for existence of Theme table
+                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
+                {
+                    return (false, null, $"{PRZC.c_TABLE_NAT_THEMES} table not found in project geodatabase");
+                }
+
+                // Create the list
+                List<NatTheme> themes = new List<NatTheme>();
+
+                // Populate the list
+                (bool success, string message) outcome = await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_THEME_ID]);
+                                string name = (string)row[PRZC.c_FLD_TAB_NATTHEME_NAME];
+                                string code = (string)row[PRZC.c_FLD_TAB_NATTHEME_CODE];
+                                int theme_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE]);
+
+                                if (id > 0 && !string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
+                                {
+                                    NatTheme theme = new NatTheme()
+                                    {
+                                        ThemeID = id,
+                                        ThemeName = name,
+                                        ThemeCode = code,
+                                        ThemePresence = theme_presence
+                                    };
+
+                                    themes.Add(theme);
+                                }
+                            }
+                        }
+                    }
+
+                    return (true, "success");
+                });
+
+                if (outcome.success)
+                {
+                    // Sort the list by theme id
+                    themes.Sort((a, b) => a.ThemeID.CompareTo(b.ThemeID));
+
+                    return (true, themes, "success");
+                }
+                else
+                {
+                    return (false, null, outcome.message);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of NatTheme objects from the project geodatabase, optionally filtered
+        /// by the presence indicator.  Silent errors.
+        /// </summary>
+        /// <param name="presence"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, List<NatTheme> themes, string message)> GetRegionalThemes(ElementPresence? presence)
+        {
+            try
+            {
+                // Get the full Theme list
+                var tryget = await GetNationalThemes();
+
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                List<NatTheme> themes = tryget.themes;
+
+                // Filter the list based on filter criteria:
+
+                // By Presence
+                IEnumerable<NatTheme> v = (presence != null) ? themes.Where(t => t.ThemePresence == ((int)presence)) : themes;
+
+                // Sort by Theme ID
+                IOrderedEnumerable<NatTheme> u = v.OrderBy(t => t.ThemeID);
+
+                return (true, u.ToList(), "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of NatElement objects from the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<NatElement> elements, string message)> GetRegionalElements()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Check for existence of Element table
+                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
+                {
+                    return (false, null, $"{PRZC.c_TABLE_NAT_ELEMENTS} table not found in project geodatabase");
+                }
+
+                // Create list
+                List<NatElement> elements = new List<NatElement>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID]);
+                                string name = (string)row[PRZC.c_FLD_TAB_NATELEMENT_NAME] ?? "";
+                                int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_TYPE]);
+                                int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_STATUS]);
+                                string data_path = (string)row[PRZC.c_FLD_TAB_NATELEMENT_DATAPATH] ?? "";
+                                int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_THEME_ID]);
+                                int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE]);
+                                string unit = (string)row[PRZC.c_FLD_TAB_NATELEMENT_UNIT] ?? "";
+
+                                if (id > 0 && elem_type > 0 && elem_status > 0 && theme_id > 0 && !string.IsNullOrEmpty(name))
+                                {
+                                    NatElement element = new NatElement()
+                                    {
+                                        ElementID = id,
+                                        ElementName = name,
+                                        ElementType = elem_type,
+                                        ElementStatus = elem_status,
+                                        ElementDataPath = data_path,
+                                        ThemeID = theme_id,
+                                        ElementPresence = elem_presence,
+                                        ElementUnit = unit
+                                    };
+
+                                    elements.Add(element);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Populate the Theme Information
+                var theme_outcome = await GetNationalThemes();
+                if (!theme_outcome.success)
+                {
+                    return (false, null, theme_outcome.message);
+                }
+
+                List<NatTheme> themes = theme_outcome.themes;
+
+                foreach (NatElement element in elements)
+                {
+                    int theme_id = element.ThemeID;
+
+                    if (theme_id < 1)
+                    {
+                        element.ThemeName = "INVALID THEME ID";
+                        element.ThemeCode = "---";
+                    }
+                    else
+                    {
+                        NatTheme theme = themes.FirstOrDefault(t => t.ThemeID == theme_id);
+
+                        if (theme != null)
+                        {
+                            element.ThemeName = theme.ThemeName;
+                            element.ThemeCode = theme.ThemeCode;
+                        }
+                        else
+                        {
+                            element.ThemeName = "NO CORRESPONDING THEME";
+                            element.ThemeCode = "???";
+                        }
+                    }
+                }
+
+                // Sort the list
+                elements.Sort((a, b) => a.ElementID.CompareTo(b.ElementID));
+
+                return (true, elements, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of NatElement objects from the project geodatabase, optionally filtered
+        /// by type, status, or presence indicators.  Silent errors.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="status"></param>
+        /// <param name="presence"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, List<NatElement> elements, string message)> GetRegionalElements(ElementType? type, ElementStatus? status, ElementPresence? presence)
+        {
+            try
+            {
+                // Get the full Elements list
+                var tryget = await GetNationalElements();
+
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                List<NatElement> elements = tryget.elements;
+
+                // Filter the list based on filter criteria:
+
+                // By Type
+                IEnumerable<NatElement> v = (type != null) ? elements.Where(e => e.ElementType == ((int)type)) : elements;
+
+                // By Status
+                v = (status != null) ? v.Where(e => e.ElementStatus == ((int)status)) : v;
+
+                // By Presence
+                v = (presence != null) ? v.Where(e => e.ElementPresence == ((int)presence)) : v;
+
+                // Sort by Element ID
+                IOrderedEnumerable<NatElement> u = v.OrderBy(e => e.ElementID);
+
+                return (true, u.ToList(), "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+
+        /// <summary>
         /// Retrieve a list of regional element table names (e.g. r00042) from the project geodatabase.
         /// Silent errors.
         /// </summary>
@@ -5833,9 +6112,16 @@ namespace NCC.PRZTools
                 string toolOutput;
 
                 // Flags for regional domain existence
-                bool presence_domain_exists = false;
-                bool status_domain_exists = false;
-                bool type_domain_exists = false;
+                bool domain_exists_presence = false;
+                bool domain_exists_status = false;
+                bool domain_exists_type = false;
+                bool domain_exists_theme = false;
+
+                // Sorted Lists of domain values
+                SortedList<object, string> sl_presence = null;
+                SortedList<object, string> sl_status = null;
+                SortedList<object, string> sl_type = null;
+                SortedList<object, string> sl_theme = null;
 
                 // Determine existence of each domain
                 await QueuedTask.Run(() =>
@@ -5857,17 +6143,26 @@ namespace NCC.PRZTools
                                 if (domain is CodedValueDomain cvd)
                                 {
                                     string domname = cvd.GetName();
-                                    if (domname == PRZC.c_DOMAIN_PRESENCE)
+
+                                    if (string.Equals(domname, PRZC.c_DOMAIN_PRESENCE, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        presence_domain_exists = true;
+                                        domain_exists_presence = true;
+                                        sl_presence = cvd.GetCodedValuePairs();
                                     }
-                                    else if (domname == PRZC.c_DOMAIN_REG_STATUS)
+                                    else if (string.Equals(domname, PRZC.c_DOMAIN_REG_STATUS, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        status_domain_exists = true;
+                                        domain_exists_status = true;
+                                        sl_status = cvd.GetCodedValuePairs();
                                     }
-                                    else if (domname == PRZC.c_DOMAIN_REG_TYPE)
+                                    else if (string.Equals(domname, PRZC.c_DOMAIN_REG_TYPE, StringComparison.OrdinalIgnoreCase))
                                     {
-                                        type_domain_exists = true;
+                                        domain_exists_type = true;
+                                        sl_type = cvd.GetCodedValuePairs();
+                                    }
+                                    else if (string.Equals(domname, PRZC.c_DOMAIN_REG_THEME, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        domain_exists_theme = true;
+                                        sl_theme = cvd.GetCodedValuePairs();
                                     }
                                 }
                             }
@@ -5877,8 +6172,12 @@ namespace NCC.PRZTools
 
                 string gdbpath = GetPath_ProjectGDB();
 
+                // I'm here!!!
+
+
+
                 // Create the Presence domain if it is missing
-                if (!presence_domain_exists)
+                if (!domain_exists_presence)
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -5909,11 +6208,35 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    // TODO: Domain found - verify values
+                    // (Re)build the domain KVPs
+                    if (sl_presence.Keys.Count > 0)
+                    {
+                        // Get the list of key strings
+                        var keyobjs = sl_presence.Keys.ToList();
+                        List<string> keystrings = new List<string>();
+                        foreach (object o in keyobjs)
+                        {
+                            int d = Convert.ToInt32(o);
+                            keystrings.Add(d.ToString());
+                        }
+
+                        // delete them
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, string.Join(";", keystrings));
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_PRESENCE} domain.");
+                        }
+                    }
+
+                    // Insert new values
+
+
                 }
 
                 // Create the Status domain if it is missing
-                if (!status_domain_exists)
+                if (!domain_exists_status)
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -5948,7 +6271,7 @@ namespace NCC.PRZTools
                 }
 
                 // Create the Type domain if it is missing
-                if (!type_domain_exists)
+                if (!domain_exists_type)
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
