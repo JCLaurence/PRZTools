@@ -844,10 +844,34 @@ namespace NCC.PRZTools
                     }
                 });
 
-                // we're done here
-                return (true, "success");
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region UPDATE REGIONAL THEME DOMAIN
+
+                Dictionary<int, string> national_values = new Dictionary<int, string>();
+
+                foreach (NatTheme theme in themes)
+                {
+                    if (theme.ThemeID <= 1000)
+                    {
+                        national_values.Add(theme.ThemeID, theme.ThemeName);
+                    }
+                }
+
+                var tryupdate = await PRZH.UpdateRegionalThemesDomain(national_values);
+                if (!tryupdate.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error updating regional themes domain", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error updating regional themes domain.");
+                    return (false, "error updating domain.");
+                }
 
                 #endregion
+
+                // we're done here
+                return (true, "success");
             }
             catch (OperationCanceledException cancelex)
             {

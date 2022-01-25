@@ -76,6 +76,14 @@
         Unknown
     }
 
+    public enum ElementTheme
+    {
+        RegionalGoal = 1001,
+        RegionalWeight,
+        RegionalInclude,
+        RegionalExclude
+    }
+
     #endregion
 
     public enum GeoDBType
@@ -234,15 +242,21 @@
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
         public const string c_RAS_PLANNING_UNITS_TEMP = "pu_ras_temp";
+        public const string c_RAS_PLANNING_UNITS_RECLASS = "pu_ras_reclass_";
         public const string c_RAS_TEMP_1 = "TempRas1";
         public const string c_RAS_TEMP_2 = "TempRas2";
         public const string c_RAS_TEMP_3 = "TempRas3";
         public const string c_RAS_NATGRID_ZERO = "natgrid_zero";
         public const string c_RAS_NATGRID_CELLNUMS = "natgrid_cellnums";
-        public const string c_RAS_TEMP_A = "z_tmpras_a";
-        public const string c_RAS_TEMP_B = "z_tmpras_b";
-        public const string c_RAS_TEMP_C = "z_tmpras_c";
-        public const string c_RAS_REG_ELEMENT = "reg_elem_";
+        //public const string c_RAS_REG_ELEMENT_TEMP = c_RAS_REG_ELEMENT + "tmp_";
+        //public const string c_RAS_REG_ELEMENT = "reg_elem_";
+        //public const string c_RAS_REG_ELEM_INIT = "reg_elem_";
+
+        public const string c_RAS_REG_ELEM_PREFIX = "reg_elem_";
+        public const string c_RAS_REG_ELEM_SUFFIX_ORIG = "_orig";
+        public const string c_RAS_REG_ELEM_SUFFIX_RECLASS = "_reclass";
+        public const string c_RAS_REG_ELEM_SUFFIX_ZONAL = "_zonalsum";
+
 
         // FEATURE CLASSES
         public const string c_FC_PLANNING_UNITS = "planning_units";
@@ -271,7 +285,9 @@
         public const string c_TABLE_TEMP_A = "z_tmptab_a";
         public const string c_TABLE_TEMP_B = "z_tmptab_b";
         public const string c_TABLE_TEMP_C = "z_tmptab_c";
-        public const string c_TABLE_TEMP_ZONALSTATS = "z_zstats_";
+
+        public const string c_TABLE_REG_ZONALSTATS_PREFIX = "reg_elem_";
+        public const string c_TABLE_REG_ZONALSTATS_SUFFIX = "_zonalstats";
 
         // NATIONAL DB TABLES
         public const string c_TABLE_NAT_ELEMENTS = "nat_element";

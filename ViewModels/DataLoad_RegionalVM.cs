@@ -48,6 +48,7 @@ namespace NCC.PRZTools
         private ICommand _cmdLoadRegionalData;
         private ICommand _cmdCancel;
         private ICommand _cmdClearLog;
+        private ICommand _cmdTest;
 
         #endregion
 
@@ -181,6 +182,14 @@ namespace NCC.PRZTools
         public ICommand CmdClearLog => _cmdClearLog ?? (_cmdClearLog = new RelayCommand(() =>
         {
             PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
+        }, () => true, true, false));
+
+        public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () =>
+        {
+            var a = await PRZH.UpdateRegionalThemesDomain(null);
+
+            ProMsgBox.Show(a.message);
+
         }, () => true, true, false));
 
         #endregion
@@ -369,7 +378,7 @@ namespace NCC.PRZTools
                 SpatialReference pu_sr = null;
                 double pu_raster_cellsize = 0;
                 string pu_raster_path = "";
-                Envelope pu_extent = null;
+                Envelope extent_pu = null;
 
                 // Gather infos from existing planning unit dataset
                 if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
@@ -385,7 +394,7 @@ namespace NCC.PRZTools
                             pu_sr = raster.GetSpatialReference();
                             var msc = raster.GetMeanCellSize();
                             pu_raster_cellsize = msc.Item1;
-                            pu_extent = raster.GetExtent();
+                            extent_pu = raster.GetExtent();
                         }
                     });
 
@@ -422,7 +431,10 @@ namespace NCC.PRZTools
                     // Convert FC to raster
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {PRZC.c_FC_PLANNING_UNITS} featureclass to raster..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, PRZC.c_RAS_PLANNING_UNITS_TEMP, "CELL_CENTER", "NONE", pu_raster_cellsize, "BUILD");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, outputCoordinateSystem: pu_sr);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true,
+                        outputCoordinateSystem: pu_sr);
                     toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
@@ -439,7 +451,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -471,7 +483,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Building raster attribute table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP, "OVERWRITE");
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    toolOutput = await PRZH.RunGPTool("BuildRasterAttributeTable_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Building the raster attribute table .  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -492,7 +504,7 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to raster attribute table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS_TEMP, flds);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GPRefresh);
+                    toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to raster attribute table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -539,7 +551,7 @@ namespace NCC.PRZTools
                             });
 
                             // Get the extent
-                            pu_extent = raster.GetExtent();
+                            extent_pu = raster.GetExtent();
                         }
                     });
 
@@ -558,7 +570,6 @@ namespace NCC.PRZTools
                 PRZH.CheckForCancellation(token);
 
                 #region DELETE EXISTING GEODATABASE OBJECTS
-
 
                 // Delete the Regional Theme Table if present
                 if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REG_THEMES)).exists)
@@ -665,6 +676,37 @@ namespace NCC.PRZTools
                     }
                 }
 
+                // Delete any temp pu reclass rasters if found
+                var tryget_pureclass = await PRZH.GetRegionalPUReclassRasters();
+                if (!tryget_pureclass.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of regional pu reclass rasters.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving list of regional pu reclass rasters.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tryget_pureclass.rasters.Count} regional pu reclass rasters found."), true, ++val);
+                }
+
+                if (tryget_pureclass.rasters.Count > 0)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tryget_pureclass.rasters.Count} regional pu reclass rasters..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", tryget_pureclass.rasters));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting regional pu reclass rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the regional pu reclass rasters.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional pu reclass rasters deleted successfully."), true, ++val);
+                    }
+                }
+
                 #endregion
 
                 PRZH.CheckForCancellation(token);
@@ -744,7 +786,7 @@ namespace NCC.PRZTools
                 {
                     var subdir = RegionalDataSubfolder.GOALS;
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
-                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, extent_pu, token);
 
                     if (!tryprocess.success)
                     {
@@ -757,7 +799,7 @@ namespace NCC.PRZTools
                 {
                     var subdir = RegionalDataSubfolder.WEIGHTS;
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
-                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, extent_pu, token);
 
                     if (!tryprocess.success)
                     {
@@ -770,7 +812,7 @@ namespace NCC.PRZTools
                 {
                     var subdir = RegionalDataSubfolder.INCLUDES;
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
-                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, extent_pu, token);
 
                     if (!tryprocess.success)
                     {
@@ -783,7 +825,7 @@ namespace NCC.PRZTools
                 {
                     var subdir = RegionalDataSubfolder.EXCLUDES;
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing the regional {subdir} directory..."), true, ++val);
-                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, pu_extent, token);
+                    var tryprocess = await ProcessRegionalFolder(subdir, pu_raster_cellsize, pu_sr, pu_raster_path, DICT_PUID_and_cellnumbers, extent_pu, token);
 
                     if (!tryprocess.success)
                     {
@@ -927,7 +969,6 @@ namespace NCC.PRZTools
                 });
                 RasterLayer pu_rl = (RasterLayer)pu_layer;
                 await MapView.Active.RedrawAsync(false);
-
 
                 #endregion
 
@@ -1101,6 +1142,7 @@ namespace NCC.PRZTools
 
                             // Check for a valid Raster source
                             bool bad_raster = false;
+                            int band_count = 0;
 
                             try
                             {
@@ -1110,6 +1152,8 @@ namespace NCC.PRZTools
                                     {
                                         bad_raster = true;
                                     }
+
+                                    band_count = raster.GetBandCount();
                                 }
                             }
                             catch
@@ -1119,6 +1163,12 @@ namespace NCC.PRZTools
 
                             // If Raster is invalid, leave
                             if (bad_raster)
+                            {
+                                GL.RemoveLayer(l);
+                            }
+
+                            // If raster has more than 1 band, leave
+                            else if (band_count > 1)
                             {
                                 GL.RemoveLayer(l);
                             }
@@ -1324,7 +1374,7 @@ namespace NCC.PRZTools
                                             regElement.LayerObject = FL;
                                             regElement.LayerName = FL.Name;
                                             regElement.LayerType = (int)LayerType.FEATURE;
-                                            regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                            regElement.LayerJson = await QueuedTask.Run(() => { return (FL.GetDefinition()).ToJson(); });
                                             regElement.LyrxPath = FLInfo.lyrx_path;
                                             regElement.WhereClause = classClause;
                                             regElement.LegendGroup = group_heading;
@@ -1344,7 +1394,7 @@ namespace NCC.PRZTools
                                     regElement.LayerObject = FL;
                                     regElement.LayerName = FL.Name;
                                     regElement.LayerType = (int)LayerType.FEATURE;
-                                    regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)FL.GetDefinition()).ToJson(); });
+                                    regElement.LayerJson = await QueuedTask.Run(() => { return (FL.GetDefinition()).ToJson(); });
                                     regElement.LyrxPath = FLInfo.lyrx_path;
 
                                     regElements.Add(regElement);
@@ -1371,7 +1421,7 @@ namespace NCC.PRZTools
                             regElement.LayerObject = RL;
                             regElement.LayerName = RL.Name;
                             regElement.LayerType = (int)LayerType.RASTER;
-                            regElement.LayerJson = await QueuedTask.Run(() => { return ((CIMBaseLayer)RL.GetDefinition()).ToJson(); });
+                            regElement.LayerJson = await QueuedTask.Run(() => { return (RL.GetDefinition()).ToJson(); });
                             regElement.LyrxPath = RLInfo.lyrx_path;
 
                             regElements.Add(regElement);
@@ -1432,32 +1482,146 @@ namespace NCC.PRZTools
 
                 #region OVERLAY ELEMENTS WITH PLANNING UNITS
 
+                // pu layer extent (in map SR)
+                Envelope extent_pu_query = await QueuedTask.Run(() => { return pu_layer.QueryExtent(); });
+
                 // Process each element
                 foreach (var regElement in regElements)
                 {
-                    // Set up some temp object names
-                    string temp_raster = PRZC.c_RAS_TEMP_A + regElement.ElementID.ToString();
-                    string reg_raster = PRZC.c_RAS_REG_ELEMENT + regElement.ElementID.ToString();
-                    string zonal_stats_table = PRZC.c_TABLE_TEMP_ZONALSTATS + regElement.ElementID.ToString();
-                    List<string> items_to_delete = new List<string>();
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing regional element {regElement.ElementID}: {regElement.ElementName}..."), true, ++val);
 
-                    SpatialReference lyr_sr = null;
+                    // Get the layer
+                    Layer lyr = regElement.LayerObject;
+
+                    // Set up geodatabase object names
+                    string reg_raster_init = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_ORIG;
+                    string reg_raster_2 = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_RECLASS;
+                    string reg_raster_3 = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_ZONAL;
+
+                    string zonal_stats_table = PRZC.c_TABLE_REG_ZONALSTATS_PREFIX + regElement.ElementID.ToString() + PRZC.c_TABLE_REG_ZONALSTATS_SUFFIX;
+
+                    List<string> gdb_objects_delete = new List<string>();
+
+                    #region PROJECTION AND GEOTRANSFORMATION INFORMATION
+
+                    // layer extent (in map SR)
+                    Envelope extent_lyr_query = await QueuedTask.Run(() => { return lyr.QueryExtent(); });
+
+                    // intersection of pu and layer extents in map sr
+                    EnvelopeBuilderEx builderEx = new EnvelopeBuilderEx(extent_pu_query);
+                    bool hasoverlap = builderEx.Intersects(extent_lyr_query);
+                    builderEx.Intersection(extent_lyr_query);
+                    Envelope extent_intersection_query = (Envelope)builderEx.ToGeometry();
+
+                    if (!hasoverlap)
+                    {
+                        // extents don't overlap, so no point continuing with this one.
+                        continue;
+                    }
+
+                    // layer spatial reference
+                    SpatialReference lyr_sr = await QueuedTask.Run(() => { return lyr.GetSpatialReference(); });
+                    SpatialReference map_sr = map.SpatialReference;
+
+                    // Projection Transformations
+                    // Forwards
+                    ProjectionTransformation projTrans_pu_to_lyr = ProjectionTransformation.Create(pu_sr, lyr_sr);
+                    ProjectionTransformation projTrans_pu_to_map = ProjectionTransformation.Create(pu_sr, map_sr);
+                    ProjectionTransformation projTrans_lyr_to_map = ProjectionTransformation.Create(lyr_sr, map_sr);
+
+                    // Inverse
+                    ProjectionTransformation projTrans_lyr_to_pu = projTrans_pu_to_lyr.GetInverse();
+                    ProjectionTransformation projTrans_map_to_pu = projTrans_pu_to_map.GetInverse();
+                    ProjectionTransformation projTrans_map_to_lyr = projTrans_lyr_to_map.GetInverse();
+
+                    // Geographic Transformations (may be null)
+                    CompositeGeographicTransformation compGeoTrans_pu_to_lyr = (CompositeGeographicTransformation)projTrans_pu_to_lyr.Transformation;
+                    CompositeGeographicTransformation compGeoTrans_lyr_to_pu = (CompositeGeographicTransformation)projTrans_lyr_to_pu.Transformation;
+                    CompositeGeographicTransformation compGeoTrans_pu_to_map = (CompositeGeographicTransformation)projTrans_pu_to_map.Transformation;
+                    CompositeGeographicTransformation compGeoTrans_map_to_pu = (CompositeGeographicTransformation)projTrans_map_to_pu.Transformation;
+                    CompositeGeographicTransformation compGeoTrans_lyr_to_map = (CompositeGeographicTransformation)projTrans_lyr_to_map.Transformation;
+                    CompositeGeographicTransformation compGeoTrans_map_to_lyr = (CompositeGeographicTransformation)projTrans_map_to_lyr.Transformation;
+
+                    // Transformation Existences
+                    bool geoTransExists_pu_to_lyr = false;
+                    bool geoTransExists_lyr_to_pu = false;
+                    bool geoTransExists_pu_to_map = false;
+                    bool geoTransExists_map_to_pu = false;
+                    bool geoTransExists_lyr_to_map = false;
+                    bool geoTransExists_map_to_lyr = false;
+
+                    // Transformations as semi-colon delimited strings
+                    string geoTransNames_pu_to_lyr = "";
+                    string geoTransNames_lyr_to_pu = "";
+                    string geoTransNames_pu_to_map = "";
+                    string geoTransNames_map_to_pu = "";
+                    string geoTransNames_lyr_to_map = "";
+                    string geoTransNames_map_to_lyr = "";
+
+                    // Get the transformation strings
+
+                    // PU to LYR
+                    if (compGeoTrans_pu_to_lyr != null)
+                    {
+                        geoTransExists_pu_to_lyr = true;
+                        var names = compGeoTrans_pu_to_lyr.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_pu_to_lyr = string.Join(";", names);
+                    }
+
+                    // LYR to PU
+                    if (compGeoTrans_lyr_to_pu != null)
+                    {
+                        geoTransExists_lyr_to_pu = true;
+                        var names = compGeoTrans_lyr_to_pu.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_lyr_to_pu = string.Join(";", names);
+                    }
+
+                    // PU to MAP
+                    if (compGeoTrans_pu_to_map != null)
+                    {
+                        geoTransExists_pu_to_map = true;
+                        var names = compGeoTrans_pu_to_map.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_pu_to_map = string.Join(";", names);
+                    }
+
+                    // MAP to PU
+                    if (compGeoTrans_map_to_pu != null)
+                    {
+                        geoTransExists_map_to_pu = true;
+                        var names = compGeoTrans_map_to_pu.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_map_to_pu = string.Join(";", names);
+                    }
+
+                    // LYR to MAP
+                    if (compGeoTrans_lyr_to_map != null)
+                    {
+                        geoTransExists_lyr_to_map = true;
+                        var names = compGeoTrans_lyr_to_map.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_lyr_to_map = string.Join(";", names);
+                    }
+
+                    // MAP to LYR
+                    if (compGeoTrans_map_to_lyr != null)
+                    {
+                        geoTransExists_map_to_lyr = true;
+                        var names = compGeoTrans_map_to_lyr.Transformations.Select(t => t.Name).ToList();
+                        geoTransNames_map_to_lyr = string.Join(";", names);
+                    }
+
+                    // Prepare the pu extent envelopes
+                    Envelope pu_extent_in_lyr_sr = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projTrans_pu_to_lyr);
+                    Envelope pu_extent_in_map_sr = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projTrans_pu_to_map);     // should be the same as pu_query_extent
+
+                    #endregion
 
                     // Process varies based on element layer type
                     LayerType layerType = (LayerType)regElement.LayerType;
                     if (layerType == LayerType.FEATURE)
                     {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Source layer is of type: {layerType}"), true, ++val);
+
                         // Get the element feature layer
-                        FeatureLayer regFL = (FeatureLayer)regElement.LayerObject;
-
-                        // Get spatial reference
-                        lyr_sr = await QueuedTask.Run(() => { return regFL.GetSpatialReference(); });
-
-                        // Project pu extent to the layer's spatial reference
-                        ProjectionTransformation projectionTransformation = ProjectionTransformation.Create(pu_sr, lyr_sr, pu_extent);
-                        Envelope pu_extent_projected = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projectionTransformation);
-
-                        ProMsgBox.Show($"PU Extent in Feature Layer SR: {pu_extent_projected.XMin} {pu_extent_projected.YMin} {pu_extent_projected.XMax} {pu_extent_projected.YMax}");
+                        FeatureLayer regFL = (FeatureLayer)lyr;
 
                         // Apply selection if where clause was stored
                         if (!string.IsNullOrEmpty(regElement.WhereClause))
@@ -1475,8 +1639,16 @@ namespace NCC.PRZTools
                             if (regFL.SelectionCount == 0)
                             {
                                 // no matching features - I can skip this element
+                                PRZH.UpdateProgress(PM, PRZH.WriteLog($"No feature selection found.  Skipping layer."), true, ++val);
                                 continue;
                             }
+                        }
+                        else
+                        {
+                            await QueuedTask.Run(() =>
+                            {
+                                regFL.ClearSelection();
+                            });
                         }
 
                         // Get the object id field
@@ -1491,9 +1663,11 @@ namespace NCC.PRZTools
 
                         // Convert feature layer to raster
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {regElement.ElementName} to raster..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, temp_raster, "CELL_CENTER", "NONE", "", "BUILD");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl,
-                            cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent_projected);
+                        toolParams = Geoprocessing.MakeValueArray(regFL, oidfield, reg_raster_init, "CELL_CENTER", "NONE", poly_to_ras_cellsize, "BUILD");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            extent: extent_pu_query);
                         toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
@@ -1505,11 +1679,26 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
                         }
-                        items_to_delete.Add(temp_raster);
+
+                        // Build Pyramids
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_init);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error building pyramids.");
+                            return (false, "error building pyramids.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                        }
 
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(temp_raster, 1, 1, "");
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_init, 1, 1, "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
@@ -1525,9 +1714,11 @@ namespace NCC.PRZTools
 
                         // Reclass the new raster so that all non-null values are now equal to cell area
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(temp_raster, poly_to_ras_cellarea, reg_raster, "", "Value IS NOT NULL");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, 
-                            snapRaster: pu_rl, cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_init, poly_to_ras_cellarea, reg_raster_2, "", "Value IS NOT NULL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize);
                         toolOutput = await PRZH.RunGPTool("Con_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
@@ -1539,12 +1730,11 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
                         }
-                        items_to_delete.Add(reg_raster);
 
                         // Build Pyramids
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(reg_raster);
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_2);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
@@ -1559,7 +1749,7 @@ namespace NCC.PRZTools
 
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(reg_raster, 1, 1, "");
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_2, 1, 1, "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
@@ -1573,12 +1763,42 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
                         }
 
-                        // Zonal Statistics as Table
+                        // resize pu raster to match cell size of layer raster
+                        string pu_raster_reclass = PRZC.c_RAS_PLANNING_UNITS_RECLASS + regElement.ElementID.ToString();
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying PU Raster..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_layer, pu_raster_reclass);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            resamplingMethod: "NEAREST");
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error copying raster.");
+                            return (false, "error copying raster");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"raster copied."), true, ++val);
+                        }
+                        gdb_objects_delete.Add(pu_raster_reclass);
+
+                        // Snap raster for both zonal stats tools
+                        string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
+
+                        // Zonal Statistics (Sum)
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, reg_raster, zonal_stats_table, "DATA", "ALL");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true, snapRaster: pu_rl,
-                            cellSize: poly_to_ras_cellsize, outputCoordinateSystem: pu_sr, extent: pu_extent);
-                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, reg_raster_3, "SUM", "DATA");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            snapRaster: snapraster,
+                            outputCoordinateSystem: pu_sr,
+                            geographicTransformations: geoTransNames_lyr_to_pu);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatistics_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1589,37 +1809,53 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
-                        items_to_delete.Add(zonal_stats_table);
+
+                        // Zonal Statistics as Table
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, zonal_stats_table, "DATA", "ALL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            snapRaster: snapraster,
+                            outputCoordinateSystem: pu_sr,
+                            geographicTransformations: geoTransNames_lyr_to_pu);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics as table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating zonal statistics as table.");
+                            return (false, "error calculating zonal statistics as table");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
+                        }
                     }
                     else if (layerType == LayerType.RASTER)
                     {
                         // Get the element raster layer
                         RasterLayer regRL = (RasterLayer)regElement.LayerObject;
 
-                        // Get spatial reference
-                        lyr_sr = await QueuedTask.Run(() => { return regRL.GetSpatialReference(); });
-
-                        // Project pu extent to the layer's spatial reference
-                        ProjectionTransformation projectionTransformation = ProjectionTransformation.Create(pu_sr, lyr_sr, pu_extent);
-                        Envelope pu_extent_projected = (Envelope)GeometryEngine.Instance.ProjectEx(pu_extent, projectionTransformation);
-
-                        ProMsgBox.Show($"PU Extent in Raster Layer SR: {pu_extent_projected.XMin} {pu_extent_projected.YMin} {pu_extent_projected.XMax} {pu_extent_projected.YMax}");
-
                         // Get some raster details
                         int band_count = 0;
                         bool has_nodata_value = false;
                         List<double> nodata_values = new List<double>();
-                        bool is_integer_raster = false;
+                        double celsiz = 0;
+                        string interpolation_method = "";
 
                         await QueuedTask.Run(() =>
                         {
                             using (Raster raster = regRL.GetRaster())
                             {
-                                // Is it an integer raster?
-                                is_integer_raster = raster.IsInteger();
+                                // Determine interpolation method
+                                interpolation_method = raster.IsInteger() ? "NEAREST" : "BILINEAR";
 
                                 // Get Band Count
                                 band_count = raster.GetBandCount();
+
+                                // Get cell size
+                                celsiz = raster.GetMeanCellSize().Item1;
 
                                 // Get nodata values if they exist
                                 var nodata_object = raster.GetNoDataValue();
@@ -1666,11 +1902,22 @@ namespace NCC.PRZTools
                             nodataval = nodata_values[0].ToString();
                         }
 
+                        if (celsiz > poly_to_ras_cellsize)
+                        {
+                            celsiz = poly_to_ras_cellsize;
+                        }
+
                         // Copy Raster to temp raster
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copy raster..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(regRL, temp_raster, "", "", "");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true,
-                            extent: pu_extent_projected, outputCoordinateSystem: pu_sr, rasterStatistics: "STATISTICS 1 1");
+                        toolParams = Geoprocessing.MakeValueArray(regRL, reg_raster_init, "", "", "");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            extent: extent_pu_query,
+                            cellSize: celsiz,
+                            rasterStatistics: "STATISTICS 1 1",
+                            pyramid: "PYRAMIDS -1",
+                            resamplingMethod: interpolation_method);
                         toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
@@ -1682,76 +1929,128 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster copied."), true, ++val);
                         }
-                        items_to_delete.Add(temp_raster);
 
-                        // Project Raster
-                        string interpolation = is_integer_raster ? "NEAREST" : "BILINEAR";
-
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting raster..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(temp_raster, reg_raster, pu_sr, interpolation);
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("ProjectRaster_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                        // Reclass the new raster so that all zero values are set to NODATA
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_init, reg_raster_init, reg_raster_2, "Value = 0");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: celsiz);
+                        toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error projecting raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error projecting raster.");
-                            return (false, "error projecting raster.");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error reclassing values.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error reclassing values.");
+                            return (false, "error reclassing values.");
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster projected."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
                         }
-                        items_to_delete.Add(reg_raster);
+
+                        // Build Pyramids
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_2);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await PRZH.RunGPTool("BuildPyramids_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building pyramids.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error building pyramids.");
+                            return (false, "error building pyramids.");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
+                        }
 
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(reg_raster, 1, 1, "");
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_2, 1, 1, "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Error calculating statistics.");
-                            return (false, "error calculating statistics.");
+                            return (false, "error calculating stats.");
                         }
                         else
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
                         }
 
-                        // Build Statistics
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(regRL, 1, 1, "");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                        toolOutput = await PRZH.RunGPTool("CalculateStatistics_management", toolParams, toolEnvs, toolFlags_GP);
+                        // resize pu raster to match cell size of layer raster
+                        string pu_raster_reclass = PRZC.c_RAS_PLANNING_UNITS_RECLASS + regElement.ElementID.ToString();
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying PU Raster..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_layer, pu_raster_reclass);
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            resamplingMethod: "NEAREST");
+                        toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error calculating statistics.");
-                            return (false, "error calculating statistics.");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying raster.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error copying raster.");
+                            return (false, "error copying raster");
                         }
                         else
                         {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"raster copied."), true, ++val);
                         }
+                        gdb_objects_delete.Add(pu_raster_reclass);
 
-                        // Zonal Statistics as Table
+                        // Snap raster for both zonal stats tools
+                        string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
+
+                        // Zonal Statistics (Sum)
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_layer, PRZC.c_FLD_RAS_PU_ID, regRL, zonal_stats_table, "DATA", "ALL");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true,
-                            snapRaster: pu_rl, cellSize: "MAXOF", outputCoordinateSystem: pu_sr);
-                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, reg_raster_3, "SUM", "DATA");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            snapRaster: snapraster,
+                            outputCoordinateSystem: pu_sr,
+                            geographicTransformations: geoTransNames_lyr_to_pu,
+                            resamplingMethod: interpolation_method);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatistics_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                             ProMsgBox.Show($"Error calculating zonal statistics.");
-                            return (false, "error calculating zonal statistics.");
+                            return (false, "error calculating zonal statistics");
                         }
                         else
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
-                        items_to_delete.Add(zonal_stats_table);
+
+                        // Zonal Statistics as Table
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
+                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, zonal_stats_table, "DATA", "ALL");
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                            workspace: gdbpath,
+                            overwriteoutput: true,
+                            cellSize: poly_to_ras_cellsize,
+                            snapRaster: snapraster,
+                            outputCoordinateSystem: pu_sr,
+                            geographicTransformations: geoTransNames_lyr_to_pu,
+                            resamplingMethod: interpolation_method);
+                        toolOutput = await PRZH.RunGPTool("ZonalStatisticsAsTable_sa", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics as table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                            ProMsgBox.Show($"Error calculating zonal statistics as table.");
+                            return (false, "error calculating zonal statistics as table");
+                        }
+                        else
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
+                        }
                     }
 
                     // Retrieve dictionary from zonal stats table:   puid, sum
@@ -1787,7 +2086,7 @@ namespace NCC.PRZTools
 
                     // Delete temp objects
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp objects..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", items_to_delete));
+                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", gdb_objects_delete));
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                     toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)

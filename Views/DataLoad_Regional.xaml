@@ -186,6 +186,15 @@
                         Command="{Binding CmdCancel}"
                         Content="CANCEL" />
 
+                    <Button 
+                        DockPanel.Dock="Right"
+                        Visibility="Collapsed"
+                        Margin="5" 
+                        Padding="5, 0"
+                        Style="{DynamicResource Esri_Button}"
+                        Command="{Binding CmdTest}"
+                        Content="TEST" />
+
                 </DockPanel>
             </Border>
 

@@ -369,7 +369,8 @@ namespace NCC.PRZTools
         #region GEODATABASE OBJECT PATHS
 
         /// <summary>
-        /// Retrieve the path to the project geodatabase.  Silent errors.
+        /// Retrieve the path to a geodatabase object within the project geodatabase.
+        /// Silent errors.
         /// </summary>
         /// <param name="gdb_obj_name"></param>
         /// <returns></returns>
@@ -394,7 +395,8 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Retrieve the path to the national geodatabase (file or enterprise).  Silent errors.
+        /// Retrieve the path to a geodatabase object within the national geodatabase
+        /// (file or enterprise).  Silent errors.
         /// </summary>
         /// <param name="gdb_obj_name"></param>
         /// <returns></returns>
@@ -419,7 +421,8 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Retrieve the path to the RT Scratch file geodatabase.  Silent errors.
+        /// Retrieve the path to a geodatabase object within the RT Scratch file
+        /// geodatabase.  Silent errors.
         /// </summary>
         /// <param name="gdb_obj_name"></param>
         /// <returns></returns>
@@ -4430,7 +4433,61 @@ namespace NCC.PRZTools
                             {
                                 string name = rasDef.GetName();
 
-                                if (name.StartsWith(PRZC.c_RAS_REG_ELEMENT, StringComparison.OrdinalIgnoreCase))
+                                if (name.StartsWith(PRZC.c_RAS_REG_ELEM_PREFIX, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    raster_names.Add(name);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, raster_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of regional pu raster reclass raster names.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalPUReclassRasters()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Create the list
+                List<string> raster_names = new List<string>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+
+                        foreach (RasterDatasetDefinition rasDef in rasDefs)
+                        {
+                            using (rasDef)
+                            {
+                                string name = rasDef.GetName();
+
+                                if (name.StartsWith(PRZC.c_RAS_PLANNING_UNITS_RECLASS, StringComparison.OrdinalIgnoreCase))
                                 {
                                     raster_names.Add(name);
                                 }
@@ -5564,12 +5621,13 @@ namespace NCC.PRZTools
                 // Domains
                 if (domainNames.Count > 0)
                 {
-                    WriteLog($"Deleting {domainNames.Count} domain(s)...");
+                    WriteLog($"Deleting domain(s)...");
                     foreach (string domainName in domainNames)
                     {
                         if (!string.Equals(domainName, PRZC.c_DOMAIN_PRESENCE, StringComparison.OrdinalIgnoreCase) &
                             !string.Equals(domainName, PRZC.c_DOMAIN_REG_STATUS, StringComparison.OrdinalIgnoreCase) &
-                            !string.Equals(domainName, PRZC.c_DOMAIN_REG_TYPE, StringComparison.OrdinalIgnoreCase))
+                            !string.Equals(domainName, PRZC.c_DOMAIN_REG_TYPE, StringComparison.OrdinalIgnoreCase) &
+                            !string.Equals(domainName, PRZC.c_DOMAIN_REG_THEME, StringComparison.OrdinalIgnoreCase))
                         {
                             WriteLog($"Deleting {domainName} domain...");
                             toolParams = Geoprocessing.MakeValueArray(gdbpath, domainName);
@@ -6123,6 +6181,9 @@ namespace NCC.PRZTools
                 SortedList<object, string> sl_type = null;
                 SortedList<object, string> sl_theme = null;
 
+                // project gdb path
+                string gdbpath = GetPath_ProjectGDB();
+
                 // Determine existence of each domain
                 await QueuedTask.Run(() =>
                 {
@@ -6170,14 +6231,36 @@ namespace NCC.PRZTools
                     }
                 });
 
-                string gdbpath = GetPath_ProjectGDB();
+                #region PRESENCE DOMAIN
 
-                // I'm here!!!
+                if (domain_exists_presence)
+                {
+                    if (sl_presence.Count > 0)
+                    {
+                        // Get the list of domain KVP key strings
+                        var keyobjs = sl_presence.Keys.ToList();
+                        List<string> keystrings = new List<string>();
+                        foreach (object o in keyobjs)
+                        {
+                            int d = Convert.ToInt32(o);
+                            keystrings.Add(d.ToString());
+                        }
 
-
-
-                // Create the Presence domain if it is missing
-                if (!domain_exists_presence)
+                        // delete the KVPs
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, string.Join(";", keystrings));
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_PRESENCE} domain.");
+                        }
+                    }
+                    else
+                    {
+                        // domain exists but has no KVPs.
+                    }
+                }
+                else
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -6187,32 +6270,36 @@ namespace NCC.PRZTools
                     {
                         return (false, $"Error creating {PRZC.c_DOMAIN_PRESENCE}");
                     }
-
-                    // Add coded value #1
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Present, ElementPresence.Present.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
-                    }
-
-                    // Add coded value #2
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Absent, ElementPresence.Absent.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
-                    }
                 }
-                else
+
+                // Add coded value #1
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Present, ElementPresence.Present.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
                 {
-                    // (Re)build the domain KVPs
-                    if (sl_presence.Keys.Count > 0)
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
+                }
+
+                // Add coded value #2
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, (int)ElementPresence.Absent, ElementPresence.Absent.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_PRESENCE} domain");
+                }
+
+                #endregion
+
+                #region STATUS DOMAIN
+
+                if (domain_exists_status)
+                {
+                    if (sl_status.Count > 0)
                     {
-                        // Get the list of key strings
-                        var keyobjs = sl_presence.Keys.ToList();
+                        // Get the list of domain KVP key strings
+                        var keyobjs = sl_status.Keys.ToList();
                         List<string> keystrings = new List<string>();
                         foreach (object o in keyobjs)
                         {
@@ -6220,23 +6307,21 @@ namespace NCC.PRZTools
                             keystrings.Add(d.ToString());
                         }
 
-                        // delete them
-                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_PRESENCE, string.Join(";", keystrings));
+                        // delete the KVPs
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, string.Join(";", keystrings));
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                         toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
                         {
-                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_PRESENCE} domain.");
+                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_REG_STATUS} domain.");
                         }
                     }
-
-                    // Insert new values
-
-
+                    else
+                    {
+                        // domain exists but has no KVPs.
+                    }
                 }
-
-                // Create the Status domain if it is missing
-                if (!domain_exists_status)
+                else
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -6246,32 +6331,58 @@ namespace NCC.PRZTools
                     {
                         return (false, $"Error creating {PRZC.c_DOMAIN_REG_STATUS}");
                     }
+                }
 
-                    // Add coded value #1
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Active, ElementStatus.Active.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
+                // Add coded value #1
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Active, ElementStatus.Active.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                }
+
+                // Add coded value #2
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Inactive, ElementStatus.Inactive.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                }
+
+                #endregion
+
+                #region TYPE DOMAIN
+
+                if (domain_exists_type)
+                {
+                    if (sl_type.Count > 0)
                     {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                        // Get the list of domain KVP key strings
+                        var keyobjs = sl_type.Keys.ToList();
+                        List<string> keystrings = new List<string>();
+                        foreach (object o in keyobjs)
+                        {
+                            int d = Convert.ToInt32(o);
+                            keystrings.Add(d.ToString());
+                        }
+
+                        // delete the KVPs
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, string.Join(";", keystrings));
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_REG_TYPE} domain.");
+                        }
                     }
-
-                    // Add coded value #2
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_STATUS, (int)ElementStatus.Inactive, ElementStatus.Inactive.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
+                    else
                     {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_STATUS} domain");
+                        // domain exists but has no KVPs.
                     }
                 }
                 else
-                {
-                    // TODO: Domain found - verify values
-                }
-
-                // Create the Type domain if it is missing
-                if (!domain_exists_type)
                 {
                     // create domain
                     toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
@@ -6281,46 +6392,253 @@ namespace NCC.PRZTools
                     {
                         return (false, $"Error creating {PRZC.c_DOMAIN_REG_TYPE}");
                     }
+                }
 
-                    // Add coded value #1
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Goal, ElementType.Goal.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
+                // Add coded value #1
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Goal, ElementType.Goal.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                }
+
+                // Add coded value #2
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Weight, ElementType.Weight.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                }
+
+                // Add coded value #3
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Include, ElementType.Include.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                }
+
+                // Add coded value #4
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Exclude, ElementType.Exclude.ToString());
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                }
+
+                #endregion
+
+                #region THEME DOMAIN
+
+                if (domain_exists_theme)
+                {
+                    if (sl_theme.Count > 0)
                     {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                        // Get the list of domain KVP key strings
+                        var keyobjs = sl_theme.Keys.ToList();
+                        List<string> keystrings = new List<string>();
+                        foreach (object o in keyobjs)
+                        {
+                            int d = Convert.ToInt32(o);
+                            keystrings.Add(d.ToString());
+                        }
+
+                        // delete the KVPs
+                        toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, string.Join(";", keystrings));
+                        toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                        toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                        if (toolOutput == null)
+                        {
+                            return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_REG_THEME} domain.");
+                        }
                     }
-
-                    // Add coded value #2
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Weight, ElementType.Weight.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
+                    else
                     {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
-                    }
-
-                    // Add coded value #3
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Include, ElementType.Include.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
-                    }
-
-                    // Add coded value #4
-                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_TYPE, (int)ElementType.Exclude, ElementType.Exclude.ToString());
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_TYPE} domain");
+                        // domain exists but has no KVPs.
                     }
                 }
                 else
                 {
-                    // TODO: Domain found - verify values
+                    // create domain
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, "", "SHORT", "CODED", "DEFAULT", "DEFAULT");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("CreateDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error creating {PRZC.c_DOMAIN_REG_THEME}");
+                    }
+                }
+
+                // Add coded value #1
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, (int)ElementTheme.RegionalGoal, "Regional Goals");  // TODO: Better name management here!
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_THEME} domain");
+                }
+
+                // Add coded value #2
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, (int)ElementTheme.RegionalWeight, "Regional Weights"); // TODO: Better name management here!
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_THEME} domain");
+                }
+
+                // Add coded value #3
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, (int)ElementTheme.RegionalInclude, "Regional Includes"); // TODO: Better name management here!
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_THEME} domain");
+                }
+
+                // Add coded value #4
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, (int)ElementTheme.RegionalExclude, "Regional Excludes"); // TODO: Better name management here!
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_THEME} domain");
+                }
+
+                #endregion
+
+                return (true, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Removes and Re-adds National Theme KVPs to the Regional Themes domain.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, string message)> UpdateRegionalThemesDomain(Dictionary<int, string> national_values)
+        {
+            try
+            {
+                // stop if the dictionary parameter is null
+                if (national_values == null)
+                {
+                    national_values = new Dictionary<int, string>();
+                }
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // Max value for national themes
+                int nat_max_value = 1000;
+
+                // Flag for theme domain existence
+                bool domain_exists_theme = false;
+
+                // Sorted Lists of domain values
+                SortedList<object, string> sl_theme = null;
+
+                // project gdb path
+                string gdbpath = GetPath_ProjectGDB();
+
+                // Determine existence of domain
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening the project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var domains = geodatabase.GetDomains();
+
+                        foreach (var domain in domains)
+                        {
+                            using (domain)
+                            {
+                                if (domain is CodedValueDomain cvd)
+                                {
+                                    string domname = cvd.GetName();
+
+                                    if (string.Equals(domname, PRZC.c_DOMAIN_REG_THEME, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        domain_exists_theme = true;
+                                        sl_theme = cvd.GetCodedValuePairs();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (!domain_exists_theme)
+                {
+                    return (false, $"{PRZC.c_DOMAIN_REG_THEME} domain not found.  Please initialize the workspace");
+                }
+
+                // Get the list of domain codes (integers and string conversions)
+                var keyobjs = sl_theme.Keys.ToList();
+                List<int> keyints = new List<int>();
+                List<string> keystrings = new List<string>();
+                foreach (object o in keyobjs)
+                {
+                    int d = Convert.ToInt32(o);
+                    keyints.Add(d);
+                    keystrings.Add(d.ToString());
+                }
+
+                // Get the list of keys for kvps to remove
+                List<string> remove_these_kvps = keyints.Where(key => key <= nat_max_value).Select(key => key.ToString()).ToList();
+
+                // remove them
+                if (remove_these_kvps.Count > 0)
+                {
+                    // delete the KVPs
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, string.Join(";", remove_these_kvps));
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("DeleteCodedValueFromDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error eliminating KVPs from {PRZC.c_DOMAIN_REG_THEME} domain.");
+                    }
+                }
+
+                // Validate list of dictionary entries to add
+                SortedList<int, string> valid_values = new SortedList<int, string>();
+                foreach (var kvp in national_values)
+                {
+                    int key = kvp.Key;
+                    string descr = kvp.Value;
+
+                    if (key <= nat_max_value && descr.Trim().Length > 0 && !valid_values.ContainsKey(key))
+                    {
+                        valid_values.Add(key, descr);
+                    }
+                }
+
+                // Now add the values
+                foreach(var kvp in valid_values)
+                {
+                    toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_DOMAIN_REG_THEME, kvp.Key, kvp.Value);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
+                    toolOutput = await RunGPTool("AddCodedValueToDomain_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        return (false, $"Error adding coded value to {PRZC.c_DOMAIN_REG_THEME} domain");
+                    }
                 }
 
                 return (true, "success");
