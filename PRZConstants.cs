@@ -81,7 +81,8 @@
         RegionalGoal = 1001,
         RegionalWeight,
         RegionalInclude,
-        RegionalExclude
+        RegionalExclude,
+        Unknown
     }
 
     #endregion

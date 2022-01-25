@@ -188,7 +188,7 @@
 
                     <Button 
                         DockPanel.Dock="Right"
-                        Visibility="Collapsed"
+                        Visibility="Visible"
                         Margin="5" 
                         Padding="5, 0"
                         Style="{DynamicResource Esri_Button}"

@@ -186,10 +186,7 @@ namespace NCC.PRZTools
 
         public ICommand CmdTest => _cmdTest ?? (_cmdTest = new RelayCommand(async () =>
         {
-            var a = await PRZH.UpdateRegionalThemesDomain(null);
-
-            ProMsgBox.Show(a.message);
-
+            await Test();
         }, () => true, true, false));
 
         #endregion
@@ -734,11 +731,10 @@ namespace NCC.PRZTools
                 // Add fields to the table
                 string fldElementID = PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID + " LONG 'Element ID' # 0 #;";
                 string fldElementName = PRZC.c_FLD_TAB_REGELEMENT_NAME + " TEXT 'Element Name' 100 # #;";
-                string fldElementType = PRZC.c_FLD_TAB_REGELEMENT_TYPE + $" SHORT 'Element Type' # 0 '{PRZC.c_DOMAIN_REG_TYPE}';";
-                string fldElementStatus = PRZC.c_FLD_TAB_REGELEMENT_STATUS + $" SHORT 'Element Status' # 0 '{PRZC.c_DOMAIN_REG_STATUS}';";
-                //string fldThemeID = PRZC.c_FLD_TAB_REGELEMENT_THEME_ID + $" SHORT 'Theme ID' # 0 '{PRZC.c_DOMAIN_THEME_NAMES}';";
-                string fldThemeID = PRZC.c_FLD_TAB_REGELEMENT_THEME_ID + $" SHORT 'Theme ID' # 0 #;";
-                string fldElementPresence = PRZC.c_FLD_TAB_REGELEMENT_PRESENCE + $" SHORT 'Element Presence' # 0 '{PRZC.c_DOMAIN_PRESENCE}';";
+                string fldElementType = PRZC.c_FLD_TAB_REGELEMENT_TYPE + $" SHORT 'Element Type' # # '{PRZC.c_DOMAIN_REG_TYPE}';";
+                string fldElementStatus = PRZC.c_FLD_TAB_REGELEMENT_STATUS + $" SHORT 'Element Status' # # '{PRZC.c_DOMAIN_REG_STATUS}';";
+                string fldThemeID = PRZC.c_FLD_TAB_REGELEMENT_THEME_ID + $" SHORT 'Theme ID' # # '{PRZC.c_DOMAIN_REG_THEME}';";
+                string fldElementPresence = PRZC.c_FLD_TAB_REGELEMENT_PRESENCE + $" SHORT 'Element Presence' # # '{PRZC.c_DOMAIN_PRESENCE}';";
                 string fldLyrxPath = PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH + " TEXT 'Lyrx Path' 250 # #;";
                 string fldLayerName = PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME + " TEXT 'Layer Name' 100 # #;";
                 string fldLayerType = PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE + " TEXT 'Layer Type' 20 # #;";
@@ -912,27 +908,32 @@ namespace NCC.PRZTools
                 // Set some values based on subdir type
                 string gl_name = "";
                 ElementType elementType = ElementType.Unknown;
+                ElementTheme elementTheme = ElementTheme.Unknown;
 
                 switch (subFolderType)
                 {
                     case RegionalDataSubfolder.GOALS:
                         gl_name = PRZC.c_GROUPLAYER_REG_GOALS;
                         elementType = ElementType.Goal;
+                        elementTheme = ElementTheme.RegionalGoal;
                         break;
 
                     case RegionalDataSubfolder.WEIGHTS:
                         gl_name = PRZC.c_GROUPLAYER_REG_WEIGHTS;
                         elementType = ElementType.Weight;
+                        elementTheme = ElementTheme.RegionalWeight;
                         break;
 
                     case RegionalDataSubfolder.INCLUDES:
                         gl_name = PRZC.c_GROUPLAYER_REG_INCLUDES;
                         elementType = ElementType.Include;
+                        elementTheme = ElementTheme.RegionalInclude;
                         break;
 
                     case RegionalDataSubfolder.EXCLUDES:
                         gl_name = PRZC.c_GROUPLAYER_REG_EXCLUDES;
                         elementType = ElementType.Exclude;
+                        elementTheme = ElementTheme.RegionalExclude;
                         break;
                 }
 
@@ -1379,6 +1380,7 @@ namespace NCC.PRZTools
                                             regElement.WhereClause = classClause;
                                             regElement.LegendGroup = group_heading;
                                             regElement.LegendClass = class_label;
+                                            regElement.ThemeID = (int)elementTheme;
 
                                             regElements.Add(regElement);
                                         }
@@ -1396,6 +1398,7 @@ namespace NCC.PRZTools
                                     regElement.LayerType = (int)LayerType.FEATURE;
                                     regElement.LayerJson = await QueuedTask.Run(() => { return (FL.GetDefinition()).ToJson(); });
                                     regElement.LyrxPath = FLInfo.lyrx_path;
+                                    regElement.ThemeID = (int)elementTheme;
 
                                     regElements.Add(regElement);
                                 }
@@ -1423,6 +1426,7 @@ namespace NCC.PRZTools
                             regElement.LayerType = (int)LayerType.RASTER;
                             regElement.LayerJson = await QueuedTask.Run(() => { return (RL.GetDefinition()).ToJson(); });
                             regElement.LyrxPath = RLInfo.lyrx_path;
+                            regElement.ThemeID = (int)elementTheme;
 
                             regElements.Add(regElement);
                         }
@@ -1471,6 +1475,7 @@ namespace NCC.PRZTools
                                 rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] = elem.WhereClause;
                                 rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] = elem.LegendGroup;
                                 rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] = elem.LegendClass;
+                                rowBuffer[PRZC.c_FLD_TAB_REGELEMENT_THEME_ID] = elem.ThemeID;
 
                                 table.CreateRow(rowBuffer);
                             }
@@ -2344,6 +2349,30 @@ namespace NCC.PRZTools
             _operationIsUnderway = false;
         }
 
+        private async Task Test()
+        {
+            try
+            {
+
+                var a = await PRZH.GetRegionalElements();
+
+                if (!a.success)
+                {
+                    ProMsgBox.Show(a.message);
+                }
+                else
+                {
+                    var b = a.elements;
+
+                    ProMsgBox.Show(b.Count.ToString());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message);
+            }
+        }
 
         #endregion
 

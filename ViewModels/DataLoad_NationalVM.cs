@@ -615,7 +615,7 @@ namespace NCC.PRZTools
                 foreach (var element in elements)
                 {
                     // Attempt to retrieve intersection dictionary
-                    var tryget_elemintersect = await PRZH.GetElementIntersection(element.ElementID, puCellNumbers);
+                    var tryget_elemintersect = await PRZH.GetNatElementIntersection(element.ElementID, puCellNumbers);
 
                     if (!tryget_elemintersect.success)
                     {

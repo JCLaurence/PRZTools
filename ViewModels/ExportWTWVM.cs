@@ -444,6 +444,52 @@ namespace NCC.PRZTools
                     return;
                 }
 
+                #region VALIDATE NATIONAL AND REGIONAL ELEMENT DATA
+
+                // Get national element tables
+                var tryget_LIST_elemtables_nat = await PRZH.GetNationalElementTables();
+                if (!tryget_LIST_elemtables_nat.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of national element tables.\n{tryget_LIST_elemtables_nat.message}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving list of national element tables.\n{tryget_LIST_elemtables_nat.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Found {tryget_LIST_elemtables_nat.tables.Count} national element tables"), true, ++val);
+                }
+
+                // Get regional element tables
+                var tryget_LIST_elemtables_reg = await PRZH.GetRegionalElementTables();
+                if (!tryget_LIST_elemtables_reg.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of regional element tables.\n{tryget_LIST_elemtables_reg.message}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving list of regional element tables.\n{tryget_LIST_elemtables_reg.message}");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Found {tryget_LIST_elemtables_reg.tables.Count} regional element tables"), true, ++val);
+                }
+
+                List<string> LIST_elemtables_nat = tryget_LIST_elemtables_nat.tables;
+                List<string> LIST_elemtables_reg = tryget_LIST_elemtables_reg.tables;
+
+                if (LIST_elemtables_nat.Count == 0 & LIST_elemtables_reg.Count == 0)
+                {
+                    // there are no national or regional element tables, stop!
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"No national or regional element tables found.  Unable to proceed.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"No national or regional element tables found.  Unable to proceed.");
+                    return;
+                }
+                else
+                {
+                    string m = $"National element tables: {LIST_elemtables_nat.Count}\nRegional element tables: {LIST_elemtables_reg.Count}";
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog(m), true, ++val);
+                }
+
+                #endregion
+
                 // Prompt users for permission to proceed
                 if (ProMsgBox.Show("If you proceed, all files in the following folder will be deleted and/or overwritten:" + Environment.NewLine +
                     export_folder_path + Environment.NewLine + Environment.NewLine +
@@ -547,7 +593,7 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
-                #region GET PUID AND NATGRID CELLNUMBER LISTS AND DICTIONARIES
+                #region GET PUID LIST
 
                 // Get the Planning Unit IDs
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Planning Unit IDs..."), true, ++val);
@@ -564,315 +610,287 @@ namespace NCC.PRZTools
                 }
                 List<int> PUIDs = puid_outcome.puids;
 
-                // Get the National Grid Cell Numbers
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting Cell Numbers..."), true, ++val);
-                var cellnum_outcome = await PRZH.GetCellNumberList();
-                if (!cellnum_outcome.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving Cell Numbers.\n{cellnum_outcome.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{cellnum_outcome.cell_numbers.Count} Cell Numbers retrieved."), true, ++val);
-                }
-                List<long> CellNumbers = cellnum_outcome.cell_numbers;
-
-                // Get the (PUID, Cell Number) Dictionary
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting the (PUID, Cell Number) dictionary."), true, ++val);
-                var puidcell = await PRZH.GetPUIDsAndCellNumbers();
-                if (!puidcell.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving the (PUID, Cell Number) dictionary.\n{puidcell.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved the dictionary ({puidcell.dict.Count} entries)."), true, ++val);
-                }
-
-                // store the dictionary
-                var DICT_PUID_and_CN = puidcell.dict;
-
-                // Get the (Cell Number, PUID) Dictionary
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Getting the (Cell Number, PUID) dictionary."), true, ++val);
-                var cellpuid = await PRZH.GetCellNumbersAndPUIDs();
-                if (!cellpuid.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving the (Cell Number, PUID) dictionary.\n{cellpuid.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved the dictionary ({cellpuid.dict.Count} entries)."), true, ++val);
-                }
-
-                // store the dictionary
-                var DICT_CN_and_puids = cellpuid.dict;
-
                 #endregion
 
                 PRZH.CheckForCancellation(token);
 
                 #region GET NATIONAL TABLE CONTENTS
 
-                // Get the National Themes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
-                var theme_outcome = await PRZH.GetNationalThemes(ElementPresence.Present);
-                if (!theme_outcome.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national themes.\n{theme_outcome.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {theme_outcome.themes.Count} national themes."), true, ++val);
-                }
-                List<NatTheme> themes = theme_outcome.themes;
+                // Prepare the empty lists (there may be no national data)
+                List<NatTheme> nat_themes = new List<NatTheme>();
+                List<NatElement> nat_goals = new List<NatElement>();
+                List<NatElement> nat_weights = new List<NatElement>();
+                List<NatElement> nat_includes = new List<NatElement>();
+                List<NatElement> nat_excludes = new List<NatElement>();
 
-                // Get the goals
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Goal} elements..."), true, ++val);
-                var goal_outcome = await PRZH.GetNationalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
-                if (!goal_outcome.success)
+                // If there's at least a single table, populate the lists
+                if (LIST_elemtables_nat.Count > 0)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goal_outcome.elements.Count} national {ElementType.Goal} elements."), true, ++val);
-                }
-                List<NatElement> goals = goal_outcome.elements;
+                    // Get the National Themes
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national themes..."), true, ++val);
+                    var theme_outcome = await PRZH.GetNationalThemes(ElementPresence.Present);
+                    if (!theme_outcome.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national themes.\n{theme_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national themes.\n{theme_outcome.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {theme_outcome.themes.Count} national themes."), true, ++val);
+                    }
+                    nat_themes = theme_outcome.themes;
 
-                // Get the weights
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Weight} elements..."), true, ++val);
-                var weight_outcome = await PRZH.GetNationalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
-                if (!weight_outcome.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weight_outcome.elements.Count} national {ElementType.Weight} elements."), true, ++val);
-                }
-                List<NatElement> weights = weight_outcome.elements;
+                    // Get the goals
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Goal} elements..."), true, ++val);
+                    var goal_outcome = await PRZH.GetNationalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
+                    if (!goal_outcome.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national {ElementType.Goal} elements.\n{goal_outcome.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {goal_outcome.elements.Count} national {ElementType.Goal} elements."), true, ++val);
+                    }
+                    nat_goals = goal_outcome.elements;
 
-                // Get the includes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Include} elements..."), true, ++val);
-                var include_outcome = await PRZH.GetNationalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
-                if (!include_outcome.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {include_outcome.elements.Count} national {ElementType.Include} elements."), true, ++val);
-                }
-                List<NatElement> includes = include_outcome.elements;
+                    // Get the weights
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Weight} elements..."), true, ++val);
+                    var weight_outcome = await PRZH.GetNationalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
+                    if (!weight_outcome.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{weight_outcome.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {weight_outcome.elements.Count} national {ElementType.Weight} elements."), true, ++val);
+                    }
+                    nat_weights = weight_outcome.elements;
 
-                // Get the excludes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Exclude} elements..."), true, ++val);
-                var exclude_outcome = await PRZH.GetNationalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
-                if (!exclude_outcome.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}");
-                    return;
+                    // Get the includes
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Include} elements..."), true, ++val);
+                    var include_outcome = await PRZH.GetNationalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
+                    if (!include_outcome.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national {ElementType.Include} elements.\n{include_outcome.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {include_outcome.elements.Count} national {ElementType.Include} elements."), true, ++val);
+                    }
+                    nat_includes = include_outcome.elements;
+
+                    // Get the excludes
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving national {ElementType.Exclude} elements..."), true, ++val);
+                    var exclude_outcome = await PRZH.GetNationalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
+                    if (!exclude_outcome.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national {ElementType.Exclude} elements.\n{exclude_outcome.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {exclude_outcome.elements.Count} national {ElementType.Exclude} elements."), true, ++val);
+                    }
+                    nat_excludes = exclude_outcome.elements;
                 }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {exclude_outcome.elements.Count} national {ElementType.Exclude} elements."), true, ++val);
-                }
-                List<NatElement> excludes = exclude_outcome.elements;
 
                 #endregion
 
                 #region GET REGIONAL TABLE CONTENTS
 
-                // Get the Regional Themes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional themes..."), true, ++val);
-                var tryget_regthemes = await PRZH.GetRegionalThemes(ElementPresence.Present);
-                if (!tryget_regthemes.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional themes.\n{tryget_regthemes.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving regional themes.\n{tryget_regthemes.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_regthemes.themes.Count} regional themes."), true, ++val);
-                }
-                List<NatTheme> reg_themes = tryget_regthemes.themes;
+                // Prepare the empty lists (there may be no regional data)
+                Dictionary<int, string> DICT_RegThemes = new Dictionary<int, string>();
+                List<RegElement> reg_goals = new List<RegElement>();
+                List<RegElement> reg_weights = new List<RegElement>();
+                List<RegElement> reg_includes = new List<RegElement>();
+                List<RegElement> reg_excludes = new List<RegElement>();
 
-                // Get the goals
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Goal} elements..."), true, ++val);
-                var tryget_reg_goals = await PRZH.GetRegionalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
-                if (!tryget_reg_goals.success)
+                // If there's at least a single table, populate the lists
+                if (LIST_elemtables_reg.Count > 0)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_goals.elements.Count} regional {ElementType.Goal} elements."), true, ++val);
-                }
-                List<NatElement> reg_goals = tryget_reg_goals.elements;
+                    // Get the Regional Themes
+                    var tryget_regThemes = await PRZH.GetRegionalThemesDomainKVPs();
+                    if (!tryget_regThemes.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional themes.\n{tryget_regThemes.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving regional themes.\n{tryget_regThemes.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved regional themes."), true, ++val);
+                    }
+                    DICT_RegThemes = tryget_regThemes.dict;
 
-                // Get the weights
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Weight} elements..."), true, ++val);
-                var tryget_reg_weights = await PRZH.GetRegionalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
-                if (!tryget_reg_weights.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Weight} elements.\n{tryget_reg_weights.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{tryget_reg_weights.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_weights.elements.Count} regional {ElementType.Weight} elements."), true, ++val);
-                }
-                List<NatElement> reg_weights = tryget_reg_weights.elements;
+                    // Get the goals
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Goal} elements..."), true, ++val);
+                    var tryget_reg_goals = await PRZH.GetRegionalElements(ElementType.Goal, ElementStatus.Active, ElementPresence.Present);
+                    if (!tryget_reg_goals.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving regional {ElementType.Goal} elements.\n{tryget_reg_goals.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_goals.elements.Count} regional {ElementType.Goal} elements."), true, ++val);
+                    }
+                    reg_goals = tryget_reg_goals.elements;
 
-                // Get the includes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Include} elements..."), true, ++val);
-                var tryget_reg_includes = await PRZH.GetRegionalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
-                if (!tryget_reg_includes.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_includes.elements.Count} regional {ElementType.Include} elements."), true, ++val);
-                }
-                List<NatElement> reg_includes = tryget_reg_includes.elements;
+                    // Get the weights
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Weight} elements..."), true, ++val);
+                    var tryget_reg_weights = await PRZH.GetRegionalElements(ElementType.Weight, ElementStatus.Active, ElementPresence.Present);
+                    if (!tryget_reg_weights.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Weight} elements.\n{tryget_reg_weights.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving national {ElementType.Weight} elements.\n{tryget_reg_weights.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_weights.elements.Count} regional {ElementType.Weight} elements."), true, ++val);
+                    }
+                    reg_weights = tryget_reg_weights.elements;
 
-                // Get the excludes
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Exclude} elements..."), true, ++val);
-                var tryget_reg_excludes = await PRZH.GetRegionalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
-                if (!tryget_reg_excludes.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}");
-                    return;
+                    // Get the includes
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Include} elements..."), true, ++val);
+                    var tryget_reg_includes = await PRZH.GetRegionalElements(ElementType.Include, ElementStatus.Active, ElementPresence.Present);
+                    if (!tryget_reg_includes.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving regional {ElementType.Include} elements.\n{tryget_reg_includes.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_includes.elements.Count} regional {ElementType.Include} elements."), true, ++val);
+                    }
+                    reg_includes = tryget_reg_includes.elements;
+
+                    // Get the excludes
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving regional {ElementType.Exclude} elements..."), true, ++val);
+                    var tryget_reg_excludes = await PRZH.GetRegionalElements(ElementType.Exclude, ElementStatus.Active, ElementPresence.Present);
+                    if (!tryget_reg_excludes.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error retrieving regional {ElementType.Exclude} elements.\n{tryget_reg_excludes.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_excludes.elements.Count} regional {ElementType.Exclude} elements."), true, ++val);
+                    }
+                    reg_excludes = tryget_reg_excludes.elements;
                 }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {tryget_reg_excludes.elements.Count} regional {ElementType.Exclude} elements."), true, ++val);
-                }
-                List<NatElement> reg_excludes = tryget_reg_excludes.elements;
 
                 #endregion
 
                 PRZH.CheckForCancellation(token);
 
-                #region ASSEMBLE ELEMENT VALUE DICTIONARIES
+                #region ASSEMBLE NATIONAL ELEMENT VALUE DICTIONARIES
 
                 // Populate a unique list of active themes
 
                 // Get the Goal Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Goals dictionary ({goals.Count} goals)..."), true, ++val);
-                Dictionary<int, Dictionary<int, double>> DICT_Goals = new Dictionary<int, Dictionary<int, double>>();
-                for (int i = 0; i < goals.Count; i++)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Goals dictionary ({nat_goals.Count} goals)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_NatGoals = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < nat_goals.Count; i++)
                 {
                     // Get the goal
-                    NatElement goal = goals[i];
+                    NatElement goal = nat_goals[i];
 
                     // Get the values dictionary for this goal
-                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(goal.ElementID);
+                    var getvals_outcome = await PRZH.GetValuesFromNatElementTable_PUID(goal.ElementID);
                     if (getvals_outcome.success)
                     {
                         // Store dictionary in Goals dictionary
-                        DICT_Goals.Add(goal.ElementID, getvals_outcome.dict);
+                        DICT_NatGoals.Add(goal.ElementID, getvals_outcome.dict);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
                     }
                     else
                     {
                         // Store null value in Goals dictionary
-                        DICT_Goals.Add(goal.ElementID, null);
+                        DICT_NatGoals.Add(goal.ElementID, null);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
                     }
                 }
 
                 // Get the Weight Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Weights dictionary ({weights.Count} weights)..."), true, ++val);
-                Dictionary<int, Dictionary<int, double>> DICT_Weights = new Dictionary<int, Dictionary<int, double>>();
-                for (int i = 0; i < weights.Count; i++)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Weights dictionary ({nat_weights.Count} weights)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_NatWeights = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < nat_weights.Count; i++)
                 {
                     // Get the weight
-                    NatElement weight = weights[i];
+                    NatElement weight = nat_weights[i];
 
                     // Get the values dictionary for this weight
-                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(weight.ElementID);
+                    var getvals_outcome = await PRZH.GetValuesFromNatElementTable_PUID(weight.ElementID);
                     if (getvals_outcome.success)
                     {
                         // Store dictionary in Weights dictionary
-                        DICT_Weights.Add(weight.ElementID, getvals_outcome.dict);
+                        DICT_NatWeights.Add(weight.ElementID, getvals_outcome.dict);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
                     }
                     else
                     {
                         // Store null value in Weights dictionary
-                        DICT_Weights.Add(weight.ElementID, null);
+                        DICT_NatWeights.Add(weight.ElementID, null);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
                     }
                 }
 
                 // Get the Includes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Includes dictionary ({includes.Count} includes)..."), true, ++val);
-                Dictionary<int, Dictionary<int, double>> DICT_Includes = new Dictionary<int, Dictionary<int, double>>();
-                for (int i = 0; i < includes.Count; i++)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Includes dictionary ({nat_includes.Count} includes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_NatIncludes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < nat_includes.Count; i++)
                 {
                     // Get the include
-                    NatElement include = includes[i];
+                    NatElement include = nat_includes[i];
 
                     // Get the values dictionary for this include
-                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(include.ElementID);
+                    var getvals_outcome = await PRZH.GetValuesFromNatElementTable_PUID(include.ElementID);
                     if (getvals_outcome.success)
                     {
                         // Store dictionary in Includes dictionary
-                        DICT_Includes.Add(include.ElementID, getvals_outcome.dict);
+                        DICT_NatIncludes.Add(include.ElementID, getvals_outcome.dict);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
                     }
                     else
                     {
                         // Store null value in Includes dictionary
-                        DICT_Includes.Add(include.ElementID, null);
+                        DICT_NatIncludes.Add(include.ElementID, null);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
                     }
                 }
 
                 // Get the Excludes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Excludes dictionary ({excludes.Count} excludes)..."), true, ++val);
-                Dictionary<int, Dictionary<int, double>> DICT_Excludes = new Dictionary<int, Dictionary<int, double>>();
-                for (int i = 0; i < excludes.Count; i++)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Excludes dictionary ({nat_excludes.Count} excludes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_NatExcludes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < nat_excludes.Count; i++)
                 {
                     // Get the exclude
-                    NatElement exclude = excludes[i];
+                    NatElement exclude = nat_excludes[i];
 
                     // Get the values dictionary for this exclude
-                    var getvals_outcome = await PRZH.GetValuesFromElementTable_PUID(exclude.ElementID);
+                    var getvals_outcome = await PRZH.GetValuesFromNatElementTable_PUID(exclude.ElementID);
                     if (getvals_outcome.success)
                     {
                         // Store dictionary in Excludes dictionary
-                        DICT_Excludes.Add(exclude.ElementID, getvals_outcome.dict);
+                        DICT_NatExcludes.Add(exclude.ElementID, getvals_outcome.dict);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
                     }
                     else
                     {
                         // Store null value in Excludes dictionary
-                        DICT_Excludes.Add(exclude.ElementID, null);
+                        DICT_NatExcludes.Add(exclude.ElementID, null);
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
                     }
                 }
@@ -880,6 +898,106 @@ namespace NCC.PRZTools
                 #endregion
 
                 PRZH.CheckForCancellation(token);
+
+                #region ASSEMBLE REGIONAL ELEMENT VALUE DICTIONARIES
+
+                // Get the Goal Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Regional Goals dictionary ({reg_goals.Count} goals)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_RegGoals = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < reg_goals.Count; i++)
+                {
+                    // Get the goal
+                    RegElement goal = reg_goals[i];
+
+                    // Get the values dictionary for this goal
+                    var getvals_outcome = await PRZH.GetValuesFromRegElementTable_PUID(goal.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Goals dictionary
+                        DICT_RegGoals.Add(goal.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Goals dictionary
+                        DICT_RegGoals.Add(goal.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Goal {i} (element ID {goal.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Weight Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Regional Weights dictionary ({reg_weights.Count} weights)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_RegWeights = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < reg_weights.Count; i++)
+                {
+                    // Get the weight
+                    RegElement weight = reg_weights[i];
+
+                    // Get the values dictionary for this weight
+                    var getvals_outcome = await PRZH.GetValuesFromRegElementTable_PUID(weight.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Weights dictionary
+                        DICT_RegWeights.Add(weight.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Weights dictionary
+                        DICT_RegWeights.Add(weight.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Weight {i} (element ID {weight.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Includes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Regional Includes dictionary ({reg_includes.Count} includes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_RegIncludes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < reg_includes.Count; i++)
+                {
+                    // Get the include
+                    RegElement include = reg_includes[i];
+
+                    // Get the values dictionary for this include
+                    var getvals_outcome = await PRZH.GetValuesFromRegElementTable_PUID(include.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Includes dictionary
+                        DICT_RegIncludes.Add(include.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Includes dictionary
+                        DICT_RegIncludes.Add(include.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Includes {i} (element ID {include.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                // Get the Excludes Value Dictionary of Dictionaries:  Key = element ID, Value = Dictionary of PUID + Values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the Regional Excludes dictionary ({reg_excludes.Count} excludes)..."), true, ++val);
+                Dictionary<int, Dictionary<int, double>> DICT_RegExcludes = new Dictionary<int, Dictionary<int, double>>();
+                for (int i = 0; i < reg_excludes.Count; i++)
+                {
+                    // Get the exclude
+                    RegElement exclude = reg_excludes[i];
+
+                    // Get the values dictionary for this exclude
+                    var getvals_outcome = await PRZH.GetValuesFromRegElementTable_PUID(exclude.ElementID);
+                    if (getvals_outcome.success)
+                    {
+                        // Store dictionary in Excludes dictionary
+                        DICT_RegExcludes.Add(exclude.ElementID, getvals_outcome.dict);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): {getvals_outcome.dict.Count} values"), true, ++val);
+                    }
+                    else
+                    {
+                        // Store null value in Excludes dictionary
+                        DICT_RegExcludes.Add(exclude.ElementID, null);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Excludes {i} (element ID {exclude.ElementID}): Null dictionary (no values retrieved)"), true, ++val);
+                    }
+                }
+
+                #endregion
 
                 #region GENERATE THE ATTRIBUTE CSV
 
@@ -897,28 +1015,52 @@ namespace NCC.PRZTools
                 {
                     #region ADD COLUMN HEADERS (ROW 1)
 
-                    // First, the goals
-                    for (int i = 0; i < goals.Count; i++)
+                    // GOALS
+                    // Nat
+                    for (int i = 0; i < nat_goals.Count; i++)
                     {
-                        csv.WriteField(goals[i].ElementTable);
+                        csv.WriteField(nat_goals[i].ElementTable);
+                    }
+                    // Reg
+                    for (int i = 0; i < reg_goals.Count; i++)
+                    {
+                        csv.WriteField(reg_goals[i].ElementTable);
                     }
 
-                    // Next, the weights
-                    for (int i = 0; i < weights.Count; i++)
+                    // WEIGHTS
+                    // Nat
+                    for (int i = 0; i < nat_weights.Count; i++)
                     {
-                        csv.WriteField(weights[i].ElementTable);
+                        csv.WriteField(nat_weights[i].ElementTable);
+                    }
+                    // Reg
+                    for (int i = 0; i < reg_weights.Count; i++)
+                    {
+                        csv.WriteField(reg_weights[i].ElementTable);
                     }
 
-                    // Next, the includes
-                    for (int i = 0; i < includes.Count; i++)
+                    // INCLUDES
+                    // Nat
+                    for (int i = 0; i < nat_includes.Count; i++)
                     {
-                        csv.WriteField(includes[i].ElementTable);
+                        csv.WriteField(nat_includes[i].ElementTable);
+                    }
+                    // Reg
+                    for (int i = 0; i < reg_includes.Count; i++)
+                    {
+                        csv.WriteField(reg_includes[i].ElementTable);
                     }
 
-                    // Next, the excludes
-                    for (int i = 0; i < excludes.Count; i++)
+                    // EXCLUDES
+                    // Nat
+                    for (int i = 0; i < nat_excludes.Count; i++)
                     {
-                        csv.WriteField(excludes[i].ElementTable);
+                        csv.WriteField(nat_excludes[i].ElementTable);
+                    }
+                    // Reg
+                    for (int i = 0; i < reg_excludes.Count; i++)
+                    {
+                        csv.WriteField(reg_excludes[i].ElementTable);
                     }
 
                     // Finally include the Planning Unit ID column
@@ -936,15 +1078,42 @@ namespace NCC.PRZTools
                     {
                         int puid = PUIDs[i];
 
-                        // Goals
-                        for (int j = 0; j < goals.Count; j++)
+                        // GOALS
+                        // Nat
+                        for (int j = 0; j < nat_goals.Count; j++)
                         {
                             // Get the goal
-                            NatElement goal = goals[j];
+                            NatElement goal = nat_goals[j];
 
-                            if (DICT_Goals.ContainsKey(goal.ElementID))
+                            if (DICT_NatGoals.ContainsKey(goal.ElementID))
                             {
-                                var d = DICT_Goals[goal.ElementID]; // this is the dictionary of puid > value for this element id
+                                var d = DICT_NatGoals[goal.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + goal
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + goal
+                                csv.WriteField(0);
+                            }
+                        }
+                        // Reg
+                        for (int j = 0; j < reg_goals.Count; j++)
+                        {
+                            // Get the goal
+                            RegElement goal = reg_goals[j];
+
+                            if (DICT_RegGoals.ContainsKey(goal.ElementID))
+                            {
+                                var d = DICT_RegGoals[goal.ElementID]; // this is the dictionary of puid > value for this element id
 
                                 if (d.ContainsKey(puid))
                                 {
@@ -964,15 +1133,42 @@ namespace NCC.PRZTools
                         }
 
 
-                        // Weights
-                        for (int j = 0; j < weights.Count; j++)
+                        // WEIGHTS
+                        // Nat
+                        for (int j = 0; j < nat_weights.Count; j++)
                         {
                             // Get the weight
-                            NatElement weight = weights[j];
+                            NatElement weight = nat_weights[j];
 
-                            if (DICT_Weights.ContainsKey(weight.ElementID))
+                            if (DICT_NatWeights.ContainsKey(weight.ElementID))
                             {
-                                var d = DICT_Weights[weight.ElementID]; // this is the dictionary of puid > value for this element id
+                                var d = DICT_NatWeights[weight.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + weight
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + weight
+                                csv.WriteField(0);
+                            }
+                        }
+                        // Reg
+                        for (int j = 0; j < reg_weights.Count; j++)
+                        {
+                            // Get the weight
+                            RegElement weight = reg_weights[j];
+
+                            if (DICT_RegWeights.ContainsKey(weight.ElementID))
+                            {
+                                var d = DICT_RegWeights[weight.ElementID]; // this is the dictionary of puid > value for this element id
 
                                 if (d.ContainsKey(puid))
                                 {
@@ -991,15 +1187,42 @@ namespace NCC.PRZTools
                             }
                         }
 
-                        // Includes
-                        for (int j = 0; j < includes.Count; j++)
+                        // INCLUDES
+                        // Nat
+                        for (int j = 0; j < nat_includes.Count; j++)
                         {
                             // Get the include
-                            NatElement include = includes[j];
+                            NatElement include = nat_includes[j];
 
-                            if (DICT_Includes.ContainsKey(include.ElementID))
+                            if (DICT_NatIncludes.ContainsKey(include.ElementID))
                             {
-                                var d = DICT_Includes[include.ElementID]; // this is the dictionary of puid > value for this element id
+                                var d = DICT_NatIncludes[include.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + include
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + include
+                                csv.WriteField(0);
+                            }
+                        }
+                        // Reg
+                        for (int j = 0; j < reg_includes.Count; j++)
+                        {
+                            // Get the include
+                            RegElement include = reg_includes[j];
+
+                            if (DICT_RegIncludes.ContainsKey(include.ElementID))
+                            {
+                                var d = DICT_RegIncludes[include.ElementID]; // this is the dictionary of puid > value for this element id
 
                                 if (d.ContainsKey(puid))
                                 {
@@ -1018,15 +1241,42 @@ namespace NCC.PRZTools
                             }
                         }
 
-                        // Excludes
-                        for (int j = 0; j < excludes.Count; j++)
+                        // EXCLUDES
+                        // Nat
+                        for (int j = 0; j < nat_excludes.Count; j++)
                         {
                             // Get the exclude
-                            NatElement exclude = excludes[j];
+                            NatElement exclude = nat_excludes[j];
 
-                            if (DICT_Excludes.ContainsKey(exclude.ElementID))
+                            if (DICT_NatExcludes.ContainsKey(exclude.ElementID))
                             {
-                                var d = DICT_Excludes[exclude.ElementID]; // this is the dictionary of puid > value for this element id
+                                var d = DICT_NatExcludes[exclude.ElementID]; // this is the dictionary of puid > value for this element id
+
+                                if (d.ContainsKey(puid))
+                                {
+                                    csv.WriteField(d[puid]);    // write the value
+                                }
+                                else
+                                {
+                                    // no puid in dictionary, just write a zero for this PUI + exclude
+                                    csv.WriteField(0);
+                                }
+                            }
+                            else
+                            {
+                                // No dictionary, just write a zero for this PUID + exclude
+                                csv.WriteField(0);
+                            }
+                        }
+                        // Reg
+                        for (int j = 0; j < reg_excludes.Count; j++)
+                        {
+                            // Get the exclude
+                            RegElement exclude = reg_excludes[j];
+
+                            if (DICT_RegExcludes.ContainsKey(exclude.ElementID))
+                            {
+                                var d = DICT_RegExcludes[exclude.ElementID]; // this is the dictionary of puid > value for this element id
 
                                 if (d.ContainsKey(puid))
                                 {
@@ -1185,30 +1435,61 @@ namespace NCC.PRZTools
 
                 #region THEMES & GOALS
 
+                SortedList<int, string> SLIST_Themes = new SortedList<int, string>();
+
+                // Add the national themes
+                for (int i = 0; i < nat_themes.Count; i++)
+                {
+                    NatTheme natTheme = nat_themes[i];
+
+                    int theme_id = natTheme.ThemeID;
+                    string theme_name = natTheme.ThemeName;
+
+                    if (!SLIST_Themes.ContainsKey(theme_id))
+                    {
+                        SLIST_Themes.Add(theme_id, theme_name);
+                    }
+                }
+
+                // Add the regional themes
+                foreach (var regTheme in DICT_RegThemes)
+                {
+                    int theme_id = regTheme.Key;
+                    string theme_name = regTheme.Value;
+
+                    if (!SLIST_Themes.ContainsKey(theme_id))
+                    {
+                        SLIST_Themes.Add(theme_id, theme_name);
+                    }
+                }
+
                 // Create the yamlTheme list
                 List<YamlTheme> yamlThemes = new List<YamlTheme>();
 
-                for (int i = 0; i < themes.Count; i++)
+                // Iterate through all themes (nat + reg)
+//                for (int i = 0; i < nat_themes.Count; i++)
+                foreach (var themeKVP in SLIST_Themes)
                 {
-                    NatTheme theme = themes[i];
+                    // Get national goals with this theme
+                    List<NatElement> nat_theme_goals = nat_goals.Where(g => g.ThemeID == themeKVP.Key).OrderBy(g => g.ElementID).ToList();
 
-                    // Get all goals belonging to this theme
-                    List<NatElement> theme_goals = goals.Where(g => g.ThemeID == theme.ThemeID).OrderBy(g => g.ElementID).ToList();
+                    // Get all regional goals with this theme
+                    List<RegElement> reg_theme_goals = reg_goals.Where(g => g.ThemeID == themeKVP.Key).OrderBy(g => g.ElementID).ToList();
 
-                    // Skip this theme if (through some weird alternate universe) it has no associated goals
-                    if (theme_goals.Count == 0)
+                    if (nat_theme_goals.Count + reg_theme_goals.Count == 0)
                     {
+                        // no goals (nat + reg) for this theme
                         continue;
                     }
 
                     // Assemble the yaml Goal list
                     List<YamlFeature> yamlGoals = new List<YamlFeature>();
 
-                    // Populate the yaml Goal list
-                    for (int j = 0; j < theme_goals.Count; j++)
+                    // First, national goals
+                    for (int j = 0; j < nat_theme_goals.Count; j++)
                     {
                         // Get the goal element
-                        NatElement goal = theme_goals[j];
+                        NatElement goal = nat_theme_goals[j];
 
                         // Build the Yaml Legend
                         YamlLegend yamlLegend = new YamlLegend();
@@ -1241,10 +1522,47 @@ namespace NCC.PRZTools
                         yamlGoals.Add(yamlGoal);
                     }
 
+                    // Next, regional goals
+                    for (int j = 0; j < reg_theme_goals.Count; j++)
+                    {
+                        // Get the goal element
+                        RegElement goal = reg_theme_goals[j];
+
+                        // Build the Yaml Legend
+                        YamlLegend yamlLegend = new YamlLegend();
+
+                        List<Color> colors = new List<Color>()
+                        {
+                            Color.Transparent,
+                            Color.MediumPurple
+                        };
+
+                        yamlLegend.SetCategoricalColors(colors);
+
+                        // Build the Yaml Variable
+                        YamlVariable yamlVariable = new YamlVariable();
+                        yamlVariable.index = goal.ElementTable;
+                        yamlVariable.units = "reg";// goal.ElementUnit;
+                        yamlVariable.provenance = WTWProvenanceType.regional.ToString();
+                        yamlVariable.legend = yamlLegend;
+
+                        // Build the Yaml Goal
+                        YamlFeature yamlGoal = new YamlFeature();
+                        yamlGoal.name = goal.ElementName;
+                        yamlGoal.status = true; // enabled or disabled
+                        yamlGoal.visible = true;
+                        yamlGoal.hidden = false;
+                        yamlGoal.goal = 0.5;        // needs to be retrieved from somewhere, or just left to 0.5
+                        yamlGoal.variable = yamlVariable;
+
+                        // Add to list
+                        yamlGoals.Add(yamlGoal);
+                    }
+
                     // Create the Yaml Theme
                     YamlTheme yamlTheme = new YamlTheme();
 
-                    yamlTheme.name = theme.ThemeName;
+                    yamlTheme.name = themeKVP.Value;
                     yamlTheme.feature = yamlGoals.ToArray();
 
                     // Add to list
@@ -1258,10 +1576,11 @@ namespace NCC.PRZTools
                 // Create the yaml Weights list
                 List<YamlWeight> yamlWeights = new List<YamlWeight>();
 
-                for (int i = 0; i < weights.Count; i++)
+                // National Weights
+                for (int i = 0; i < nat_weights.Count; i++)
                 {
                     // Get the weight
-                    NatElement weight = weights[i];
+                    NatElement weight = nat_weights[i];
 
                     // Build the Yaml Legend
                     YamlLegend yamlLegend = new YamlLegend();
@@ -1293,6 +1612,42 @@ namespace NCC.PRZTools
                     yamlWeights.Add(yamlWeight);
                 }
 
+                // Regional Weights
+                for (int i = 0; i < reg_weights.Count; i++)
+                {
+                    // Get the weight
+                    RegElement weight = reg_weights[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();
+                    List<Color> colors = new List<Color>()
+                    {
+                        Color.White,
+                        Color.DarkOrchid
+                    };
+
+                    yamlLegend.SetContinuousColors(colors);
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = weight.ElementTable;
+                    yamlVariable.units = "reg";
+                    yamlVariable.provenance = WTWProvenanceType.regional.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Weight
+                    YamlWeight yamlWeight = new YamlWeight();
+                    yamlWeight.name = weight.ElementName;
+                    yamlWeight.status = true; // enabled or disabled
+                    yamlWeight.visible = true;
+                    yamlWeight.hidden = false;
+                    yamlWeight.factor = 0;                  // what's this?
+                    yamlWeight.variable = yamlVariable;
+
+                    // Add to list
+                    yamlWeights.Add(yamlWeight);
+                }
+
                 #endregion
 
                 #region INCLUDES
@@ -1300,10 +1655,11 @@ namespace NCC.PRZTools
                 // Create the yaml Includes list
                 List<YamlInclude> yamlIncludes = new List<YamlInclude>();
 
-                for (int i = 0; i < includes.Count; i++)
+                // National Includes
+                for (int i = 0; i < nat_includes.Count; i++)
                 {
                     // Get the include
-                    NatElement include = includes[i];
+                    NatElement include = nat_includes[i];
 
                     // Build the Yaml Legend
                     YamlLegend yamlLegend = new YamlLegend();
@@ -1335,6 +1691,42 @@ namespace NCC.PRZTools
                     yamlIncludes.Add(yamlInclude);
                 }
 
+                // Regional Includes
+                for (int i = 0; i < reg_includes.Count; i++)
+                {
+                    // Get the include
+                    RegElement include = reg_includes[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();
+                    List<(Color color, string label)> values = new List<(Color color, string label)>()
+                        {
+                            (Color.Transparent, "Do not include"),
+                            (Color.Green, "Include")
+                        };
+
+                    yamlLegend.SetManualColors(values);
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = include.ElementTable;
+                    yamlVariable.units = "reg";//include.ElementUnit;
+                    yamlVariable.provenance = WTWProvenanceType.regional.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Include
+                    YamlInclude yamlInclude = new YamlInclude();
+                    yamlInclude.name = include.ElementName;
+                    yamlInclude.mandatory = false;      // what's this
+                    yamlInclude.status = true; // enabled or disabled
+                    yamlInclude.visible = true;
+                    yamlInclude.hidden = false;
+                    yamlInclude.variable = yamlVariable;
+
+                    // Add to list
+                    yamlIncludes.Add(yamlInclude);
+                }
+
                 #endregion
 
                 #region EXCLUDES
@@ -1342,10 +1734,11 @@ namespace NCC.PRZTools
                 // Create the yaml Excludes list
                 List<YamlExclude> yamlExcludes = new List<YamlExclude>();
 
-                for (int i = 0; i < excludes.Count; i++)
+                // National Excludes
+                for (int i = 0; i < nat_excludes.Count; i++)
                 {
                     // Get the exclude
-                    NatElement exclude = excludes[i];
+                    NatElement exclude = nat_excludes[i];
 
                     // Build the Yaml Legend
                     YamlLegend yamlLegend = new YamlLegend();       // default legend
@@ -1355,6 +1748,35 @@ namespace NCC.PRZTools
                     yamlVariable.index = exclude.ElementTable;
                     yamlVariable.units = exclude.ElementUnit;
                     yamlVariable.provenance = WTWProvenanceType.national.ToString();
+                    yamlVariable.legend = yamlLegend;
+
+                    // Build the Yaml Exclude
+                    YamlExclude yamlExclude = new YamlExclude();
+                    yamlExclude.name = exclude.ElementName;
+                    yamlExclude.mandatory = false;      // what's this
+                    yamlExclude.status = true; // enabled or disabled
+                    yamlExclude.visible = true;
+                    yamlExclude.hidden = false;
+                    yamlExclude.variable = yamlVariable;
+
+                    // Add to list
+                    yamlExcludes.Add(yamlExclude);
+                }
+
+                // Regional Excludes
+                for (int i = 0; i < reg_excludes.Count; i++)
+                {
+                    // Get the exclude
+                    RegElement exclude = reg_excludes[i];
+
+                    // Build the Yaml Legend
+                    YamlLegend yamlLegend = new YamlLegend();       // default legend
+
+                    // Build the Yaml Variable
+                    YamlVariable yamlVariable = new YamlVariable();
+                    yamlVariable.index = exclude.ElementTable;
+                    yamlVariable.units = "reg"; // exclude.ElementUnit;
+                    yamlVariable.provenance = WTWProvenanceType.regional.ToString();
                     yamlVariable.legend = yamlLegend;
 
                     // Build the Yaml Exclude

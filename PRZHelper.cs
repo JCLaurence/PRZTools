@@ -2441,7 +2441,368 @@ namespace NCC.PRZTools
 
         #endregion
 
-        #region ELEMENT VALUES
+        #region REGIONAL TABLES
+
+        /// <summary>
+        /// Returns the regional element table name for the supplied element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static (bool success, string table_name, string message) GetRegionalElementTableName(int element_id)
+        {
+            try
+            {
+                if (element_id > 99999 || element_id < 1)
+                {
+                    throw new Exception($"Element ID {element_id} is out of range (1 to 99999)");
+                }
+                else
+                {
+                    return (true, PRZC.c_TABLE_REG_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, "", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of RegElement objects from the project geodatabase.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<RegElement> elements, string message)> GetRegionalElements()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Check for existence of Element table
+                if (!(await TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
+                {
+                    return (false, null, $"{PRZC.c_TABLE_REG_ELEMENTS} table not found in project geodatabase");
+                }
+
+                // Create list
+                List<RegElement> elements = new List<RegElement>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int elem_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID]);
+                                string elem_name = (string)row[PRZC.c_FLD_TAB_REGELEMENT_NAME] ?? "";
+                                int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_TYPE]);
+                                int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_STATUS]);
+                                int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE]);
+                                string elem_lyrxpath = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH] ?? "";
+                                string elem_lyrxname = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME] ?? "";
+                                int elem_lyrxtype = Convert.ToInt32(Enum.Parse(typeof(LayerType), (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE], true));
+                                string elem_lyrxjson = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON] ?? "";
+                                string elem_whereclause = (string)row[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] ?? "";
+                                string elem_legendgroup = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] ?? "";
+                                string elem_legendclass = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] ?? "";
+
+                                object oThemeID = row[PRZC.c_FLD_TAB_REGELEMENT_THEME_ID] ?? -9999;
+                                int elem_themeid = Convert.ToInt32(oThemeID);
+
+                                if (elem_id > 0 && elem_type > 0 && elem_status > 0 && !string.IsNullOrEmpty(elem_name))
+                                {
+                                    RegElement regElement = new RegElement()
+                                    {
+                                        ElementID = elem_id,
+                                        ElementName = elem_name,
+                                        ElementType = elem_type,
+                                        ElementStatus = elem_status,
+                                        ElementPresence = elem_presence,
+                                        LayerName = elem_lyrxname,
+                                        LayerType = elem_lyrxtype,
+                                        LayerJson = elem_lyrxjson,
+                                        WhereClause = elem_whereclause,
+                                        LegendGroup = elem_legendgroup,
+                                        LegendClass = elem_legendclass,
+                                        ThemeID = elem_themeid
+                                    };
+
+                                    elements.Add(regElement);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Populate regional theme info
+                var tryget_themes = await GetRegionalThemesDomainKVPs();
+
+                if (!tryget_themes.success)
+                {
+                    return (false, null, tryget_themes.message);
+                }
+
+                Dictionary<int, string> themes = tryget_themes.dict;
+
+                foreach (RegElement element in elements)
+                {
+                    int theme_id = element.ThemeID;
+
+                    if (themes.ContainsKey(theme_id))
+                    {
+                        element.ThemeName = themes[theme_id];
+                    }
+                    else if (theme_id == -9999)
+                    {
+                        element.ThemeName = "Regional Theme Not Specified";
+                    }
+                    else
+                    {
+                        element.ThemeName = "Invalid Regional Theme";
+                    }
+                }
+
+                // Sort the list
+                elements.Sort((a, b) => a.ElementID.CompareTo(b.ElementID));
+
+                return (true, elements, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of RegElement objects from the project geodatabase, optionally filtered
+        /// by type, status, or presence indicators.  Silent errors.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="status"></param>
+        /// <param name="presence"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, List<RegElement> elements, string message)> GetRegionalElements(ElementType? type, ElementStatus? status, ElementPresence? presence)
+        {
+            try
+            {
+                // Get the full Elements list
+                var tryget = await GetRegionalElements();
+
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                List<RegElement> elements = tryget.elements;
+
+                // Filter the list based on filter criteria:
+
+                // By Type
+                IEnumerable<RegElement> v = (type != null) ? elements.Where(e => e.ElementType == ((int)type)) : elements;
+
+                // By Status
+                v = (status != null) ? v.Where(e => e.ElementStatus == ((int)status)) : v;
+
+                // By Presence
+                v = (presence != null) ? v.Where(e => e.ElementPresence == ((int)presence)) : v;
+
+                // Sort by Element ID
+                IOrderedEnumerable<RegElement> u = v.OrderBy(e => e.ElementID);
+
+                return (true, u.ToList(), "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of regional element table names (e.g. r00042) from the project geodatabase.
+        /// Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> tables, string message)> GetRegionalElementTables()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Create the list
+                List<string> table_names = new List<string>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var table_defs = geodatabase.GetDefinitions<TableDefinition>();
+
+                        foreach (TableDefinition table_def in table_defs)
+                        {
+                            using (table_def)
+                            {
+                                string name = table_def.GetName();
+
+                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_REG_PREFIX_ELEMENT))
+                                {
+                                    string numpart = name.Substring(1);
+
+                                    if (int.TryParse(numpart, out int result))
+                                    {
+                                        // this is a regional element table
+                                        table_names.Add(name);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, table_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of regional element raster names.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalElementRasters()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Create the list
+                List<string> raster_names = new List<string>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+
+                        foreach (RasterDatasetDefinition rasDef in rasDefs)
+                        {
+                            using (rasDef)
+                            {
+                                string name = rasDef.GetName();
+
+                                if (name.StartsWith(PRZC.c_RAS_REG_ELEM_PREFIX, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    raster_names.Add(name);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, raster_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of regional pu raster reclass raster names.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalPUReclassRasters()
+        {
+            try
+            {
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    return (false, null, try_gdbexists.message);
+                }
+
+                // Create the list
+                List<string> raster_names = new List<string>();
+
+                // Populate the list
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+
+                        foreach (RasterDatasetDefinition rasDef in rasDefs)
+                        {
+                            using (rasDef)
+                            {
+                                string name = rasDef.GetName();
+
+                                if (name.StartsWith(PRZC.c_RAS_PLANNING_UNITS_RECLASS, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    raster_names.Add(name);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, raster_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region NATIONAL ELEMENT TABLE VALUES
 
         /// <summary>
         /// Retrieve a national grid value for a specified element and cell number.  Silent errors.
@@ -2449,7 +2810,7 @@ namespace NCC.PRZTools
         /// <param name="element_id"></param>
         /// <param name="cell_number"></param>
         /// <returns></returns>
-        public static async Task<(bool success, double value, string message)> GetValueFromElementTable_CellNum(int element_id, long cell_number)
+        public static async Task<(bool success, double value, string message)> GetValueFromNatElementTable_CellNum(int element_id, long cell_number)
         {
             double value = -9999;
 
@@ -2555,7 +2916,7 @@ namespace NCC.PRZTools
         /// <param name="element_id"></param>
         /// <param name="puid"></param>
         /// <returns></returns>
-        public static async Task<(bool success, double value, string message)> GetValueFromElementTable_PUID(int element_id, int puid)
+        public static async Task<(bool success, double value, string message)> GetValueFromNatElementTable_PUID(int element_id, int puid)
         {
             double value = -9999;
 
@@ -2672,7 +3033,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="element_id"></param>
         /// <returns></returns>
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromElementTable_CellNum(int element_id)
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromNatElementTable_CellNum(int element_id)
         {
             try
             {
@@ -2750,7 +3111,7 @@ namespace NCC.PRZTools
         /// </summary>
         /// <param name="element_id"></param>
         /// <returns></returns>
-        public static async Task<(bool success, Dictionary<int, double> dict, string message)> GetValuesFromElementTable_PUID(int element_id)
+        public static async Task<(bool success, Dictionary<int, double> dict, string message)> GetValuesFromNatElementTable_PUID(int element_id)
         {
             try
             {
@@ -3006,7 +3367,7 @@ namespace NCC.PRZTools
         /// <param name="element_id"></param>
         /// <param name="cell_numbers"></param>
         /// <returns></returns>
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersection(int element_id, HashSet<long> cell_numbers)
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetNatElementIntersection(int element_id, HashSet<long> cell_numbers)
         {
             try
             {
@@ -3082,6 +3443,166 @@ namespace NCC.PRZTools
                 return (false, null, ex.Message);
             }
         }
+
+        #region REGIONAL ELEMENT TABLE VALUES
+
+        /// <summary>
+        /// Retrieve a dictionary of planning unit ids and associated element values from the 
+        /// project geodatabase, for the specified regional element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, Dictionary<int, double> dict, string message)> GetValuesFromRegElementTable_PUID(int element_id)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    throw new Exception("Element ID out of range (1-99999)");
+                }
+
+                // Get element table name
+                var trygetname = GetRegionalElementTableName(element_id);
+
+                if (!trygetname.success)
+                {
+                    throw new Exception("Unable to retrieve regional element table name.");
+                }
+
+                string table_name = trygetname.table_name;
+
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    throw new Exception("Project geodatabase not found.");
+                }
+
+                // Verify that table exists in project GDB
+                if (!(await TableExists_Project(table_name)).exists)
+                {
+                    throw new Exception("Element table not found.");
+                }
+
+                // Create the puid => value dictionary
+                Dictionary<int, double> dict = new Dictionary<int, double>();
+
+                // Populate the dictionary
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int pu_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID]);
+                                double value = Convert.ToDouble(row[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE]);
+
+                                if (pu_id > 0 && !dict.ContainsKey(pu_id))
+                                {
+                                    dict.Add(pu_id, value);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a dictionary of cell numbers and associated element values from the
+        /// project geodatabase, for the specified regional element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetValuesFromRegElementTable_CellNum(int element_id)
+        {
+            try
+            {
+                // Ensure valid element id
+                if (element_id < 1 || element_id > 99999)
+                {
+                    throw new Exception("Element ID out of range (1-99999)");
+                }
+
+                // Get element table name
+                var trygetname = GetRegionalElementTableName(element_id);
+
+                if (!trygetname.success)
+                {
+                    throw new Exception("Unable to retrieve regional element table name.");
+                }
+
+                string table_name = trygetname.table_name;
+
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    throw new Exception("Project geodatabase not found.");
+                }
+
+                // Verify that table exists in project GDB
+                if (!(await TableExists_Project(table_name)).exists)
+                {
+                    throw new Exception("Element table not found.");
+                }
+
+                // Create the puid => value dictionary
+                Dictionary<long, double> dict = new Dictionary<long, double>();
+
+                // Populate the dictionary
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(table_name);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                long cellnum = Convert.ToInt64(row[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER]);
+                                double value = Convert.ToDouble(row[PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_VALUE]);
+
+                                if (cellnum > 0 && !dict.ContainsKey(cellnum))
+                                {
+                                    dict.Add(cellnum, value);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
 
         #endregion
 
@@ -4027,482 +4548,6 @@ namespace NCC.PRZTools
         }
 
         #endregion
-
-        #endregion
-
-        #region REGIONAL TABLES
-
-        /// <summary>
-        /// Returns the regional element table name for the supplied element id.  Silent errors.
-        /// </summary>
-        /// <param name="element_id"></param>
-        /// <returns></returns>
-        public static (bool success, string table_name, string message) GetRegionalElementTableName(int element_id)
-        {
-            try
-            {
-                if (element_id > 99999 || element_id < 1)
-                {
-                    throw new Exception($"Element ID {element_id} is out of range (1 to 99999)");
-                }
-                else
-                {
-                    return (true, PRZC.c_TABLE_REG_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, "", ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of RegTheme objects from the project geodatabase.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<NatTheme> themes, string message)> GetRegionalThemes()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
-
-                // Check for existence of Theme table
-                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
-                {
-                    return (false, null, $"{PRZC.c_TABLE_NAT_THEMES} table not found in project geodatabase");
-                }
-
-                // Create the list
-                List<NatTheme> themes = new List<NatTheme>();
-
-                // Populate the list
-                (bool success, string message) outcome = await QueuedTask.Run(() =>
-                {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
-                    if (!tryget.success)
-                    {
-                        throw new Exception("Error retrieving table.");
-                    }
-
-                    using (Table table = tryget.table)
-                    using (RowCursor rowCursor = table.Search())
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_THEME_ID]);
-                                string name = (string)row[PRZC.c_FLD_TAB_NATTHEME_NAME];
-                                string code = (string)row[PRZC.c_FLD_TAB_NATTHEME_CODE];
-                                int theme_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATTHEME_PRESENCE]);
-
-                                if (id > 0 && !string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
-                                {
-                                    NatTheme theme = new NatTheme()
-                                    {
-                                        ThemeID = id,
-                                        ThemeName = name,
-                                        ThemeCode = code,
-                                        ThemePresence = theme_presence
-                                    };
-
-                                    themes.Add(theme);
-                                }
-                            }
-                        }
-                    }
-
-                    return (true, "success");
-                });
-
-                if (outcome.success)
-                {
-                    // Sort the list by theme id
-                    themes.Sort((a, b) => a.ThemeID.CompareTo(b.ThemeID));
-
-                    return (true, themes, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of NatTheme objects from the project geodatabase, optionally filtered
-        /// by the presence indicator.  Silent errors.
-        /// </summary>
-        /// <param name="presence"></param>
-        /// <returns></returns>
-        public static async Task<(bool success, List<NatTheme> themes, string message)> GetRegionalThemes(ElementPresence? presence)
-        {
-            try
-            {
-                // Get the full Theme list
-                var tryget = await GetNationalThemes();
-
-                if (!tryget.success)
-                {
-                    return (false, null, tryget.message);
-                }
-
-                List<NatTheme> themes = tryget.themes;
-
-                // Filter the list based on filter criteria:
-
-                // By Presence
-                IEnumerable<NatTheme> v = (presence != null) ? themes.Where(t => t.ThemePresence == ((int)presence)) : themes;
-
-                // Sort by Theme ID
-                IOrderedEnumerable<NatTheme> u = v.OrderBy(t => t.ThemeID);
-
-                return (true, u.ToList(), "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of NatElement objects from the project geodatabase.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<NatElement> elements, string message)> GetRegionalElements()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
-
-                // Check for existence of Element table
-                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
-                {
-                    return (false, null, $"{PRZC.c_TABLE_NAT_ELEMENTS} table not found in project geodatabase");
-                }
-
-                // Create list
-                List<NatElement> elements = new List<NatElement>();
-
-                // Populate the list
-                await QueuedTask.Run(() =>
-                {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
-                    if (!tryget.success)
-                    {
-                        throw new Exception("Error retrieving table.");
-                    }
-
-                    using (Table table = tryget.table)
-                    using (RowCursor rowCursor = table.Search())
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                int id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID]);
-                                string name = (string)row[PRZC.c_FLD_TAB_NATELEMENT_NAME] ?? "";
-                                int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_TYPE]);
-                                int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_STATUS]);
-                                string data_path = (string)row[PRZC.c_FLD_TAB_NATELEMENT_DATAPATH] ?? "";
-                                int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_THEME_ID]);
-                                int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE]);
-                                string unit = (string)row[PRZC.c_FLD_TAB_NATELEMENT_UNIT] ?? "";
-
-                                if (id > 0 && elem_type > 0 && elem_status > 0 && theme_id > 0 && !string.IsNullOrEmpty(name))
-                                {
-                                    NatElement element = new NatElement()
-                                    {
-                                        ElementID = id,
-                                        ElementName = name,
-                                        ElementType = elem_type,
-                                        ElementStatus = elem_status,
-                                        ElementDataPath = data_path,
-                                        ThemeID = theme_id,
-                                        ElementPresence = elem_presence,
-                                        ElementUnit = unit
-                                    };
-
-                                    elements.Add(element);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Populate the Theme Information
-                var theme_outcome = await GetNationalThemes();
-                if (!theme_outcome.success)
-                {
-                    return (false, null, theme_outcome.message);
-                }
-
-                List<NatTheme> themes = theme_outcome.themes;
-
-                foreach (NatElement element in elements)
-                {
-                    int theme_id = element.ThemeID;
-
-                    if (theme_id < 1)
-                    {
-                        element.ThemeName = "INVALID THEME ID";
-                        element.ThemeCode = "---";
-                    }
-                    else
-                    {
-                        NatTheme theme = themes.FirstOrDefault(t => t.ThemeID == theme_id);
-
-                        if (theme != null)
-                        {
-                            element.ThemeName = theme.ThemeName;
-                            element.ThemeCode = theme.ThemeCode;
-                        }
-                        else
-                        {
-                            element.ThemeName = "NO CORRESPONDING THEME";
-                            element.ThemeCode = "???";
-                        }
-                    }
-                }
-
-                // Sort the list
-                elements.Sort((a, b) => a.ElementID.CompareTo(b.ElementID));
-
-                return (true, elements, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of NatElement objects from the project geodatabase, optionally filtered
-        /// by type, status, or presence indicators.  Silent errors.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="status"></param>
-        /// <param name="presence"></param>
-        /// <returns></returns>
-        public static async Task<(bool success, List<NatElement> elements, string message)> GetRegionalElements(ElementType? type, ElementStatus? status, ElementPresence? presence)
-        {
-            try
-            {
-                // Get the full Elements list
-                var tryget = await GetNationalElements();
-
-                if (!tryget.success)
-                {
-                    return (false, null, tryget.message);
-                }
-
-                List<NatElement> elements = tryget.elements;
-
-                // Filter the list based on filter criteria:
-
-                // By Type
-                IEnumerable<NatElement> v = (type != null) ? elements.Where(e => e.ElementType == ((int)type)) : elements;
-
-                // By Status
-                v = (status != null) ? v.Where(e => e.ElementStatus == ((int)status)) : v;
-
-                // By Presence
-                v = (presence != null) ? v.Where(e => e.ElementPresence == ((int)presence)) : v;
-
-                // Sort by Element ID
-                IOrderedEnumerable<NatElement> u = v.OrderBy(e => e.ElementID);
-
-                return (true, u.ToList(), "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-
-        /// <summary>
-        /// Retrieve a list of regional element table names (e.g. r00042) from the project geodatabase.
-        /// Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<string> tables, string message)> GetRegionalElementTables()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
-
-                // Create the list
-                List<string> table_names = new List<string>();
-
-                // Populate the list
-                await QueuedTask.Run(() =>
-                {
-                    var tryget_gdb = GetGDB_Project();
-                    if (!tryget_gdb.success)
-                    {
-                        throw new Exception("Error opening project geodatabase.");
-                    }
-
-                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    {
-                        var table_defs = geodatabase.GetDefinitions<TableDefinition>();
-
-                        foreach (TableDefinition table_def in table_defs)
-                        {
-                            using (table_def)
-                            {
-                                string name = table_def.GetName();
-
-                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_REG_PREFIX_ELEMENT))
-                                {
-                                    string numpart = name.Substring(1);
-
-                                    if (int.TryParse(numpart, out int result))
-                                    {
-                                        // this is a regional element table
-                                        table_names.Add(name);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return (true, table_names, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of regional element raster names.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalElementRasters()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
-
-                // Create the list
-                List<string> raster_names = new List<string>();
-
-                // Populate the list
-                await QueuedTask.Run(() =>
-                {
-                    var tryget_gdb = GetGDB_Project();
-                    if (!tryget_gdb.success)
-                    {
-                        throw new Exception("Error opening project geodatabase.");
-                    }
-
-                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    {
-                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
-
-                        foreach (RasterDatasetDefinition rasDef in rasDefs)
-                        {
-                            using (rasDef)
-                            {
-                                string name = rasDef.GetName();
-
-                                if (name.StartsWith(PRZC.c_RAS_REG_ELEM_PREFIX, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    raster_names.Add(name);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return (true, raster_names, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a list of regional pu raster reclass raster names.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalPUReclassRasters()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
-
-                // Create the list
-                List<string> raster_names = new List<string>();
-
-                // Populate the list
-                await QueuedTask.Run(() =>
-                {
-                    var tryget_gdb = GetGDB_Project();
-                    if (!tryget_gdb.success)
-                    {
-                        throw new Exception("Error opening project geodatabase.");
-                    }
-
-                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    {
-                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
-
-                        foreach (RasterDatasetDefinition rasDef in rasDefs)
-                        {
-                            using (rasDef)
-                            {
-                                string name = rasDef.GetName();
-
-                                if (name.StartsWith(PRZC.c_RAS_PLANNING_UNITS_RECLASS, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    raster_names.Add(name);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return (true, raster_names, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
 
         #endregion
 
@@ -6646,6 +6691,79 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a dictionary of Regional Themes domain entries.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, Dictionary<int, string> dict, string message)> GetRegionalThemesDomainKVPs()
+        {
+            try
+            {
+                // Max value for national themes
+                int nat_max_value = 1000;
+
+                // Flag for theme domain existence
+                bool domain_exists = false;
+
+                // Sorted Lists of domain values
+                SortedList<object, string> sl_theme = null;
+
+                // project gdb path
+                string gdbpath = GetPath_ProjectGDB();
+
+                // Determine existence of domain
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = GetGDB_Project();
+                    if (!tryget_gdb.success)
+                    {
+                        throw new Exception("Error opening the project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        var domains = geodatabase.GetDomains();
+
+                        foreach (var domain in domains)
+                        {
+                            using (domain)
+                            {
+                                if (domain is CodedValueDomain cvd)
+                                {
+                                    string domname = cvd.GetName();
+
+                                    if (string.Equals(domname, PRZC.c_DOMAIN_REG_THEME, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        domain_exists = true;
+                                        sl_theme = cvd.GetCodedValuePairs();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (!domain_exists)
+                {
+                    return (false, null, $"{PRZC.c_DOMAIN_REG_THEME} domain not found.");
+                }
+
+                Dictionary<int, string> dict = new Dictionary<int, string>();
+
+                foreach (KeyValuePair<object, string> kvp in sl_theme)
+                {
+                    dict.Add(Convert.ToInt32(kvp.Key), kvp.Value);
+                }
+
+                return (true, dict, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
             }
         }
 
