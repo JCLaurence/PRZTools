@@ -369,24 +369,40 @@ namespace NCC.PRZTools
         #region GEODATABASE OBJECT PATHS
 
         /// <summary>
-        /// Retrieve the path to a geodatabase object within the project geodatabase.
+        /// Retrieve the path to a geodatabase object within the project geodatabase. If the optional
+        /// second parameter is provided, the path to the object within a feature dataset is returned.
         /// Silent errors.
         /// </summary>
         /// <param name="gdb_obj_name"></param>
+        /// <param name="fds_name"></param>
         /// <returns></returns>
-        public static (bool success, string path, string message) GetPath_Project(string gdb_obj_name)
+        public static (bool success, string path, string message) GetPath_Project(string gdb_obj_name, string fds_name = "")
         {
             try
             {
                 // Get the GDB Path
                 string gdbpath = GetPath_ProjectGDB();
 
+                // ensure gdbpath is valid
                 if (string.IsNullOrEmpty(gdbpath))
                 {
                     return (false, "", "geodatabase path is null");
                 }
 
-                return (true, Path.Combine(gdbpath, gdb_obj_name), "success");
+                // ensure object name is not empty
+                if (string.IsNullOrEmpty(gdb_obj_name))
+                {
+                    return (false, "", "geodatabase object name not supplied");
+                }
+
+                if (string.IsNullOrEmpty(fds_name))
+                {
+                    return (true, Path.Combine(gdbpath, gdb_obj_name), "success");
+                }
+                else
+                {
+                    return (true, Path.Combine(gdbpath, fds_name, gdb_obj_name), "success");
+                }
             }
             catch (Exception ex)
             {
@@ -707,6 +723,83 @@ namespace NCC.PRZTools
             catch (Exception ex)
             {
                 return (false, GeoDBType.Unknown, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region FDS ANY GDB
+
+        /// <summary>
+        /// Establish the existence of a feature dataset by name within a specified geodatabase.
+        /// Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static (bool exists, string message) FDSExists(Geodatabase geodatabase, string fds_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Attempt to retrieve definition based on name
+                using (FeatureDatasetDefinition fdsDef = geodatabase.GetDefinition<FeatureDatasetDefinition>(fds_name))
+                {
+                    // Error will be thrown by using statement above if FDS of the supplied name doesn't exist in GDB
+                }
+
+                return (true, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region FDS IN PROJECT GDB
+
+        /// <summary>
+        /// Establish the existence of a feature dataset by name from the project
+        /// file geodatabase.  Silent errors.
+        /// </summary>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> FDSExists_Project(string fds_name)
+        {
+            try
+            {
+                // Run this code on the worker thread
+                return await QueuedTask.Run(() =>
+                {
+                    // Get geodatabase
+                    var tryget_gdb = GetGDB_Project();
+
+                    if (!tryget_gdb.success)
+                    {
+                        return (false, tryget_gdb.message);
+                    }
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    {
+                        if (geodatabase == null)
+                        {
+                            return (false, "unable to access the geodatabase.");
+                        }
+
+                        return FDSExists(geodatabase, fds_name);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
             }
         }
 
@@ -1224,7 +1317,6 @@ namespace NCC.PRZTools
             }
         }
 
-
         /// <summary>
         /// Establish the existence of a project log file.  Silent errors.
         /// </summary>
@@ -1634,7 +1726,7 @@ namespace NCC.PRZTools
                     return (false, null, "Null or invalid geodatabase.");
                 }
 
-                // Ensure feature class exists
+                // Ensure table exists
                 if (!TableExists(geodatabase, table_name).exists)
                 {
                     return (false, null, "Table not found in geodatabase");
@@ -1682,7 +1774,7 @@ namespace NCC.PRZTools
                     return (false, null, "Null or invalid geodatabase.");
                 }
 
-                // Ensure feature class exists
+                // Ensure raster dataset exists
                 if (!RasterExists(geodatabase, raster_name).exists)
                 {
                     return (false, null, "Raster dataset not found in geodatabase");
@@ -1700,6 +1792,55 @@ namespace NCC.PRZTools
                 catch (Exception ex)
                 {
                     return (false, null, $"Error opening {raster_name} raster dataset.\n{ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a feature dataset by name from a specified geodatabase.
+        /// Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static (bool success, FeatureDataset featureDataset, string message) GetFDS(Geodatabase geodatabase, string fds_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase is not null
+                if (geodatabase == null)
+                {
+                    return (false, null, "Null or invalid geodatabase.");
+                }
+
+                // Ensure feature dataset exists
+                if (!FDSExists(geodatabase, fds_name).exists)
+                {
+                    return (false, null, "Feature dataset not found in geodatabase");
+                }
+
+                // Retrieve feature dataset
+                FeatureDataset featureDataset = null;
+
+                try
+                {
+                    featureDataset = geodatabase.OpenDataset<FeatureDataset>(fds_name);
+
+                    return (true, featureDataset, "success");
+                }
+                catch (Exception ex)
+                {
+                    return (false, null, $"Error opening {fds_name} feature dataset.\n{ex.Message}");
                 }
             }
             catch (Exception ex)
@@ -1830,6 +1971,49 @@ namespace NCC.PRZTools
                     RasterDataset rasterDataset = geodatabase.OpenDataset<RasterDataset>(raster_name);
 
                     return (true, rasterDataset, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a feature dataset by name from the project file geodatabase.
+        /// Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static (bool success, FeatureDataset featureDataset, string message) GetFDS_Project(string fds_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Retrieve geodatabase
+                var tryget = GetGDB_Project();
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                using (Geodatabase geodatabase = tryget.geodatabase)
+                {
+                    // ensure feature dataset exists
+                    if (!FDSExists(geodatabase, fds_name).exists)
+                    {
+                        return (false, null, "Feature dataset not found in geodatabase");
+                    }
+
+                    // get the feature dataset
+                    FeatureDataset featureDataset = geodatabase.OpenDataset<FeatureDataset>(fds_name);
+
+                    return (true, featureDataset, "success");
                 }
             }
             catch (Exception ex)
@@ -2014,6 +2198,114 @@ namespace NCC.PRZTools
                     Table table = geodatabase.OpenDataset<Table>(qualified_table_name);
 
                     return (true, table, "success");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region FEATURE DATASET CONTENTS
+
+        /// <summary>
+        /// Retrieve the list of feature class names for the specified feature dataset
+        /// in the provided geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="geodatabase"></param>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static (bool success, List<string> fc_names, string message) GetFCNamesFromFDS(Geodatabase geodatabase, string fds_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Ensure geodatabase is not null
+                if (geodatabase == null)
+                {
+                    return (false, null, "Null or invalid geodatabase.");
+                }
+
+                // Ensure feature dataset exists
+                if (!FDSExists(geodatabase, fds_name).exists)
+                {
+                    return (false, null, "Feature dataset not found in geodatabase");
+                }
+
+                // create the list of fc names
+                List<string> l = new List<string>();
+
+                // populate the list
+                using (FeatureDataset fds = geodatabase.OpenDataset<FeatureDataset>(fds_name))
+                using (FeatureDatasetDefinition fdsDef = fds.GetDefinition())
+                {
+                    var fcDefs = geodatabase.GetRelatedDefinitions(fdsDef, DefinitionRelationshipType.DatasetInFeatureDataset);
+
+                    foreach (var fcDef in fcDefs)
+                    {
+                        using (fcDef)
+                        {
+                            if (fcDef.DatasetType == DatasetType.FeatureClass)
+                            {
+                                l.Add(fcDef.GetName());
+                            }
+                        }
+                    }
+                }
+
+                l.Sort();
+
+                return (true, l, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a list of feature class names found within the supplied Feature Dataset,
+        /// in the Project geodatabase.  Must be run on MCT.  Silent errors.
+        /// </summary>
+        /// <param name="fds_name"></param>
+        /// <returns></returns>
+        public static (bool success, List<string> fc_names, string message) GetFCNamesFromFDS_Project(string fds_name)
+        {
+            try
+            {
+                // Ensure this is called on worker thread
+                if (!QueuedTask.OnWorker)
+                {
+                    throw new ArcGIS.Core.CalledOnWrongThreadException();
+                }
+
+                // Retrieve geodatabase
+                var tryget = GetGDB_Project();
+                if (!tryget.success)
+                {
+                    return (false, null, tryget.message);
+                }
+
+                // Get the fc names
+                using (Geodatabase geodatabase = tryget.geodatabase)
+                {
+                    var getter = GetFCNamesFromFDS(geodatabase, fds_name);
+
+                    if (!getter.success)
+                    {
+                        return (false, null, getter.message);
+                    }
+                    else
+                    {
+                        return (true, getter.fc_names, "success");
+                    }
                 }
             }
             catch (Exception ex)
@@ -5849,48 +6141,48 @@ namespace NCC.PRZTools
                     GL_MAIN.SetVisibility(true);
                     GL_MAIN.SetExpanded(true);
 
-                    // Selection Rules Group Layer
-                    GroupLayer GL_SELRULES = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
-                    {
-                        GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
-                    }
-                    else
-                    {
-                        GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
-                        GL_MAIN.MoveLayer(GL_SELRULES, 0);
-                    }
+                    //// Selection Rules Group Layer
+                    //GroupLayer GL_SELRULES = null;
+                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
+                    //{
+                    //    GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
+                    //}
+                    //else
+                    //{
+                    //    GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
+                    //    GL_MAIN.MoveLayer(GL_SELRULES, 0);
+                    //}
 
-                    GL_SELRULES.SetVisibility(true);
-                    GL_SELRULES.SetExpanded(true);
+                    //GL_SELRULES.SetVisibility(true);
+                    //GL_SELRULES.SetExpanded(true);
 
-                    // Cost Group Layer
-                    GroupLayer GL_COST = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.COST))
-                    {
-                        GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
-                    }
-                    else
-                    {
-                        GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
-                        GL_MAIN.MoveLayer(GL_COST, 1);
-                    }
+                    //// Cost Group Layer
+                    //GroupLayer GL_COST = null;
+                    //if (!PRZLayerExists(map, PRZLayerNames.COST))
+                    //{
+                    //    GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
+                    //}
+                    //else
+                    //{
+                    //    GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
+                    //    GL_MAIN.MoveLayer(GL_COST, 1);
+                    //}
 
-                    GL_COST.SetVisibility(true);
+                    //GL_COST.SetVisibility(true);
 
-                    // Features Group Layer
-                    GroupLayer GL_FEATURES = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
-                    {
-                        GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
-                    }
-                    else
-                    {
-                        GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
-                        GL_MAIN.MoveLayer(GL_FEATURES, 2);
-                    }
+                    //// Features Group Layer
+                    //GroupLayer GL_FEATURES = null;
+                    //if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
+                    //{
+                    //    GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
+                    //}
+                    //else
+                    //{
+                    //    GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
+                    //    GL_MAIN.MoveLayer(GL_FEATURES, 2);
+                    //}
 
-                    GL_FEATURES.SetVisibility(true);
+                    //GL_FEATURES.SetVisibility(true);
 
                     // Remove all top-level layers from GL_MAIN that are not supposed to be there
                     List<Layer> layers_to_delete = new List<Layer>();
@@ -5898,22 +6190,43 @@ namespace NCC.PRZTools
                     var all_layers = GL_MAIN.Layers;
                     foreach (var lyr in all_layers)
                     {
-                        if (lyr is GroupLayer)
-                        {
-                            if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                        }
-                        else
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
+                        layers_to_delete.Add(lyr);
+                        //if (lyr is GroupLayer)
+                        //{
+                        //    if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
+                        //    {
+                        //        layers_to_delete.Add(lyr);
+                        //    }
+                        //}
+                        //else
+                        //{
+                        //    layers_to_delete.Add(lyr);
+                        //}
                     }
 
                     GL_MAIN.RemoveLayers(layers_to_delete);
 
                     int w = 0;
+
+                    // Add the Study Area Layer (MIGHT NOT EXIST YET)
+                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
+                    {
+                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
+                        Uri uri = new Uri(fc_path);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
+                        ApplyLegend_SA_Simple(featureLayer);
+                        featureLayer.SetVisibility(true);
+                    }
+
+                    // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
+                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
+                    {
+                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
+                        Uri uri = new Uri(fc_path);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
+                        ApplyLegend_SAB_Simple(featureLayer);
+                        featureLayer.SetVisibility(true);
+                    }
 
                     // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
                     var trypuexists = await PUExists();
@@ -5937,160 +6250,140 @@ namespace NCC.PRZTools
                         }
                     }
 
-                    // Add the Study Area Layer (MIGHT NOT EXIST YET)
-                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
-                    {
-                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
-                        Uri uri = new Uri(fc_path);
-                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
-                        ApplyLegend_SA_Simple(featureLayer);
-                        featureLayer.SetVisibility(true);
-                    }
-
-                    // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
-                    if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
-                    {
-                        string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
-                        Uri uri = new Uri(fc_path);
-                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
-                        ApplyLegend_SAB_Simple(featureLayer);
-                        featureLayer.SetVisibility(true);
-                    }
-
                     #endregion
 
-                    #region SELECTION RULE LAYERS
+                    //#region SELECTION RULE LAYERS
 
-                    // Selection Rules - Include Layers
-                    GroupLayer GL_SELRULES_INCLUDE = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
-                    {
-                        GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
-                    }
-                    else
-                    {
-                        GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
-                        GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
-                    }
+                    //// Selection Rules - Include Layers
+                    //GroupLayer GL_SELRULES_INCLUDE = null;
+                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
+                    //{
+                    //    GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
+                    //}
+                    //else
+                    //{
+                    //    GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
+                    //    GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
+                    //}
 
-                    GL_SELRULES_INCLUDE.SetVisibility(true);
+                    //GL_SELRULES_INCLUDE.SetVisibility(true);
 
-                    // Selection Rules - Exclude Layers
-                    GroupLayer GL_SELRULES_EXCLUDE = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
-                    {
-                        GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
-                    }
-                    else
-                    {
-                        GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
-                        GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
-                    }
+                    //// Selection Rules - Exclude Layers
+                    //GroupLayer GL_SELRULES_EXCLUDE = null;
+                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
+                    //{
+                    //    GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
+                    //}
+                    //else
+                    //{
+                    //    GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
+                    //    GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
+                    //}
 
-                    GL_SELRULES_EXCLUDE.SetVisibility(true);
+                    //GL_SELRULES_EXCLUDE.SetVisibility(true);
 
-                    // Remove all layers from GL_SELRULES that are not supposed to be there
-                    layers_to_delete = new List<Layer>();
+                    //// Remove all layers from GL_SELRULES that are not supposed to be there
+                    //layers_to_delete = new List<Layer>();
 
-                    all_layers = GL_SELRULES.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        if (lyr is GroupLayer)
-                        {
-                            if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
-                            {
-                                layers_to_delete.Add(lyr);
-                            }
-                        }
-                        else
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
-                    }
+                    //all_layers = GL_SELRULES.Layers;
+                    //foreach (var lyr in all_layers)
+                    //{
+                    //    if (lyr is GroupLayer)
+                    //    {
+                    //        if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
+                    //        {
+                    //            layers_to_delete.Add(lyr);
+                    //        }
+                    //    }
+                    //    else
+                    //    {
+                    //        layers_to_delete.Add(lyr);
+                    //    }
+                    //}
 
-                    GL_SELRULES.RemoveLayers(layers_to_delete);
+                    //GL_SELRULES.RemoveLayers(layers_to_delete);
 
-                    // Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
-                    layers_to_delete = new List<Layer>();
+                    //// Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
+                    //layers_to_delete = new List<Layer>();
 
-                    all_layers = GL_SELRULES_INCLUDE.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
-                        else
-                        {
-                            lyr.SetVisibility(true);
-                        }
-                    }
+                    //all_layers = GL_SELRULES_INCLUDE.Layers;
+                    //foreach (var lyr in all_layers)
+                    //{
+                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    //    {
+                    //        layers_to_delete.Add(lyr);
+                    //    }
+                    //    else
+                    //    {
+                    //        lyr.SetVisibility(true);
+                    //    }
+                    //}
 
-                    GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
+                    //GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
 
-                    // Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
-                    layers_to_delete = new List<Layer>();
+                    //// Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
+                    //layers_to_delete = new List<Layer>();
 
-                    all_layers = GL_SELRULES_EXCLUDE.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
-                        else
-                        {
-                            lyr.SetVisibility(true);
-                        }
-                    }
+                    //all_layers = GL_SELRULES_EXCLUDE.Layers;
+                    //foreach (var lyr in all_layers)
+                    //{
+                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    //    {
+                    //        layers_to_delete.Add(lyr);
+                    //    }
+                    //    else
+                    //    {
+                    //        lyr.SetVisibility(true);
+                    //    }
+                    //}
 
-                    GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
+                    //GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
 
-                    #endregion
+                    //#endregion
 
-                    #region COST LAYERS
+                    //#region COST LAYERS
 
-                    // Remove all layers from GL_COST that are not supposed to be there
-                    layers_to_delete = new List<Layer>();
+                    //// Remove all layers from GL_COST that are not supposed to be there
+                    //layers_to_delete = new List<Layer>();
 
-                    all_layers = GL_COST.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
-                        else
-                        {
-                            lyr.SetVisibility(true);
-                        }
-                    }
+                    //all_layers = GL_COST.Layers;
+                    //foreach (var lyr in all_layers)
+                    //{
+                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    //    {
+                    //        layers_to_delete.Add(lyr);
+                    //    }
+                    //    else
+                    //    {
+                    //        lyr.SetVisibility(true);
+                    //    }
+                    //}
 
-                    GL_COST.RemoveLayers(layers_to_delete);
+                    //GL_COST.RemoveLayers(layers_to_delete);
 
-                    #endregion
+                    //#endregion
 
-                    #region FEATURES LAYERS
+                    //#region FEATURES LAYERS
 
-                    // Remove all layers from GL_FEATURES that are not supposed to be there
-                    layers_to_delete = new List<Layer>();
+                    //// Remove all layers from GL_FEATURES that are not supposed to be there
+                    //layers_to_delete = new List<Layer>();
 
-                    all_layers = GL_FEATURES.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                        {
-                            layers_to_delete.Add(lyr);
-                        }
-                        else
-                        {
-                            lyr.SetVisibility(true);
-                        }
-                    }
+                    //all_layers = GL_FEATURES.Layers;
+                    //foreach (var lyr in all_layers)
+                    //{
+                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
+                    //    {
+                    //        layers_to_delete.Add(lyr);
+                    //    }
+                    //    else
+                    //    {
+                    //        lyr.SetVisibility(true);
+                    //    }
+                    //}
 
-                    GL_FEATURES.RemoveLayers(layers_to_delete);
+                    //GL_FEATURES.RemoveLayers(layers_to_delete);
 
-                    #endregion
+                    //#endregion
                 });
 
                 return (true, "success");
@@ -6581,7 +6874,7 @@ namespace NCC.PRZTools
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread | GPExecuteToolFlags.RefreshProjectItems;
                 string toolOutput;
 
                 // Max value for national themes

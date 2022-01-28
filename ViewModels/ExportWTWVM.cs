@@ -512,6 +512,17 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
+                // Build Boundary Lengths Table
+                var trybuild = await BuildBoundaryLengthsTable(token);
+                if (!trybuild.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error building the boundary lengths table\n{trybuild.message}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"error building the boundary lengths table.\n{trybuild.message}");
+                    return;
+                }
+
+                PRZH.CheckForCancellation(token);
+
                 #region DELETE OBJECTS
 
                 // Delete all existing files within export dir
@@ -1500,7 +1511,7 @@ namespace NCC.PRZTools
                             Color.DarkSeaGreen
                         };
 
-                        yamlLegend.SetCategoricalColors(colors);
+                        yamlLegend.SetContinuousColors(colors);
 
                         // Build the Yaml Variable
                         YamlVariable yamlVariable = new YamlVariable();
@@ -1537,7 +1548,7 @@ namespace NCC.PRZTools
                             Color.MediumPurple
                         };
 
-                        yamlLegend.SetCategoricalColors(colors);
+                        yamlLegend.SetContinuousColors(colors);
 
                         // Build the Yaml Variable
                         YamlVariable yamlVariable = new YamlVariable();
@@ -1863,7 +1874,7 @@ namespace NCC.PRZTools
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
                 // Filenames and Paths
@@ -1892,7 +1903,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Converting {PRZC.c_RAS_PLANNING_UNITS} raster dataset to polygon feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, PRZC.c_FC_TEMP_WTW_FC1, "NO_SIMPLIFY", "VALUE", "SINGLE_OUTER_PART", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("RasterToPolygon_conversion", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("RasterToPolygon_conversion", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing Raster To Polygon tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1909,7 +1920,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting {PRZC.c_FC_TEMP_WTW_FC1} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC1, PRZC.c_FC_TEMP_WTW_FC2, Export_SR, "", "", "NO_PRESERVE_SHAPE", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("Project_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("Project_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error projecting feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1926,7 +1937,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error repairing geometry.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1943,7 +1954,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, fldPUID_Temp, "KEEP_FIELDS");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1961,7 +1972,7 @@ namespace NCC.PRZTools
                 string expression = "!" + fldPUID_Temp + "!";
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, PRZC.c_FLD_FC_PU_ID, expression, "PYTHON3", "", "LONG", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("CalculateField_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CalculateField_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error Calculating {PRZC.c_FLD_FC_PU_ID} field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1978,7 +1989,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Export the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, export_shp_path);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error exporting the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -1995,7 +2006,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, new List<string>() { PRZC.c_FLD_FC_PU_ID }, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2012,7 +2023,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields (again)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2032,7 +2043,7 @@ namespace NCC.PRZTools
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC1);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_FC_TEMP_WTW_FC1} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2050,7 +2061,7 @@ namespace NCC.PRZTools
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_FC_TEMP_WTW_FC2} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2089,7 +2100,7 @@ namespace NCC.PRZTools
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags = GPExecuteToolFlags.RefreshProjectItems | GPExecuteToolFlags.GPThread | GPExecuteToolFlags.AddToHistory;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
                 string toolOutput;
 
                 // Filenames and Paths
@@ -2116,7 +2127,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Projecting {PRZC.c_FC_PLANNING_UNITS} feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FC_TEMP_WTW_FC2, Export_SR, "", "", "NO_PRESERVE_SHAPE", "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("Project_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("Project_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error projecting feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2133,7 +2144,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Repairing geometry..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("RepairGeometry_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error repairing geometry.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2150,7 +2161,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2167,7 +2178,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Export the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2, export_shp_path);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error exporting the {PRZC.c_FILE_WTW_EXPORT_SPATIAL} shapefile.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2184,7 +2195,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, new List<string>() { PRZC.c_FLD_FC_PU_ID }, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2201,7 +2212,7 @@ namespace NCC.PRZTools
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra fields (again)..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_FILE_WTW_EXPORT_SPATIAL, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: export_folder_path);
-                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2220,7 +2231,7 @@ namespace NCC.PRZTools
                 {
                     toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_TEMP_WTW_FC2);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_FC_TEMP_WTW_FC2} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2248,6 +2259,622 @@ namespace NCC.PRZTools
             }
         }
 
+        private async Task<(bool success, string message)> BuildBoundaryLengthsTable(CancellationToken token)
+        {
+            int val = PM.Current;
+            int max = PM.Max;
+
+            try
+            {
+                #region INITIALIZATION
+
+                // Initialize a few objects and names
+                string temp_table = "boundtemp";
+                string temp_fc = "polytemp";
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // GDBPath
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+
+                // Validate Existence/Type of Planning Unit Spatial Data, capture infos
+                var pu_result = await PRZH.PUExists();
+                string pu_path = "";            // path to data
+                SpatialReference PU_SR = null;  // PU spatial reference
+                double full_perim = 0;          // full perimeter of planning unit (for raster pu, this is a constant)
+
+                if (!pu_result.exists)
+                {
+                    throw new Exception("planning unit layer not found");
+                }
+                else if (pu_result.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                {
+                    throw new Exception("planning unit layer type unknown");
+                }
+                else if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    // Ensure data present
+                    if (!(await PRZH.FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
+                    {
+                        throw new Exception("planning unit feature class not found");
+                    }
+
+                    // Get path
+                    pu_path = PRZH.GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+
+                    // Get Spatial Reference
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class");
+                        }
+
+                        using (FeatureClass FC = tryget.featureclass)
+                        using (FeatureClassDefinition fcDef = FC.GetDefinition())
+                        {
+                            PU_SR = fcDef.GetSpatialReference();
+                        }
+                    });
+                }
+                else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                {
+                    // Ensure data present
+                    if (!(await PRZH.RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
+                    {
+                        throw new Exception("planning unit raster dataset not found");
+                    }
+
+                    // Get path
+                    pu_path = PRZH.GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
+
+                    // Get Spatial Reference & other stuff
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving planning unit raster dataset");
+                        }
+
+                        using (RasterDataset RD = tryget.rasterDataset)
+                        using (Raster raster = RD.CreateFullRaster())
+                        {
+                            PU_SR = raster.GetSpatialReference();
+                            var cell_size = raster.GetMeanCellSize();
+                            double side_length = Math.Round(cell_size.Item1, 2, MidpointRounding.AwayFromZero);
+                            full_perim = side_length * 4.0;
+                        }
+                    });
+                }
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region DELETE OBJECTS
+
+                // Delete the Boundary table if present
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_PUBOUNDARY} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_PUBOUNDARY);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_PUBOUNDARY} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_PUBOUNDARY} table.");
+                        return (false, "error deleting table.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Table deleted successfully."), true, ++val);
+                    }
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Delete the temp table if present
+                if ((await PRZH.TableExists_Project(temp_table)).exists)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {temp_table} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(temp_table);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {temp_table} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {temp_table} table.");
+                        return (false, "error deleting table.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Table deleted successfully."), true, ++val);
+                    }
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Delete the temp fc if present
+                if ((await PRZH.FCExists_Project(temp_fc)).exists)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {temp_fc} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(temp_fc);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {temp_fc} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {temp_fc} feature class.");
+                        return (false, "error deleting feature class.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature class deleted successfully."), true, ++val);
+                    }
+                }
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region GENERATE THE POLYGON NEIGHBOURS DATA
+
+                // For Raster PU, first convert Raster to Poly
+                if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                {
+                    // Raster to Poly tool
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Converting planning unit raster dataset to polygon feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(pu_path, temp_fc, "NO_SIMPLIFY", "VALUE", "SINGLE_OUTER_PART", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("RasterToPolygon_conversion", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing Raster To Polygon tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error executing Raster To Polygon tool.");
+                        return (false, "error converting raster to poly");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Conversion successful."), true, ++val);
+                    }
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Common values
+                string source_fc = "";
+                string source_field = "";
+                if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    source_fc = PRZC.c_FC_PLANNING_UNITS;   // the planning unit fc
+                    source_field = PRZC.c_FLD_FC_PU_ID;
+                }
+                else
+                {
+                    source_fc = temp_fc;                    // we just generated this from Raster to Polygon
+                    source_field = "gridcode";
+                }
+
+                // Generate boundary length data using the Polygon Neighbours tool
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Executing Polygon Neighbors geoprocessing tool..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(source_fc, temp_table, source_field, "NO_AREA_OVERLAP", "NO_BOTH_SIDES", "", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("PolygonNeighbors_analysis", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error executing the Polygon Neighbors geoprocessing tool.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error executing the Polygon Neighbors tool.");
+                    return (false, "error executing polygon neighbours tool.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully executed the Polygon Neighbors tool."), true, ++val);
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Delete point records from temp table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting point records from {temp_table} table..."), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = PRZH.GetGDB_Project();
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(temp_table))
+                    {
+                        geodatabase.ApplyEdits(() =>
+                        {
+                            table.DeleteRows(new QueryFilter { WhereClause = "LENGTH = 0" });
+                        });
+                    }
+                });
+
+                PRZH.CheckForCancellation(token);
+
+                // Index both id fields
+                string fldSource = "";
+                string fldNeighbour = "";
+
+                if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    fldSource = "src_" + PRZC.c_FLD_FC_PU_ID;
+                    fldNeighbour = "nbr_" + PRZC.c_FLD_FC_PU_ID;
+                }
+                else
+                {
+                    fldSource = "src_gridcode";
+                    fldNeighbour = "nbr_gridcode";
+                }
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Indexing both id fields..."), true, ++val);
+                List<string> index_fields = new List<string>() { fldSource, fldNeighbour };
+                toolParams = Geoprocessing.MakeValueArray(temp_table, index_fields, "ixTemp", "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error indexing fields.");
+                    return (false, "error indexing fields.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields indexed successfully."), true, ++val);
+                }
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region TABULATE PUIDS, PERIMETERS, AND SHARED EDGES
+
+                // Get Planning Unit IDs
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting Planning Unit IDs..."), true, ++val);
+                var outcome = await PRZH.GetPUIDHashset();
+                if (!outcome.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving Planning Unit IDs\n{outcome.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving Planning Unit IDs\n{outcome.message}");
+                    return (false, "error retrieving planning unit ids.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieved {outcome.puids.Count} Planning Unit IDs"), true, ++val);
+                }
+
+                HashSet<int> PUIDs = outcome.puids;
+
+                PRZH.CheckForCancellation(token);
+
+                // Get full perimeters of each planning unit
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting planning unit perimeters..."), true, ++val);
+                Dictionary<int, double> PUIDs_and_perimeters = new Dictionary<int, double>();        // Key = PUID     Value = perimeter (rounded to 2 decimal places)
+
+                if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                {
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        if (!tryget.success)
+                        {
+                            throw new Exception("Error retrieving feature class.");
+                        }
+
+                        using (FeatureClass featureClass = tryget.featureclass)
+                        using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                        {
+                            string length_field = fcDef.GetLengthField();
+
+                            QueryFilter queryFilter = new QueryFilter { SubFields = PRZC.c_FLD_FC_PU_ID + "," + length_field };
+
+                            using (RowCursor rowCursor = featureClass.Search(queryFilter))
+                            {
+                                while (rowCursor.MoveNext())
+                                {
+                                    using (Row row = rowCursor.Current)
+                                    {
+                                        int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                        double perim = Math.Round(Convert.ToDouble(row[length_field]), 2, MidpointRounding.AwayFromZero);
+
+                                        if (puid > 0)
+                                        {
+                                            PUIDs_and_perimeters.Add(puid, perim);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    // get perimeter of each raster cell (a constant)
+                    foreach (int id in PUIDs)
+                    {
+                        PUIDs_and_perimeters.Add(id, full_perim);
+                    }
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Dictionary populated: {PUIDs_and_perimeters.Count} entries."), true, ++val);
+
+                PRZH.CheckForCancellation(token);
+
+                // Get shared edges of each planning unit (from temp boundary table)
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Getting shared edges..."), true, ++val);
+                Dictionary<int, double> PUIDs_and_shared_edges = new Dictionary<int, double>();
+
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = PRZH.GetTable_Project(temp_table);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search())
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int src_puid = Convert.ToInt32(row[fldSource]);
+                                int nbr_puid = Convert.ToInt32(row[fldNeighbour]);
+                                double shared_perim = Math.Round(Convert.ToDouble(row["LENGTH"]), 2, MidpointRounding.AwayFromZero);
+
+                                // source
+                                if (PUIDs_and_shared_edges.ContainsKey(src_puid))
+                                {
+                                    PUIDs_and_shared_edges[src_puid] += shared_perim;
+                                }
+                                else
+                                {
+                                    PUIDs_and_shared_edges.Add(src_puid, shared_perim);
+                                }
+
+                                // neighbour
+                                if (PUIDs_and_shared_edges.ContainsKey(nbr_puid))
+                                {
+                                    PUIDs_and_shared_edges[nbr_puid] += shared_perim;
+                                }
+                                else
+                                {
+                                    PUIDs_and_shared_edges.Add(nbr_puid, shared_perim);
+                                }
+                            }
+                        }
+                    }
+                });
+
+                PRZH.CheckForCancellation(token);
+
+                // Get "Self-Intersecting" edge lengths by planning unit
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Self-Intersection Edge Lengths..."), true, max, val++);
+                Dictionary<int, double> PUIDs_and_self_intersecting_edges = new Dictionary<int, double>();
+                foreach (int puid in PUIDs)
+                {
+                    // Add puid
+                    PUIDs_and_self_intersecting_edges.Add(puid, 0);
+
+                    double total_length = 0;
+                    double shared_length = 0;
+
+                    // Get the perimeter (must have one or quit!)
+                    if (PUIDs_and_perimeters.ContainsKey(puid))
+                    {
+                        total_length = PUIDs_and_perimeters[puid];
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"PU ID {puid} not found in perimeter dictionary.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"PU ID {puid} not found in perimeter dictionary.");
+                        return (false, $"PU ID {puid} not found in perimeter dictionary.");
+                    }
+
+                    // Get the shared edge length (absence of KVP means shared length = 0)
+                    if (PUIDs_and_shared_edges.ContainsKey(puid))
+                    {
+                        shared_length = PUIDs_and_shared_edges[puid];
+                    }
+
+                    // Store the non-shared (the "self-intersecting") length for each puid
+                    PUIDs_and_self_intersecting_edges[puid] = total_length - shared_length;
+                }
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Self-Intersections calculated: {PUIDs_and_self_intersecting_edges.Count} entries."), true, max, val++);
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region BUILD AND FILL THE BOUNDARY TABLE
+
+                // Now create the new table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_TABLE_PUBOUNDARY} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_PUBOUNDARY, "", "", "Boundary Lengths");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_TABLE_PUBOUNDARY} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating the {PRZC.c_TABLE_PUBOUNDARY} table.");
+                    return (false, "error creating table.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Table created."), true, ++val);
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Add fields to the table
+                string fldPUID1 = PRZC.c_FLD_TAB_BOUND_ID1 + " LONG 'Planning Unit ID 1' # # #;";
+                string fldPUID2 = PRZC.c_FLD_TAB_BOUND_ID2 + " LONG 'Planning Unit ID 2' # # #;";
+                string fldBoundary = PRZC.c_FLD_TAB_BOUND_BOUNDARY + " DOUBLE 'Boundary Length' # # #;";
+
+                string flds = fldPUID1 + fldPUID2 + fldBoundary;
+
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to {PRZC.c_TABLE_PUBOUNDARY} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_PUBOUNDARY, flds);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to {PRZC.c_TABLE_PUBOUNDARY} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to {PRZC.c_TABLE_PUBOUNDARY} table");
+                    return (false, "error adding fields.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Successfully added fields."), true, ++val);
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Populate the boundary table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_PUBOUNDARY} table.."), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_gdb = PRZH.GetGDB_Project();
+
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_PUBOUNDARY))
+                    using (Table searchTable = geodatabase.OpenDataset<Table>(temp_table))
+                    using (RowBuffer rowBuffer = table.CreateRowBuffer())
+                    {
+                        geodatabase.ApplyEdits(() =>
+                        {
+                            QueryFilter queryFilter = new QueryFilter();
+
+                            foreach (int puid in PUIDs)
+                            {
+                                queryFilter.WhereClause = fldSource + " = " + puid.ToString();
+
+                                using (RowCursor searchCursor = searchTable.Search(queryFilter, false))
+                                {
+                                    while (searchCursor.MoveNext())
+                                    {
+                                        using (Row searchRow = searchCursor.Current)
+                                        {
+                                            int id1 = Convert.ToInt32(searchRow[fldSource]);
+                                            int id2 = Convert.ToInt32(searchRow[fldNeighbour]);
+                                            double edge = Convert.ToDouble(searchRow["LENGTH"]);
+
+                                            // Fill the row buffer
+                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = id1;
+                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = id2;
+                                            rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = edge;
+
+                                            // create new record
+                                            table.CreateRow(rowBuffer);
+                                        }
+                                    }
+                                }
+
+                                // Add one extra row for this puid if it has "self-intersecting" edge > 0
+                                double self_int_edge = PUIDs_and_self_intersecting_edges[puid];
+
+                                if (self_int_edge > 0)
+                                {
+                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_ID1] = puid;
+                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_ID2] = puid;
+                                    rowBuffer[PRZC.c_FLD_TAB_BOUND_BOUNDARY] = self_int_edge;
+
+                                    // create new record
+                                    table.CreateRow(rowBuffer);
+                                }
+                            }
+                        });
+                    }
+                });
+
+                // Index both id fields
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_TABLE_PUBOUNDARY} table id fields..."), true, ++val);
+                List<string> LIST_ix = new List<string>() { PRZC.c_FLD_TAB_BOUND_ID1, PRZC.c_FLD_TAB_BOUND_ID2 };
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_PUBOUNDARY, LIST_ix, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error indexing {PRZC.c_TABLE_PUBOUNDARY} table id fields.");
+                    return (false, "error indexing fields.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Fields indexed successfully."), true, ++val);
+                }
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region DELETE TEMP OBJECTS
+
+                // Delete temp table
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {temp_table} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(temp_table);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {temp_table} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error deleting {temp_table} table.");
+                    return (false, "error deleting table.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Table deleted."), true, ++val);
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // Delete temp feature class (if applicable)
+                if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {temp_fc} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(temp_fc);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {temp_fc} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting {temp_fc} feature class.");
+                        return (false, "error deleting feature class.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{temp_fc} feature class deleted."), true, ++val);
+                    }
+                }
+
+                return (true, "success");
+
+                #endregion
+            }
+            catch (OperationCanceledException cancelex)
+            {
+                throw cancelex;
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
         private async Task ValidateControls()
         {
             try
@@ -2256,9 +2883,6 @@ namespace NCC.PRZTools
                 // 1. Planning Unit Dataset
                 var try_exists = await PRZH.PUExists();
                 _pu_exists = try_exists.exists;
-
-                // 2. Boundary Lengths Table
-                _blt_exists = (await PRZH.TableExists_Project(PRZC.c_TABLE_PUBOUNDARY)).exists;
 
                 // Configure Labels:
                 // 1. Planning Unit Dataset Label
@@ -2279,16 +2903,6 @@ namespace NCC.PRZTools
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.  Build it.";
                 }
 
-                // 2. Boundary Lengths Table Label
-                if (_blt_exists)
-                {
-                    CompStat_Txt_BoundaryLengths_Label = "Boundary Lengths Table exists.";
-                }
-                else
-                {
-                    CompStat_Txt_BoundaryLengths_Label = "Boundary Lengths Table does not exist.  Build it.";
-                }
-
                 // Configure Images:
                 // 1. Planning Units
                 if (_pu_exists)
@@ -2298,16 +2912,6 @@ namespace NCC.PRZTools
                 else
                 {
                     CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
-                }
-
-                // 2. Boundary Lengths Table
-                if (_blt_exists)
-                {
-                    CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
-                    CompStat_Img_BoundaryLengths_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
             }
             catch (Exception ex)
@@ -2328,7 +2932,7 @@ namespace NCC.PRZTools
         private void ResetOpUI()
         {
             ProWindowCursor = Cursors.Arrow;
-            Operation_Cmd_IsEnabled = _pu_exists & _blt_exists;
+            Operation_Cmd_IsEnabled = _pu_exists; //_pu_exists & _blt_exists;
             OpStat_Img_Visibility = Visibility.Hidden;
             OpStat_Txt_Label = "Idle";
             _operationIsUnderway = false;

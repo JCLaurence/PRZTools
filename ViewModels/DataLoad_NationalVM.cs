@@ -1,4 +1,5 @@
 ﻿using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.DDL;
 using ArcGIS.Core.Data.Raster;
 using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core;
@@ -493,6 +494,32 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
+                // ALTER ALIAS NAME OF ELEMENT TABLE
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Altering table alias..."), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_projectgdb = PRZH.GetGDB_Project();
+
+                    if (!tryget_projectgdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_projectgdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_ELEMENTS))
+                    using (TableDefinition tblDef = table.GetDefinition())
+                    {
+                        // Get the Table Description
+                        TableDescription tblDescr = new TableDescription(tblDef);
+                        tblDescr.AliasName = "National Elements";
+
+                        // get the schemabuilder
+                        SchemaBuilder schemaBuilder = new SchemaBuilder(geodatabase);
+                        schemaBuilder.Modify(tblDescr);
+                        var success = schemaBuilder.Build();
+                    }
+                });
+
                 // INSERT EXTRA FIELDS INTO ELEMENT TABLE
                 string fldElemPresence = PRZC.c_FLD_TAB_NATELEMENT_PRESENCE + $" SHORT 'Presence' # {(int)ElementPresence.Absent} '" + PRZC.c_DOMAIN_PRESENCE + "';";
                 string flds = fldElemPresence;
@@ -533,6 +560,32 @@ namespace NCC.PRZTools
                 }
 
                 PRZH.CheckForCancellation(token);
+
+                // ALTER ALIAS NAME OF THEME TABLE
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Altering table alias..."), true, ++val);
+                await QueuedTask.Run(() =>
+                {
+                    var tryget_projectgdb = PRZH.GetGDB_Project();
+
+                    if (!tryget_projectgdb.success)
+                    {
+                        throw new Exception("Error opening project geodatabase.");
+                    }
+
+                    using (Geodatabase geodatabase = tryget_projectgdb.geodatabase)
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_THEMES))
+                    using (TableDefinition tblDef = table.GetDefinition())
+                    {
+                        // Get the Table Description
+                        TableDescription tblDescr = new TableDescription(tblDef);
+                        tblDescr.AliasName = "National Themes";
+
+                        // get the schemabuilder
+                        SchemaBuilder schemaBuilder = new SchemaBuilder(geodatabase);
+                        schemaBuilder.Modify(tblDescr);
+                        var success = schemaBuilder.Build();
+                    }
+                });
 
                 // INSERT EXTRA FIELDS INTO THEME TABLE
                 string fldThemePresence = PRZC.c_FLD_TAB_NATTHEME_PRESENCE + $" SHORT 'Presence' # {(int)ElementPresence.Absent} '" + PRZC.c_DOMAIN_PRESENCE + "';";

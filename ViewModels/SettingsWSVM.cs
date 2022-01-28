@@ -492,7 +492,7 @@ namespace NCC.PRZTools
                     return;
                 }
 
-                // Create the Regional Data Domains in the geodatabase if not already present
+                // Create the Regional Data Domains in the geodatabase
                 var trybuild = await PRZH.CreateRegionalDomains();
                 if (!trybuild.success)
                 {

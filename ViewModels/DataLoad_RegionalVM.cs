@@ -2354,18 +2354,22 @@ namespace NCC.PRZTools
             try
             {
 
-                var a = await PRZH.GetRegionalElements();
-
-                if (!a.success)
+                await QueuedTask.Run(() =>
                 {
-                    ProMsgBox.Show(a.message);
-                }
-                else
-                {
-                    var b = a.elements;
 
-                    ProMsgBox.Show(b.Count.ToString());
-                }
+                    var a = PRZH.GetFCNamesFromFDS_Project("reg_fc");
+
+                    if (!a.success)
+                    {
+                        ProMsgBox.Show("Fail");
+                    }
+                    else
+                    {
+                        ProMsgBox.Show($"FCs: {string.Join("\n", a.fc_names)}");
+                    }
+
+
+                });
 
             }
             catch (Exception ex)

@@ -240,6 +240,13 @@
 
         #endregion
 
+        #region FEATURE DATASETS
+
+        public const string c_FDS_NATIONAL_ELEMENTS = "fds_regional";
+        public const string c_FDS_REGIONAL_ELEMENTS = "fds_national";
+
+        #endregion
+
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "pu_ras";
         public const string c_RAS_PLANNING_UNITS_TEMP = "pu_ras_temp";

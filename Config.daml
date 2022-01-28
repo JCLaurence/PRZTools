@@ -1,10 +1,12 @@
 ﻿<ArcGIS defaultAssembly="PRZTools.dll" defaultNamespace="NCC.PRZTools" xmlns="http://schemas.esri.com/DADF/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
-  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.6" desktopVersion="2.9">
+  <AddInInfo id="{da31f65d-d421-4389-8904-1ebf0789e957}" version="1.7" desktopVersion="2.9">
     <Name>PRZ Tools</Name>
     <Description>NCC Prioritization Toolset
     - National GDB supports file and enterprise gdb
     - Legends functionality
     - Cancellation functionality
+    - Regional Data loading
+    - Merge boundary table build into wtw export
     </Description>
     <Image>Images\PRZTools32B.png</Image>
     <Author>JC Laurence</Author>
@@ -38,15 +40,13 @@
           <button refID="prz_button_rastertools" size="large" />
         </group>
         <!--ASSEMBLY GROUP-->
-        <group id="prz_group_assembly" caption="Project Assembly" keytip="z">
+        <group id="prz_group_assembly" caption="Project" keytip="z">
           <!--Planning Unit Generator Dialog Button-->
           <button refID="prz_button_planningunits" size="large" />
           <!--National Data Load Button-->
           <button refID="prz_button_dataload_national" size="large" />
           <!--Regional Data Load Button-->
           <button refID="prz_button_dataload_regional" size="large" />
-          <!--Planning Unit Boundary Lengths Generator Dialog Button-->
-          <button refID="prz_button_boundarylengths" size="large" />
         </group>
         <!--EXPORT GROUP-->
         <group id="prz_group_export" caption="Export" keytip="z">
@@ -54,7 +54,7 @@
           <button refID="prz_button_export_wtw" size="large" />
         </group>
         <!--DISPLAY GROUP-->
-        <group id="prz_group_display" caption="Display Options" keytip="z">
+        <group id="prz_group_display" caption="Display" keytip="z">
           <!--Load PRZ Layers Button-->
           <button refID="prz_button_loadprzlayers" size="large" />
           <!--Legends Menu-->
@@ -97,14 +97,6 @@
           <tooltip heading="Load Regional Data into this project">
             Load any applicable conservation elements into this project's planning units, from the regional database.
             <disabledText></disabledText></tooltip>
-        </button>
-        <!--Boundary Length Calculator Dialog Button-->
-        <button id="prz_button_boundarylengths" caption="Boundary Lengths" className="Button_BoundaryLengths" keytip="z" loadOnClick="true" smallImage="Images\BoundaryLengths16.png" largeImage="Images\BoundaryLengths32.png">
-          <tooltip heading="Boundary Length Table Generator">
-            Build a boundary lengths table from your planning units.
-            <disabledText>
-              Active Pane must be a Map
-            </disabledText></tooltip>
         </button>
         <!--EXPORT CONTROLS-->
         <!--Export to "Where to Work" Dialog Button-->
@@ -161,14 +153,14 @@
       </controls>
       <menus>
         <!--LEGEND MENU-->
-        <menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
+        <!--<menu id="prz_menu_legends" caption="Legends" smallImage="Images\Legend16.png" largeImage="Images\Legend32.png">
           <button refID="prz_button_legend_pu_basic" />
           <button refID="prz_button_legend_pu_selrules" />
           <button refID="prz_button_legend_pu_selruleconflicts" />
           <button refID="prz_button_legend_pu_cost" />
           <button refID="prz_button_legend_pu_cf_count" />
           <button refID="prz_button_legend_pu_boundary" />
-        </menu>
+        </menu>-->
       </menus>
     </insertModule>
   </modules>

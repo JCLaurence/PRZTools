@@ -125,7 +125,17 @@ namespace NCC.PRZTools
             for (int i = 0; i < named_colors.Count; i++)
             {
                 Color color = named_colors[i];
-                color_hexes.Add($"#{color.R:X2}{color.G:X2}{color.B:X2}");
+
+                if (color == Color.Transparent)
+                {
+                    color_hexes.Add("#00000000");
+                }
+                else
+                {
+                    color_hexes.Add($"#{color.R:X2}{color.G:X2}{color.B:X2}");
+                }
+
+                //color_hexes.Add($"#{color.R:X2}{color.G:X2}{color.B:X2}");
             }
 
             // update fields

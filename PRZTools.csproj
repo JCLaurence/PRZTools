@@ -204,14 +204,10 @@
     <Compile Include="Widgets\Button_Legend_PU_Basic.cs" />
     <Compile Include="Models\ProgressManager.cs" />
     <Compile Include="Models\SelectionRuleConflict.cs" />
-    <Compile Include="ViewModels\BoundaryLengthsVM.cs" />
     <Compile Include="ViewModels\FeaturesVM.cs" />
     <Compile Include="ViewModels\PlanningUnitsVM.cs" />
     <Compile Include="ViewModels\PUCostVM.cs" />
     <Compile Include="ViewModels\SelectionRulesVM.cs" />
-    <Compile Include="Views\BoundaryLengths.xaml.cs">
-      <DependentUpon>BoundaryLengths.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Views\Features.xaml.cs">
       <DependentUpon>Features.xaml</DependentUpon>
     </Compile>
@@ -222,7 +218,6 @@
       <DependentUpon>SelectionRules.xaml</DependentUpon>
     </Compile>
     <Compile Include="Widgets\Button_Features.cs" />
-    <Compile Include="Widgets\Button_BoundaryLengths.cs" />
     <Compile Include="Widgets\Button_SelectionRules.cs" />
     <Compile Include="Widgets\Button_PUCost.cs" />
     <Compile Include="Widgets\Button_RasterTools.cs" />
@@ -274,10 +269,6 @@
     <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Views\BoundaryLengths.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Views\DataLoad_National.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
