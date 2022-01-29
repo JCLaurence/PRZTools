@@ -92,5 +92,8 @@
     <Setting Name="REGIONAL_FOLDER_PATH" Type="System.String" Scope="User">
       <Value Profile="(Default)">C:\TEMP</Value>
     </Setting>
+    <Setting Name="COORDSYSPICKER_SROUT" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

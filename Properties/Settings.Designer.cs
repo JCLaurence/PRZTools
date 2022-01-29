@@ -382,5 +382,17 @@ namespace NCC.PRZTools.Properties {
                 this["REGIONAL_FOLDER_PATH"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string COORDSYSPICKER_SROUT {
+            get {
+                return ((string)(this["COORDSYSPICKER_SROUT"]));
+            }
+            set {
+                this["COORDSYSPICKER_SROUT"] = value;
+            }
+        }
     }
 }

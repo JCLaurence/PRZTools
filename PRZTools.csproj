@@ -150,6 +150,15 @@
     <AddInContent Include="Config.daml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CoordSys\CoordSysDialog.xaml.cs">
+      <DependentUpon>CoordSysDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="CoordSys\CoordSysDialogVM.cs" />
+    <Compile Include="CoordSys\CoordSysPickerVM.cs" />
+    <Compile Include="CoordSys\CoordSysPicker.xaml.cs">
+      <DependentUpon>CoordSysPicker.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="CoordSys\CoordSysConverters.cs" />
     <Compile Include="Daml.cs" />
     <Compile Include="GDBItemHelper.cs" />
     <Compile Include="Models\Bort.cs" />
@@ -269,6 +278,14 @@
     <AddInContent Include="Images\PRZTools32.png" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="CoordSys\CoordSysDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="CoordSys\CoordSysPicker.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\DataLoad_National.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

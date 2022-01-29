@@ -69,6 +69,23 @@
                             DockPanel.Dock="Left"
                             Margin="3"
                             Stretch="None"
+                            Source="{Binding CompStat_Img_ProjectGDB_Path}"/>
+
+                        <TextBlock
+                            DockPanel.Dock="Left"
+                            Margin="5"
+                            Style="{DynamicResource Esri_TextBlockRegular}"
+                            Text="{Binding CompStat_Txt_ProjectGDB_Label}" />
+
+                    </DockPanel>
+
+                    <DockPanel
+                        DockPanel.Dock="Top">
+
+                        <Image
+                            DockPanel.Dock="Left"
+                            Margin="3"
+                            Stretch="None"
                             Source="{Binding CompStat_Img_PlanningUnits_Path}"/>
 
                         <TextBlock
@@ -404,6 +421,7 @@
                 Grid.Row="3"
                 Margin="0,0,0,5"
                 BorderThickness="1.5"
+                Visibility="Collapsed"
                 BorderBrush="{DynamicResource Esri_BorderBrush}">
 
                 <DockPanel 
@@ -548,7 +566,7 @@
                             <Button
                                 DockPanel.Dock="Left"
                                 Command="{Binding CmdSelectSpatialReference}"
-                                IsEnabled="False">
+                                IsEnabled="True">
 
                                 <Image
                                     Margin="1" 

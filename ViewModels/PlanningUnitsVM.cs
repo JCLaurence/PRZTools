@@ -35,6 +35,7 @@ namespace NCC.PRZTools
         #region FIELDS
 
         private readonly Map _map = MapView.Active.Map;
+        private SpatialReference userSR = null;
 
         private CancellationTokenSource _cts = null;
         private ProgressManager _pm = ProgressManager.CreateProgressManager(50);
@@ -43,6 +44,7 @@ namespace NCC.PRZTools
         private Cursor _proWindowCursor;
 
         private bool _pu_exists = false;
+        private bool _gdb_exists = false;
 
         #region COMMANDS
 
@@ -54,6 +56,10 @@ namespace NCC.PRZTools
         #endregion
 
         #region COMPONENT STATUS INDICATORS
+
+        // Project GDB
+        private string _compStat_Img_ProjectGDB_Path;
+        private string _compStat_Txt_ProjectGDB_Label;
 
         // Planning Unit Dataset
         private string _compStat_Img_PlanningUnits_Path;
@@ -190,6 +196,19 @@ namespace NCC.PRZTools
         }
 
         #region COMPONENT STATUS INDICATORS
+
+        // Project Geodatabase
+        public string CompStat_Img_ProjectGDB_Path
+        {
+            get => _compStat_Img_ProjectGDB_Path;
+            set => SetProperty(ref _compStat_Img_ProjectGDB_Path, value, () => CompStat_Img_ProjectGDB_Path);
+        }
+
+        public string CompStat_Txt_ProjectGDB_Label
+        {
+            get => _compStat_Txt_ProjectGDB_Label;
+            set => SetProperty(ref _compStat_Txt_ProjectGDB_Label, value, () => CompStat_Txt_ProjectGDB_Label);
+        }
 
         // Planning Units Dataset
         public string CompStat_Img_PlanningUnits_Path
@@ -1303,8 +1322,8 @@ namespace NCC.PRZTools
                 // Declare some generic GP variables
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.GPThread | GPExecuteToolFlags.RefreshProjectItems;
                 GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.GPThread | GPExecuteToolFlags.RefreshProjectItems;
                 string toolOutput;
 
                 // Initialize ProgressBar and Progress Log
@@ -1325,39 +1344,12 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Project Geodatabase found at {gdbpath}."), true, ++val);
                 }
 
-                // Validation: Ensure the National db exists (if user has specified National Grid)
-                string natpath = PRZH.GetPath_NatGDB();
-                var tryexists_nat = await PRZH.GDBExists_Nat();
-                if (PUSource_Rad_NatGrid_IsChecked)
-                {
-                    if (!tryexists_nat.exists)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Valid National Geodatabase not found: {natpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show($"Valid National Geodatabase not found at {natpath}.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Geodatabase is OK: {natpath}"), true, ++val);
-                    }
-                }
-
                 // Validation: Output Spatial Reference
                 SpatialReference OutputSR = null;
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    var natsr = PRZH.GetSR_PRZCanadaAlbers();
-                    if (natsr == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Unable to retrieve PRZ Canada Albers projection.", LogMessageType.VALIDATION_ERROR), true, ++val);
-                        ProMsgBox.Show("Unable to retrieve PRZ Canada Albers projection.", "Validation");
-                        return;
-                    }
-                    else
-                    {
-                        OutputSR = natsr;
-                    }
+                    OutputSR = PRZH.GetSR_PRZCanadaAlbers();
                 }
                 else if (OutputSR_Rad_Map_IsChecked)
                 {
@@ -1369,9 +1361,16 @@ namespace NCC.PRZTools
                 }
                 else if (OutputSR_Rad_User_IsChecked)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog("User-specified Output spatial reference is not an option (yet).", LogMessageType.VALIDATION_ERROR), true, ++val);
-                    ProMsgBox.Show("User-specified Output spatial reference is not an option (yet).", "Validation");
-                    return;
+                    if (userSR != null && (userSR.IsProjected & userSR.Unit.FactoryCode == 9001))
+                    {
+                        OutputSR = userSR;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("User-specified Spatial Reference is missing or invalid.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                        ProMsgBox.Show("User-specified spatial reference is missing or invalid (must be projected with linear units = meters)");
+                        return;
+                    }
                 }
                 else
                 {
@@ -1712,45 +1711,26 @@ namespace NCC.PRZTools
                     var selElems = gl.GetSelectedElements().OfType<GraphicElement>();
                     int polyelems = 0;
 
-                    if (!await QueuedTask.Run(() =>
+                    await QueuedTask.Run(() =>
                     {
-                        try
-                        {
-                            PolygonBuilder polyBuilder = new PolygonBuilder(gl.GetSpatialReference());
+                        PolygonBuilder polyBuilder = new PolygonBuilder(gl.GetSpatialReference());
 
-                            foreach (var elem in selElems)
+                        foreach (var elem in selElems)
+                        {
+                            var g = elem.GetGraphic();
+                            if (g is CIMPolygonGraphic)
                             {
-                                var g = elem.GetGraphic();
-                                if (g is CIMPolygonGraphic)
-                                {
-                                    var p = g as CIMPolygonGraphic;
-                                    var s = p.Polygon.Clone() as Polygon;
+                                var p = g as CIMPolygonGraphic;
+                                var s = p.Polygon.Clone() as Polygon;
 
-                                    polyBuilder.AddParts(s.Parts);
-                                    polyelems++;
-                                }
+                                polyBuilder.AddParts(s.Parts);
+                                polyelems++;
                             }
-
-                            Polygon poly = polyBuilder.ToGeometry();
-                            SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
-
-                            return true;
                         }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving selected polygon graphic element.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error retrieving selected polygon graphic element.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study Area >> Retrieved {polyelems} selected polygon(s) from the {gl.Name} graphics layer."), true, ++val);
-                    }
+
+                        Polygon poly = polyBuilder.ToGeometry();
+                        SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
+                    });
                 }
                 else if (SASource_Rad_Layer_IsChecked)
                 {
@@ -1758,49 +1738,28 @@ namespace NCC.PRZTools
                     FeatureLayer fl = SASource_Cmb_Layer_SelectedFeatureLayer;
                     int selpol = 0;
 
-                    if (!await QueuedTask.Run(() =>
+                    await QueuedTask.Run(() =>
                     {
-                        try
-                        {
-                            PolygonBuilder polyBuilder = new PolygonBuilder(fl.GetSpatialReference());
+                        PolygonBuilder polyBuilder = new PolygonBuilder(fl.GetSpatialReference());
 
-                            using (Selection sel = fl.GetSelection())
+                        using (Selection selection = fl.GetSelection())
+                        using (RowCursor rowCursor = selection.Search(null, false))
+                        {
+                            while (rowCursor.MoveNext())
                             {
-                                using (RowCursor cur = sel.Search(null, false))
+                                using (Feature feat = (Feature)rowCursor.Current)
                                 {
-                                    while (cur.MoveNext())
-                                    {
-                                        using (Feature feat = (Feature)cur.Current)
-                                        {
-                                            // process feature
-                                            var s = feat.GetShape().Clone() as Polygon;
-                                            polyBuilder.AddParts(s.Parts);
-                                            selpol++;
-                                        }
-                                    }
+                                    // process feature
+                                    var s = feat.GetShape().Clone() as Polygon;
+                                    polyBuilder.AddParts(s.Parts);
+                                    selpol++;
                                 }
                             }
-
-                            Polygon poly = polyBuilder.ToGeometry();
-                            SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
-
-                            return true;
                         }
-                        catch (Exception ex)
-                        {
-                            ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                            return false;
-                        }
-                    }))
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving selected polygons.", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error retrieving selected polygons.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study Area >> Retrieved {selpol} selected polygon(s) from the {fl.Name} feature layer."), true, ++val);
-                    }
+
+                        Polygon poly = polyBuilder.ToGeometry();
+                        SA_poly = (Polygon)GeometryEngine.Instance.Project(poly, OutputSR);
+                    });
                 }
 
                 // Generate Buffered Polygons (buffer might be 0)
@@ -1818,7 +1777,10 @@ namespace NCC.PRZTools
                 // Build the new empty Main Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    outputCoordinateSystem: OutputSR,
+                    overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -1843,7 +1805,7 @@ namespace NCC.PRZTools
 
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Adding fields to study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(safcpath, SAflds);
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -1858,21 +1820,17 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
-                // Add the geometry
-                if (!await QueuedTask.Run(() =>
+                // Add the feature
+                await QueuedTask.Run(() =>
                 {
-                    try
-                    {
-                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_STUDY_AREA_MAIN);
-                        if (!tryget.success)
-                        {
-                            return false;
-                        }
+                    var tryget_gdb = PRZH.GetGDB_Project();
 
-                        using (FeatureClass fc = tryget.featureclass)
-                        using (FeatureClassDefinition fcDef = fc.GetDefinition())
-                        using (InsertCursor insertCursor = fc.CreateInsertCursor())
-                        using (RowBuffer rowBuffer = fc.CreateRowBuffer())
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (FeatureClass featureClass = geodatabase.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN))
+                    using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                    using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
+                    {
+                        geodatabase.ApplyEdits(() =>
                         {
                             // Field values
                             rowBuffer[fcDef.GetShapeField()] = SA_poly;
@@ -1881,28 +1839,11 @@ namespace NCC.PRZTools
                             rowBuffer[PRZC.c_FLD_FC_STUDYAREA_AREA_HA] = SA_poly.Area * PRZC.c_CONVERT_M2_TO_HA;
                             rowBuffer[PRZC.c_FLD_FC_STUDYAREA_AREA_KM2] = SA_poly.Area * PRZC.c_CONVERT_M2_TO_KM2;
 
-                            // Finally, insert the row
-                            insertCursor.Insert(rowBuffer);
-                            insertCursor.Flush();
-                        }
-
-                        return true;
+                            // Create the row
+                            featureClass.CreateRow(rowBuffer);
+                        });
                     }
-                    catch (Exception ex)
-                    {
-                        ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
-                        return false;
-                    }
-                }))
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the study area feature.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error creating the study area feature.");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study area feature created successfully."), true, ++val);
-                }
+                });
 
                 PRZH.CheckForCancellation(token);
 
@@ -1911,7 +1852,10 @@ namespace NCC.PRZTools
                 // Build the new empty Buffered Study Area FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating buffered study area feature class..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED, "POLYGON", "", "DISABLED", "DISABLED", OutputSR, "", "", "", "", "");
-                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, outputCoordinateSystem: OutputSR, overwriteoutput: true);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    outputCoordinateSystem: OutputSR,
+                    overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("CreateFeatureclass_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -1951,21 +1895,17 @@ namespace NCC.PRZTools
 
                 PRZH.CheckForCancellation(token);
 
-                // Add geometry
-                if (!await QueuedTask.Run(() =>
+                // Add the feature
+                await QueuedTask.Run(() =>
                 {
-                    try
-                    {
-                        var tryget = PRZH.GetFC_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED);
-                        if (!tryget.success)
-                        {
-                            return false;
-                        }
+                    var tryget_gdb = PRZH.GetGDB_Project();
 
-                        using (FeatureClass fc = tryget.featureclass)
-                        using (FeatureClassDefinition fcDef = fc.GetDefinition())
-                        using (InsertCursor insertCursor = fc.CreateInsertCursor())
-                        using (RowBuffer rowBuffer = fc.CreateRowBuffer())
+                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                    using (FeatureClass featureClass = geodatabase.OpenDataset<FeatureClass>(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED))
+                    using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                    using (RowBuffer rowBuffer = featureClass.CreateRowBuffer())
+                    {
+                        geodatabase.ApplyEdits(() =>
                         {
                             // Field values
                             rowBuffer[fcDef.GetShapeField()] = SA_poly_buffer;
@@ -1974,32 +1914,235 @@ namespace NCC.PRZTools
                             rowBuffer[PRZC.c_FLD_FC_STUDYAREA_AREA_HA] = SA_poly_buffer.Area * PRZC.c_CONVERT_M2_TO_HA;
                             rowBuffer[PRZC.c_FLD_FC_STUDYAREA_AREA_KM2] = SA_poly_buffer.Area * PRZC.c_CONVERT_M2_TO_KM2;
 
-                            // Finally, insert the row
-                            insertCursor.Insert(rowBuffer);
-                            insertCursor.Flush();
+                            // Create the row
+                            featureClass.CreateRow(rowBuffer);
+                        });
+                    }
+                });
+
+                #endregion
+
+                PRZH.CheckForCancellation(token);
+
+                #region CREATE PLANNING UNIT DATASETS
+
+                #region CREATE RASTER DATASET
+
+                // First create the Raster Dataset
+                bool isnat = false;
+                Envelope extent = null;
+                double cell_size = 0;
+                int columns = 0;
+                int rows = 0;
+
+                // Get Grid Information (extent, cell size, etc)
+                if (PUSource_Rad_NatGrid_IsChecked)
+                {
+                    // Get Extent
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving study area extent from national grid..."), true, ++val);
+                    var gridInfo = NationalGrid.GetNatGridBoundsFromStudyArea(SA_poly_buffer, dimension);
+                    if (!gridInfo.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve national grid extent.\n\nMessage: {gridInfo.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve national grid extent.\n\nMessage: {gridInfo.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"National grid extent retrieved."), true, ++val);
+                        extent = gridInfo.gridEnv;
+                        cell_size = natgrid_sidelength;
+                        columns = gridInfo.tilesAcross;
+                        rows = gridInfo.tilesUp;
+                        isnat = true;
+                    }
+                }
+                else if (PUSource_Rad_CustomGrid_IsChecked)
+                {
+                    // Get Extent
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving study area extent from custom grid..."), true, ++val);
+                    var gridInfo = GetCustomGridBoundsFromStudyArea(SA_poly_buffer, customgrid_tile_side_m);
+
+                    if (!gridInfo.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve Custom Grid extent envelope.\n{gridInfo.message}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Unable to retrieve Custom Grid extent envelope.\n{gridInfo.message}");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Custom Grid extent envelope retrieved."), true, ++val);
+                        extent = gridInfo.gridEnv;
+                        cell_size = customgrid_tile_side_m;
+                        columns = gridInfo.tilesAcross;
+                        rows = gridInfo.tilesUp;
+                    }
+                }
+
+                // Build Constant Raster
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Creating preliminary (constant-value) raster..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_1, 0, "INTEGER", cell_size, extent);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    outputCoordinateSystem: OutputSR,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateConstantRaster_sa", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating the {PRZC.c_RAS_TEMP_1} raster dataset.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_TEMP_1} raster dataset created successfully."), true, ++val);
+                }
+
+                // Change Bit Depth to allow large integer id values
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Copying to better bit depth..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_TEMP_1, PRZC.c_RAS_TEMP_2, "", "", "", "", "", "32_BIT_UNSIGNED");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    outputCoordinateSystem: OutputSR,
+                    cellSize: cell_size,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying the {PRZC.c_RAS_PLANNING_UNITS} raster dataset.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Raster dataset copied successfully."), true, ++val);
+                }
+
+                PRZH.CheckForCancellation(token);
+
+                // I'M HERE!!!
+
+                // Assign Planning Unit ID values
+                if (!await QueuedTask.Run(async () =>
+                {
+                    try
+                    {
+                        // Ensure the raster is present
+                        if (!(await PRZH.RasterExists_RTScratch(PRZC.c_RAS_TEMP_2)).exists)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
+                            ProMsgBox.Show($"Unable to find {PRZC.c_RAS_TEMP_2} raster dataset.");
+                            return false;
+                        }
+
+                        // try to get raster dataset
+                        var getras_outcome = PRZH.GetRaster_RTScratch(PRZC.c_RAS_TEMP_2);
+
+                        if (!getras_outcome.success)
+                        {
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve {PRZC.c_RAS_TEMP_2} raster dataset."), true, ++val);
+                            ProMsgBox.Show($"Unable to retrieve {PRZC.c_RAS_TEMP_2} raster dataset.");
+                            return false;
+                        }
+
+                        // Update cell values from zeros to cell numbers
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Applying national grid cell numbers..."), true, ++val);
+                        using (RasterDataset rasterDataset = getras_outcome.rasterDataset)
+                        {
+                            // Get the virtual Raster from Band 1 of the Raster Dataset
+                            Raster raster = rasterDataset.CreateFullRaster();
+
+                            // Get the row and column counts
+                            int rowcount = raster.GetHeight();
+                            int colcount = raster.GetWidth();
+
+                            // Raster cursor dimensions
+                            int block_height = 1000;
+                            int block_width = colcount;
+                            int block_count = rowcount / block_height;
+
+                            int block_counter = 0;
+
+                            uint cell_number = 1;   // unsigned integer!
+
+                            // Create a Raster Cursor to iterate over blocks of raster cells
+                            using (RasterCursor rasterCursor = raster.CreateCursor(block_width, block_height))
+                            {
+                                do
+                                {
+                                    // Cycle through each pixelblock
+                                    using (PixelBlock pixelBlock = rasterCursor.Current)
+                                    {
+                                        // Get Current Pixel Block dimensions
+                                        int pb_height = pixelBlock.GetHeight();
+                                        int pb_width = pixelBlock.GetWidth();
+
+                                        // Get Current Pixel Block Offsets
+                                        int UL_X = rasterCursor.GetTopLeft().Item1;
+                                        int UL_Y = rasterCursor.GetTopLeft().Item2;
+
+                                        // Get array of pixel block values
+                                        var pixel_array = pixelBlock.GetPixelData(0, true);
+
+                                        // Row loop
+                                        for (int r = 0; r < pb_height; r++)
+                                        {
+                                            // Pixel loop
+                                            for (int c = 0; c < pb_width; c++)
+                                            {
+                                                // set the values in the array
+                                                pixel_array.SetValue(cell_number, c, r);
+                                                cell_number++;
+                                            }
+                                        }
+
+                                        // update the pixel block with the adjusted array
+                                        pixelBlock.SetPixelData(0, pixel_array);
+
+                                        // write pixel block to raster
+                                        raster.Write(UL_X, UL_Y, pixelBlock);
+
+                                        block_counter++;
+                                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Pixel Block #{block_counter} written."), true, ++val);
+                                    }
+                                } while (rasterCursor.MoveNext());
+                            }
+
+                            // Save the raster
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Saving updated raster to {PRZC.c_RAS_NATGRID_CELLNUMS}."), true, max, ++val);
+                            raster.SaveAs(PRZC.c_RAS_NATGRID_CELLNUMS, rasterDataset.GetDatastore(), "GRID");
+                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"{PRZC.c_RAS_NATGRID_CELLNUMS} raster dataset saved successfully."), true, max, ++val);
                         }
 
                         return true;
                     }
                     catch (Exception ex)
                     {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"{ex.Message}", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
                         return false;
                     }
                 }))
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the study area buffer feature.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error creating the study area buffer feature.");
-                    return;
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error assigning cell numbers to pixels.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error assigning cell numbers to pixels.");
+                    return false;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Study area buffer feature created successfully."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Cell numbers assigned."), true, ++val);
                 }
+
 
                 #endregion
 
-                PRZH.CheckForCancellation(token);
+
+                #endregion
+
+
+
+
+
 
                 #region CREATE PLANNING UNITS
 
@@ -3376,7 +3519,67 @@ namespace NCC.PRZTools
         {
             try
             {
-                ProMsgBox.Show("This will eventually be the Coordinate Systems Picker dialog");
+                #region SHOW DIALOG
+
+                CoordSysDialog dlg = new CoordSysDialog();                    // View
+                CoordSysDialogVM vm = (CoordSysDialogVM)dlg.DataContext;      // View Model
+                
+
+                dlg.Owner = FrameworkApplication.Current.MainWindow;
+
+                // Closing event handler
+                dlg.Closing += (o, e) =>
+                {
+                    // Event handler for Dialog closing event
+
+                    //if (vm.OperationIsUnderway)
+                    //{
+                    //    ProMsgBox.Show("Operation is underway.  Please cancel the operation before closing this window.");
+                    //    e.Cancel = true;
+                    //}
+                };
+
+                // Closed Event Handler
+                dlg.Closed += (o, e) =>
+                {
+                    // Event Handler for Dialog close in case I need to do things...
+                    // ProMsgBox.Show("Closed...");
+                    // System.Diagnostics.Debug.WriteLine("Pro Window Dialog Closed";)
+
+                    
+                };
+
+                // Loaded Event Handler
+                dlg.Loaded += async (sender, e) =>
+                {
+                    //if (vm != null)
+                    //{
+                    //    await vm.OnProWinLoaded();
+                    //}
+                };
+
+                var result = dlg.ShowDialog();
+
+                if (vm.SelectedSpatialReference != null)
+                {
+                    OutputSR_Txt_User_SRName = vm.SelectedSpatialReference.Name;
+                    userSR = vm.SelectedSpatialReference;
+                }
+                else
+                {
+                    userSR = null;
+                }
+
+                // Take whatever action required here once the dialog is closed (true or false)
+                // do stuff here!
+
+                #endregion
+
+
+
+
+
+
             }
             catch (Exception ex)
             {
@@ -3656,22 +3859,24 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Establish Geodatabase Object Existence:
-                // 1. Planning Unit Dataset
-                var try_exists = await PRZH.PUExists();
-                _pu_exists = try_exists.exists;
+                // Establish Geodatabase existence
+                var tryex_gdb = await PRZH.GDBExists_Project();
+                _gdb_exists = tryex_gdb.exists;
 
-                // Configure Labels:
-                // 1. Planning Unit Dataset Label
-                if (!_pu_exists || try_exists.puLayerType == PlanningUnitLayerType.UNKNOWN)
+                // Establish Planning Unit Existence:
+                var tryex_pu = await PRZH.PUExists();
+                _pu_exists = tryex_pu.exists;
+
+                // Planning Unit Dataset Label
+                if (!_pu_exists || tryex_pu.puLayerType == PlanningUnitLayerType.UNKNOWN)
                 {
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.";
                 }
-                else if (try_exists.puLayerType == PlanningUnitLayerType.FEATURE)
+                else if (tryex_pu.puLayerType == PlanningUnitLayerType.FEATURE)
                 {
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Feature Class).";
                 }
-                else if (try_exists.puLayerType == PlanningUnitLayerType.RASTER)
+                else if (tryex_pu.puLayerType == PlanningUnitLayerType.RASTER)
                 {
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Raster Dataset).";
                 }
@@ -3680,8 +3885,27 @@ namespace NCC.PRZTools
                     CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.";
                 }
 
-                // Configure Images:
-                // 1. Planning Units
+                // Project GDB Label
+                if (_gdb_exists)
+                {
+                    CompStat_Txt_ProjectGDB_Label = "Project Geodatabase exists.";
+                }
+                else
+                {
+                    CompStat_Txt_ProjectGDB_Label = "Project Geodatabase DOES NOT EXIST.";
+                }
+
+                // Planning Units Icon
+                if (_gdb_exists)
+                {
+                    CompStat_Img_ProjectGDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
+                }
+                else
+                {
+                    CompStat_Img_ProjectGDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
+                }
+
+                // Planning Units Icon
                 if (_pu_exists)
                 {
                     CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
@@ -3709,7 +3933,7 @@ namespace NCC.PRZTools
         private void ResetOpUI()
         {
             ProWindowCursor = Cursors.Arrow;
-            Operation_Cmd_IsEnabled = true;
+            Operation_Cmd_IsEnabled = _gdb_exists;
             OpStat_Img_Visibility = Visibility.Hidden;
             OpStat_Txt_Label = "Idle";
             _operationIsUnderway = false;
