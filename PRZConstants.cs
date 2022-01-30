@@ -248,7 +248,7 @@
         #endregion
 
         // RASTER DATASETS
-        public const string c_RAS_PLANNING_UNITS = "pu_ras";
+        public const string c_RAS_PLANNING_UNITS = "planning_units_ras";
         public const string c_RAS_PLANNING_UNITS_TEMP = "pu_ras_temp";
         public const string c_RAS_PLANNING_UNITS_RECLASS = "pu_ras_reclass_";
         public const string c_RAS_TEMP_1 = "TempRas1";
@@ -267,7 +267,7 @@
 
 
         // FEATURE CLASSES
-        public const string c_FC_PLANNING_UNITS = "planning_units";
+        public const string c_FC_PLANNING_UNITS = "planning_units_fc";
         public const string c_FC_STUDY_AREA_MAIN = "study_area";
         public const string c_FC_STUDY_AREA_MAIN_BUFFERED = "study_area_buffered";
 
