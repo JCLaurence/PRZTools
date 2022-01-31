@@ -316,7 +316,7 @@ namespace NCC.PRZTools
 
                 #endregion
 
-                #region DELETE EXISTING TABLES
+                #region DELETE EXISTING GEODATABASE OBJECTS
 
                 // Delete the National Theme Table if present
                 if ((await PRZH.TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
@@ -392,6 +392,50 @@ namespace NCC.PRZTools
                     }
                 }
 
+                // Delete and rebuild National FDS
+
+                // Get the national SR
+                SpatialReference NatSR = PRZH.GetSR_PRZCanadaAlbers();
+
+                // delete...
+                var tryex_natfds = await PRZH.FDSExists_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
+                if (tryex_natfds.exists)
+                {
+                    // delete it
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FDS_NATIONAL_ELEMENTS} FDS..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FDS_NATIONAL_ELEMENTS);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_FDS_NATIONAL_ELEMENTS} FDS.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting {PRZC.c_FDS_NATIONAL_ELEMENTS} FDS.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"FDS deleted successfully."), true, ++val);
+                    }
+                }
+
+                // (re)build!
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_FDS_NATIONAL_ELEMENTS} feature dataset..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FDS_NATIONAL_ELEMENTS, NatSR);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating feature dataset.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature dataset created."), true, ++val);
+                }
+
                 #endregion
 
                 // Process the national tables
@@ -406,6 +450,19 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"National data loaded successfully."), true, ++val);
+                }
+
+                // Generate the National Element spatial datasets
+                var tryspat = await GenerateSpatialDatasets(token);
+                if (!tryspat.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error generating national spatial datasets.\n{tryspat.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error generating national spatial datasets.\n{tryspat.message}.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"National spatial datasets generated successfully."), true, ++val);
                 }
 
                 #region WRAP UP
@@ -426,10 +483,10 @@ namespace NCC.PRZTools
                 // Final message
                 stopwatch.Stop();
                 string message = PRZH.GetElapsedTimeMessage(stopwatch.Elapsed);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("Construction completed successfully!"), true, 1, 1);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("National Data Load completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
-                ProMsgBox.Show("Construction Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
+                ProMsgBox.Show("National Data Load Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
 
                 #endregion
             }
@@ -922,6 +979,30 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                // we're done here
+                return (true, "success");
+            }
+            catch (OperationCanceledException cancelex)
+            {
+                throw cancelex;
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        private async Task<(bool success, string message)> GenerateSpatialDatasets(CancellationToken token)
+        {
+            int val = PM.Current;
+            int max = PM.Max;
+
+            // I'm here!!!
+            // TODO: Ensure that the spatial reference of the National FDS and the PU datasets are identical
+
+            try
+            {
 
                 // we're done here
                 return (true, "success");

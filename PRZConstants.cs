@@ -183,6 +183,12 @@
 
         // GROUP LAYERS
         public const string c_GROUPLAYER_MAIN = "PRIORITIZATION TOOLS";
+        public const string c_GROUPLAYER_ELEMENTS_NAT = "National Elements";
+        public const string c_GROUPLAYER_ELEMENTS_REG = "Regional Elements";
+
+
+
+
         public const string c_GROUPLAYER_COST = "COST";
         public const string c_GROUPLAYER_SELRULES = "SELECTION RULES";
         public const string c_GROUPLAYER_SELRULES_INCLUDE = "INCLUDE";

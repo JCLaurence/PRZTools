@@ -6233,14 +6233,12 @@ namespace NCC.PRZTools
 
                     GL_MAIN.RemoveLayers(layers_to_delete);
 
-                    int w = 0;
-
                     // Add the Study Area Layer (MIGHT NOT EXIST)
                     if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
                     {
                         string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
                         Uri uri = new Uri(fc_path);
-                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, 0, PRZC.c_LAYER_STUDY_AREA);
                         ApplyLegend_SA_Simple(featureLayer);
                         featureLayer.SetVisibility(true);
                     }
@@ -6250,27 +6248,40 @@ namespace NCC.PRZTools
                     {
                         string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
                         Uri uri = new Uri(fc_path);
-                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_STUDY_AREA_BUFFER);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, 1, PRZC.c_LAYER_STUDY_AREA_BUFFER);
                         ApplyLegend_SAB_Simple(featureLayer);
                         featureLayer.SetVisibility(true);
                     }
 
-                    // Add the Planning Unit Feature Class (MIGHT NOT EXIST)
+                    // Add the Planning Unit Feature Class (FC MIGHT NOT EXIST)
                     if ((await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                     {
                         string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
                         Uri uri = new Uri(fc_path);
-                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS_FC);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, 2, PRZC.c_LAYER_PLANNING_UNITS_FC);
                         await ApplyLegend_PU_Basic(featureLayer);
                         featureLayer.SetVisibility(true);
                     }
-                    
-                    // Add the Planning Unit Raster (MIGHT NOT EXIST)
+
+                    // Add the National Elements Group Layer
+
+                    GroupLayer GL_NAT = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 3, PRZC.c_GROUPLAYER_ELEMENTS_NAT);
+                    GL_NAT.SetVisibility(false);
+                    GL_NAT.SetExpanded(false);
+
+
+                    // Add the Regional Elements Group Layer
+
+                    GroupLayer GL_REG = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 4, PRZC.c_GROUPLAYER_ELEMENTS_REG);
+                    GL_REG.SetVisibility(false);
+                    GL_REG.SetExpanded(false);
+
+                    // Add the Planning Unit Raster (RASTER DATASET MIGHT NOT EXIST)
                     if ((await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
                     {
                         string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
                         Uri uri = new Uri(ras_path);
-                        RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS_RAS);
+                        RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, 5, PRZC.c_LAYER_PLANNING_UNITS_RAS);
                         await ApplyLegend_PU_Basic(rasterLayer);
                         rasterLayer.SetVisibility(true);
                     }
@@ -6409,6 +6420,8 @@ namespace NCC.PRZTools
                     //GL_FEATURES.RemoveLayers(layers_to_delete);
 
                     //#endregion
+
+                    MapView.Active.Redraw(true);
                 });
 
                 return (true, "success");

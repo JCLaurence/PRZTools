@@ -568,27 +568,6 @@ namespace NCC.PRZTools
 
                 #region DELETE EXISTING GEODATABASE OBJECTS
 
-                // Delete the Regional Theme Table if present
-                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REG_THEMES)).exists)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_REG_THEMES} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REG_THEMES);
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_REG_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_REG_THEMES} table.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Table deleted successfully."), true, ++val);
-                    }
-                }
-
-                PRZH.CheckForCancellation(token);
-
                 // Delete the Regional Element table if present
                 if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
                 {
@@ -702,6 +681,47 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional pu reclass rasters deleted successfully."), true, ++val);
                     }
+                }
+
+                // Delete and rebuild Regional FDS
+
+                // delete...
+                var tryex_regfds = await PRZH.FDSExists_Project(PRZC.c_FDS_REGIONAL_ELEMENTS);
+                if (tryex_regfds.exists)
+                {
+                    // delete it
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FDS_REGIONAL_ELEMENTS} FDS..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FDS_REGIONAL_ELEMENTS);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting {PRZC.c_FDS_REGIONAL_ELEMENTS} FDS.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting {PRZC.c_FDS_REGIONAL_ELEMENTS} FDS.");
+                        return;
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"FDS deleted successfully."), true, ++val);
+                    }
+                }
+
+                // (re)build!
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_FDS_REGIONAL_ELEMENTS} feature dataset..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FDS_REGIONAL_ELEMENTS, pu_sr);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating feature dataset.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature dataset created."), true, ++val);
                 }
 
                 #endregion
@@ -828,6 +848,23 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error processing the regional {subdir} directory.\n{tryprocess.message}"), true, ++val);
                         return;
                     }
+                }
+
+                #endregion
+
+                #region GENERATE REGIONAL SPATIAL DATASETS
+
+                // Generate the Regional Element spatial datasets
+                var tryspat = await GenerateSpatialDatasets(token);
+                if (!tryspat.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error generating regional spatial datasets.\n{tryspat.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error generating regional spatial datasets.\n{tryspat.message}.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional spatial datasets generated successfully."), true, ++val);
                 }
 
                 #endregion
@@ -2249,6 +2286,27 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                return (true, "success");
+            }
+            catch (OperationCanceledException cancelex)
+            {
+                throw cancelex;
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        private async Task<(bool success, string message)> GenerateSpatialDatasets(CancellationToken token)
+        {
+            int val = PM.Current;
+            int max = PM.Max;
+
+            try
+            {
+
+                // we're done here
                 return (true, "success");
             }
             catch (OperationCanceledException cancelex)
