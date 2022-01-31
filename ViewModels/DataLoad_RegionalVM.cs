@@ -2353,24 +2353,23 @@ namespace NCC.PRZTools
         {
             try
             {
-
                 await QueuedTask.Run(() =>
                 {
+                    var tryget_ras = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
 
-                    var a = PRZH.GetFCNamesFromFDS_Project("reg_fc");
-
-                    if (!a.success)
+                    using (RasterDataset rasterDataset = tryget_ras.rasterDataset)
+                    using (Raster raster = rasterDataset.CreateFullRaster())
                     {
-                        ProMsgBox.Show("Fail");
-                    }
-                    else
-                    {
-                        ProMsgBox.Show($"FCs: {string.Join("\n", a.fc_names)}");
-                    }
+                        var min = raster.GetBandKeyProperty(0, "MINIMUM");
+                        var max = raster.GetBandKeyProperty(0, "MAXIMUM");
 
+                        var dblMin = Convert.ToDouble(min);
+                        var dblMax = Convert.ToDouble(max);
+
+                        ProMsgBox.Show($"Min: {dblMin}   Max: {dblMax}");
+                    }
 
                 });
-
             }
             catch (Exception ex)
             {

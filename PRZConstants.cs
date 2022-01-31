@@ -195,9 +195,12 @@
         public const string c_GROUPLAYER_REG_EXCLUDES = "REG_EXCLUDES";
 
         // FEATURE LAYERS
-        public const string c_LAYER_PLANNING_UNITS = "Planning Units";
+        public const string c_LAYER_PLANNING_UNITS_FC = "Planning Units (feature)";
         public const string c_LAYER_STUDY_AREA = "Study Area";
         public const string c_LAYER_STUDY_AREA_BUFFER = "Study Area Buffer";
+
+        // RASTER LAYERS
+        public const string c_LAYER_PLANNING_UNITS_RAS = "Planning Units (raster)";
 
         #endregion
 

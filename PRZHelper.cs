@@ -1181,6 +1181,33 @@ namespace NCC.PRZTools
         #region MISCELLANEOUS
 
         /// <summary>
+        /// Establish the existence of the Planning Units FC and Raster Datasets.
+        /// Both must exist for this function to return true.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool exists, string message)> PUDatasetsExist()
+        {
+            try
+            {
+                bool fc_exists = (await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists;
+                bool ras_exists = (await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists;
+
+                if (fc_exists & ras_exists)
+                {
+                    return (true, "success");
+                }
+                else
+                {
+                    return (false, "unable to find both planning unit datasets");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        /// <summary>
         /// Establish the existence of the Planning Unit dataset (feature class or raster dataset)
         /// in the project file geodatabase.  Silent errors.
         /// </summary>
@@ -5061,7 +5088,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is FeatureLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS_FC && (l is FeatureLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -5139,7 +5166,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is RasterLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS_FC && (l is RasterLayer)).ToList();
 
                 return LIST_layers.Count > 0;
             }
@@ -5377,7 +5404,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is FeatureLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS_FC && (l is FeatureLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -5464,7 +5491,7 @@ namespace NCC.PRZTools
                 }
 
                 GroupLayer GL = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS && (l is RasterLayer)).ToList();
+                List<Layer> LIST_layers = GL.Layers.Where(l => l.Name == PRZC.c_LAYER_PLANNING_UNITS_FC && (l is RasterLayer)).ToList();
 
                 if (LIST_layers.Count == 0)
                 {
@@ -6208,7 +6235,7 @@ namespace NCC.PRZTools
 
                     int w = 0;
 
-                    // Add the Study Area Layer (MIGHT NOT EXIST YET)
+                    // Add the Study Area Layer (MIGHT NOT EXIST)
                     if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
                     {
                         string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN).path;
@@ -6218,7 +6245,7 @@ namespace NCC.PRZTools
                         featureLayer.SetVisibility(true);
                     }
 
-                    // Add the Study Area Buffer Layer (MIGHT NOT EXIST YET)
+                    // Add the Study Area Buffer Layer (MIGHT NOT EXIST)
                     if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED)).exists)
                     {
                         string fc_path = GetPath_Project(PRZC.c_FC_STUDY_AREA_MAIN_BUFFERED).path;
@@ -6228,26 +6255,24 @@ namespace NCC.PRZTools
                         featureLayer.SetVisibility(true);
                     }
 
-                    // Add the Planning Unit Layer (could be VECTOR or RASTER) (MIGHT NOT EXIST YET)
-                    var trypuexists = await PUExists();
-                    if (trypuexists.exists)
+                    // Add the Planning Unit Feature Class (MIGHT NOT EXIST)
+                    if ((await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
                     {
-                        if (trypuexists.puLayerType == PlanningUnitLayerType.FEATURE)
-                        {
-                            string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
-                            Uri uri = new Uri(fc_path);
-                            FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
-                            await ApplyLegend_PU_Basic(featureLayer);
-                            featureLayer.SetVisibility(true);
-                        }
-                        else if (trypuexists.puLayerType == PlanningUnitLayerType.RASTER)
-                        {
-                            string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
-                            Uri uri = new Uri(ras_path);
-                            RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS);
-                            // TODO: Renderer for this raster layer
-                            rasterLayer.SetVisibility(true);
-                        }
+                        string fc_path = GetPath_Project(PRZC.c_FC_PLANNING_UNITS).path;
+                        Uri uri = new Uri(fc_path);
+                        FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS_FC);
+                        await ApplyLegend_PU_Basic(featureLayer);
+                        featureLayer.SetVisibility(true);
+                    }
+                    
+                    // Add the Planning Unit Raster (MIGHT NOT EXIST)
+                    if ((await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
+                    {
+                        string ras_path = GetPath_Project(PRZC.c_RAS_PLANNING_UNITS).path;
+                        Uri uri = new Uri(ras_path);
+                        RasterLayer rasterLayer = (RasterLayer)LayerFactory.Instance.CreateRasterLayer(uri, GL_MAIN, w++, PRZC.c_LAYER_PLANNING_UNITS_RAS);
+                        await ApplyLegend_PU_Basic(rasterLayer);
+                        rasterLayer.SetVisibility(true);
                     }
 
                     #endregion
@@ -7267,7 +7292,7 @@ namespace NCC.PRZTools
 
         #region RENDERERS
 
-        public static async Task<bool> ApplyLegend_PU_Basic(FeatureLayer FL)
+        public static async Task<bool> ApplyLegend_PU_Basic(FeatureLayer featureLayer)
         {
             try
             {
@@ -7287,12 +7312,65 @@ namespace NCC.PRZTools
                         SymbolTemplate = fillSym.MakeSymbolReference()
                     };
 
-                    CIMSimpleRenderer rend = (CIMSimpleRenderer)FL.CreateRenderer(rendDef);
+                    CIMSimpleRenderer rend = (CIMSimpleRenderer)featureLayer.CreateRenderer(rendDef);
                     rend.Patch = PatchShape.AreaSquare;
-                    FL.SetRenderer(rend);
+                    featureLayer.SetRenderer(rend);
                 });
 
                 MapView.Active.Redraw(false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
+
+        public static async Task<bool> ApplyLegend_PU_Basic(RasterLayer rasterLayer)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    // Color #1
+                    var ramp1 = new CIMPolarContinuousColorRamp();
+                    ramp1.FromColor = GetNamedColor(Color.LightGreen);
+                    ramp1.ToColor = GetNamedColor(Color.MediumSeaGreen);
+                    ramp1.PolarDirection = PolarDirection.Clockwise;
+
+                    //// Color #2
+                    //var ramp2 = new CIMLinearContinuousColorRamp();
+                    //ramp2.FromColor = GetNamedColor(Color.Yellow);
+                    //ramp2.ToColor = GetNamedColor(Color.YellowGreen);
+
+                    //// Color #3
+                    //var ramp3 = new CIMLinearContinuousColorRamp();
+                    //ramp3.FromColor = GetNamedColor(Color.YellowGreen);
+                    //ramp3.ToColor = GetNamedColor(Color.Green);
+
+                    //// Create multipart color ramp
+                    //var multiPartRamp = new CIMMultipartColorRamp
+                    //{
+                    //    Weights = new double[3] { 1, 1, 1 },
+                    //    ColorRamps = new CIMLinearContinuousColorRamp[3] { ramp1, ramp2, ramp3 }
+                    //};
+
+                    // Create the colorizer definition
+                    var colDef = new StretchColorizerDefinition(0, RasterStretchType.StandardDeviations, 1, ramp1)
+                    {
+                        StandardDeviationsParam = 3
+                    };
+
+                    // Create the colorizer
+                    var colorizer = (CIMRasterStretchColorizer)rasterLayer.CreateColorizer(colDef);
+
+                    // Apply the colorizer
+                    rasterLayer.SetColorizer(colorizer);
+                });
+
+                MapView.Active.Redraw(true);
 
                 return true;
             }
