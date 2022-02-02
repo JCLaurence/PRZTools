@@ -6467,17 +6467,30 @@ namespace NCC.PRZTools
         #region SPATIAL REFERENCES
 
         /// <summary>
-        /// Retrieve the custom prioritization Canada Albers projection.
+        /// Retrieves the NCC Prioritization Tools' specific Albers Equal Area projection.
+        /// Silent errors.
         /// </summary>
         /// <returns></returns>
-        public static SpatialReference GetSR_PRZCanadaAlbers()
+        public static async Task<SpatialReference> GetSR_PRZCanadaAlbers()
         {
             try
             {
-                string wkt = PRZC.c_SR_WKT_WGS84_CanadaAlbers;  // Special PRZ WGS84 Canada Albers projection
-                SpatialReference sr = SpatialReferenceBuilder.CreateSpatialReference(wkt);
+                SpatialReference spatialReference = null;
 
-                return sr;  // this might be null if WKT is no good.  Or, the CreateSpatialReference method might throw an error.
+                await QueuedTask.Run(() =>
+                {
+                    string wkt = PRZC.c_SR_WKT_WGS84_CanadaAlbers;  // Special PRZ WGS84 Canada Albers projection
+
+                    using (SpatialReferenceBuilder builder = new SpatialReferenceBuilder(wkt))
+                    {
+                        builder.SetDefaultXYResolution();
+                        builder.SetDefaultXYTolerance();
+
+                        spatialReference = builder.ToSpatialReference();
+                    }
+                });
+
+                return spatialReference;
             }
             catch (Exception ex)
             {
@@ -6488,36 +6501,57 @@ namespace NCC.PRZTools
 
         /// <summary>
         /// Establishes whether a specified spatial reference is equivalent to the custom
-        /// prioritization Canada Albers projection.  The comparison ignores the PCS and GCS
-        /// names since they are user-defined and might differ.  Silent errors.
+        /// prioritization Canada Albers projection.  The comparison ignores the PCS
+        /// name since it is user-defined and might differ. XY Tolerances and XY Resolutions
+        /// are not compared.  Silent errors.
         /// </summary>
-        /// <param name="TestSR"></param>
+        /// <param name="spatialReference"></param>
         /// <returns></returns>
-        public static (bool match, string message) SpatialReferenceIsPRZCanadaAlbers(SpatialReference TestSR)
+        public static async Task<(bool match, string message)> SpatialReferenceIsPRZCanadaAlbers(SpatialReference spatialReference)
         {
             try
             {
-                if (TestSR == null)
+                // Validate test sr
+                if (spatialReference == null)
                 {
-                    return (false, "Spatial Reference is null");
+                    throw new Exception("Test Spatial Reference is null");
                 }
-                else if (TestSR.IsUnknown)
+                else if (spatialReference.IsUnknown)
                 {
-                    return (false, "Spatial Reference is null");
+                    throw new Exception("Test Spatial Reference is Unknown");
                 }
-
-                SpatialReference AlbersSR = GetSR_PRZCanadaAlbers();
-
-                if (AlbersSR == null)
+                else if (spatialReference.IsGeographic)
                 {
-                    return (false, "Unable to retrieve PRZ Albers projection");
+                    throw new Exception("Test Spatial Reference is Geographic");
                 }
 
-                // Get the WKT, eliminate the names + GCS names to eliminate name differences where otherwise equal
-                string TestSR_WKT = TestSR.Wkt.Replace(TestSR.Name, "").Replace(TestSR.Gcs.Name, "");
-                string AlbersSR_WKT = AlbersSR.Wkt.Replace(AlbersSR.Name, "").Replace(AlbersSR.Gcs.Name, "");
+                // Get Nat SR
+                SpatialReference NatSR = await GetSR_PRZCanadaAlbers();
 
-                bool result = string.Equals(AlbersSR_WKT, TestSR_WKT, StringComparison.OrdinalIgnoreCase);
+                // Retrieve WKT for both SRs
+                string wkt_test = spatialReference.Wkt;
+                string wkt_nat = NatSR.Wkt;
+
+                ProMsgBox.Show($"Test\n{wkt_test}\n\nNat\n{wkt_nat}");
+
+                // Get PCS name for both SRs
+                string pcs_name_test = spatialReference.Name;
+                string pcs_name_nat = NatSR.Name;
+
+                // Get swap strings for both
+                string swap_test = @"PROJCS[""" + pcs_name_test;
+                string swap_nat = @"PROJCS[""" + pcs_name_nat;
+
+                ProMsgBox.Show($"{swap_test}\n{swap_nat}");
+
+                // Swap out swap strings
+                string swapped_test = wkt_test.Replace(swap_test, @"PROJCS[""");
+                string swapped_nat = wkt_nat.Replace(swap_nat, @"PROJCS[""");
+
+                ProMsgBox.Show($"Test\n{swapped_test}\n\nNat\n{swapped_nat}");
+
+                // Compare swapped WKTs
+                bool result = string.Equals(swapped_test, swapped_nat, StringComparison.OrdinalIgnoreCase);
 
                 return result ? (true, "Spatial References are equivalent") : (false, "Spatial References are not equivalent");
             }

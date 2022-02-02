@@ -44,11 +44,6 @@ namespace NCC.PRZTools
     /// </summary>
     public static class NationalGrid
     {
-        static NationalGrid()
-        {
-            CANADA_ALBERS_SR = PRZH.GetSR_PRZCanadaAlbers();
-        }
-
         #region CONSTANTS
 
         public const int c_NATGRID_ENV_XMIN = -2500000;    // Minimum X for National Grid's extent
@@ -69,12 +64,6 @@ namespace NCC.PRZTools
         public const int c_NATGRID_COLUMNS_DIM3 = 5700;
         public const int c_NATGRID_COLUMNS_DIM4 = 0;
         public const int c_NATGRID_COLUMNS_DIM5 = 0;
-
-        #endregion
-
-        #region STATIC PROPERTIES
-
-        public static SpatialReference CANADA_ALBERS_SR { get; private set; }
 
         #endregion
 
@@ -192,13 +181,15 @@ namespace NCC.PRZTools
             }
         }
 
-        public static Envelope GetNatGridEnvelope()
+        public static async Task<Envelope> GetNatGridEnvelope()
         {
             try
             {
-                // Retrieve National Grid Spatial Reference
-                EnvelopeBuilderEx builderEx = new EnvelopeBuilderEx(c_NATGRID_ENV_XMIN, c_NATGRID_ENV_YMIN, c_NATGRID_ENV_XMAX, c_NATGRID_ENV_YMAX, CANADA_ALBERS_SR);
-                return (Envelope)builderEx.ToGeometry();
+                // Get National SR
+                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
+
+                // Construct Envelope
+                return EnvelopeBuilderEx.CreateEnvelope(c_NATGRID_ENV_XMIN, c_NATGRID_ENV_YMIN, c_NATGRID_ENV_XMAX, c_NATGRID_ENV_YMAX, NatSR);
             }
             catch (Exception ex)
             {
@@ -207,10 +198,13 @@ namespace NCC.PRZTools
             }
         }
 
-        public static (bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp) GetNatGridBoundsFromStudyArea(Geometry geom, NationalGridDimension dimension)
+        public async static Task<(bool success, Envelope gridEnv, string message, int tilesAcross, int tilesUp)> GetNatGridBoundsFromStudyArea(Geometry geom, NationalGridDimension dimension)
         {
             try
             {
+                // Get the National SR
+                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
+
                 #region VALIDATION
 
                 // Ensure that geometry is not null or empty
@@ -234,13 +228,13 @@ namespace NCC.PRZTools
                 // Project the geometry if required
                 SpatialReference geomSR = geom.SpatialReference;
 
-                if (!SpatialReference.AreEqual(CANADA_ALBERS_SR, geomSR))
+                if (!SpatialReference.AreEqual(NatSR, geomSR))
                 {
-                    geom = GeometryEngine.Instance.Project(geom, CANADA_ALBERS_SR);
+                    geom = GeometryEngine.Instance.Project(geom, NatSR);
                 }
 
                 // Get the National Grid Envelope
-                Envelope gridEnv = GetNatGridEnvelope();
+                Envelope gridEnv = await GetNatGridEnvelope();
 
                 // Get the geometry Envelope
                 Envelope geomEnv = geom.Extent;
@@ -278,7 +272,7 @@ namespace NCC.PRZTools
                 int YMAX_NEW = (YMAX < geomEnv.YMax) ? YMAX + side_length : YMAX;
 
                 // Generate the new envelope
-                Envelope outputEnv = EnvelopeBuilderEx.CreateEnvelope(XMIN_NEW, YMIN_NEW, XMAX_NEW, YMAX_NEW, CANADA_ALBERS_SR);
+                Envelope outputEnv = EnvelopeBuilderEx.CreateEnvelope(XMIN_NEW, YMIN_NEW, XMAX_NEW, YMAX_NEW, NatSR);
 
                 if (outputEnv == null || outputEnv.IsEmpty)
                 {

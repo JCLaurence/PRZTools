@@ -251,8 +251,8 @@
 
         #region FEATURE DATASETS
 
-        public const string c_FDS_NATIONAL_ELEMENTS = "fds_regional";
-        public const string c_FDS_REGIONAL_ELEMENTS = "fds_national";
+        public const string c_FDS_NATIONAL_ELEMENTS = "fds_national";
+        public const string c_FDS_REGIONAL_ELEMENTS = "fds_regional";
 
         #endregion
 

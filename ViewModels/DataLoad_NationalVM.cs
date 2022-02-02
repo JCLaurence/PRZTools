@@ -8,6 +8,7 @@ using ArcGIS.Desktop.Editing;
 using ArcGIS.Desktop.Framework;
 using ArcGIS.Desktop.Framework.Contracts;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
+using ArcGIS.Desktop.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -41,6 +42,8 @@ namespace NCC.PRZTools
         private bool _pu_isnat = false;
         private bool _natdb_exists = false;
         private bool _blt_exists = false;
+
+        private Map _map;
 
         #region COMMANDS
 
@@ -191,6 +194,9 @@ namespace NCC.PRZTools
         {
             try
             {
+                // get reference to the active map
+                _map = MapView.Active.Map;
+
                 // Initialize the Progress Bar & Log
                 PRZH.UpdateProgress(PM, "", false, 0, 1, 0);
 
@@ -371,7 +377,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tryget_tables.tables.Count} national element tables found.", LogMessageType.ERROR), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tryget_tables.tables.Count} national element tables found."), true, ++val);
                 }
 
                 if (tryget_tables.tables.Count > 0)
@@ -395,7 +401,7 @@ namespace NCC.PRZTools
                 // Delete and rebuild National FDS
 
                 // Get the national SR
-                SpatialReference NatSR = PRZH.GetSR_PRZCanadaAlbers();
+                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
 
                 // delete...
                 var tryex_natfds = await PRZH.FDSExists_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
@@ -438,6 +444,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                #region NATIONAL TABLES AND NATIONAL FEATURE CLASSES
+
                 // Process the national tables
                 var trynatdb = await ProcessNationalDbTables(tryexists_pu.puLayerType, token);
 
@@ -465,6 +473,8 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"National spatial datasets generated successfully."), true, ++val);
                 }
 
+                #endregion
+
                 #region WRAP UP
 
                 // Compact the Geodatabase
@@ -479,6 +489,14 @@ namespace NCC.PRZTools
                 }
 
                 PRZH.CheckForCancellation(token);
+
+                // Refresh the Map & TOC
+                if (!(await PRZH.RedrawPRZLayers(_map)).success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error redrawing the PRZ layers.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error redrawing the PRZ layers.");
+                    return;
+                }
 
                 // Final message
                 stopwatch.Stop();
@@ -998,11 +1016,319 @@ namespace NCC.PRZTools
             int val = PM.Current;
             int max = PM.Max;
 
-            // I'm here!!!
-            // TODO: Ensure that the spatial reference of the National FDS and the PU datasets are identical
-
             try
             {
+                #region GET NATIONAL ELEMENT INFOS
+
+                // Get list of Planning Unit IDs from the current planning unit dataset
+                var tryget_puid = await PRZH.GetPUIDHashset();
+                if (!tryget_puid.success)
+                {
+                    throw new Exception("Unable to retrieve planning unit ids");
+                }
+
+                var PUIDs = tryget_puid.puids;
+
+                // Get list of national element tables (e.g. n00010)
+                var tryget_LIST_elemtables_nat = await PRZH.GetNationalElementTables();
+                if (!tryget_LIST_elemtables_nat.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of national element tables.\n{tryget_LIST_elemtables_nat.message}", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving list of national element tables.\n{tryget_LIST_elemtables_nat.message}");
+                    return (false, "error retrieving nat table list.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Found {tryget_LIST_elemtables_nat.tables.Count} national element tables"), true, ++val);
+                }
+
+                List<string> LIST_NatElemTables = tryget_LIST_elemtables_nat.tables;
+
+                // If no national element tables are found, return.
+                if (LIST_NatElemTables.Count == 0)
+                {
+                    // there are no national tables, so there is no spatial data to process
+                    return (true, "no national tables to process (this is OK).");
+                }
+
+                // ASSEMBLE LISTS OF NATIONAL ELEMENTS
+                // Get All Nat Elements where presence = yes
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving all present national elements..."), true, ++val);
+                var tryget_all = await PRZH.GetNationalElements(null, null, ElementPresence.Present);
+                if (!tryget_all.success)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving national elements.\n{tryget_all.message}", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error retrieving national elements.\n{tryget_all.message}");
+                    return (false, "error retrieving elements.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tryget_all.elements.Count} national element(s) retrieved."), true, ++val);
+                }
+
+                List<NatElement> LIST_NatElements = tryget_all.elements;
+
+                // Ensure at least one element in list
+                if (LIST_NatElements.Count == 0)
+                {
+                    return (true, "no national elements to process (this is OK).");
+                }
+
+                #endregion
+
+                #region PREPARE THE BASE FEATURE CLASS
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                // Get project gdb path
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+
+                // Get the fds fc path
+                string base_fc = "pu_fc";
+                string base_fc_path = PRZH.GetPath_Project(base_fc, PRZC.c_FDS_NATIONAL_ELEMENTS).path;
+
+                // Get the National SR
+                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
+
+                // Copy the Planning Units FC into nat fds
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_FC_PLANNING_UNITS} fc..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, base_fc_path);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true,
+                    outputCoordinateSystem: NatSR);
+                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying {PRZC.c_FC_PLANNING_UNITS}.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying {PRZC.c_FC_PLANNING_UNITS}");
+                    return (false, "fc copy error.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class copied successfully."), true, ++val);
+                }
+
+                // Delete all but id field
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting unnecessary fields..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(base_fc, PRZC.c_FLD_FC_PU_ID, "KEEP_FIELDS");
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting fields.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show("Error deleting fields.");
+                    return (false, "field deletion error.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("fields deleted."), true, ++val);
+                }
+
+                #endregion
+
+                #region CYCLE THROUGH ALL NATIONAL ELEMENTS
+
+                // LOOP THROUGH ELEMENTS
+                for (int i = 0; i < LIST_NatElements.Count; i++)
+                {
+                    // Get the element
+                    NatElement element = LIST_NatElements[i];
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Processing Element #{element.ElementID}: {element.ElementName}"), true, ++val);
+
+                    var tryget_elemtablename = PRZH.GetNationalElementTableName(element.ElementID);
+                    if (!tryget_elemtablename.success)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving table name for element {element.ElementID}", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error retrieving nat element table name.");
+                        return (false, "error retrieving nat element table name.");
+                    }
+                    string table_name = tryget_elemtablename.table_name;
+
+                    // Ensure element table exists
+                    var tryex_elemtable = await PRZH.TableExists_Project(table_name);
+                    if (!tryex_elemtable.exists)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"element table {table_name} not found.", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"element table {table_name} not found.");
+                        return (false, $"element table {table_name} not found.");
+                    }
+
+                    //// Get element type
+                    //string suffix = "";
+                    //switch(element.ElementType)
+                    //{
+                    //    case (int)ElementType.Goal:
+                    //        suffix = "_g";
+                    //        break;
+                    //    case (int)ElementType.Weight:
+                    //        suffix = "_w";
+                    //        break;
+                    //    case (int)ElementType.Include:
+                    //        suffix = "_i";
+                    //        break;
+                    //    case (int)ElementType.Exclude:
+                    //        suffix = "_e";
+                    //        break;
+                    //    default:
+                    //        suffix = "_u";
+                    //        break;
+                    //}
+
+                    // Copy base fc
+                    string elem_fc_name = $"fc_{table_name}";
+                    string elem_fc_path = PRZH.GetPath_Project(elem_fc_name, PRZC.c_FDS_NATIONAL_ELEMENTS).path;
+
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {elem_fc_name} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(base_fc_path, elem_fc_path);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true,
+                        outputCoordinateSystem: NatSR);
+                    toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating {elem_fc_name} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error creating {elem_fc_name} feature class");
+                        return (false, "fc creation error.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class created successfully."), true, ++val);
+                    }
+
+                    // JOIN FIELDS
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Joining fields..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(elem_fc_name, PRZC.c_FLD_FC_PU_ID, table_name, PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID);
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("JoinField_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error joining table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error joining table.");
+                        return (false, "table join error.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("table joined successfully."), true, ++val);
+                    }
+
+                    // DELETE ROWS WHERE ID_1 IS NULL
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_gdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(elem_fc_name))
+                        {
+                            geodatabase.ApplyEdits(() =>
+                            {
+                                table.DeleteRows(new QueryFilter { WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID}_1 IS NULL" });
+                            });
+                        }
+                    });
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
+
+                    // DELETE UNNECESSARY FIELD
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra id field..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(elem_fc_name, $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID}_1", "DELETE_FIELDS");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                    toolOutput = await PRZH.RunGPTool("DeleteField_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error deleting field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error deleting field.");
+                        return (false, "field deletion error.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("field deleted."), true, ++val);
+                    }
+
+                    // index the puid field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in {elem_fc_name} feature class..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(elem_fc_name, PRZC.c_FLD_FC_PU_ID, "ix" + PRZC.c_FLD_FC_PU_ID, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return (false, "error indexing field.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+
+                    // index the cell number field
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} field in {elem_fc_name} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(elem_fc_name, PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "", "");
+                    toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                        workspace: gdbpath,
+                        overwriteoutput: true);
+                    toolOutput = await PRZH.RunGPTool("AddIndex_management", toolParams, toolEnvs, toolFlags_GP);
+                    if (toolOutput == null)
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Error indexing field.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show("Error indexing field.");
+                        return (false, "error indexing field.");
+                    }
+                    else
+                    {
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
+                    }
+
+                    // ALTER ALIAS NAME OF FEATURE CLASS
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Altering feature class alias..."), true, ++val);
+                    await QueuedTask.Run(() =>
+                    {
+                        var tryget_projectgdb = PRZH.GetGDB_Project();
+
+                        using (Geodatabase geodatabase = tryget_projectgdb.geodatabase)
+                        using (Table table = geodatabase.OpenDataset<Table>(elem_fc_name))
+                        using (TableDefinition tblDef = table.GetDefinition())
+                        {
+                            // Get the Table Description
+                            TableDescription tblDescr = new TableDescription(tblDef);
+                            tblDescr.AliasName = $"{table_name}: {element.ElementName}";
+
+                            // get the schemabuilder
+                            SchemaBuilder schemaBuilder = new SchemaBuilder(geodatabase);
+                            schemaBuilder.Modify(tblDescr);
+                            var success = schemaBuilder.Build();
+                        }
+                    });
+
+                }
+
+                #endregion
+
+                // DELETE THE TEMP FC
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {base_fc} feature class..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(base_fc);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {base_fc} feature class.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error deleting the {base_fc} feature class.");
+                    return (false, $"Error deleting the {base_fc} feature class.");
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"feature class deleted successfully."), true, ++val);
+                }
 
                 // we're done here
                 return (true, "success");

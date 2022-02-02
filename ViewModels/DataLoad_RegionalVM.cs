@@ -2409,25 +2409,157 @@ namespace NCC.PRZTools
 
         private async Task Test()
         {
+            int val = PM.Current;
+            int max = PM.Max;
+
             try
             {
-                await QueuedTask.Run(() =>
+
+                // Declare some generic GP variables
+                IReadOnlyList<string> toolParams;
+                IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
+                GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
+                string toolOutput;
+
+                SpatialReference sr = await QueuedTask.Run(() =>
                 {
-                    var tryget_ras = PRZH.GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
+                    var a = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
 
-                    using (RasterDataset rasterDataset = tryget_ras.rasterDataset)
-                    using (Raster raster = rasterDataset.CreateFullRaster())
+                    using (FeatureClass fc = a.featureclass)
+                    using (FeatureClassDefinition fcDef = fc.GetDefinition())
                     {
-                        var min = raster.GetBandKeyProperty(0, "MINIMUM");
-                        var max = raster.GetBandKeyProperty(0, "MAXIMUM");
-
-                        var dblMin = Convert.ToDouble(min);
-                        var dblMax = Convert.ToDouble(max);
-
-                        ProMsgBox.Show($"Min: {dblMin}   Max: {dblMax}");
+                        SpatialReference sr2 = fcDef.GetSpatialReference();
+                        return sr2;
                     }
-
                 });
+
+                string gdbpath = PRZH.GetPath_ProjectGDB();
+                string outputpath = PRZH.GetPath_Project("test", PRZC.c_FDS_NATIONAL_ELEMENTS).path;
+
+                // Copy pufc to fds
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, outputpath);
+                toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                    workspace: gdbpath,
+                    overwriteoutput: true,
+                    outputCoordinateSystem: sr);
+                toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                if (toolOutput == null)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying features.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying features.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"features copied."), true, ++val);
+                }
+
+
+
+
+                // copy to fds
+                // join field
+                // delete by query
+                // remove fields
+
+                // OR...
+
+
+                // add join
+                // copy features
+                // remove fields
+                // remove layer
+
+
+
+                //// Make feature layer
+                //toolParams = Geoprocessing.MakeValueArray(fcpath, "test_layer");
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray();
+                //toolOutput = await PRZH.RunGPTool("MakeFeatureLayer_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddOutputsToMap);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error making layer.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error making layer.");
+                //    return;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"layer created."), true, ++val);
+                //    ProMsgBox.Show(toolOutput);
+                //}
+
+                //string layer_name = toolOutput;
+                //string outputfcpath = PRZH.GetPath_Project("bloard").path;
+                //ProMsgBox.Show(outputfcpath);
+
+                //// Copy layer to disk
+                //toolParams = Geoprocessing.MakeValueArray(layer_name, outputfcpath);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray();
+                //toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying features.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error copying features.");
+                //    return;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"features copied."), true, ++val);
+                //}
+
+                //// Add Join
+                //toolParams = Geoprocessing.MakeValueArray(PRZC.c_FC_PLANNING_UNITS, PRZC.c_FLD_FC_PU_ID, "n00010", PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID, "KEEP_COMMON");
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //toolOutput = await PRZH.RunGPTool("AddJoin_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding join.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error adding join.");
+                //    return;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"join added."), true, ++val);
+                //}
+
+                //string lyr = toolOutput;
+                //ProMsgBox.Show($"Layer Name: {lyr}");
+
+                //string outputfcpath = PRZH.GetPath_Project("bloard").path;
+                //ProMsgBox.Show(outputfcpath);
+
+                //// Copy layer to disk
+                //toolParams = Geoprocessing.MakeValueArray(lyr, outputfcpath);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(
+                //    qualifiedFieldNames: false);
+                //toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying features.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error copying features.");
+                //    return;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"features copied."), true, ++val);
+                //}
+
+                //ProMsgBox.Show("About to delete...");
+
+                //toolParams = Geoprocessing.MakeValueArray(lyr);
+                //toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
+                //toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
+                //if (toolOutput == null)
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting layer.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                //    ProMsgBox.Show($"Error deleting layer.");
+                //    return;
+                //}
+                //else
+                //{
+                //    PRZH.UpdateProgress(PM, PRZH.WriteLog($"layer deleted."), true, ++val);
+                //}
+
             }
             catch (Exception ex)
             {

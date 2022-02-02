@@ -1349,7 +1349,7 @@ namespace NCC.PRZTools
 
                 if (PUSource_Rad_NatGrid_IsChecked)
                 {
-                    OutputSR = PRZH.GetSR_PRZCanadaAlbers();
+                    OutputSR = await PRZH.GetSR_PRZCanadaAlbers();
                 }
                 else if (OutputSR_Rad_Map_IsChecked)
                 {
@@ -1940,7 +1940,7 @@ namespace NCC.PRZTools
                 {
                     // Get Extent
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Retrieving study area extent from national grid..."), true, ++val);
-                    var gridInfo = NationalGrid.GetNatGridBoundsFromStudyArea(SA_poly_buffer, dimension);
+                    var gridInfo = await NationalGrid.GetNatGridBoundsFromStudyArea(SA_poly_buffer, dimension);
                     if (!gridInfo.success)
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to retrieve national grid extent.\n\nMessage: {gridInfo.message}", LogMessageType.ERROR), true, ++val);
@@ -2363,7 +2363,8 @@ namespace NCC.PRZTools
                 toolParams = Geoprocessing.MakeValueArray(PRZC.c_RAS_PLANNING_UNITS, PRZC.c_FC_PLANNING_UNITS, "NO_SIMPLIFY", PRZC.c_FLD_RAS_PU_VALUE, "SINGLE_OUTER_PART");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
-                    overwriteoutput: true);
+                    overwriteoutput: true,
+                    outputCoordinateSystem: OutputSR);
                 toolOutput = await PRZH.RunGPTool("RasterToPolygon_conversion", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -2540,57 +2541,13 @@ namespace NCC.PRZTools
 
                 #region CREATE FEATURE DATASETS
 
-                // Delete the national feature dataset
-                var tryexist_natfds = await PRZH.FDSExists_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
-                if (tryexist_natfds.exists)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FDS_NATIONAL_ELEMENTS} feature dataset..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FDS_NATIONAL_ELEMENTS, "");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting feature dataset.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature dataset deleted."), true, ++val);
-                    }
-                }
-
-                PRZH.CheckForCancellation(token);
-
-                // Delete the regional feature dataset
-                var tryexist_regfds = await PRZH.FDSExists_Project(PRZC.c_FDS_REGIONAL_ELEMENTS);
-                if (tryexist_regfds.exists)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {PRZC.c_FDS_REGIONAL_ELEMENTS} feature dataset..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_FDS_REGIONAL_ELEMENTS, "");
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting feature dataset.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Feature dataset deleted."), true, ++val);
-                    }
-                }
-
-                PRZH.CheckForCancellation(token);
-
                 // Create the national fds
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_FDS_NATIONAL_ELEMENTS} feature dataset..."), true, ++val);
                 toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FDS_NATIONAL_ELEMENTS, OutputSR);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
                     overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
@@ -2610,7 +2567,7 @@ namespace NCC.PRZTools
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
                     overwriteoutput: true);
-                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP);
+                toolOutput = await PRZH.RunGPTool("CreateFeatureDataset_management", toolParams, toolEnvs, toolFlags_GP | GPExecuteToolFlags.AddToHistory);
                 if (toolOutput == null)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating feature dataset.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);

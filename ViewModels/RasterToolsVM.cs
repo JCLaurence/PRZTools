@@ -268,11 +268,11 @@ namespace NCC.PRZTools
                 }
 
                 // Prepare the Output Spatial Reference
-                SpatialReference SR = PRZH.GetSR_PRZCanadaAlbers();
+                SpatialReference SR = await PRZH .GetSR_PRZCanadaAlbers();
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Output Spatial Reference: {SR.Name}"), true, ++val);
 
                 // Get the National Grid Extent envelope
-                Envelope env = NationalGrid.GetNatGridEnvelope();
+                Envelope env = await NationalGrid.GetNatGridEnvelope();
 
                 // Build Constant Raster
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_RAS_NATGRID_ZERO} raster dataset (constant 1_BIT integer raster, value = 0)..."), true, ++val);
@@ -362,11 +362,11 @@ namespace NCC.PRZTools
                 }
 
                 // Prepare the Output Spatial Reference
-                SpatialReference SR = PRZH.GetSR_PRZCanadaAlbers();
+                SpatialReference SR = await PRZH .GetSR_PRZCanadaAlbers();
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Output Spatial Reference: {SR.Name}"), true, ++val);
 
                 // Get the National Grid Extent envelope
-                Envelope env = NationalGrid.GetNatGridEnvelope();
+                Envelope env = await NationalGrid.GetNatGridEnvelope();
 
                 // Eliminate existing raster (if present)
                 // Part 1: Build dummy raster

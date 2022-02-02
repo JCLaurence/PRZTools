@@ -262,7 +262,6 @@ namespace NCC.PRZTools
 
             try
             {
-
                 #region CREATE THE RASTER DATASET
 
                 if (!await QueuedTask.Run(() =>
@@ -337,7 +336,7 @@ namespace NCC.PRZTools
 
                 #region VALIDATE RASTER 
 
-                if (!await QueuedTask.Run(() =>
+                if (!await QueuedTask.Run(async () =>
                 {
                     using (Raster raster = rasterDataset.CreateFullRaster())
                     {
@@ -350,7 +349,7 @@ namespace NCC.PRZTools
                             return false;
                         }
 
-                        var AlbersSRTest = PRZH.SpatialReferenceIsPRZCanadaAlbers(rasterSR);
+                        var AlbersSRTest = await PRZH.SpatialReferenceIsPRZCanadaAlbers(rasterSR);
 
                         if (!AlbersSRTest.match)
                         {
