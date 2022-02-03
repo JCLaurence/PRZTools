@@ -41,7 +41,6 @@ namespace NCC.PRZTools
         private bool _pu_exists = false;
         private bool _pu_isnat = false;
         private bool _natdb_exists = false;
-        private bool _blt_exists = false;
 
         private Map _map;
 
@@ -265,9 +264,9 @@ namespace NCC.PRZTools
 
                 // Ensure the Project Geodatabase Exists
                 string gdbpath = PRZH.GetPath_ProjectGDB();
-                var tryexists_gdb = await PRZH.GDBExists_Project();
+                var tryex_gdb = await PRZH.GDBExists_Project();
 
-                if (!tryexists_gdb.exists)
+                if (!tryex_gdb.exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Project Geodatabase not found: {gdbpath}", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Project Geodatabase not found at {gdbpath}.");
@@ -278,9 +277,9 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Project Geodatabase found at {gdbpath}."), true, ++val);
                 }
 
-                // Ensure the Planning Units dataset exists
-                var tryexists_pu = await PRZH.PUExists();
-                if (!tryexists_pu.exists)
+                // Planning Unit existence
+                var tryex_pudata = await PRZH.PUDataExists();
+                if (!tryex_pudata.exists)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Units dataset not found.", LogMessageType.VALIDATION_ERROR), true, ++val);
                     ProMsgBox.Show($"Planning Units dataset not found.");
@@ -289,6 +288,18 @@ namespace NCC.PRZTools
                 else
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Units dataset exists."), true, ++val);
+                }
+
+                // Ensure that the Planning Unit Data is national-enabled
+                if (!tryex_pudata.national_enabled)
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Units data is not configured for national data.", LogMessageType.VALIDATION_ERROR), true, ++val);
+                    ProMsgBox.Show($"Planning Units data is not configured for national data.");
+                    return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Planning Units data is configured for national data."), true, ++val);
                 }
 
                 // Ensure the National db exists
@@ -304,6 +315,17 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"National Geodatabase is OK: {natpath}"), true, ++val);
                 }
+
+                // Capture the Planning Unit Spatial Reference
+                SpatialReference PlanningUnitSR = await QueuedTask.Run(() =>
+                {
+                    var tryget_fc = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                    using (FeatureClass featureClass = tryget_fc.featureclass)
+                    using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                    {
+                        return fcDef.GetSpatialReference();
+                    }
+                });
 
                 // Notify users what will happen if they proceed
                 if (ProMsgBox.Show($"If you proceed, any existing National Theme and Element tables in the project geodatabase WILL BE DELETED!!\n\n" +
@@ -398,11 +420,9 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // Delete and rebuild National FDS
-
-                // Get the national SR
-                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
-
                 // delete...
                 var tryex_natfds = await PRZH.FDSExists_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
                 if (tryex_natfds.exists)
@@ -424,9 +444,11 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 // (re)build!
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating {PRZC.c_FDS_NATIONAL_ELEMENTS} feature dataset..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FDS_NATIONAL_ELEMENTS, NatSR);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_FDS_NATIONAL_ELEMENTS, PlanningUnitSR);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
                     overwriteoutput: true);
@@ -444,10 +466,12 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region NATIONAL TABLES AND NATIONAL FEATURE CLASSES
 
                 // Process the national tables
-                var trynatdb = await ProcessNationalDbTables(tryexists_pu.puLayerType, token);
+                var trynatdb = await ProcessNationalDbTables(token);
 
                 if (!trynatdb.success)
                 {
@@ -459,6 +483,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"National data loaded successfully."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Generate the National Element spatial datasets
                 var tryspat = await GenerateSpatialDatasets(token);
@@ -475,6 +501,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region WRAP UP
 
                 // Compact the Geodatabase
@@ -486,6 +514,10 @@ namespace NCC.PRZTools
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Error compacting the geodatabase. GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
                     ProMsgBox.Show("Error compacting the geodatabase.");
                     return;
+                }
+                else
+                {
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog("Geodatabase compacted."), true, ++val);
                 }
 
                 PRZH.CheckForCancellation(token);
@@ -501,10 +533,10 @@ namespace NCC.PRZTools
                 // Final message
                 stopwatch.Stop();
                 string message = PRZH.GetElapsedTimeMessage(stopwatch.Elapsed);
-                PRZH.UpdateProgress(PM, PRZH.WriteLog("National Data Load completed successfully!"), true, 1, 1);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog("National data load completed successfully!"), true, 1, 1);
                 PRZH.UpdateProgress(PM, PRZH.WriteLog(message), true, 1, 1);
 
-                ProMsgBox.Show("National Data Load Completed Successfully!" + Environment.NewLine + Environment.NewLine + message);
+                ProMsgBox.Show("National data load completed successfully!" + Environment.NewLine + Environment.NewLine + message);
 
                 #endregion
             }
@@ -530,7 +562,7 @@ namespace NCC.PRZTools
             }
         }
 
-        private async Task<(bool success, string message)> ProcessNationalDbTables(PlanningUnitLayerType puLayerType, CancellationToken token)
+        private async Task<(bool success, string message)> ProcessNationalDbTables(CancellationToken token)
         {
             int val = PM.Current;
             int max = PM.Max;
@@ -541,7 +573,6 @@ namespace NCC.PRZTools
                 IReadOnlyList<string> toolParams;
                 IReadOnlyList<KeyValuePair<string, string>> toolEnvs;
                 GPExecuteToolFlags toolFlags_GP = GPExecuteToolFlags.GPThread;
-                GPExecuteToolFlags toolFlags_GPRefresh = GPExecuteToolFlags.GPThread | GPExecuteToolFlags.RefreshProjectItems;
                 string toolOutput;
 
                 #region RETRIEVE AND PREPARE INFO FROM NATIONAL DATABASE
@@ -733,7 +764,7 @@ namespace NCC.PRZTools
                 }
 
                 var DICT_CN_and_PUIDs = tryget_cnpuid.dict;
-                var puCellNumbers = new HashSet<long>(DICT_CN_and_PUIDs.Keys);
+                var HASH_CellNumbers = new HashSet<long>(DICT_CN_and_PUIDs.Keys);
 
                 PRZH.CheckForCancellation(token);
 
@@ -743,7 +774,7 @@ namespace NCC.PRZTools
                 foreach (var element in elements)
                 {
                     // Attempt to retrieve intersection dictionary
-                    var tryget_elemintersect = await PRZH.GetNatElementIntersection(element.ElementID, puCellNumbers);
+                    var tryget_elemintersect = await PRZH.GetNatElementIntersection(element.ElementID, HASH_CellNumbers);
 
                     if (!tryget_elemintersect.success)
                     {
@@ -793,7 +824,7 @@ namespace NCC.PRZTools
                     PRZH.CheckForCancellation(token);
 
                     // Add fields to the table
-                    string fldPUID = (puLayerType == PlanningUnitLayerType.FEATURE ? PRZC.c_FLD_FC_PU_ID : PRZC.c_FLD_RAS_PU_ID) + " LONG 'Planning Unit ID' # 0 #;";
+                    string fldPUID = PRZC.c_FLD_FC_PU_ID + " LONG 'Planning Unit ID' # 0 #;";
                     string fldCellNum = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + " LONG 'Cell Number' # 0 #;";
                     string fldCellVal = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE + " DOUBLE 'Cell Value' # 0 #;";
 
@@ -979,7 +1010,6 @@ namespace NCC.PRZTools
                 #region UPDATE REGIONAL THEME DOMAIN
 
                 Dictionary<int, string> national_values = new Dictionary<int, string>();
-
                 foreach (NatTheme theme in themes)
                 {
                     if (theme.ThemeID <= 1000)
@@ -988,6 +1018,7 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating regional themes domain..."), true, ++val);
                 var tryupdate = await PRZH.UpdateRegionalThemesDomain(national_values);
                 if (!tryupdate.success)
                 {
@@ -1020,15 +1051,6 @@ namespace NCC.PRZTools
             {
                 #region GET NATIONAL ELEMENT INFOS
 
-                // Get list of Planning Unit IDs from the current planning unit dataset
-                var tryget_puid = await PRZH.GetPUIDHashset();
-                if (!tryget_puid.success)
-                {
-                    throw new Exception("Unable to retrieve planning unit ids");
-                }
-
-                var PUIDs = tryget_puid.puids;
-
                 // Get list of national element tables (e.g. n00010)
                 var tryget_LIST_elemtables_nat = await PRZH.GetNationalElementTables();
                 if (!tryget_LIST_elemtables_nat.success)
@@ -1050,6 +1072,8 @@ namespace NCC.PRZTools
                     // there are no national tables, so there is no spatial data to process
                     return (true, "no national tables to process (this is OK).");
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // ASSEMBLE LISTS OF NATIONAL ELEMENTS
                 // Get All Nat Elements where presence = yes
@@ -1076,6 +1100,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region PREPARE THE BASE FEATURE CLASS
 
                 // Declare some generic GP variables
@@ -1091,8 +1117,16 @@ namespace NCC.PRZTools
                 string base_fc = "pu_fc";
                 string base_fc_path = PRZH.GetPath_Project(base_fc, PRZC.c_FDS_NATIONAL_ELEMENTS).path;
 
-                // Get the National SR
-                SpatialReference NatSR = await PRZH.GetSR_PRZCanadaAlbers();
+                // Get the Planning Unit SR
+                SpatialReference PlanningUnitSR = await QueuedTask.Run(() =>
+                {
+                    var tryget_fc = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                    using (FeatureClass featureClass = tryget_fc.featureclass)
+                    using (FeatureClassDefinition fcDef = featureClass.GetDefinition())
+                    {
+                        return fcDef.GetSpatialReference();
+                    }
+                });
 
                 // Copy the Planning Units FC into nat fds
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_FC_PLANNING_UNITS} fc..."), true, ++val);
@@ -1100,7 +1134,7 @@ namespace NCC.PRZTools
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
                     overwriteoutput: true,
-                    outputCoordinateSystem: NatSR);
+                    outputCoordinateSystem: PlanningUnitSR);
                 toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -1112,6 +1146,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class copied successfully."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete all but id field
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting unnecessary fields..."), true, ++val);
@@ -1131,6 +1167,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region CYCLE THROUGH ALL NATIONAL ELEMENTS
 
                 // LOOP THROUGH ELEMENTS
@@ -1144,11 +1182,13 @@ namespace NCC.PRZTools
                     var tryget_elemtablename = PRZH.GetNationalElementTableName(element.ElementID);
                     if (!tryget_elemtablename.success)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving table name for element {element.ElementID}", LogMessageType.ERROR), true, ++val);
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving table name for nat element {element.ElementID}", LogMessageType.ERROR), true, ++val);
                         ProMsgBox.Show("Error retrieving nat element table name.");
                         return (false, "error retrieving nat element table name.");
                     }
                     string table_name = tryget_elemtablename.table_name;
+
+                    PRZH.CheckForCancellation(token);
 
                     // Ensure element table exists
                     var tryex_elemtable = await PRZH.TableExists_Project(table_name);
@@ -1159,27 +1199,6 @@ namespace NCC.PRZTools
                         return (false, $"element table {table_name} not found.");
                     }
 
-                    //// Get element type
-                    //string suffix = "";
-                    //switch(element.ElementType)
-                    //{
-                    //    case (int)ElementType.Goal:
-                    //        suffix = "_g";
-                    //        break;
-                    //    case (int)ElementType.Weight:
-                    //        suffix = "_w";
-                    //        break;
-                    //    case (int)ElementType.Include:
-                    //        suffix = "_i";
-                    //        break;
-                    //    case (int)ElementType.Exclude:
-                    //        suffix = "_e";
-                    //        break;
-                    //    default:
-                    //        suffix = "_u";
-                    //        break;
-                    //}
-
                     // Copy base fc
                     string elem_fc_name = $"fc_{table_name}";
                     string elem_fc_path = PRZH.GetPath_Project(elem_fc_name, PRZC.c_FDS_NATIONAL_ELEMENTS).path;
@@ -1189,7 +1208,7 @@ namespace NCC.PRZTools
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(
                         workspace: gdbpath,
                         overwriteoutput: true,
-                        outputCoordinateSystem: NatSR);
+                        outputCoordinateSystem: PlanningUnitSR);
                     toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
@@ -1201,6 +1220,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class created successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // JOIN FIELDS
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Joining fields..."), true, ++val);
@@ -1220,6 +1241,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("table joined successfully."), true, ++val);
                     }
 
+                    PRZH.CheckForCancellation(token);
+
                     // DELETE ROWS WHERE ID_1 IS NULL
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
                     await QueuedTask.Run(() =>
@@ -1237,6 +1260,8 @@ namespace NCC.PRZTools
                     });
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
 
+                    PRZH.CheckForCancellation(token);
+
                     // DELETE UNNECESSARY FIELD
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra id field..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(elem_fc_name, $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_PU_ID}_1", "DELETE_FIELDS");
@@ -1252,6 +1277,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("field deleted."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // index the puid field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in {elem_fc_name} feature class..."), true, ++val);
@@ -1271,6 +1298,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
 
+                    PRZH.CheckForCancellation(token);
+
                     // index the cell number field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} field in {elem_fc_name} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(elem_fc_name, PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER, "", "");
@@ -1288,6 +1317,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // ALTER ALIAS NAME OF FEATURE CLASS
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Altering feature class alias..."), true, ++val);
@@ -1309,10 +1340,11 @@ namespace NCC.PRZTools
                             var success = schemaBuilder.Build();
                         }
                     });
-
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 // DELETE THE TEMP FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {base_fc} feature class..."), true, ++val);
@@ -1347,41 +1379,27 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Existence of Planning Unit dataset
-                var try_exists = await PRZH.PUExists();
-                _pu_exists = try_exists.exists;
-
-                // National status of Planning Unit dataset
-                var try_isnat = await PRZH.PUIsNational();
-                _pu_isnat = try_isnat.is_national;
+                // Planning Unit existence & national-enabled-ness
+                var tryex_pudata = await PRZH.PUDataExists();
+                _pu_exists = tryex_pudata.exists;
+                _pu_isnat = tryex_pudata.national_enabled;
 
                 // Existence of National Database
-                var a = await PRZH.GDBExists_Nat();
-                _natdb_exists = a.exists;
-
-                // Planning Unit Dataset type
-                string ds_type = "";
-                if (try_exists.puLayerType == PlanningUnitLayerType.FEATURE)
-                {
-                    ds_type = "Feature Class";
-                }
-                else if (try_exists.puLayerType == PlanningUnitLayerType.RASTER)
-                {
-                    ds_type = "Raster Dataset";
-                }
+                var tryex_nat = await PRZH.GDBExists_Nat();
+                _natdb_exists = tryex_nat.exists;
 
                 // Planning Unit Label
                 if (_pu_exists & _pu_isnat)
                 {
-                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist ({ds_type}) and are configured for National data.";
+                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist and are configured for National data.";
                 }
                 else if (_pu_exists & !_pu_isnat)
                 {
-                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist ({ds_type}) but are NOT configured for National data.";
+                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist but are NOT configured for National data.";
                 }
                 else
                 {
-                    CompStat_Txt_PlanningUnits_Label = "Planning Units DO NOT exist. Build them.";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Units do not exist. Build them.";
                 }
 
                 // Planning Unit Image

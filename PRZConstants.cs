@@ -28,6 +28,17 @@
 
     #endregion
 
+    #region DATA SOURCE
+
+    public enum DataSource
+    {
+        Unknown,
+        National,
+        Regional
+    }
+
+    #endregion
+
     #region REGIONAL DATA
 
     public enum RegionalDataSubfolder

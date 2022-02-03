@@ -1182,10 +1182,11 @@ namespace NCC.PRZTools
 
         /// <summary>
         /// Establish the existence of the Planning Units FC and Raster Datasets.
-        /// Both must exist for this function to return true.
+        /// Also identifies if Planning Units datasets are national-enabled.
+        /// Silent errors.
         /// </summary>
         /// <returns></returns>
-        public static async Task<(bool exists, string message)> PUDatasetsExist()
+        public static async Task<(bool exists, bool national_enabled, string message)> PUDataExists()
         {
             try
             {
@@ -1194,16 +1195,45 @@ namespace NCC.PRZTools
 
                 if (fc_exists & ras_exists)
                 {
-                    return (true, "success");
+                    // Determine if dataset is national-enabled or not
+                    return await QueuedTask.Run(() =>
+                    {
+                        var tryget_fc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+                        using (FeatureClass fc = tryget_fc.featureclass)
+                        using (FeatureClassDefinition fcDef = fc.GetDefinition())
+                        {
+                            // Search for the cell number field
+                            var a = fcDef.GetFields().Where(f => string.Equals(f.Name, PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+
+                            if (a == null)
+                            {
+                                // no cellnumber field found
+                                return (true, false, "cell number field not found");
+                            }
+                            else
+                            {
+                                // cell number field found
+                                return (true, true, "cell number field found");
+                            }
+                        }
+                    });
+                }
+                else if (fc_exists)
+                {
+                    return (false, false, "raster planning units not found");
+                }
+                else if (ras_exists)
+                {
+                    return (false, false, "feature class planning units not found");
                 }
                 else
                 {
-                    return (false, "unable to find both planning unit datasets");
+                    return (false, false, "feature class and raster planning units not found");
                 }
             }
             catch (Exception ex)
             {
-                return (false, ex.Message);
+                return (false, false, ex.Message);
             }
         }
 
@@ -2267,29 +2297,26 @@ namespace NCC.PRZTools
                 }
 
                 // create the list of fc names
-                List<string> l = new List<string>();
+                List<string> fc_names = new List<string>();
 
                 // populate the list
                 using (FeatureDataset fds = geodatabase.OpenDataset<FeatureDataset>(fds_name))
                 using (FeatureDatasetDefinition fdsDef = fds.GetDefinition())
                 {
-                    var fcDefs = geodatabase.GetRelatedDefinitions(fdsDef, DefinitionRelationshipType.DatasetInFeatureDataset);
+                    var fdDefs = geodatabase.GetRelatedDefinitions(fdsDef, DefinitionRelationshipType.DatasetInFeatureDataset).Where(d => d.DatasetType == DatasetType.FeatureClass);
 
-                    foreach (var fcDef in fcDefs)
+                    foreach (var fcDef in fdDefs)
                     {
                         using (fcDef)
                         {
-                            if (fcDef.DatasetType == DatasetType.FeatureClass)
-                            {
-                                l.Add(fcDef.GetName());
-                            }
+                            fc_names.Add(fcDef.GetName());
                         }
                     }
                 }
 
-                l.Sort();
+                fc_names.Sort();
 
-                return (true, l, "success");
+                return (true, fc_names, "success");
             }
             catch (Exception ex)
             {
@@ -2758,6 +2785,55 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a list of national element feature class names (e.g. fc_n00042) from the
+        /// project geodatabase, from the national feature dataset.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> feature_classes, string message)> GetNationalElementFCs()
+        {
+            try
+            {
+                // Define the new list
+                List<string> matching_fc_names = new List<string>();
+
+                // Retrieve names
+                await QueuedTask.Run(() =>
+                {
+                    // Get FC Names from the FDS
+                    var tryget_fcnames = GetFCNamesFromFDS_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
+                    if (!tryget_fcnames.success)
+                    {
+                        throw new Exception(tryget_fcnames.message);
+                    }
+                    var all_fc_names = tryget_fcnames.fc_names;
+
+                    // Select fc names matching pattern
+                    foreach (string fc_name in all_fc_names)
+                    {
+                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_NAT_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
+                        {
+                            string numpart = fc_name.Substring(4);
+
+                            if (int.TryParse(numpart, out int result))
+                            {
+                                // this is a national element table
+                                matching_fc_names.Add(fc_name);
+                            }
+                        }
+                    }
+                });
+
+                matching_fc_names.Sort();
+
+                return (true, matching_fc_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
         #endregion
 
         #region REGIONAL TABLES
@@ -3118,6 +3194,56 @@ namespace NCC.PRZTools
                 return (false, null, ex.Message);
             }
         }
+
+        /// <summary>
+        /// Retrieve a list of regional element feature class names (e.g. fc_r00042) from the
+        /// project geodatabase, from the regional feature dataset.  Silent errors.
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<(bool success, List<string> feature_classes, string message)> GetRegionalElementFCs()
+        {
+            try
+            {
+                // Define the new list
+                List<string> matching_fc_names = new List<string>();
+
+                // Retrieve names
+                await QueuedTask.Run(() =>
+                {
+                    // Get FC Names from the FDS
+                    var tryget_fcnames = GetFCNamesFromFDS_Project(PRZC.c_FDS_REGIONAL_ELEMENTS);
+                    if (!tryget_fcnames.success)
+                    {
+                        throw new Exception(tryget_fcnames.message);
+                    }
+                    var all_fc_names = tryget_fcnames.fc_names;
+
+                    // Select fc names matching pattern
+                    foreach (string fc_name in all_fc_names)
+                    {
+                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_REG_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
+                        {
+                            string numpart = fc_name.Substring(4);
+
+                            if (int.TryParse(numpart, out int result))
+                            {
+                                // this is a regional element table
+                                matching_fc_names.Add(fc_name);
+                            }
+                        }
+                    }
+                });
+
+                matching_fc_names.Sort();
+
+                return (true, matching_fc_names, "success");
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
 
         #endregion
 
@@ -6288,6 +6414,50 @@ namespace NCC.PRZTools
 
                     #endregion
 
+                    #region POPULATE NATIONAL GROUP LAYER
+
+                    var tryex_natfds = await FDSExists_Project(PRZC.c_FDS_NATIONAL_ELEMENTS);
+                    if (tryex_natfds.exists)
+                    {
+                        var tryget_fcs = await GetNationalElementFCs();
+                        if (tryget_fcs.success)
+                        {
+                            foreach (var fc_name in tryget_fcs.feature_classes)
+                            {
+                                string fc_path = GetPath_Project(fc_name, PRZC.c_FDS_NATIONAL_ELEMENTS).path;
+                                Uri uri = new Uri(fc_path);
+                                FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_NAT, LayerPosition.AddToBottom);
+                                await ApplyLegend_ElementFC_Basic(featureLayer, DataSource.National);
+                                featureLayer.SetVisibility(false);
+                                featureLayer.SetExpanded(false);
+                            }
+                        }
+                    }
+
+                    #endregion
+
+                    #region POPULATE REGIONAL GROUP LAYER
+
+                    var tryex_regfds = await FDSExists_Project(PRZC.c_FDS_REGIONAL_ELEMENTS);
+                    if (tryex_regfds.exists)
+                    {
+                        var tryget_fcs = await GetRegionalElementFCs();
+                        if (tryget_fcs.success)
+                        {
+                            foreach (var fc_name in tryget_fcs.feature_classes)
+                            {
+                                string fc_path = GetPath_Project(fc_name, PRZC.c_FDS_REGIONAL_ELEMENTS).path;
+                                Uri uri = new Uri(fc_path);
+                                FeatureLayer featureLayer = LayerFactory.Instance.CreateFeatureLayer(uri, GL_REG, LayerPosition.AddToBottom);
+                                await ApplyLegend_ElementFC_Basic(featureLayer, DataSource.Regional);
+                                featureLayer.SetVisibility(false);
+                                featureLayer.SetExpanded(false);
+                            }
+                        }
+                    }
+
+                    #endregion
+
                     //#region SELECTION RULE LAYERS
 
                     //// Selection Rules - Include Layers
@@ -7338,6 +7508,62 @@ namespace NCC.PRZTools
         #endregion
 
         #region RENDERERS
+
+        public static async Task<bool> ApplyLegend_ElementFC_Basic(FeatureLayer featureLayer, DataSource dataSource)
+        {
+            try
+            {
+                await QueuedTask.Run(() =>
+                {
+                    // Colors
+                    CIMColor outlineColor_Nat = GetRGBColor(60,60,60);
+                    CIMColor fillColor_Nat = GetNamedColor(Color.Khaki);
+
+                    CIMColor outlineColor_Reg = GetRGBColor(60, 60, 60);
+                    CIMColor fillColor_Reg = GetNamedColor(Color.PaleVioletRed);
+
+                    // Symbols
+                    CIMStroke outlineSym_Nat = SymbolFactory.Instance.ConstructStroke(outlineColor_Nat, 1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillSym_Nat = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Nat, SimpleFillStyle.Solid, outlineSym_Nat);
+
+                    CIMStroke outlineSym_Reg = SymbolFactory.Instance.ConstructStroke(outlineColor_Reg, 1, SimpleLineStyle.Solid);
+                    CIMPolygonSymbol fillSym_Reg = SymbolFactory.Instance.ConstructPolygonSymbol(fillColor_Reg, SimpleFillStyle.Solid, outlineSym_Reg);
+
+                    // Renderer Definitions
+                    SimpleRendererDefinition rendDef_Nat = new SimpleRendererDefinition
+                    {
+                        SymbolTemplate = fillSym_Nat.MakeSymbolReference()
+                    };
+
+                    SimpleRendererDefinition rendDef_Reg = new SimpleRendererDefinition
+                    {
+                        SymbolTemplate = fillSym_Reg.MakeSymbolReference()
+                    };
+
+                    if (dataSource == DataSource.National)
+                    {
+                        CIMSimpleRenderer rend = (CIMSimpleRenderer)featureLayer.CreateRenderer(rendDef_Nat);
+                        rend.Patch = PatchShape.AreaRectangle;
+                        featureLayer.SetRenderer(rend);
+                    }
+                    else if (dataSource == DataSource.Regional)
+                    {
+                        CIMSimpleRenderer rend = (CIMSimpleRenderer)featureLayer.CreateRenderer(rendDef_Reg);
+                        rend.Patch = PatchShape.AreaRectangle;
+                        featureLayer.SetRenderer(rend);
+                    }
+                });
+
+                MapView.Active.Redraw(true);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ProMsgBox.Show(ex.Message + Environment.NewLine + "Error in method: " + MethodBase.GetCurrentMethod().Name);
+                return false;
+            }
+        }
 
         public static async Task<bool> ApplyLegend_PU_Basic(FeatureLayer featureLayer)
         {
