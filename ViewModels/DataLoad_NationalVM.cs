@@ -1384,54 +1384,35 @@ namespace NCC.PRZTools
                 _pu_exists = tryex_pudata.exists;
                 _pu_isnat = tryex_pudata.national_enabled;
 
-                // Existence of National Database
-                var tryex_nat = await PRZH.GDBExists_Nat();
-                _natdb_exists = tryex_nat.exists;
-
-                // Planning Unit Label
                 if (_pu_exists & _pu_isnat)
                 {
-                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist and are configured for National data.";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Units exist and are configured for National data.";
+                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
-                else if (_pu_exists & !_pu_isnat)
+                else if (_pu_exists)
                 {
-                    CompStat_Txt_PlanningUnits_Label = $"Planning Units exist but are NOT configured for National data.";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Units exist but are not configured for National data.";
+                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
                 else
                 {
                     CompStat_Txt_PlanningUnits_Label = "Planning Units do not exist. Build them.";
-                }
-
-                // Planning Unit Image
-                if (_pu_exists & _pu_isnat)
-                {
-                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
-                }
-                else
-                {
                     CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
-                // National Database Label
+                // National Database existence
+                _natdb_exists = (await PRZH.GDBExists_Nat()).exists;
+
                 if (_natdb_exists)
                 {
                     CompStat_Txt_NatDB_Label = "National Database exists.";
-                }
-                else
-                {
-                    CompStat_Txt_NatDB_Label = "National Database does not exist or is invalid.";
-                }
-
-                // National Database Image
-                if (_natdb_exists)
-                {
                     CompStat_Img_NatDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
+                    CompStat_Txt_NatDB_Label = "National Database does not exist or is invalid.";
                     CompStat_Img_NatDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
-
             }
             catch (Exception ex)
             {

@@ -638,6 +638,8 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 if (direxists_weights)
                 {
                     var subdir = RegionalDataSubfolder.WEIGHTS;
@@ -651,6 +653,8 @@ namespace NCC.PRZTools
                     }
                 }
 
+                PRZH.CheckForCancellation(token);
+
                 if (direxists_includes)
                 {
                     var subdir = RegionalDataSubfolder.INCLUDES;
@@ -663,6 +667,8 @@ namespace NCC.PRZTools
                         return;
                     }
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 if (direxists_excludes)
                 {
@@ -678,6 +684,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region GENERATE REGIONAL SPATIAL DATASETS
 
@@ -695,6 +703,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region WRAP UP
 
@@ -844,6 +854,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region PREPARE GROUP LAYER
 
                 // Determine if the group layer exists already - if so, delete it
@@ -871,9 +883,9 @@ namespace NCC.PRZTools
                 });
                 RasterLayer pu_rl = (RasterLayer)pu_layer;
 
-                await MapView.Active.RedrawAsync(true);
-
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region ASSEMBLE LAYERS
 
@@ -952,6 +964,8 @@ namespace NCC.PRZTools
                     }
                 });
 
+                PRZH.CheckForCancellation(token);
+
                 // Build lists of layers
                 List<(string lyrx_path, List<FeatureLayer> FLs)> lyrx_FLs = new List<(string lyrx_path, List<FeatureLayer> FLs)>();
                 List<(string lyrx_path, List<RasterLayer> RLs)> lyrx_RLs = new List<(string lyrx_path, List<RasterLayer> RLs)>();
@@ -963,7 +977,7 @@ namespace NCC.PRZTools
 
                     foreach (var a in o.cimLyrDocs)
                     {
-                        await QueuedTask.Run(async () =>
+                        await QueuedTask.Run(() =>
                         {
                             // Create and add the layer
                             LayerCreationParams lcparams = new LayerCreationParams(a)
@@ -1018,13 +1032,13 @@ namespace NCC.PRZTools
                                     fls.Add(l);
                                 }
                             }
-
-                            await MapView.Active.RedrawAsync(true);
                         });
                     }
 
                     lyrx_FLs.Add((o.lyrx_path, fls));
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Load the raster layers here
                 foreach (var o in RL_CIMDocs)
@@ -1033,7 +1047,7 @@ namespace NCC.PRZTools
 
                     foreach (var a in o.cimLyrDocs)
                     {
-                        await QueuedTask.Run(async () =>
+                        await QueuedTask.Run(() =>
                         {
                             // Create and add the layer
                             LayerCreationParams lcparams = new LayerCreationParams(a)
@@ -1091,13 +1105,13 @@ namespace NCC.PRZTools
                                     rls.Add(l);
                                 }
                             }
-
-                            await MapView.Active.RedrawAsync(true);
                         });
                     }
 
                     lyrx_RLs.Add((o.lyrx_path, rls));
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // ensure at least one layer is available
                 bool fls_present = false;
@@ -1124,10 +1138,13 @@ namespace NCC.PRZTools
                 if (!fls_present & !rls_present)
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"No valid layers found within the regional {subFolderType} directory"), true, ++val);
+                    await QueuedTask.Run(() => { _map.RemoveLayer(GL); });
                     return (true, "success");
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region PROCESS LAYERS TO EXTRACT ELEMENTS
 
@@ -1306,6 +1323,8 @@ namespace NCC.PRZTools
                                 }
                             });
                         }
+
+                        PRZH.CheckForCancellation(token);
                     }
                 }
 
@@ -1332,6 +1351,8 @@ namespace NCC.PRZTools
 
                             regElements.Add(regElement);
                         }
+
+                        PRZH.CheckForCancellation(token);
                     }
                 }
 
@@ -1386,6 +1407,8 @@ namespace NCC.PRZTools
                 });
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region OVERLAY ELEMENTS WITH PLANNING UNITS
 
@@ -1574,6 +1597,7 @@ namespace NCC.PRZTools
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: lyr_sr,
                             extent: extent_pu_query);
                         toolOutput = await PRZH.RunGPTool("PolygonToRaster_conversion", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
@@ -1586,6 +1610,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Polygons converted to raster."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_init);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Build Pyramids
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
@@ -1603,6 +1630,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(reg_raster_init, 1, 1, "");
@@ -1619,12 +1648,15 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // Reclass the new raster so that all non-null values are now equal to cell area
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(reg_raster_init, poly_to_ras_cellarea, reg_raster_2, "", "Value IS NOT NULL");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: lyr_sr,
                             cellSize: poly_to_ras_cellsize);
                         toolOutput = await PRZH.RunGPTool("Con_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
@@ -1637,6 +1669,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_2);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Build Pyramids
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
@@ -1654,6 +1689,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(reg_raster_2, 1, 1, "");
@@ -1670,6 +1707,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // resize pu raster to match cell size of layer raster
                         string pu_raster_reclass = PRZC.c_RAS_PLANNING_UNITS_RECLASS + regElement.ElementID.ToString();
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying PU Raster..."), true, ++val);
@@ -1677,6 +1716,7 @@ namespace NCC.PRZTools
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: PlanningUnitSR,
                             cellSize: poly_to_ras_cellsize,
                             resamplingMethod: "NEAREST");
                         toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
@@ -1691,6 +1731,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"raster copied."), true, ++val);
                         }
                         gdb_objects_delete.Add(pu_raster_reclass);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Snap raster for both zonal stats tools
                         string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
@@ -1716,6 +1758,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_3);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Zonal Statistics as Table
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
@@ -1738,6 +1783,7 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
+                        gdb_objects_delete.Add(zonal_stats_table);
                     }
                     else if (layerType == LayerType.RASTER)
                     {
@@ -1814,12 +1860,15 @@ namespace NCC.PRZTools
                             celsiz = poly_to_ras_cellsize;
                         }
 
+                        // TODO: Ensure that nodata values get respected when a tif is used
+
                         // Copy Raster to temp raster
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copy raster..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(regRL, reg_raster_init, "", "", "");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: lyr_sr,
                             extent: extent_pu_query,
                             cellSize: celsiz,
                             rasterStatistics: "STATISTICS 1 1",
@@ -1836,6 +1885,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Raster copied."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_init);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Reclass the new raster so that all zero values are set to NODATA
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Reclassing raster values..."), true, ++val);
@@ -1843,6 +1895,7 @@ namespace NCC.PRZTools
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: lyr_sr,
                             cellSize: celsiz);
                         toolOutput = await PRZH.RunGPTool("SetNull_sa", toolParams, toolEnvs, toolFlags_GP);
                         if (toolOutput == null)
@@ -1855,6 +1908,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Values reclassed."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_2);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Build Pyramids
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Building pyramids..."), true, ++val);
@@ -1872,6 +1928,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"pyramids built successfully."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // Build Statistics
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Calculating Statistics..."), true, ++val);
                         toolParams = Geoprocessing.MakeValueArray(reg_raster_2, 1, 1, "");
@@ -1888,6 +1946,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Statistics calculated."), true, ++val);
                         }
 
+                        PRZH.CheckForCancellation(token);
+
                         // resize pu raster to match cell size of layer raster
                         string pu_raster_reclass = PRZC.c_RAS_PLANNING_UNITS_RECLASS + regElement.ElementID.ToString();
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying PU Raster..."), true, ++val);
@@ -1895,6 +1955,7 @@ namespace NCC.PRZTools
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
+                            outputCoordinateSystem: PlanningUnitSR,
                             cellSize: poly_to_ras_cellsize,
                             resamplingMethod: "NEAREST");
                         toolOutput = await PRZH.RunGPTool("CopyRaster_management", toolParams, toolEnvs, toolFlags_GP);
@@ -1909,6 +1970,8 @@ namespace NCC.PRZTools
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"raster copied."), true, ++val);
                         }
                         gdb_objects_delete.Add(pu_raster_reclass);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Snap raster for both zonal stats tools
                         string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
@@ -1935,6 +1998,9 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
+                        gdb_objects_delete.Add(reg_raster_3);
+
+                        PRZH.CheckForCancellation(token);
 
                         // Zonal Statistics as Table
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
@@ -1958,6 +2024,7 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
                         }
+                        gdb_objects_delete.Add(zonal_stats_table);
                     }
 
                     // Retrieve dictionary from zonal stats table:   puid, sum
@@ -1991,6 +2058,8 @@ namespace NCC.PRZTools
                         }
                     });
 
+                    PRZH.CheckForCancellation(token);
+
                     // Delete temp objects
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting temp objects..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(string.Join(";", gdb_objects_delete));
@@ -2006,6 +2075,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Temp objects deleted successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // if there are no entries in the zonal stats dict, move on to next regElement
                     if (DICT_PUID_and_value_sum.Count == 0)
@@ -2085,6 +2156,8 @@ namespace NCC.PRZTools
                         }
                     });
 
+                    PRZH.CheckForCancellation(token);
+
                     // index the PUID field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID} field in the {regElement.ElementTable} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID, "", "");
@@ -2101,6 +2174,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
 
+                    PRZH.CheckForCancellation(token);
+
                     // index the Cell Number field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER} field in the {regElement.ElementTable} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(regElement.ElementTable, PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "", "");
@@ -2116,6 +2191,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // Update the regElements table
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
@@ -2150,6 +2227,9 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                // Remove Group Layer
+                await QueuedTask.Run(() => { _map.RemoveLayer(GL); });
 
                 return (true, "success");
             }
@@ -2219,6 +2299,8 @@ namespace NCC.PRZTools
 
                 #endregion
 
+                PRZH.CheckForCancellation(token);
+
                 #region PREPARE THE BASE FEATURE CLASS
 
                 // Declare some generic GP variables
@@ -2234,8 +2316,8 @@ namespace NCC.PRZTools
                 string base_fc = "pu_fc";
                 string base_fc_path = PRZH.GetPath_Project(base_fc, PRZC.c_FDS_REGIONAL_ELEMENTS).path;
 
-                // Get Regional SR (really just the Planning Units FC SR)
-                SpatialReference RegSR = await QueuedTask.Run(() =>
+                // Get the Planning Unit SR (from the PU FC)
+                SpatialReference PlanningUnitSR = await QueuedTask.Run(() =>
                 {
                     var tryget_fc = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
 
@@ -2252,7 +2334,7 @@ namespace NCC.PRZTools
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(
                     workspace: gdbpath,
                     overwriteoutput: true,
-                    outputCoordinateSystem: RegSR);
+                    outputCoordinateSystem: PlanningUnitSR);
                 toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
@@ -2264,6 +2346,8 @@ namespace NCC.PRZTools
                 {
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class copied successfully."), true, ++val);
                 }
+
+                PRZH.CheckForCancellation(token);
 
                 // Delete all but id field
                 PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting unnecessary fields..."), true, ++val);
@@ -2282,6 +2366,8 @@ namespace NCC.PRZTools
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 #region CYCLE THROUGH ALL REGIONAL ELEMENTS
 
@@ -2320,7 +2406,7 @@ namespace NCC.PRZTools
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(
                         workspace: gdbpath,
                         overwriteoutput: true,
-                        outputCoordinateSystem: RegSR);
+                        outputCoordinateSystem: PlanningUnitSR);
                     toolOutput = await PRZH.RunGPTool("CopyFeatures_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
@@ -2332,6 +2418,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("feature class created successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // JOIN FIELDS
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Joining fields..."), true, ++val);
@@ -2351,6 +2439,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("table joined successfully."), true, ++val);
                     }
 
+                    PRZH.CheckForCancellation(token);
+
                     // DELETE ROWS WHERE ID_1 IS NULL
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
                     await QueuedTask.Run(() =>
@@ -2368,6 +2458,8 @@ namespace NCC.PRZTools
                     });
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting unjoined rows..."), true, ++val);
 
+                    PRZH.CheckForCancellation(token);
+
                     // DELETE UNNECESSARY FIELD
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Deleting extra id field..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(elem_fc_name, $"{PRZC.c_FLD_TAB_REG_ELEMVAL_PU_ID}_1", "DELETE_FIELDS");
@@ -2383,6 +2475,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("field deleted."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // index the puid field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_FC_PU_ID} field in {elem_fc_name} feature class..."), true, ++val);
@@ -2402,6 +2496,8 @@ namespace NCC.PRZTools
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
 
+                    PRZH.CheckForCancellation(token);
+
                     // index the cell number field
                     PRZH.UpdateProgress(PM, PRZH.WriteLog($"Indexing {PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER} field in {elem_fc_name} table..."), true, ++val);
                     toolParams = Geoprocessing.MakeValueArray(elem_fc_name, PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "ix" + PRZC.c_FLD_TAB_REG_ELEMVAL_CELL_NUMBER, "", "");
@@ -2419,6 +2515,8 @@ namespace NCC.PRZTools
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog("Field indexed successfully."), true, ++val);
                     }
+
+                    PRZH.CheckForCancellation(token);
 
                     // ALTER ALIAS NAME OF FEATURE CLASS
                     PRZH.UpdateProgress(PM, PRZH.WriteLog("Altering feature class alias..."), true, ++val);
@@ -2440,10 +2538,11 @@ namespace NCC.PRZTools
                             var success = schemaBuilder.Build();
                         }
                     });
-
                 }
 
                 #endregion
+
+                PRZH.CheckForCancellation(token);
 
                 // DELETE THE TEMP FC
                 PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {base_fc} feature class..."), true, ++val);
@@ -2537,6 +2636,55 @@ namespace NCC.PRZTools
 
             try
             {
+
+                // Test null value retrieval
+                await QueuedTask.Run(() =>
+                {
+                    // Use the Planning Units Feature Class
+                    var tryget = PRZH.GetTable_Project("test");
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
+                    {
+                        WhereClause = $"id between 1 and 2"
+                    };
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search(queryFilter, false))
+                    {
+                        while (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                //double d = (row["col_double"] == null) ? -99999 : Convert.ToDouble(row["col_double"]);
+                                //ProMsgBox.Show($"{d}");
+
+                                double e = (double?)row["col_double"] ?? -9999.999;
+                                double u = (float?)row["col_single"] ?? -222.222;
+                                int i = (Int16?)row["col_short"] ?? -9999;
+                                int j = (int?)row["col_long"] ?? -7777;
+                                string p = (string)row["col_text"] ?? "s-999";
+
+                                ProMsgBox.Show($"Double: {e}\nSingle: {u}\nShort: {i}\nLong: {j}\nString: {p}");
+
+                                //if (row["col_double"] == null)
+                                //{
+                                //    ProMsgBox.Show("Nullorama");
+                                //}
+                                //else
+                                //{
+                                //    double v = Convert.ToDouble(row["col_double"]);
+                                //    ProMsgBox.Show($"{v}");
+                                //}
+
+                                //string p = (string)row["col_text"] ?? "testtttttt";
+
+                                //ProMsgBox.Show(p);
+                            }
+                        }
+                    }
+
+                });
 
             }
             catch (Exception ex)

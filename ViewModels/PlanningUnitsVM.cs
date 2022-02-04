@@ -2809,60 +2809,32 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Establish Geodatabase existence
-                var tryex_gdb = await PRZH.GDBExists_Project();
-                _gdb_exists = tryex_gdb.exists;
+                // Project Geodatabase existence
+                _gdb_exists = (await PRZH.GDBExists_Project()).exists;
 
-                // Establish Planning Unit Existence:
-                var tryex_pu = await PRZH.PUExists();
-                _pu_exists = tryex_pu.exists;
-
-                // Planning Unit Dataset Label
-                if (!_pu_exists || tryex_pu.puLayerType == PlanningUnitLayerType.UNKNOWN)
-                {
-                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.";
-                }
-                else if (tryex_pu.puLayerType == PlanningUnitLayerType.FEATURE)
-                {
-                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Feature Class).";
-                }
-                else if (tryex_pu.puLayerType == PlanningUnitLayerType.RASTER)
-                {
-                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset exists (Raster Dataset).";
-                }
-                else
-                {
-                    CompStat_Txt_PlanningUnits_Label = "Planning Unit Dataset does not exist.";
-                }
-
-                // Project GDB Label
                 if (_gdb_exists)
                 {
                     CompStat_Txt_ProjectGDB_Label = "Project Geodatabase exists.";
-                }
-                else
-                {
-                    CompStat_Txt_ProjectGDB_Label = "Project Geodatabase DOES NOT EXIST.";
-                }
-
-                // Planning Units Icon
-                if (_gdb_exists)
-                {
                     CompStat_Img_ProjectGDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
+                    CompStat_Txt_ProjectGDB_Label = "Project Geodatabase does not exist.";
                     CompStat_Img_ProjectGDB_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
 
-                // Planning Units Icon
+                // Planning Units existence
+                _pu_exists = (await PRZH.PUDataExists()).exists;
+
                 if (_pu_exists)
                 {
+                    CompStat_Txt_PlanningUnits_Label = "Planning Units exist.";
                     CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Yes16.png";
                 }
                 else
                 {
-                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_Warn16.png";
+                    CompStat_Txt_PlanningUnits_Label = "Planning Units do not exist. Build them.";
+                    CompStat_Img_PlanningUnits_Path = "pack://application:,,,/PRZTools;component/ImagesWPF/ComponentStatus_No16.png";
                 }
             }
             catch (Exception ex)

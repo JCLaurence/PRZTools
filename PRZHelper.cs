@@ -1291,90 +1291,6 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Identifies whether or not a planning unit dataset is configured as a national grid.
-        /// Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, bool is_national, string message)> PUIsNational()
-        {
-            try
-            {
-                // Run entire method on the worker thread
-                return await QueuedTask.Run(async () =>
-                {
-                    // Try to retrieve the project geodatabase
-                    var tryget_gdb = GetGDB_Project();
-
-                    if (!tryget_gdb.success)
-                    {
-                        return (false, false, tryget_gdb.message);
-                    }
-
-                    // Ensure the pu dataset exists
-                    var tryexists = await PUExists();
-                    if (!tryexists.exists)
-                    {
-                        return (false, false, tryexists.message);
-                    }
-
-                    // Examine table for required field
-                    if (tryexists.puLayerType == PlanningUnitLayerType.FEATURE)
-                    {
-                        var tryget_fc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        using (FeatureClass FC = tryget_fc.featureclass)
-                        using (FeatureClassDefinition fcDef = FC.GetDefinition())
-                        {
-                            // Search for the cell number field
-                            var a = fcDef.GetFields().Where(f => f.Name == PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER).FirstOrDefault();
-
-                            if (a == null)
-                            {
-                                // no cellnumber field found
-                                return (true, false, "cell number field not found");
-                            }
-                            else
-                            {
-                                // cell number field found
-                                return (true, true, "cell number field found");
-                            }
-                        }
-                    }
-                    else if (tryexists.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        var tryget_ras = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        using (RasterDataset rasterDataset = tryget_ras.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (TableDefinition tblDef = table.GetDefinition())
-                        {
-                            // Search for the cell number field
-                            var a = tblDef.GetFields().Where(f => f.Name == PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER).FirstOrDefault();
-
-                            if (a == null)
-                            {
-                                // no cellnumber field found
-                                return (true, false, "cell number field not found");
-                            }
-                            else
-                            {
-                                // cell number field found
-                                return (true, true, "cell number field found");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        return (false, false, "Unable to retrieve planning unit dataset");
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return (false, false, ex.Message);
-            }
-        }
-
-        /// <summary>
         /// Establish the existence of a project log file.  Silent errors.
         /// </summary>
         /// <returns></returns>
@@ -2834,6 +2750,102 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a NatElement object from the national element table, based on supplied
+        /// element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, NatElement element, string message)> GetNationalElement(int element_id)
+        {
+            try
+            {
+                // Ensure valid element_id (>0)
+                if (element_id <= 0)
+                {
+                    throw new Exception("element_id value <= zero");
+                }
+
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    throw new Exception("project geodatabase does not exist");
+                }
+
+                // Check for existence of Element table
+                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
+                {
+                    throw new Exception("nat element table not found");
+                }
+
+                // Create the new element
+                NatElement element = null;
+
+                // Fill out the element
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    QueryFilter queryFilter = new QueryFilter
+                    {
+                        WhereClause = $"{PRZC.c_FLD_TAB_NATELEMENT_ELEMENT_ID} = {element_id}"
+                    };
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search(queryFilter, false))
+                    {
+                        if (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                int id = element_id;
+                                string name = (string)row[PRZC.c_FLD_TAB_NATELEMENT_NAME] ?? "";
+                                int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_TYPE]);
+                                int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_STATUS]);
+                                string data_path = (string)row[PRZC.c_FLD_TAB_NATELEMENT_DATAPATH] ?? "";
+                                int theme_id = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_THEME_ID]);
+                                int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_NATELEMENT_PRESENCE]);
+                                string unit = (string)row[PRZC.c_FLD_TAB_NATELEMENT_UNIT] ?? "";
+
+                                if (id > 0)
+                                {
+                                    element = new NatElement()
+                                    {
+                                        ElementID = id,
+                                        ElementName = name,
+                                        ElementType = elem_type,
+                                        ElementStatus = elem_status,
+                                        ElementDataPath = data_path,
+                                        ThemeID = theme_id,
+                                        ElementPresence = elem_presence,
+                                        ElementUnit = unit
+                                    };
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if (element != null)
+                {
+                    return (true, element, "success");
+                }
+                else
+                {
+                    return (false, null, "element not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
+
         #endregion
 
         #region REGIONAL TABLES
@@ -3244,6 +3256,108 @@ namespace NCC.PRZTools
             }
         }
 
+        /// <summary>
+        /// Retrieve a RegElement object from the regional element table, based on supplied
+        /// element id.  Silent errors.
+        /// </summary>
+        /// <param name="element_id"></param>
+        /// <returns></returns>
+        public static async Task<(bool success, RegElement element, string message)> GetRegionalElement(int element_id)
+        {
+            try
+            {
+                // Ensure valid element_id (>0)
+                if (element_id <= 0)
+                {
+                    throw new Exception("element_id value <= zero");
+                }
+
+                // Check for Project GDB
+                var try_gdbexists = await GDBExists_Project();
+                if (!try_gdbexists.exists)
+                {
+                    throw new Exception("project geodatabase does not exist");
+                }
+
+                // Check for existence of Element table
+                if (!(await TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
+                {
+                    throw new Exception("reg element table not found");
+                }
+
+                // Create the new element
+                RegElement element = null;
+
+                // Fill out the element
+                await QueuedTask.Run(() =>
+                {
+                    var tryget = GetTable_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                    if (!tryget.success)
+                    {
+                        throw new Exception("Error retrieving table.");
+                    }
+
+                    QueryFilter queryFilter = new QueryFilter
+                    {
+                        WhereClause = $"{PRZC.c_FLD_TAB_REGELEMENT_ELEMENT_ID} = {element_id}"
+                    };
+
+                    using (Table table = tryget.table)
+                    using (RowCursor rowCursor = table.Search(queryFilter, false))
+                    {
+                        if (rowCursor.MoveNext())
+                        {
+                            using (Row row = rowCursor.Current)
+                            {
+                                string elem_name = (string)row[PRZC.c_FLD_TAB_REGELEMENT_NAME] ?? "";
+                                int elem_type = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_TYPE]);
+                                int elem_status = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_STATUS]);
+                                int elem_presence = Convert.ToInt32(row[PRZC.c_FLD_TAB_REGELEMENT_PRESENCE]);
+                                string elem_lyrxpath = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LYRXPATH] ?? "";
+                                string elem_lyrxname = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERNAME] ?? "";
+                                int elem_lyrxtype = Convert.ToInt32(Enum.Parse(typeof(LayerType), (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERTYPE], true));
+                                string elem_lyrxjson = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LAYERJSON] ?? "";
+                                string elem_whereclause = (string)row[PRZC.c_FLD_TAB_REGELEMENT_WHERECLAUSE] ?? "";
+                                string elem_legendgroup = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LEGENDGROUP] ?? "";
+                                string elem_legendclass = (string)row[PRZC.c_FLD_TAB_REGELEMENT_LEGENDCLASS] ?? "";
+
+                                object oThemeID = row[PRZC.c_FLD_TAB_REGELEMENT_THEME_ID] ?? -9999;
+                                int elem_themeid = Convert.ToInt32(oThemeID);
+
+                                element = new RegElement()
+                                {
+                                    ElementID = element_id,
+                                    ElementName = elem_name,
+                                    ElementType = elem_type,
+                                    ElementStatus = elem_status,
+                                    ElementPresence = elem_presence,
+                                    LayerName = elem_lyrxname,
+                                    LayerType = elem_lyrxtype,
+                                    LayerJson = elem_lyrxjson,
+                                    WhereClause = elem_whereclause,
+                                    LegendGroup = elem_legendgroup,
+                                    LegendClass = elem_legendclass,
+                                    ThemeID = elem_themeid
+                                };
+                            }
+                        }
+                    }
+                });
+
+                if (element != null)
+                {
+                    return (true, element, "success");
+                }
+                else
+                {
+                    return (false, null, "element not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, null, ex.Message);
+            }
+        }
 
         #endregion
 
@@ -4056,360 +4170,168 @@ namespace NCC.PRZTools
         #region SINGLE VALUES
 
         /// <summary>
-        /// Retrieve the national grid cell number associated with the specified planning unit id.  Silent errors.
+        /// Retrieve the national grid cell number associated with the specified
+        /// planning unit id.  Silent errors.
         /// </summary>
-        /// <param name="puid"></param>
+        /// <param name="pu_id"></param>
         /// <returns></returns>
-        public static async Task<(bool success, long cell_number, string message)> GetCellNumberFromPUID(int puid)
+        public static async Task<(bool success, long cell_number, string message)> GetCellNumberFromPUID(int pu_id)
         {
-            long cell_number = -9999;
-
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, cell_number, "Project GDB not found.");
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, cell_number, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
+                }
+                else if (!tryget_pudata.national_enabled)
+                {
+                    throw new Exception("Planning Units not national enabled.");
                 }
 
-                // Get the Cell Number
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                bool success = false;
+                string message = "";
+                long cell_number = -9999;
+
+                // Retrieve the Cell Number
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
+                        WhereClause = $"{PRZC.c_FLD_FC_PU_ID} = {pu_id}"
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter, false))
+                    {
+                        if (rowCursor.MoveNext())   // only check the first record
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
-                            WhereClause = $"{PRZC.c_FLD_FC_PU_ID} = {puid}"
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        {
-                            // Row Count
-                            int rows = table.GetCount(queryFilter);
-
-                            if (rows == 1)
+                            // Record found for pu_id
+                            using (Row row = rowCursor.Current)
                             {
-                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                if (row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER] != null)
                                 {
-                                    if (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-
-                                            if (cell_number > 0)
-                                            {
-                                                return (true, "success");
-                                            }
-                                            else
-                                            {
-                                                return (false, "cell number value is zero or lower.");
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        return (false, "no matching puid found");
-                                    }
+                                    cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    success = true;
+                                    message = "success";
+                                }
+                                else
+                                {
+                                    // null cell_number value (no need to do anything here)
+                                    success = false;    // for clarity
+                                    message = "null cell number value";
                                 }
                             }
-                            else if (rows == 0)
-                            {
-                                return (false, "no matching puid found");
-                            }
-                            else if (rows > 1)
-                            {
-                                return (false, "more than one matching puid found");
-                            }
-                            else
-                            {
-                                return (false, "there was a resounding kaboom");
-                            }
                         }
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
+                        else
                         {
-                            return (false, "PU raster dataset not found");
+                            // no record found for pu_id (no need to do anything here)
+                            success = false;        // for clarity
+                            message = "no pu_id record found";
                         }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER,
-                            WhereClause = $"{PRZC.c_FLD_RAS_PU_ID} = {puid}"
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving raster planning units");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        {
-                            // Row Count
-                            int rows = table.GetCount(queryFilter);
-
-                            if (rows == 1)
-                            {
-                                using (RowCursor rowCursor = table.Search(queryFilter))
-                                {
-                                    if (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            cell_number = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-
-                                            if (cell_number > 0)
-                                            {
-                                                return (true, "success");
-                                            }
-                                            else
-                                            {
-                                                return (false, "cell number value is zero or lower.");
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        return (false, "no matching puid found");
-                                    }
-                                }
-                            }
-                            else if (rows == 0)
-                            {
-                                return (false, "no matching puid found");
-                            }
-                            else if (rows > 1)
-                            {
-                                return (false, "more than one matching puid found");
-                            }
-                            else
-                            {
-                                return (false, "there was a resounding kaboom");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, cell_number, "success");
-                }
-                else
-                {
-                    return (false, cell_number, outcome.message);
-                }
+                return (success, cell_number, message);
             }
             catch (Exception ex)
             {
-                return (false, cell_number, ex.Message);
+                return (false, -9999, ex.Message);
             }
         }
 
         /// <summary>
-        /// Retrieve the planning unit id associated with the specified national grid cell number.  Silent errors.
+        /// Retrieve the planning unit id associated with the specified
+        /// national grid cell number.  Silent errors.
         /// </summary>
         /// <param name="cell_number"></param>
         /// <returns></returns>
-        public static async Task<(bool success, int puid, string message)> GetPUIDFromCellNumber(long cell_number)
+        public static async Task<(bool success, int pu_id, string message)> GetPUIDFromCellNumber(long cell_number)
         {
-            int puid = -9999;
-
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, puid, try_gdbexists.message);
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, puid, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
+                }
+                else if (!tryget_pudata.national_enabled)
+                {
+                    throw new Exception("Planning Units not national enabled.");
                 }
 
-                // Get the PUID
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                bool success = false;
+                string message = "";
+                int pu_id = -9999;
+
+                // Retrieve the PU ID
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
+                        WhereClause = $"{PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER} = {cell_number}"
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter, false))
+                    {
+                        if (rowCursor.MoveNext())   // only check the first record
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER,
-                            WhereClause = $"{PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER} = {cell_number}"
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        {
-                            // Row Count
-                            int rows = table.GetCount(queryFilter);
-
-                            if (rows == 1)
+                            // Record found for pu_id
+                            using (Row row = rowCursor.Current)
                             {
-                                using (RowCursor rowCursor = table.Search(queryFilter))
+                                if (row[PRZC.c_FLD_FC_PU_ID] != null)
                                 {
-                                    if (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                            if (puid > 0)
-                                            {
-                                                return (true, "success");
-                                            }
-                                            else
-                                            {
-                                                return (false, "PUID value is zero or lower.");
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        return (false, "no matching cell number found");
-                                    }
+                                    pu_id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    success = true;
+                                    message = "success";
+                                }
+                                else
+                                {
+                                    // null pu_id value (no need to do anything here)
+                                    success = false;    // for clarity
+                                    message = "null pu id value";
                                 }
                             }
-                            else if (rows == 0)
-                            {
-                                return (false, "no matching cell number found");
-                            }
-                            else if (rows > 1)
-                            {
-                                return (false, "more than one matching cell number found");
-                            }
-                            else
-                            {
-                                return (false, "there was a resounding kaboom");
-                            }
                         }
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
+                        else
                         {
-                            return (false, "PU raster dataset not found");
+                            // no record found for cell number (no need to do anything here)
+                            success = false;        // for clarity
+                            message = "no cell number record found";
                         }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER,
-                            WhereClause = $"{PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER} = {cell_number}"
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving raster planning units");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        {
-                            // Row Count
-                            int rows = table.GetCount(queryFilter);
-
-                            if (rows == 1)
-                            {
-                                using (RowCursor rowCursor = table.Search(queryFilter))
-                                {
-                                    if (rowCursor.MoveNext())
-                                    {
-                                        using (Row row = rowCursor.Current)
-                                        {
-                                            puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
-
-                                            if (puid > 0)
-                                            {
-                                                return (true, "success");
-                                            }
-                                            else
-                                            {
-                                                return (false, "puid value is zero or lower.");
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        return (false, "no matching cell number found");
-                                    }
-                                }
-                            }
-                            else if (rows == 0)
-                            {
-                                return (false, "no matching cell number found");
-                            }
-                            else if (rows > 1)
-                            {
-                                return (false, "more than one matching cell number found");
-                            }
-                            else
-                            {
-                                return (false, "there was a resounding kaboom");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, puid, "success");
-                }
-                else
-                {
-                    return (false, puid, outcome.message);
-                }
+                return (success, pu_id, message);
             }
             catch (Exception ex)
             {
-                return (false, puid, ex.Message);
+                return (false, -9999, ex.Message);
             }
         }
 
@@ -4418,125 +4340,64 @@ namespace NCC.PRZTools
         #region LISTS AND HASHSETS
 
         /// <summary>
-        /// Retrieves a Hashset of Planning Unit IDs from the existing Planning Unit dataset (either Feature or Raster).
-        /// Return value follows the success (bool), object (hashset), string (message) pattern.
-        /// success == false means the hashset was not retrieved, and the message string explains why.
+        /// Retrieves a hashset of Planning Unit IDs from the planning unit feature class.
+        /// Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool success, HashSet<int> puids, string message)> GetPUIDHashset()
         {
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, null, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
                 }
 
                 // Create the hashset
-                HashSet<int> puids = new HashSet<int>();
+                HashSet<int> HASH_puid = new HashSet<int>();
 
                 // Populate the hashset
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_ID
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter))
+                    {
+                        while (rowCursor.MoveNext())
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_ID
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
+                            using (Row row = rowCursor.Current)
                             {
-                                using (Row row = rowCursor.Current)
+                                if (row[PRZC.c_FLD_FC_PU_ID] != null)
                                 {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                    if (puid > 0)
+                                    int pu_id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    if (pu_id > 0)
                                     {
-                                        puids.Add(puid);
+                                        // only keep values > 0
+                                        HASH_puid.Add(pu_id);
                                     }
                                 }
                             }
                         }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving raster planning units");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-
-                                    if (puid > 0)
-                                    {
-                                        puids.Add(puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, puids, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
+                return (true, HASH_puid, "success");
             }
             catch (Exception ex)
             {
@@ -4545,9 +4406,8 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Returns a sorted list of Planning Unit IDs from the existing Planning Unit dataset (raster or feature).
-        /// Return value follows the success (bool), object (list), string (message) pattern.
-        /// success == false means the list was not retrieved, and the message string explains why.
+        /// Returns a list of planning unit ids from the planning units feature class.
+        /// Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool success, List<int> puids, string message)> GetPUIDList()
@@ -4575,125 +4435,69 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Retrieves a Hashset of National Grid Cell Numbers from the existing Planning Unit dataset (either Feature or Raster).
-        /// Return value follows the success (bool), object (hashset), string (message) pattern.
-        /// success == false means the hashset was not retrieved, and the message string explains why.
+        /// Retrieves a hashset of National Grid Cell Numbers from the planning unit feature class.
+        /// Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool success, HashSet<long> cell_numbers, string message)> GetCellNumberHashset()
         {
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, null, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
+                }
+                else if (!tryget_pudata.national_enabled)
+                {
+                    throw new Exception("Planning Units not national enabled.");
                 }
 
                 // Create the hashset
-                HashSet<long> cellnums = new HashSet<long>();
+                HashSet<long> HASH_cellnumbers = new HashSet<long>();
 
                 // Populate the hashset
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter))
+                    {
+                        while (rowCursor.MoveNext())
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
+                            // Record found for cell_number
+                            using (Row row = rowCursor.Current)
                             {
-                                using (Row row = rowCursor.Current)
+                                if (row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER] != null)
                                 {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (cellnum > 0)
+                                    long cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    if (cell_number > 0)
                                     {
-                                        cellnums.Add(cellnum);
+                                        // only keep values > 0
+                                        HASH_cellnumbers.Add(cell_number);
                                     }
                                 }
                             }
                         }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving planning unit raster");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (cellnum > 0)
-                                    {
-                                        cellnums.Add(cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, cellnums, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
+                return (true, HASH_cellnumbers, "success");
             }
             catch (Exception ex)
             {
@@ -4702,9 +4506,7 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Returns a sorted list of National Grid Cell Numbers from the existing Planning Unit dataset (raster or feature).
-        /// Return value follows the success (bool), object (list), string (message) pattern.
-        /// success == false means the list was not retrieved, and the message string explains why.
+        /// Returns a list of cell numbers from the planning unit feature class.  Silent errors.
         /// </summary>
         /// <returns></returns>
         public static async Task<(bool success, List<long> cell_numbers, string message)> GetCellNumberList()
@@ -4744,118 +4546,62 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, null, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
+                }
+                else if (!tryget_pudata.national_enabled)
+                {
+                    throw new Exception("Planning Units not national enabled.");
                 }
 
                 // Create the dictionary
-                Dictionary<long, int> dict = new Dictionary<long, int>();
+                Dictionary<long, int> DICT_CN_PUID = new Dictionary<long, int>();
 
                 // Populate the dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter))
+                    {
+                        while (rowCursor.MoveNext())
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
+                            using (Row row = rowCursor.Current)
                             {
-                                using (Row row = rowCursor.Current)
+                                // both columns must have a value
+                                if (row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER] != null & row[PRZC.c_FLD_FC_PU_ID] != null)
                                 {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    long cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    int pu_id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
 
-                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
+                                    if (cell_number > 0 & pu_id > 0 & !DICT_CN_PUID.ContainsKey(cell_number))
                                     {
-                                        dict.Add(cellnum, puid);
+                                        DICT_CN_PUID.Add(cell_number, pu_id);
                                     }
                                 }
                             }
                         }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_RAS_PU_ID
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving planning unit raster");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
-
-                                    if (cellnum > 0 && puid > 0 && !dict.ContainsKey(cellnum))
-                                    {
-                                        dict.Add(cellnum, puid);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, dict, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
+                return (true, DICT_CN_PUID, "success");
             }
             catch (Exception ex)
             {
@@ -4872,119 +4618,62 @@ namespace NCC.PRZTools
         {
             try
             {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
+                // Project GDB existence
+                if (!(await GDBExists_Project()).exists)
                 {
-                    return (false, null, "Project GDB not found.");
+                    throw new Exception("Project GDB not found.");
                 }
 
-                // Check for PU
-                var pu_result = await PUExists();
-                if (!pu_result.exists)
+                // Planning Units existence
+                var tryget_pudata = await PUDataExists();
+                if (!tryget_pudata.exists)
                 {
-                    return (false, null, "Planning Unit dataset not found.");
+                    throw new Exception("Planning Units not found.");
+                }
+                else if (!tryget_pudata.national_enabled)
+                {
+                    throw new Exception("Planning Units not national enabled.");
                 }
 
                 // Create the dictionary
-                Dictionary<int, long> dict = new Dictionary<int, long>();
+                Dictionary<int, long> DICT_PUID_CN = new Dictionary<int, long>();
 
                 // Populate the dictionary
-                (bool success, string message) outcome = await QueuedTask.Run(async () =>
+                await QueuedTask.Run(() =>
                 {
-                    if (pu_result.puLayerType == PlanningUnitLayerType.FEATURE)
+                    // Use the Planning Units Feature Class
+                    var tryget_pufc = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
+
+                    // Build query filter
+                    QueryFilter queryFilter = new QueryFilter()
                     {
-                        if (!(await FCExists_Project(PRZC.c_FC_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU feature class not found");
-                        }
+                        SubFields = PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER + "," + PRZC.c_FLD_FC_PU_ID
+                    };
 
-                        QueryFilter queryFilter = new QueryFilter()
+                    using (Table table = tryget_pufc.featureclass)
+                    using (RowCursor rowCursor = table.Search(queryFilter))
+                    {
+                        while (rowCursor.MoveNext())
                         {
-                            SubFields = PRZC.c_FLD_FC_PU_ID + "," + PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        var tryget = GetFC_Project(PRZC.c_FC_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            throw new Exception("Error retrieving feature class.");
-                        }
-
-                        using (Table table = tryget.featureclass)
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
+                            using (Row row = rowCursor.Current)
                             {
-                                using (Row row = rowCursor.Current)
+                                // both columns must have a value
+                                if (row[PRZC.c_FLD_FC_PU_ID] != null & row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER] != null)
                                 {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
+                                    int pu_id = Convert.ToInt32(row[PRZC.c_FLD_FC_PU_ID]);
+                                    long cell_number = Convert.ToInt64(row[PRZC.c_FLD_FC_PU_NATGRID_CELL_NUMBER]);
 
-                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
+                                    if (pu_id > 0 & cell_number > 0 & !DICT_PUID_CN.ContainsKey(pu_id))
                                     {
-                                        dict.Add(puid, cellnum);
+                                        DICT_PUID_CN.Add(pu_id, cell_number);
                                     }
                                 }
                             }
                         }
-
-                        return (true, "success");
-                    }
-                    else if (pu_result.puLayerType == PlanningUnitLayerType.RASTER)
-                    {
-                        if (!(await RasterExists_Project(PRZC.c_RAS_PLANNING_UNITS)).exists)
-                        {
-                            return (false, "PU raster dataset not found");
-                        }
-
-                        QueryFilter queryFilter = new QueryFilter()
-                        {
-                            SubFields = PRZC.c_FLD_RAS_PU_ID + "," + PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER
-                        };
-
-                        var tryget = GetRaster_Project(PRZC.c_RAS_PLANNING_UNITS);
-                        if (!tryget.success)
-                        {
-                            return (false, "Error retrieving raster planning units");
-                        }
-
-                        using (RasterDataset rasterDataset = tryget.rasterDataset)
-                        using (Raster raster = rasterDataset.CreateFullRaster())
-                        using (Table table = raster.GetAttributeTable())
-                        using (RowCursor rowCursor = table.Search(queryFilter))
-                        {
-                            while (rowCursor.MoveNext())
-                            {
-                                using (Row row = rowCursor.Current)
-                                {
-                                    int puid = Convert.ToInt32(row[PRZC.c_FLD_RAS_PU_ID]);
-                                    long cellnum = Convert.ToInt64(row[PRZC.c_FLD_RAS_PU_NATGRID_CELL_NUMBER]);
-
-                                    if (puid > 0 && cellnum > 0 && !dict.ContainsKey(puid))
-                                    {
-                                        dict.Add(puid, cellnum);
-                                    }
-                                }
-                            }
-                        }
-
-                        return (true, "success");
-                    }
-                    else
-                    {
-                        return (false, "there was a resounding kaboom");
                     }
                 });
 
-                if (outcome.success)
-                {
-                    return (true, dict, "success");
-                }
-                else
-                {
-                    return (false, null, outcome.message);
-                }
-
+                return (true, DICT_PUID_CN, "success");
             }
             catch (Exception ex)
             {
@@ -6279,85 +5968,20 @@ namespace NCC.PRZTools
                 {
                     #region TOP-LEVEL LAYERS
 
-                    // Main PRZ Group Layer
+                    // Main Group Layer
                     GroupLayer GL_MAIN = null;
-                    if (!PRZLayerExists(map, PRZLayerNames.MAIN))
-                    {
-                        GL_MAIN = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_MAIN);
-                    }
-                    else
+
+                    // remove it if present...
+                    if (PRZLayerExists(map, PRZLayerNames.MAIN))
                     {
                         GL_MAIN = (GroupLayer)GetPRZLayer(map, PRZLayerNames.MAIN);
-                        map.MoveLayer(GL_MAIN, 0);
+                        map.RemoveLayer(GL_MAIN);
                     }
 
+                    // ... and create a new one
+                    GL_MAIN = LayerFactory.Instance.CreateGroupLayer(map, 0, PRZC.c_GROUPLAYER_MAIN);
                     GL_MAIN.SetVisibility(true);
                     GL_MAIN.SetExpanded(true);
-
-                    //// Selection Rules Group Layer
-                    //GroupLayer GL_SELRULES = null;
-                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES))
-                    //{
-                    //    GL_SELRULES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 0, PRZC.c_GROUPLAYER_SELRULES);
-                    //}
-                    //else
-                    //{
-                    //    GL_SELRULES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES);
-                    //    GL_MAIN.MoveLayer(GL_SELRULES, 0);
-                    //}
-
-                    //GL_SELRULES.SetVisibility(true);
-                    //GL_SELRULES.SetExpanded(true);
-
-                    //// Cost Group Layer
-                    //GroupLayer GL_COST = null;
-                    //if (!PRZLayerExists(map, PRZLayerNames.COST))
-                    //{
-                    //    GL_COST = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 1, PRZC.c_GROUPLAYER_COST);
-                    //}
-                    //else
-                    //{
-                    //    GL_COST = (GroupLayer)GetPRZLayer(map, PRZLayerNames.COST);
-                    //    GL_MAIN.MoveLayer(GL_COST, 1);
-                    //}
-
-                    //GL_COST.SetVisibility(true);
-
-                    //// Features Group Layer
-                    //GroupLayer GL_FEATURES = null;
-                    //if (!PRZLayerExists(map, PRZLayerNames.FEATURES))
-                    //{
-                    //    GL_FEATURES = LayerFactory.Instance.CreateGroupLayer(GL_MAIN, 2, PRZC.c_GROUPLAYER_FEATURES);
-                    //}
-                    //else
-                    //{
-                    //    GL_FEATURES = (GroupLayer)GetPRZLayer(map, PRZLayerNames.FEATURES);
-                    //    GL_MAIN.MoveLayer(GL_FEATURES, 2);
-                    //}
-
-                    //GL_FEATURES.SetVisibility(true);
-
-                    // Remove all top-level layers from GL_MAIN that are not supposed to be there
-                    List<Layer> layers_to_delete = new List<Layer>();
-
-                    var all_layers = GL_MAIN.Layers;
-                    foreach (var lyr in all_layers)
-                    {
-                        layers_to_delete.Add(lyr);
-                        //if (lyr is GroupLayer)
-                        //{
-                        //    if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES && lyr.Name != PRZC.c_GROUPLAYER_COST && lyr.Name != PRZC.c_GROUPLAYER_FEATURES)
-                        //    {
-                        //        layers_to_delete.Add(lyr);
-                        //    }
-                        //}
-                        //else
-                        //{
-                        //    layers_to_delete.Add(lyr);
-                        //}
-                    }
-
-                    GL_MAIN.RemoveLayers(layers_to_delete);
 
                     // Add the Study Area Layer (MIGHT NOT EXIST)
                     if ((await FCExists_Project(PRZC.c_FC_STUDY_AREA_MAIN)).exists)
@@ -6430,6 +6054,44 @@ namespace NCC.PRZTools
                                 await ApplyLegend_ElementFC_Basic(featureLayer, DataSource.National);
                                 featureLayer.SetVisibility(false);
                                 featureLayer.SetExpanded(false);
+
+                                // Adjust the name to include element type code
+                                string layer_name = featureLayer.Name;  // pattern: n00001: bla bla bla
+
+                                string numpart = fc_name.Substring(4);
+                                if (int.TryParse(numpart, out int element_id))
+                                {
+                                    var tryget_elem = await GetNationalElement(element_id);
+                                    if (tryget_elem.success)
+                                    {
+                                        var element = tryget_elem.element;
+                                        int type_int = element.ElementType;
+                                        string txt = "";
+
+                                        if (type_int == (int)ElementType.Goal)
+                                        {
+                                            txt = " G";
+                                        }
+                                        else if (type_int == (int)ElementType.Weight)
+                                        {
+                                            txt = " W";
+                                        }
+                                        else if (type_int == (int)ElementType.Include)
+                                        {
+                                            txt = " I";
+                                        }
+                                        else if (type_int == (int)ElementType.Exclude)
+                                        {
+                                            txt = " E";
+                                        }
+                                        else
+                                        {
+                                            txt = " ?";
+                                        }
+
+                                        featureLayer.SetName(layer_name.Insert(6, txt));
+                                    }
+                                }
                             }
                         }
                     }
@@ -6452,152 +6114,60 @@ namespace NCC.PRZTools
                                 await ApplyLegend_ElementFC_Basic(featureLayer, DataSource.Regional);
                                 featureLayer.SetVisibility(false);
                                 featureLayer.SetExpanded(false);
+
+                                // Adjust the name to include element type code
+                                string layer_name = featureLayer.Name;  // pattern: n00001: bla bla bla
+                                string numpart = fc_name.Substring(4);
+
+                                if (int.TryParse(numpart, out int element_id))
+                                {
+                                    var tryget_elem = await GetRegionalElement(element_id);
+                                    if (tryget_elem.success)
+                                    {
+                                        var element = tryget_elem.element;
+                                        int type_int = element.ElementType;
+                                        string txt = "";
+
+                                        if (type_int == (int)ElementType.Goal)
+                                        {
+                                            txt = " G";
+                                        }
+                                        else if (type_int == (int)ElementType.Weight)
+                                        {
+                                            txt = " W";
+                                        }
+                                        else if (type_int == (int)ElementType.Include)
+                                        {
+                                            txt = " I";
+                                        }
+                                        else if (type_int == (int)ElementType.Exclude)
+                                        {
+                                            txt = " E";
+                                        }
+                                        else
+                                        {
+                                            txt = " ?";
+                                        }
+
+                                        string new_name = layer_name.Insert(6, txt);
+                                        featureLayer.SetName(new_name);
+                                    }
+                                }
                             }
                         }
                     }
 
                     #endregion
 
-                    //#region SELECTION RULE LAYERS
-
-                    //// Selection Rules - Include Layers
-                    //GroupLayer GL_SELRULES_INCLUDE = null;
-                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES_INCLUDE))
-                    //{
-                    //    GL_SELRULES_INCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 0, PRZC.c_GROUPLAYER_SELRULES_INCLUDE);
-                    //}
-                    //else
-                    //{
-                    //    GL_SELRULES_INCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_INCLUDE);
-                    //    GL_SELRULES.MoveLayer(GL_SELRULES_INCLUDE, 0);
-                    //}
-
-                    //GL_SELRULES_INCLUDE.SetVisibility(true);
-
-                    //// Selection Rules - Exclude Layers
-                    //GroupLayer GL_SELRULES_EXCLUDE = null;
-                    //if (!PRZLayerExists(map, PRZLayerNames.SELRULES_EXCLUDE))
-                    //{
-                    //    GL_SELRULES_EXCLUDE = LayerFactory.Instance.CreateGroupLayer(GL_SELRULES, 1, PRZC.c_GROUPLAYER_SELRULES_EXCLUDE);
-                    //}
-                    //else
-                    //{
-                    //    GL_SELRULES_EXCLUDE = (GroupLayer)GetPRZLayer(map, PRZLayerNames.SELRULES_EXCLUDE);
-                    //    GL_SELRULES.MoveLayer(GL_SELRULES_EXCLUDE, 1);
-                    //}
-
-                    //GL_SELRULES_EXCLUDE.SetVisibility(true);
-
-                    //// Remove all layers from GL_SELRULES that are not supposed to be there
-                    //layers_to_delete = new List<Layer>();
-
-                    //all_layers = GL_SELRULES.Layers;
-                    //foreach (var lyr in all_layers)
-                    //{
-                    //    if (lyr is GroupLayer)
-                    //    {
-                    //        if (lyr.Name != PRZC.c_GROUPLAYER_SELRULES_INCLUDE && lyr.Name != PRZC.c_GROUPLAYER_SELRULES_EXCLUDE)
-                    //        {
-                    //            layers_to_delete.Add(lyr);
-                    //        }
-                    //    }
-                    //    else
-                    //    {
-                    //        layers_to_delete.Add(lyr);
-                    //    }
-                    //}
-
-                    //GL_SELRULES.RemoveLayers(layers_to_delete);
-
-                    //// Remove all layers from GL_SELRULES_INCLUDE that are not supposed to be there
-                    //layers_to_delete = new List<Layer>();
-
-                    //all_layers = GL_SELRULES_INCLUDE.Layers;
-                    //foreach (var lyr in all_layers)
-                    //{
-                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                    //    {
-                    //        layers_to_delete.Add(lyr);
-                    //    }
-                    //    else
-                    //    {
-                    //        lyr.SetVisibility(true);
-                    //    }
-                    //}
-
-                    //GL_SELRULES_INCLUDE.RemoveLayers(layers_to_delete);
-
-                    //// Remove all layers from GL_SELRULES_EXCLUDE that are not supposed to be there
-                    //layers_to_delete = new List<Layer>();
-
-                    //all_layers = GL_SELRULES_EXCLUDE.Layers;
-                    //foreach (var lyr in all_layers)
-                    //{
-                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                    //    {
-                    //        layers_to_delete.Add(lyr);
-                    //    }
-                    //    else
-                    //    {
-                    //        lyr.SetVisibility(true);
-                    //    }
-                    //}
-
-                    //GL_SELRULES_EXCLUDE.RemoveLayers(layers_to_delete);
-
-                    //#endregion
-
-                    //#region COST LAYERS
-
-                    //// Remove all layers from GL_COST that are not supposed to be there
-                    //layers_to_delete = new List<Layer>();
-
-                    //all_layers = GL_COST.Layers;
-                    //foreach (var lyr in all_layers)
-                    //{
-                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                    //    {
-                    //        layers_to_delete.Add(lyr);
-                    //    }
-                    //    else
-                    //    {
-                    //        lyr.SetVisibility(true);
-                    //    }
-                    //}
-
-                    //GL_COST.RemoveLayers(layers_to_delete);
-
-                    //#endregion
-
-                    //#region FEATURES LAYERS
-
-                    //// Remove all layers from GL_FEATURES that are not supposed to be there
-                    //layers_to_delete = new List<Layer>();
-
-                    //all_layers = GL_FEATURES.Layers;
-                    //foreach (var lyr in all_layers)
-                    //{
-                    //    if (!(lyr is FeatureLayer) && !(lyr is RasterLayer))
-                    //    {
-                    //        layers_to_delete.Add(lyr);
-                    //    }
-                    //    else
-                    //    {
-                    //        lyr.SetVisibility(true);
-                    //    }
-                    //}
-
-                    //GL_FEATURES.RemoveLayers(layers_to_delete);
-
-                    //#endregion
-
-                    MapView.Active.Redraw(true);
+                    // Refresh map
+                    await MapView.Active.RedrawAsync(true);
                 });
 
                 return (true, "success");
             }
             catch (Exception ex)
             {
+                ProMsgBox.Show(ex.Message);
                 return (false, ex.Message);
             }
         }
