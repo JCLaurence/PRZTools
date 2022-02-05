@@ -339,7 +339,7 @@ namespace NCC.PRZTools
                 // Establish if the planning units are nationally enabled
                 bool national_enabled = tryex_pudata.national_enabled;
 
-                // Capture the Planning Unit Spatial Reference
+                // Get the Planning Unit Spatial Reference
                 SpatialReference PlanningUnitSR = await QueuedTask.Run(() =>
                 {
                     var tryget_fc = PRZH.GetFC_Project(PRZC.c_FC_PLANNING_UNITS);

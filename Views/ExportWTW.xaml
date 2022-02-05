@@ -56,40 +56,8 @@
                         DockPanel.Dock="Top"
                         Margin="5"  
                         Style="{DynamicResource Esri_TextBlockH4}"
-                        Text="Export Settings" />
+                        Text="Export Settings (placeholder)" />
 
-                    <DockPanel 
-                        DockPanel.Dock="Top"
-                        Height="25"
-                        LastChildFill="False">
-
-                        <TextBlock
-                                DockPanel.Dock="Left"
-                                Margin="15, 5, 5, 5" 
-                                VerticalAlignment="Center"
-                                Style="{DynamicResource Esri_TextBlockRegular}"
-                                Text="Spatial Format:" />
-
-                        <RadioButton
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="SpatialFormat"
-                            IsChecked="{Binding Settings_Rad_SpatialFormat_Vector_IsChecked}" 
-                            Content="Vector" />
-
-                        <RadioButton
-                            DockPanel.Dock="Left"
-                            Margin="5" 
-                            VerticalAlignment="Center" 
-                            VerticalContentAlignment="Center" 
-                            GroupName="SpatialFormat"
-                            IsChecked="{Binding Settings_Rad_SpatialFormat_Raster_IsChecked}"
-                            IsEnabled="False"
-                            Content="Raster" />
-
-                    </DockPanel>
                 </DockPanel>
 
             </Border>
@@ -144,63 +112,7 @@
                             Text="{Binding CompStat_Txt_BoundaryLengths_Label}" />
 
                     </DockPanel>
-
-                    <DockPanel
-                        DockPanel.Dock="Top"
-                        Visibility="Collapsed">
-
-                        <Image
-                            DockPanel.Dock="Left"
-                            Margin="3"
-                            Stretch="None"
-                            Source="{Binding CompStat_SelRules}"/>
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Selection Rules (Includes + Excludes)" />
-
-                    </DockPanel>
-
-                    <DockPanel
-                        DockPanel.Dock="Top"
-                        Visibility="Collapsed">
-
-                        <Image
-                            DockPanel.Dock="Left"
-                            Margin="3"
-                            Stretch="None"
-                            Source="{Binding CompStat_Weights}"/>
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Weights" />
-
-                    </DockPanel>
-
-                    <DockPanel
-                        DockPanel.Dock="Top"
-                        Visibility="Collapsed">
-
-                        <Image
-                            DockPanel.Dock="Left"
-                            Margin="3"
-                            Stretch="None"
-                            Source="{Binding CompStat_Features}"/>
-
-                        <TextBlock
-                            DockPanel.Dock="Left"
-                            Margin="5"
-                            Style="{DynamicResource Esri_TextBlockRegular}"
-                            Text="Features" />
-
-                    </DockPanel>
-
                 </DockPanel>
-
             </Border>
 
 

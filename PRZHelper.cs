@@ -1238,59 +1238,6 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Establish the existence of the Planning Unit dataset (feature class or raster dataset)
-        /// in the project file geodatabase.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool exists, PlanningUnitLayerType puLayerType, string message)> PUExists()
-        {
-            try
-            {
-                // Run entire method on the worker thread
-                return await QueuedTask.Run(() =>
-                {
-                    // Try to retrieve the project geodatabase
-                    var tryget_gdb = GetGDB_Project();
-
-                    if (!tryget_gdb.success)
-                    {
-                        return (false, PlanningUnitLayerType.UNKNOWN, tryget_gdb.message);
-                    }
-
-                    // Search the geodatabase for a feature/raster planning unit dataset
-                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    {
-                        if (geodatabase == null)
-                        {
-                            return (false, PlanningUnitLayerType.UNKNOWN, "Unable to retrieve project gdb.");
-                        }
-
-                        // Look for a Planning Unit dataset
-                        if (FCExists(geodatabase, PRZC.c_FC_PLANNING_UNITS).exists)
-                        {
-                            // Found a FC!
-                            return (true, PlanningUnitLayerType.FEATURE, "success");
-                        }
-                        else if (RasterExists(geodatabase, PRZC.c_RAS_PLANNING_UNITS).exists)
-                        {
-                            // Found a RD!
-                            return (true, PlanningUnitLayerType.RASTER, "success");
-                        }
-                        else
-                        {
-                            // Found nothing.
-                            return (false, PlanningUnitLayerType.UNKNOWN, "No Planning Unit dataset found.");
-                        }
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return (false, PlanningUnitLayerType.UNKNOWN, ex.Message);
-            }
-        }
-
-        /// <summary>
         /// Establish the existence of a project log file.  Silent errors.
         /// </summary>
         /// <returns></returns>

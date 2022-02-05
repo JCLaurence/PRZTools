@@ -313,18 +313,6 @@ namespace NCC.PRZTools.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("RASTER")]
-        public string WTW_SPATIAL_FORMAT {
-            get {
-                return ((string)(this["WTW_SPATIAL_FORMAT"]));
-            }
-            set {
-                this["WTW_SPATIAL_FORMAT"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("prz")]
         public string NATDB_DBNAME {
             get {
