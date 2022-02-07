@@ -26,7 +26,7 @@ namespace NCC.PRZTools
                 }
 
                 _elementID = value;
-                ElementTable = PRZConstants.c_TABLE_NAT_PREFIX_ELEMENT + value.ToString("D5");
+                ElementTable = PRZConstants.c_TABLE_NATPRJ_PREFIX_ELEMENT + value.ToString("D5");
             }
         }
 

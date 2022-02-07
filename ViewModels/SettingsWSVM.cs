@@ -767,13 +767,13 @@ namespace NCC.PRZTools
                             }
 
                             // now test for Element table
-                            if (string.Equals(table, PRZC.c_TABLE_NAT_ELEMENTS, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(table, PRZC.c_TABLE_NATSRC_ELEMENTS, StringComparison.OrdinalIgnoreCase))
                             {
                                 DICT_Schemas[schema]++;
                             }
 
                             // now test for Theme table
-                            if (string.Equals(table, PRZC.c_TABLE_NAT_THEMES, StringComparison.OrdinalIgnoreCase))
+                            if (string.Equals(table, PRZC.c_TABLE_NATSRC_THEMES, StringComparison.OrdinalIgnoreCase))
                             {
                                 DICT_Schemas[schema]++;
                             }

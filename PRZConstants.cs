@@ -269,16 +269,12 @@
 
         // RASTER DATASETS
         public const string c_RAS_PLANNING_UNITS = "planning_units_ras";
-        public const string c_RAS_PLANNING_UNITS_TEMP = "pu_ras_temp";
         public const string c_RAS_PLANNING_UNITS_RECLASS = "pu_ras_reclass_";
         public const string c_RAS_TEMP_1 = "TempRas1";
         public const string c_RAS_TEMP_2 = "TempRas2";
         public const string c_RAS_TEMP_3 = "TempRas3";
         public const string c_RAS_NATGRID_ZERO = "natgrid_zero";
         public const string c_RAS_NATGRID_CELLNUMS = "natgrid_cellnums";
-        //public const string c_RAS_REG_ELEMENT_TEMP = c_RAS_REG_ELEMENT + "tmp_";
-        //public const string c_RAS_REG_ELEMENT = "reg_elem_";
-        //public const string c_RAS_REG_ELEM_INIT = "reg_elem_";
 
         public const string c_RAS_REG_ELEM_PREFIX = "reg_elem_";
         public const string c_RAS_REG_ELEM_SUFFIX_ORIG = "_orig";
@@ -317,15 +313,19 @@
         public const string c_TABLE_REG_ZONALSTATS_PREFIX = "reg_elem_";
         public const string c_TABLE_REG_ZONALSTATS_SUFFIX = "_zonalstats";
 
-        // NATIONAL DB TABLES
-        public const string c_TABLE_NAT_ELEMENTS = "nat_element";
-        public const string c_TABLE_NAT_THEMES = "nat_theme";
-        public const string c_TABLE_NAT_PREFIX_ELEMENT = "n";
+        // SOURCE NATIONAL TABLES
+        public const string c_TABLE_NATSRC_ELEMENTS = "nat_element";
+        public const string c_TABLE_NATSRC_THEMES = "nat_theme";
+        public const string c_TABLE_NATSRC_PREFIX_ELEMENT = "n";
+
+        // PROJECT GDB NATIONAL TABLES
+        public const string c_TABLE_NATPRJ_ELEMENTS = "elements_national";
+        public const string c_TABLE_NATPRJ_THEMES = "themes_national";
+        public const string c_TABLE_NATPRJ_PREFIX_ELEMENT = "n";
 
         // REGIONAL DB TABLES
-        public const string c_TABLE_REG_ELEMENTS = "reg_element";
-        public const string c_TABLE_REG_THEMES = "reg_theme";
-        public const string c_TABLE_REG_PREFIX_ELEMENT = "r";
+        public const string c_TABLE_REGPRJ_ELEMENTS = "elements_regional";
+        public const string c_TABLE_REGPRJ_PREFIX_ELEMENT = "r";
 
         #endregion
 

@@ -397,16 +397,16 @@ namespace NCC.PRZTools
                 #region DELETE EXISTING GEODATABASE OBJECTS
 
                 // Delete the Regional Element table if present
-                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS)).exists)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_REG_ELEMENTS} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REG_ELEMENTS);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REGPRJ_ELEMENTS);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                     toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_REG_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.");
                         return;
                     }
                     else
@@ -449,7 +449,7 @@ namespace NCC.PRZTools
                     }
                 }
 
-                // Delete any regional rasters
+                // Delete any regional temp rasters
                 var tryget_regras = await PRZH.GetRegionalElementRasters();
                 if (!tryget_regras.success)
                 {
@@ -477,37 +477,6 @@ namespace NCC.PRZTools
                     else
                     {
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional element rasters deleted successfully."), true, ++val);
-                    }
-                }
-
-                // Delete any temp pu reclass rasters if found
-                var tryget_pureclass = await PRZH.GetRegionalPUReclassRasters();
-                if (!tryget_pureclass.success)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error retrieving list of regional pu reclass rasters.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error retrieving list of regional pu reclass rasters.");
-                    return;
-                }
-                else
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"{tryget_pureclass.rasters.Count} regional pu reclass rasters found."), true, ++val);
-                }
-
-                if (tryget_pureclass.rasters.Count > 0)
-                {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting {tryget_pureclass.rasters.Count} regional pu reclass rasters..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(string.Join(";", tryget_pureclass.rasters));
-                    toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
-                    toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
-                    if (toolOutput == null)
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting regional pu reclass rasters.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the regional pu reclass rasters.");
-                        return;
-                    }
-                    else
-                    {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Regional pu reclass rasters deleted successfully."), true, ++val);
                     }
                 }
 
@@ -558,19 +527,19 @@ namespace NCC.PRZTools
                 #region CREATE REGIONAL ELEMENT TABLE
 
                 // Create the table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_TABLE_REG_ELEMENTS} table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_REG_ELEMENTS, "", "", "Regional Elements");
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Creating the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(gdbpath, PRZC.c_TABLE_REGPRJ_ELEMENTS, "", "", "Regional Elements");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("CreateTable_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_TABLE_REG_ELEMENTS} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error creating the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error creating the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error creating the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.");
                     return;
                 }
                 else
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {PRZC.c_TABLE_REG_ELEMENTS} table."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Created the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table."), true, ++val);
                 }
 
                 PRZH.CheckForCancellation(token);
@@ -604,14 +573,14 @@ namespace NCC.PRZTools
                                 fldLegendGroup +
                                 fldLegendClass;
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {PRZC.c_TABLE_REG_ELEMENTS} table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REG_ELEMENTS, fields);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_REGPRJ_ELEMENTS, fields);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {PRZC.c_TABLE_REG_ELEMENTS} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error adding fields to the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.  GP Tool failed or was cancelled by user.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.");
                     return;
                 }
                 else
@@ -1364,22 +1333,22 @@ namespace NCC.PRZTools
                 regElements.Sort((x, y) => x.ElementID.CompareTo(y.ElementID));
 
                 // Ensure the table is present
-                var tryex_regelem = await PRZH.TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                var tryex_regelem = await PRZH.TableExists_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS);
                 if (!tryex_regelem.exists)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Unable to find the {PRZC.c_TABLE_REG_ELEMENTS} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Unable to find the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Unable to find the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.");
                     return (false, "error finding table.");
                 }
 
                 // Populate the table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Populating the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.."), true, ++val);
                 await QueuedTask.Run(() =>
                 {
                     var tryget_gdb = PRZH.GetGDB_Project();
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REGPRJ_ELEMENTS))
                     using (RowBuffer rowBuffer = table.CreateRowBuffer())
                     {
                         geodatabase.ApplyEdits(() =>
@@ -1426,7 +1395,7 @@ namespace NCC.PRZTools
                     // Set up geodatabase object names
                     string reg_raster_init = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_ORIG;
                     string reg_raster_2 = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_RECLASS;
-                    string reg_raster_3 = PRZC.c_RAS_REG_ELEM_PREFIX + regElement.ElementID.ToString() + PRZC.c_RAS_REG_ELEM_SUFFIX_ZONAL;
+                    string reg_raster_pureclass = PRZC.c_RAS_REG_ELEM_PREFIX + "pu_reclass_" + regElement.ElementID.ToString();
 
                     string zonal_stats_table = PRZC.c_TABLE_REG_ZONALSTATS_PREFIX + regElement.ElementID.ToString() + PRZC.c_TABLE_REG_ZONALSTATS_SUFFIX;
 
@@ -1710,9 +1679,8 @@ namespace NCC.PRZTools
                         PRZH.CheckForCancellation(token);
 
                         // resize pu raster to match cell size of layer raster
-                        string pu_raster_reclass = PRZC.c_RAS_PLANNING_UNITS_RECLASS + regElement.ElementID.ToString();
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying PU Raster..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_layer, pu_raster_reclass);
+                        toolParams = Geoprocessing.MakeValueArray(pu_layer, reg_raster_pureclass);
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
@@ -1730,41 +1698,16 @@ namespace NCC.PRZTools
                         {
                             PRZH.UpdateProgress(PM, PRZH.WriteLog($"raster copied."), true, ++val);
                         }
-                        gdb_objects_delete.Add(pu_raster_reclass);
+                        gdb_objects_delete.Add(reg_raster_pureclass);
 
                         PRZH.CheckForCancellation(token);
 
-                        // Snap raster for both zonal stats tools
-                        string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
-
-                        // Zonal Statistics (Sum)
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, reg_raster_3, "SUM", "DATA");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
-                            workspace: gdbpath,
-                            overwriteoutput: true,
-                            cellSize: poly_to_ras_cellsize,
-                            snapRaster: snapraster,
-                            outputCoordinateSystem: PlanningUnitSR,
-                            geographicTransformations: geoTransNames_lyr_to_pu);
-                        toolOutput = await PRZH.RunGPTool("ZonalStatistics_sa", toolParams, toolEnvs, toolFlags_GP);
-                        if (toolOutput == null)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error calculating zonal statistics.");
-                            return (false, "error calculating zonal statistics");
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
-                        }
-                        gdb_objects_delete.Add(reg_raster_3);
-
-                        PRZH.CheckForCancellation(token);
+                        // Snap raster for zonal stats
+                        string snapraster = PRZH.GetPath_Project(reg_raster_pureclass).path;
 
                         // Zonal Statistics as Table
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, zonal_stats_table, "DATA", "ALL");
+                        toolParams = Geoprocessing.MakeValueArray(reg_raster_pureclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, zonal_stats_table, "DATA", "ALL");
                         toolEnvs = Geoprocessing.MakeEnvironmentArray(
                             workspace: gdbpath,
                             overwriteoutput: true,
@@ -1973,34 +1916,8 @@ namespace NCC.PRZTools
 
                         PRZH.CheckForCancellation(token);
 
-                        // Snap raster for both zonal stats tools
+                        // Snap raster for zonal stats
                         string snapraster = PRZH.GetPath_Project(pu_raster_reclass).path;
-
-                        // Zonal Statistics (Sum)
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics..."), true, ++val);
-                        toolParams = Geoprocessing.MakeValueArray(pu_raster_reclass, PRZC.c_FLD_RAS_PU_ID, reg_raster_2, reg_raster_3, "SUM", "DATA");
-                        toolEnvs = Geoprocessing.MakeEnvironmentArray(
-                            workspace: gdbpath,
-                            overwriteoutput: true,
-                            cellSize: poly_to_ras_cellsize,
-                            snapRaster: snapraster,
-                            outputCoordinateSystem: PlanningUnitSR,
-                            geographicTransformations: geoTransNames_lyr_to_pu,
-                            resamplingMethod: interpolation_method);
-                        toolOutput = await PRZH.RunGPTool("ZonalStatistics_sa", toolParams, toolEnvs, toolFlags_GP);
-                        if (toolOutput == null)
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error calculating zonal statistics.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                            ProMsgBox.Show($"Error calculating zonal statistics.");
-                            return (false, "error calculating zonal statistics");
-                        }
-                        else
-                        {
-                            PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal statistics calculated."), true, ++val);
-                        }
-                        gdb_objects_delete.Add(reg_raster_3);
-
-                        PRZH.CheckForCancellation(token);
 
                         // Zonal Statistics as Table
                         PRZH.UpdateProgress(PM, PRZH.WriteLog($"Zonal Statistics as Table..."), true, ++val);
@@ -2195,13 +2112,13 @@ namespace NCC.PRZTools
                     PRZH.CheckForCancellation(token);
 
                     // Update the regElements table
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REG_ELEMENTS} table.."), true, ++val);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_REGPRJ_ELEMENTS} table.."), true, ++val);
                     await QueuedTask.Run(() =>
                     {
                         var tryget_gdb = PRZH.GetGDB_Project();
 
                         using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                        using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REG_ELEMENTS))
+                        using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_REGPRJ_ELEMENTS))
                         {
                             QueryFilter queryFilter = new QueryFilter()
                             {
