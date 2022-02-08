@@ -347,16 +347,16 @@ namespace NCC.PRZTools
                 #region DELETE EXISTING GEODATABASE OBJECTS
 
                 // Delete the National Theme Table if present
-                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_NATPRJ_THEMES)).exists)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_THEMES);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_NATPRJ_THEMES} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NATPRJ_THEMES);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                     toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_NAT_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_NAT_THEMES} table.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_NATPRJ_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_NATPRJ_THEMES} table.");
                         return;
                     }
                     else
@@ -368,16 +368,16 @@ namespace NCC.PRZTools
                 PRZH.CheckForCancellation(token);
 
                 // Delete the National Element table if present
-                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
+                if ((await PRZH.TableExists_Project(PRZC.c_TABLE_NATPRJ_ELEMENTS)).exists)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
-                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_ELEMENTS);
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Deleting the {PRZC.c_TABLE_NATPRJ_ELEMENTS} table..."), true, ++val);
+                    toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NATPRJ_ELEMENTS);
                     toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath);
                     toolOutput = await PRZH.RunGPTool("Delete_management", toolParams, toolEnvs, toolFlags_GP);
                     if (toolOutput == null)
                     {
-                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_NAT_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_NAT_ELEMENTS} table.");
+                        PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error deleting the {PRZC.c_TABLE_NATPRJ_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                        ProMsgBox.Show($"Error deleting the {PRZC.c_TABLE_NATPRJ_ELEMENTS} table.");
                         return;
                     }
                     else
@@ -581,16 +581,16 @@ namespace NCC.PRZTools
                 string gdbpath = PRZH.GetPath_ProjectGDB();
                 string natdbpath = PRZH.GetPath_NatGDB();
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
-                var q_elem = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NAT_ELEMENTS);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_TABLE_NATSRC_ELEMENTS} table..."), true, ++val);
+                var q_elem = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NATSRC_ELEMENTS);
                 string inputelempath = Path.Combine(natdbpath, q_elem.qualified_name);
-                toolParams = Geoprocessing.MakeValueArray(inputelempath, PRZC.c_TABLE_NAT_ELEMENTS, "", "");
+                toolParams = Geoprocessing.MakeValueArray(inputelempath, PRZC.c_TABLE_NATPRJ_ELEMENTS, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_TABLE_NAT_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error copying the {PRZC.c_TABLE_NAT_ELEMENTS} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_TABLE_NATSRC_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying the {PRZC.c_TABLE_NATSRC_ELEMENTS} table.");
                     return (false, "table copy error.");
                 }
                 else
@@ -612,7 +612,7 @@ namespace NCC.PRZTools
                     }
 
                     using (Geodatabase geodatabase = tryget_projectgdb.geodatabase)
-                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_ELEMENTS))
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NATPRJ_ELEMENTS))
                     using (TableDefinition tblDef = table.GetDefinition())
                     {
                         // Get the Table Description
@@ -630,14 +630,14 @@ namespace NCC.PRZTools
                 string fldElemPresence = PRZC.c_FLD_TAB_NATELEMENT_PRESENCE + $" SHORT 'Presence' # {(int)ElementPresence.Absent} '" + PRZC.c_DOMAIN_PRESENCE + "';";
                 string flds = fldElemPresence;
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the copied {PRZC.c_TABLE_NAT_ELEMENTS} table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_ELEMENTS, flds);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the copied {PRZC.c_TABLE_NATPRJ_ELEMENTS} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NATPRJ_ELEMENTS, flds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the copied {PRZC.c_TABLE_NAT_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error adding fields to the copied {PRZC.c_TABLE_NAT_ELEMENTS} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the copied {PRZC.c_TABLE_NATPRJ_ELEMENTS} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the copied {PRZC.c_TABLE_NATPRJ_ELEMENTS} table.");
                     return (false, "field addition error.");
                 }
                 else
@@ -648,16 +648,16 @@ namespace NCC.PRZTools
                 PRZH.CheckForCancellation(token);
 
                 // COPY THE THEMES TABLE
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
-                var q_theme = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NAT_THEMES);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Copying the {PRZC.c_TABLE_NATSRC_THEMES} table..."), true, ++val);
+                var q_theme = await PRZH.GetNatDBQualifiedName(PRZC.c_TABLE_NATSRC_THEMES);
                 string inputthemepath = Path.Combine(natdbpath, q_theme.qualified_name);
-                toolParams = Geoprocessing.MakeValueArray(inputthemepath, PRZC.c_TABLE_NAT_THEMES, "", "");
+                toolParams = Geoprocessing.MakeValueArray(inputthemepath, PRZC.c_TABLE_NATPRJ_THEMES, "", "");
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("Copy_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_TABLE_NAT_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error copying the {PRZC.c_TABLE_NAT_THEMES} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error copying the {PRZC.c_TABLE_NATSRC_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error copying the {PRZC.c_TABLE_NATSRC_THEMES} table.");
                     return (false, "table copy error.");
                 }
                 else
@@ -679,7 +679,7 @@ namespace NCC.PRZTools
                     }
 
                     using (Geodatabase geodatabase = tryget_projectgdb.geodatabase)
-                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_THEMES))
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NATPRJ_THEMES))
                     using (TableDefinition tblDef = table.GetDefinition())
                     {
                         // Get the Table Description
@@ -697,14 +697,14 @@ namespace NCC.PRZTools
                 string fldThemePresence = PRZC.c_FLD_TAB_NATTHEME_PRESENCE + $" SHORT 'Presence' # {(int)ElementPresence.Absent} '" + PRZC.c_DOMAIN_PRESENCE + "';";
                 flds = fldThemePresence;
 
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the copied {PRZC.c_TABLE_NAT_THEMES} table..."), true, ++val);
-                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NAT_THEMES, flds);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Adding fields to the copied {PRZC.c_TABLE_NATPRJ_THEMES} table..."), true, ++val);
+                toolParams = Geoprocessing.MakeValueArray(PRZC.c_TABLE_NATPRJ_THEMES, flds);
                 toolEnvs = Geoprocessing.MakeEnvironmentArray(workspace: gdbpath, overwriteoutput: true);
                 toolOutput = await PRZH.RunGPTool("AddFields_management", toolParams, toolEnvs, toolFlags_GP);
                 if (toolOutput == null)
                 {
-                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the copied {PRZC.c_TABLE_NAT_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
-                    ProMsgBox.Show($"Error adding fields to the copied {PRZC.c_TABLE_NAT_THEMES} table.");
+                    PRZH.UpdateProgress(PM, PRZH.WriteLog($"Error adding fields to the copied {PRZC.c_TABLE_NATPRJ_THEMES} table.  GP Tool failed or was cancelled by user", LogMessageType.ERROR), true, ++val);
+                    ProMsgBox.Show($"Error adding fields to the copied {PRZC.c_TABLE_NATPRJ_THEMES} table.");
                     return (false, "field addition error.");
                 }
                 else
@@ -930,13 +930,13 @@ namespace NCC.PRZTools
                 #region UPDATE THE LOCAL ELEMENT TABLE PRESENCE FIELD
 
                 // Update the table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NAT_ELEMENTS} table {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NATPRJ_ELEMENTS} table {PRZC.c_FLD_TAB_NATELEMENT_PRESENCE} field..."), true, ++val);
                 await QueuedTask.Run(() =>
                 {
                     var tryget_gdb = PRZH.GetGDB_Project();
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_ELEMENTS))
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NATPRJ_ELEMENTS))
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         geodatabase.ApplyEdits(() =>
@@ -970,13 +970,13 @@ namespace NCC.PRZTools
                 #region UPDATE THE LOCAL THEME TABLE PRESENCE FIELD
 
                 // Update the table
-                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NAT_THEMES} table {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field..."), true, ++val);
+                PRZH.UpdateProgress(PM, PRZH.WriteLog($"Updating the {PRZC.c_TABLE_NATPRJ_THEMES} table {PRZC.c_FLD_TAB_NATTHEME_PRESENCE} field..."), true, ++val);
                 await QueuedTask.Run(() =>
                 {
                     var tryget_gdb = PRZH.GetGDB_Project();
 
                     using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NAT_THEMES))
+                    using (Table table = geodatabase.OpenDataset<Table>(PRZC.c_TABLE_NATPRJ_THEMES))
                     using (RowCursor rowCursor = table.Search(null, false))
                     {
                         geodatabase.ApplyEdits(() =>

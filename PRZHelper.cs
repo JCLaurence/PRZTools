@@ -2077,7 +2077,8 @@ namespace NCC.PRZTools
         #region NAT GDB OBJECTS
 
         /// <summary>
-        /// Retrieve a table by name from the national geodatabase (file or enterprise).  Must be run on MCT.  Silent errors.
+        /// Retrieve a table by name from the national geodatabase (file or enterprise).
+        /// Must be run on MCT.  Silent errors.
         /// </summary>
         /// <param name="table_name"></param>
         /// <returns></returns>
@@ -2300,7 +2301,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    return (true, PRZC.c_TABLE_NAT_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
+                    return (true, PRZC.c_TABLE_NATPRJ_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
                 }
             }
             catch (Exception ex)
@@ -2325,9 +2326,9 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Theme table
-                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_THEMES)).exists)
+                if (!(await TableExists_Project(PRZC.c_TABLE_NATPRJ_THEMES)).exists)
                 {
-                    return (false, null, $"{PRZC.c_TABLE_NAT_THEMES} table not found in project geodatabase");
+                    return (false, null, $"{PRZC.c_TABLE_NATPRJ_THEMES} table not found in project geodatabase");
                 }
 
                 // Create the list
@@ -2336,7 +2337,7 @@ namespace NCC.PRZTools
                 // Populate the list
                 (bool success, string message) outcome = await QueuedTask.Run(() =>
                 {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_THEMES);
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NATPRJ_THEMES);
                     if (!tryget.success)
                     {
                         throw new Exception("Error retrieving table.");
@@ -2443,9 +2444,9 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Element table
-                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
+                if (!(await TableExists_Project(PRZC.c_TABLE_NATPRJ_ELEMENTS)).exists)
                 {
-                    return (false, null, $"{PRZC.c_TABLE_NAT_ELEMENTS} table not found in project geodatabase");
+                    return (false, null, $"{PRZC.c_TABLE_NATPRJ_ELEMENTS} table not found in project geodatabase");
                 }
 
                 // Create list
@@ -2454,7 +2455,7 @@ namespace NCC.PRZTools
                 // Populate the list
                 await QueuedTask.Run(() =>
                 {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NATPRJ_ELEMENTS);
                     if (!tryget.success)
                     {
                         throw new Exception("Error retrieving table.");
@@ -2625,7 +2626,7 @@ namespace NCC.PRZTools
                             {
                                 string name = table_def.GetName();
 
-                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_NAT_PREFIX_ELEMENT))
+                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_NATPRJ_PREFIX_ELEMENT))
                                 {
                                     string numpart = name.Substring(1);
 
@@ -2674,7 +2675,7 @@ namespace NCC.PRZTools
                     // Select fc names matching pattern
                     foreach (string fc_name in all_fc_names)
                     {
-                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_NAT_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
+                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_NATPRJ_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
                         {
                             string numpart = fc_name.Substring(4);
 
@@ -2698,8 +2699,8 @@ namespace NCC.PRZTools
         }
 
         /// <summary>
-        /// Retrieve a NatElement object from the national element table, based on supplied
-        /// element id.  Silent errors.
+        /// Retrieve a NatElement object from the national element table in the project GDB,
+        /// based on the supplied element id.  Silent errors.
         /// </summary>
         /// <param name="element_id"></param>
         /// <returns></returns>
@@ -2721,7 +2722,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Element table
-                if (!(await TableExists_Project(PRZC.c_TABLE_NAT_ELEMENTS)).exists)
+                if (!(await TableExists_Project(PRZC.c_TABLE_NATPRJ_ELEMENTS)).exists)
                 {
                     throw new Exception("nat element table not found");
                 }
@@ -2732,7 +2733,7 @@ namespace NCC.PRZTools
                 // Fill out the element
                 await QueuedTask.Run(() =>
                 {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_NAT_ELEMENTS);
+                    var tryget = GetTable_Project(PRZC.c_TABLE_NATPRJ_ELEMENTS);
                     if (!tryget.success)
                     {
                         throw new Exception("Error retrieving table.");
@@ -2812,7 +2813,7 @@ namespace NCC.PRZTools
                 }
                 else
                 {
-                    return (true, PRZC.c_TABLE_REG_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
+                    return (true, PRZC.c_TABLE_REGPRJ_PREFIX_ELEMENT + element_id.ToString("D5"), "success");
                 }
             }
             catch (Exception ex)
@@ -2837,9 +2838,9 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Element table
-                if (!(await TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
+                if (!(await TableExists_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS)).exists)
                 {
-                    return (false, null, $"{PRZC.c_TABLE_REG_ELEMENTS} table not found in project geodatabase");
+                    return (false, null, $"{PRZC.c_TABLE_REGPRJ_ELEMENTS} table not found in project geodatabase");
                 }
 
                 // Create list
@@ -2848,7 +2849,7 @@ namespace NCC.PRZTools
                 // Populate the list
                 await QueuedTask.Run(() =>
                 {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                    var tryget = GetTable_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS);
                     if (!tryget.success)
                     {
                         throw new Exception("Error retrieving table.");
@@ -3023,7 +3024,7 @@ namespace NCC.PRZTools
                             {
                                 string name = table_def.GetName();
 
-                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_REG_PREFIX_ELEMENT))
+                                if (name.Length == 6 & name.StartsWith(PRZC.c_TABLE_REGPRJ_PREFIX_ELEMENT))
                                 {
                                     string numpart = name.Substring(1);
 
@@ -3100,59 +3101,59 @@ namespace NCC.PRZTools
             }
         }
 
-        /// <summary>
-        /// Retrieve a list of regional pu raster reclass raster names.  Silent errors.
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<(bool success, List<string> rasters, string message)> GetRegionalPUReclassRasters()
-        {
-            try
-            {
-                // Check for Project GDB
-                var try_gdbexists = await GDBExists_Project();
-                if (!try_gdbexists.exists)
-                {
-                    return (false, null, try_gdbexists.message);
-                }
+        ///// <summary>
+        ///// Retrieve a list of regional pu raster reclass raster names.  Silent errors.
+        ///// </summary>
+        ///// <returns></returns>
+        //public static async Task<(bool success, List<string> rasters, string message)> GetRegionalPUReclassRasters()
+        //{
+        //    try
+        //    {
+        //        // Check for Project GDB
+        //        var try_gdbexists = await GDBExists_Project();
+        //        if (!try_gdbexists.exists)
+        //        {
+        //            return (false, null, try_gdbexists.message);
+        //        }
 
-                // Create the list
-                List<string> raster_names = new List<string>();
+        //        // Create the list
+        //        List<string> raster_names = new List<string>();
 
-                // Populate the list
-                await QueuedTask.Run(() =>
-                {
-                    var tryget_gdb = GetGDB_Project();
-                    if (!tryget_gdb.success)
-                    {
-                        throw new Exception("Error opening project geodatabase.");
-                    }
+        //        // Populate the list
+        //        await QueuedTask.Run(() =>
+        //        {
+        //            var tryget_gdb = GetGDB_Project();
+        //            if (!tryget_gdb.success)
+        //            {
+        //                throw new Exception("Error opening project geodatabase.");
+        //            }
 
-                    using (Geodatabase geodatabase = tryget_gdb.geodatabase)
-                    {
-                        var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
+        //            using (Geodatabase geodatabase = tryget_gdb.geodatabase)
+        //            {
+        //                var rasDefs = geodatabase.GetDefinitions<RasterDatasetDefinition>();
 
-                        foreach (RasterDatasetDefinition rasDef in rasDefs)
-                        {
-                            using (rasDef)
-                            {
-                                string name = rasDef.GetName();
+        //                foreach (RasterDatasetDefinition rasDef in rasDefs)
+        //                {
+        //                    using (rasDef)
+        //                    {
+        //                        string name = rasDef.GetName();
 
-                                if (name.StartsWith(PRZC.c_RAS_PLANNING_UNITS_RECLASS, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    raster_names.Add(name);
-                                }
-                            }
-                        }
-                    }
-                });
+        //                        if (name.StartsWith(PRZC.c_RAS_PLANNING_UNITS_RECLASS, StringComparison.OrdinalIgnoreCase))
+        //                        {
+        //                            raster_names.Add(name);
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        });
 
-                return (true, raster_names, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
+        //        return (true, raster_names, "success");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return (false, null, ex.Message);
+        //    }
+        //}
 
         /// <summary>
         /// Retrieve a list of regional element feature class names (e.g. fc_r00042) from the
@@ -3180,7 +3181,7 @@ namespace NCC.PRZTools
                     // Select fc names matching pattern
                     foreach (string fc_name in all_fc_names)
                     {
-                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_REG_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
+                        if (fc_name.StartsWith($"fc_{PRZC.c_TABLE_REGPRJ_PREFIX_ELEMENT}", StringComparison.OrdinalIgnoreCase) & fc_name.Length == 9)
                         {
                             string numpart = fc_name.Substring(4);
 
@@ -3227,7 +3228,7 @@ namespace NCC.PRZTools
                 }
 
                 // Check for existence of Element table
-                if (!(await TableExists_Project(PRZC.c_TABLE_REG_ELEMENTS)).exists)
+                if (!(await TableExists_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS)).exists)
                 {
                     throw new Exception("reg element table not found");
                 }
@@ -3238,7 +3239,7 @@ namespace NCC.PRZTools
                 // Fill out the element
                 await QueuedTask.Run(() =>
                 {
-                    var tryget = GetTable_Project(PRZC.c_TABLE_REG_ELEMENTS);
+                    var tryget = GetTable_Project(PRZC.c_TABLE_REGPRJ_ELEMENTS);
                     if (!tryget.success)
                     {
                         throw new Exception("Error retrieving table.");
@@ -3725,154 +3726,6 @@ namespace NCC.PRZTools
         /// <param name="element_id"></param>
         /// <param name="cell_numbers"></param>
         /// <returns></returns>
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersectionOld(int element_id, HashSet<long> cell_numbers)
-        {
-            try
-            {
-                // Ensure valid element id
-                if (element_id < 1 || element_id > 99999)
-                {
-                    return (false, null, "Element ID out of range (1 - 99999)");
-                }
-
-                // Get element table name
-                var trygetname = GetNationalElementTableName(element_id);
-                if (!trygetname.success)
-                {
-                    return (false, null, "Unable to retrieve element table name");
-                }
-                string table_name = trygetname.table_name;  // unqualified table name
-
-                // Create the dictionary
-                Dictionary<long, double> dict = new Dictionary<long, double>();
-
-                // Populate dictionary
-                await QueuedTask.Run(() =>
-                {
-                    // try getting the e0000n table
-                    var trygettab = GetTable_Nat(table_name);
-
-                    if (!trygettab.success)
-                    {
-                        throw new Exception("Unable to retrieve table.");
-                    }
-
-                    // I'm here - can I do this more efficiently?
-
-                    // iterate
-                    using (Table table = trygettab.table)
-                    using (RowCursor rowCursor = table.Search())
-                    {
-                        while (rowCursor.MoveNext())
-                        {
-                            using (Row row = rowCursor.Current)
-                            {
-                                var cell_number = Convert.ToInt64(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER]);
-                                var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
-
-                                // check for presence of cell_number in the hashset
-                                if (cell_numbers.Contains(cell_number))
-                                {
-                                    // save the KVP
-                                    dict.Add(cell_number, cell_value);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return (true, dict, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a dictionary of cell numbers and associated element values from the
-        /// national database, for the specified element and list of cell numbers.  Silent errors.
-        /// </summary>
-        /// <param name="element_id"></param>
-        /// <param name="cell_numbers"></param>
-        /// <returns></returns>
-        public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetElementIntersectionOld2(int element_id, HashSet<long> cell_numbers)
-        {
-            try
-            {
-                // Ensure valid element id
-                if (element_id < 1 || element_id > 99999)
-                {
-                    return (false, null, "Element ID out of range (1 - 99999)");
-                }
-
-                // Get element table name
-                var trygetname = GetNationalElementTableName(element_id);
-                if (!trygetname.success)
-                {
-                    return (false, null, "Unable to retrieve element table name");
-                }
-                string table_name = trygetname.table_name;  // unqualified table name
-
-                // Create the dictionary
-                Dictionary<long, double> dict = new Dictionary<long, double>();
-
-                // Get the min and max cell numbers.  I can ignore all cell numbers outside this range
-                long min_cell_number = cell_numbers.Min();
-                long max_cell_number = cell_numbers.Max();
-
-                // Populate dictionary
-                await QueuedTask.Run(() =>
-                {
-                    // try getting the e0000n table
-                    var trygettab = GetTable_Nat(table_name);
-
-                    if (!trygettab.success)
-                    {
-                        throw new Exception("Unable to retrieve table.");
-                    }
-
-                    // iterate
-                    using (Table table = trygettab.table)
-                    {
-                        foreach(long cell_num in cell_numbers)
-                        {
-                            QueryFilter queryFilter = new QueryFilter();
-
-                            queryFilter.SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE;
-                            //                            queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} = {cell_num} And {} >= {} And {} <= {}"; 
-                            queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} = {cell_num}"; 
-
-                            using (RowCursor rowCursor = table.Search(queryFilter))
-                            {
-                                if (rowCursor.MoveNext())
-                                {
-                                    using (Row row = rowCursor.Current)
-                                    {
-                                        var cell_value = Convert.ToDouble(row[PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE]);
-                                        dict.Add(cell_num, cell_value);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return (true, dict, "success");
-            }
-            catch (Exception ex)
-            {
-                return (false, null, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Retrieve a dictionary of cell numbers and associated element values from the
-        /// national database, for the specified element and list of cell numbers.  Silent errors.
-        /// </summary>
-        /// <param name="element_id"></param>
-        /// <param name="cell_numbers"></param>
-        /// <returns></returns>
         public static async Task<(bool success, Dictionary<long, double> dict, string message)> GetNatElementIntersection(int element_id, HashSet<long> cell_numbers)
         {
             try
@@ -3880,14 +3733,14 @@ namespace NCC.PRZTools
                 // Ensure valid element id
                 if (element_id < 1 || element_id > 99999)
                 {
-                    return (false, null, "Element ID out of range (1 - 99999)");
+                    throw new Exception("Element ID out of range (1 - 99999)");
                 }
 
                 // Get element table name
                 var trygetname = GetNationalElementTableName(element_id);
                 if (!trygetname.success)
                 {
-                    return (false, null, "Unable to retrieve element table name");
+                    throw new Exception("Unable to retrieve element table name");
                 }
                 string table_name = trygetname.table_name;  // unqualified table name
 
@@ -3913,9 +3766,11 @@ namespace NCC.PRZTools
                     // Retrieve all element table KVPs within the min max range
                     using (Table table = trygettab.table)
                     {
-                        QueryFilter queryFilter = new QueryFilter();
-                        queryFilter.SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE;
-                        queryFilter.WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} BETWEEN {min_cell_number} AND {max_cell_number}";
+                        QueryFilter queryFilter = new QueryFilter
+                        {
+                            SubFields = PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER + "," + PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_VALUE,
+                            WhereClause = $"{PRZC.c_FLD_TAB_NAT_ELEMVAL_CELL_NUMBER} BETWEEN {min_cell_number} AND {max_cell_number}"
+                        };
 
                         using (RowCursor rowCursor = table.Search(queryFilter))
                         {
