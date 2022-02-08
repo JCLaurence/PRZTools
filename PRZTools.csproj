@@ -204,6 +204,7 @@
     </Compile>
     <Compile Include="Widgets\Button_DataLoad_National.cs" />
     <Compile Include="Widgets\Button_DataLoad_Regional.cs" />
+    <Compile Include="Widgets\Button_Export_PRZ.cs" />
     <Compile Include="Widgets\Button_Export_WTW.cs" />
     <Compile Include="Widgets\Button_Legend_PU_Boundary.cs" />
     <Compile Include="Widgets\Button_Legend_PU_CFCount.cs" />
@@ -607,6 +608,15 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="ImagesWPF\Tree16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="DarkImages\ExportToPRZ16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AddInContent Include="Images\ExportToPRZ16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="ImagesWPF\ExportToPRZ16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!--
